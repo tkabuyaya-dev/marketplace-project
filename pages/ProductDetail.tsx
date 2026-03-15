@@ -1,0 +1,408 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { Product, User } from '../types';
+import { Button } from '../components/Button';
+import { Badge } from '../components/Badge';
+import { CURRENCY, THEME, TC } from '../constants';
+import { toggleLikeProduct, reportProduct, checkIsLiked, incrementProductViews, getProductBySlugOrId } from '../services/firebase';
+import { getOptimizedUrl } from '../services/cloudinary';
+import { useAppContext } from '../contexts/AppContext';
+import { updateMetaTags } from '../utils/meta';
+import { useToast } from '../components/Toast';
+import { useCategories } from '../hooks/useCategories';
+import { StockUrgency } from '../components/StockUrgency';
+import { CountdownTimer } from '../components/CountdownTimer';
+import { ReviewSection } from '../components/ReviewSection';
+import { ProductSection } from '../components/ProductSection';
+import { trackProductView, getSimilarProducts, getCustomersAlsoViewed } from '../services/recommendations';
+
+const ProductDetail: React.FC = () => {
+  const { slugOrId } = useParams<{ slugOrId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser, handleContactSeller } = useAppContext();
+  const { toast } = useToast();
+  const { categories } = useCategories();
+
+  const getCategoryName = (catId: string) => {
+    const found = categories.find(c => c.id === catId || c.slug === catId);
+    return found ? `${found.icon} ${found.name}` : catId;
+  };
+
+  // Try to get product from navigation state first (avoid re-fetch)
+  const [product, setProduct] = useState<Product | null>(location.state?.product || null);
+  const [loading, setLoading] = useState(!product);
+  const [notFound, setNotFound] = useState(false);
+
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [activeImage, setActiveImage] = useState(0);
+
+  // Recommendation sections
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [alsoViewed, setAlsoViewed] = useState<Product[]>([]);
+
+  // Load product from slug/ID if not passed via state
+  useEffect(() => {
+    if (product) {
+      setLikeCount(product.likesCount || 0);
+      return;
+    }
+    if (!slugOrId) return;
+
+    const load = async () => {
+      setLoading(true);
+      const p = await getProductBySlugOrId(slugOrId);
+      if (p) {
+        setProduct(p);
+        setLikeCount(p.likesCount || 0);
+      } else {
+        setNotFound(true);
+      }
+      setLoading(false);
+    };
+    load();
+  }, [slugOrId]);
+
+  // Update meta tags + increment views + track activity
+  useEffect(() => {
+    if (!product) return;
+    incrementProductViews(product.id).catch(() => {});
+    trackProductView(product, currentUser?.id).catch(() => {});
+    updateMetaTags({
+      title: product.title,
+      description: product.description?.substring(0, 160),
+      image: product.images[0],
+      url: window.location.href,
+    });
+    if (currentUser) {
+      checkIsLiked(product.id, currentUser.id).then(setLiked);
+    }
+  }, [product?.id, currentUser]);
+
+  // Load similar products + "also viewed" (non-blocking)
+  useEffect(() => {
+    if (!product) return;
+    getSimilarProducts(product, 8).then(setSimilarProducts).catch(() => {});
+    getCustomersAlsoViewed(product.id, 8).then(setAlsoViewed).catch(() => {});
+  }, [product?.id]);
+
+  // Reset image index when product changes
+  useEffect(() => { setActiveImage(0); }, [product?.id]);
+
+  const onProductClick = (p: Product) => {
+    navigate(`/product/${p.slug || p.id}`, { state: { product: p } });
+    // Reset state for new product
+    setProduct(p);
+    setLikeCount(p.likesCount || 0);
+    setLiked(false);
+    setSimilarProducts([]);
+    setAlsoViewed([]);
+    window.scrollTo(0, 0);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound || !product) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
+        <div className="text-6xl">😕</div>
+        <h1 className="text-xl font-bold text-white">Produit introuvable</h1>
+        <Button onClick={() => navigate('/')}>Retour à l'accueil</Button>
+      </div>
+    );
+  }
+
+  const tc = TC;
+
+  // Promotion logic
+  const now = Date.now();
+  const isOnPromotion = product.discountPrice != null
+    && product.promotionEnd != null
+    && product.promotionEnd > now
+    && (!product.promotionStart || product.promotionStart <= now);
+  const displayPrice = isOnPromotion ? product.discountPrice! : product.price;
+
+  const handleWhatsApp = () => {
+    if (product.seller.whatsapp) {
+      const message = `Bonjour, je suis intéressé par votre produit: ${product.title} sur AuraBuja.`;
+      const url = `https://wa.me/${product.seller.whatsapp}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+    } else {
+      toast("Le vendeur n'a pas renseigné de numéro WhatsApp.", 'info');
+    }
+  };
+
+  const handleLike = async () => {
+    if (!currentUser) return toast("Connectez-vous pour aimer ce produit.", 'info');
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount(c => newLiked ? c + 1 : c - 1);
+    try {
+      await toggleLikeProduct(product.id, currentUser.id);
+    } catch {
+      setLiked(!newLiked);
+      setLikeCount(c => newLiked ? c - 1 : c + 1);
+    }
+  };
+
+  const handleReport = () => {
+    if (window.confirm("Signaler ce produit comme inapproprié ?")) {
+      reportProduct(product.id, 'inappropriate');
+      toast("Signalement envoyé à l'administration.", 'success');
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.title,
+          text: `Regarde ça sur AuraBuja : ${product.title}`,
+          url: shareUrl,
+        });
+      } catch (error) { console.log('Erreur partage', error); }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast("Lien copié dans le presse-papier !", 'success');
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast("Lien copié dans le presse-papier !", 'success');
+      }
+    }
+  };
+
+  const onVisitShop = (seller: User) => {
+    navigate(`/shop/${seller.slug || seller.id}`, { state: { seller } });
+  };
+
+  const handleBack = () => {
+    if (window.history.length <= 1) {
+      navigate('/');
+    } else {
+      navigate(-1);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-950 pb-24">
+      {/* Header bar */}
+      <div className="sticky top-0 z-30 bg-gray-950/90 backdrop-blur-md border-b border-gray-800/50 flex items-center justify-between px-4 py-3">
+        <button onClick={handleBack} className="p-3 -m-1 text-white">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="flex gap-2">
+          <button onClick={handleShare} className="p-3 bg-gray-800 rounded-full text-white hover:bg-gray-700">🔗</button>
+          <button onClick={handleLike} className={`p-3 rounded-full transition-colors ${liked ? 'bg-red-500/20 text-red-500' : 'bg-gray-800 text-white hover:bg-gray-700'}`}>❤️</button>
+        </div>
+      </div>
+
+      {/* Main image */}
+      <div
+        className="relative w-full bg-black select-none"
+        onTouchStart={e => { (e.currentTarget as any)._touchX = e.touches[0].clientX; }}
+        onTouchEnd={e => {
+          const startX = (e.currentTarget as any)._touchX;
+          if (startX == null) return;
+          const diff = startX - e.changedTouches[0].clientX;
+          if (Math.abs(diff) > 80 && product.images.length > 1) {
+            setActiveImage(prev => diff > 0
+              ? Math.min(prev + 1, product.images.length - 1)
+              : Math.max(prev - 1, 0)
+            );
+          }
+        }}
+      >
+        <img
+          src={getOptimizedUrl(product.images[activeImage] || product.images[0], 800)}
+          alt={product.title}
+          loading="eager"
+          className="w-full aspect-square object-cover mx-auto"
+        />
+
+        {product.images.length > 1 && (
+          <>
+            <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              {activeImage + 1}/{product.images.length}
+            </div>
+
+            {/* Arrow buttons (desktop) */}
+            {activeImage > 0 && (
+              <button
+                onClick={() => setActiveImage(i => i - 1)}
+                className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 backdrop-blur-md p-2.5 rounded-full text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+            )}
+            {activeImage < product.images.length - 1 && (
+              <button
+                onClick={() => setActiveImage(i => i + 1)}
+                className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 backdrop-blur-md p-2.5 rounded-full text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Thumbnails strip */}
+      {product.images.length > 1 && (
+        <div className="flex gap-2 px-4 py-3 bg-gray-900 overflow-x-auto no-scrollbar">
+          {product.images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveImage(i)}
+              className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                i === activeImage ? 'border-blue-500 scale-105' : 'border-gray-700 opacity-60 hover:opacity-100'
+              }`}
+            >
+              <img src={getOptimizedUrl(img, 80)} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Product info */}
+      <div className="px-4 pt-4 space-y-4">
+        {/* Title + price + stats */}
+        <div>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <Badge variant="info">{getCategoryName(product.category)}</Badge>
+            {product.subCategory && (
+              <>
+                <span className="text-gray-600 text-xs">/</span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 text-gray-300 border border-white/10">
+                  {product.subCategory}
+                </span>
+              </>
+            )}
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2 font-sans">{product.title}</h1>
+
+          {/* Price with promotion support */}
+          <div className="mb-2">
+            {isOnPromotion ? (
+              <div className="flex items-baseline gap-3">
+                <p className="text-3xl font-bold text-red-400">
+                  {displayPrice.toLocaleString()} <span className="text-lg text-red-400/70">{CURRENCY}</span>
+                </p>
+                <p className="text-lg text-gray-500 line-through">
+                  {product.price.toLocaleString()} {CURRENCY}
+                </p>
+              </div>
+            ) : (
+              <p className={`text-3xl font-bold ${tc.text400}`}>
+                {product.price.toLocaleString()} <span className={`text-lg ${tc.text400_70}`}>{CURRENCY}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 text-sm text-gray-400">
+            <span className="flex items-center gap-1"><span className="text-yellow-400">★</span> {product.rating || 0}</span>
+            <span className="flex items-center gap-1">👁 {product.views}</span>
+            <span className="flex items-center gap-1">❤️ {likeCount}</span>
+            {product.reviews > 0 && (
+              <span className="flex items-center gap-1">💬 {product.reviews} avis</span>
+            )}
+          </div>
+        </div>
+
+        {/* Promotion countdown */}
+        {isOnPromotion && product.promotionEnd && (
+          <CountdownTimer
+            promotionEnd={product.promotionEnd}
+            discountPrice={product.discountPrice!}
+            originalPrice={product.price}
+            currency={CURRENCY}
+          />
+        )}
+
+        {/* Stock urgency */}
+        <StockUrgency stockQuantity={product.stockQuantity} />
+
+        {/* Action buttons */}
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-3">
+            <Button variant="primary" className="flex-1" onClick={() => handleContactSeller(product.seller, product.id)} icon={<span>💬</span>}>Chat</Button>
+            <Button variant="secondary" className="flex-1 bg-green-600 hover:bg-green-500 border-transparent text-white" onClick={handleWhatsApp} icon={<span className="text-lg">📱</span>}>WhatsApp</Button>
+          </div>
+        </div>
+
+        {/* Seller Info */}
+        <div
+          onClick={() => onVisitShop(product.seller)}
+          className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 cursor-pointer hover:bg-gray-800 transition-colors group"
+        >
+          <img src={product.seller.avatar} alt={product.seller.name} className="w-12 h-12 rounded-full border border-gray-600 group-hover:border-blue-500" />
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
+              <h4 className="text-white font-medium group-hover:text-blue-400 transition-colors">{product.seller.name}</h4>
+              {product.seller.isVerified && <span className={tc.text500}>✓</span>}
+            </div>
+            <p className="text-xs text-gray-400">Membre depuis {new Date(product.seller.joinDate || Date.now()).getFullYear()}</p>
+          </div>
+          <div className="text-xs font-bold text-gray-400 group-hover:text-white flex items-center gap-1 bg-gray-800 px-3 py-1.5 rounded-full">
+            Boutique <span>→</span>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="space-y-3 pb-4">
+          <h3 className="text-lg font-bold text-white">Description</h3>
+          <p className="text-gray-300 leading-relaxed text-sm">{product.description}</p>
+        </div>
+
+        {/* Reviews Section */}
+        <ReviewSection
+          productId={product.id}
+          currentUserId={currentUser?.id}
+          productRating={product.rating || 0}
+          reviewCount={product.reviews || 0}
+        />
+
+        {/* Similar Products */}
+        <ProductSection
+          title="Produits similaires"
+          icon="🏷️"
+          products={similarProducts}
+          currentUserId={currentUser?.id}
+          onProductClick={onProductClick}
+        />
+
+        {/* Customers Also Viewed */}
+        <ProductSection
+          title="Les clients ont aussi vu"
+          icon="👀"
+          products={alsoViewed}
+          currentUserId={currentUser?.id}
+          onProductClick={onProductClick}
+        />
+
+        <button onClick={handleReport} className="text-xs text-gray-500 hover:text-red-400 underline text-center w-full pb-2">
+          Signaler une annonce frauduleuse
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default ProductDetail;

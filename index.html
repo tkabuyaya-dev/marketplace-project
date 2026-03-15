@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f19" />
+    <meta name="description" content="AuraBuja — Le marketplace Tech & Beauté de Bujumbura." />
+    <meta name="application-name" content="AuraBuja" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AuraBuja" />
+    <meta name="msapplication-TileColor" content="#0b0f19" />
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" /></noscript>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AuraBuja" />
+    <meta property="og:title" content="AuraBuja — Marketplace Tech & Beauté de Bujumbura" />
+    <meta property="og:description" content="Achetez et vendez facilement sur AuraBuja. Le marketplace Tech & Beauté de Bujumbura." />
+    <meta property="og:image" content="/icons/icon-512.png" />
+    <meta property="og:url" content="https://aurburundi-e2fe2.web.app/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AuraBuja — Marketplace Tech & Beauté" />
+    <meta name="twitter:description" content="Achetez et vendez facilement sur AuraBuja." />
+    <meta name="twitter:image" content="/icons/icon-512.png" />
+    <title>AuraBuja — Marketplace</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background-color: #0b0f19;
+        color: #f3f4f6;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior-y: none;
+        -webkit-font-smoothing: antialiased;
+      }
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #0b0f19;
+        z-index: 9999;
+        gap: 16px;
+        transition: opacity 0.3s ease;
+      }
+      #app-loader.hidden { opacity: 0; pointer-events: none; }
+      #app-loader .logo-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        animation: logoFadeIn 0.6s ease-out;
+      }
+      #app-loader .logo-text {
+        font-size: 28px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #F5C842, #D4941A);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1px;
+        animation: logoFadeIn 0.6s ease-out 0.2s both;
+      }
+      #app-loader .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(245,200,66,0.15);
+        border-top-color: #F5C842;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes logoFadeIn { from { opacity:0; transform:scale(0.9) } to { opacity:1; transform:scale(1) } }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+  </head>
+  <body class="bg-gray-950 text-white antialiased">
+    <!-- Nettoyage des anciens Service Workers (évite les 400/404 causés par un SW périmé) -->
+    <script>
+      (function() {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          // Supprimer uniquement les SW non-Vite (anciens builds)
+          var oldRegs = regs.filter(function(r) {
+            var url = (r.active || r.installing || r.waiting || {}).scriptURL || '';
+            return url && !url.endsWith('/sw.js');
+          });
+          if (oldRegs.length > 0) {
+            Promise.all(oldRegs.map(function(r) { return r.unregister(); }));
+            // Pas de reload automatique — le nouveau SW sera installé au prochain chargement
+          }
+        });
+      })();
+    </script>
+    <div id="app-loader" aria-label="Chargement AuraBuja">
+      <img src="/icons/icon-192.png" alt="AuraBuja" class="logo-icon" width="80" height="80" />
+      <div class="logo-text">AuraBuja</div>
+      <div class="spinner"></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

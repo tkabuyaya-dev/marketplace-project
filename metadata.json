@@ -1,0 +1,9 @@
+{
+  "name": "TechMarket Bujumbura",
+  "description": "Un marketplace futuriste et ultra-premium pour la technologie à Bujumbura. PWA Mobile-first.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

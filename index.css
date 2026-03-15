@@ -1,0 +1,54 @@
+/* AuraBuja — Styles globaux */
+/* Tailwind directives (compilées par PostCSS/Vite, pas de CDN) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Imports locaux (pas de Google Fonts bloquante) */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+    background-color: #0b0f19;
+    color: #f3f4f6;
+  }
+
+  /* Scrollbar masquée globalement pour UX mobile native */
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  /* Safe area pour les téléphones avec encoche/barre de navigation */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+
+  /* Scale légère au clic (feedback tactile) */
+  .active\:scale-98:active {
+    transform: scale(0.98);
+  }
+
+  /* Gradient text */
+  .text-gradient-tech {
+    background: linear-gradient(to right, #3b82f6, #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-beauty {
+    background: linear-gradient(to right, #f43f5e, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}

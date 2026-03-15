@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npx tsc)",
+      "Bash(npx vite build)",
+      "Bash(wmic process where \"name=''node.exe''\" get processid,commandline)",
+      "Bash(tasklist)",
+      "Bash(npx eslint --ext .js,.ts src/)",
+      "Bash(npm run build)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  }
+}

@@ -1,0 +1,208 @@
+export type Role = 'buyer' | 'seller' | 'admin';
+export type ProductStatus = 'pending' | 'approved' | 'rejected';
+export type MarketplaceId = 'bata' | 'kamenge' | 'centre-ville' | 'kinama' | 'autres';
+
+// Structure GPS
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+export interface Country {
+  id: string;
+  name: string;
+  code: string; // ex: BI, CD, RW
+  currency: string;
+  flag: string;
+  isActive: boolean; // Nouveau: Pour activer/désactiver le pays
+}
+
+// Informations légales Vendeur (Burundi + Future)
+export interface SellerDetails {
+  cni: string; 
+  phone: string;
+  countryId: string; // Nouveau: Lien vers le pays
+  province: string;
+  commune: string;
+  quartier: string;
+  shopName?: string;
+  shopImage?: string; // Nouveau: Photo de la boutique
+  sellerType: 'shop' | 'street' | 'online';
+  locationUrl?: string; // Gardé pour compatibilité
+  gps?: Coordinates; // Nouveau: Coordonnées exactes
+  marketplace: MarketplaceId;
+  categories: string[];
+  nif?: string;
+  registryNumber?: string;
+  hasNif: boolean;
+  hasRegistry: boolean;
+  documents?: {
+    cniUrl?: string;
+    nifUrl?: string;
+    registryUrl?: string;
+  };
+  maxProducts?: number;
+  tierLabel?: string;
+}
+
+export interface User {
+  id: string;
+  slug?: string;
+  name: string;
+  email: string;
+  avatar: string;
+  isVerified: boolean;
+  isSuspended?: boolean;
+  role: Role;
+  whatsapp?: string;
+  joinDate: number;
+  banner?: string;
+  bio?: string;
+  productCount?: number;
+  sellerDetails?: SellerDetails;
+}
+
+export interface SubscriptionTier {
+  id: string;
+  min: number;
+  max: number | null; // null = illimité
+  price: number;
+  label: string;
+  requiresNif: boolean; 
+}
+
+export interface Product {
+  id: string;
+  slug?: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  description: string;
+  images: string[];
+  category: string;
+  subCategory?: string;
+  tags?: string[];
+  rating: number;
+  reviews: number;
+  marketplace?: MarketplaceId;
+  seller: User;
+  isPromoted?: boolean;
+  status: ProductStatus;
+  rejectionReason?: string;
+  resubmittedAt?: number;
+  views: number;
+  likesCount?: number;
+  reports: number;
+  createdAt: number;
+  // Stock & Promotions
+  stockQuantity?: number;
+  discountPrice?: number;
+  promotionStart?: number;
+  promotionEnd?: number;
+}
+
+// --- Reviews ---
+export interface Review {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  productId: string;
+  rating: number;
+  comment: string;
+  images?: string[];
+  createdAt: number;
+}
+
+// --- User Activity Tracking ---
+export type ActivityAction = 'view' | 'like' | 'contact';
+
+export interface UserActivity {
+  id: string;
+  userId: string;
+  productId: string;
+  category: string;
+  action: ActivityAction;
+  createdAt: number;
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  senderId: string;
+  receiverId: string; 
+  timestamp: number;
+  read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  participants: [User, User]; 
+  lastMessage: Message;
+  unreadCount: number;
+  productId?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  slug: string;
+  subCategories: string[];
+}
+
+export enum RouteName {
+  HOME = 'home',
+  PRODUCT = 'product',
+  SHOP = 'shop',
+  MESSENGER = 'messenger',
+  SELLER_DASHBOARD = 'seller_dashboard',
+  SELLER_REGISTRATION = 'seller_registration', 
+  ADMIN_DASHBOARD = 'admin_dashboard',
+  PROFILE = 'profile',
+  LOGIN = 'login'
+}
+
+export interface NavigationState {
+  route: RouteName;
+  params?: any;
+}
+
+export interface ThemeColors {
+  primary: string;
+  accent: string;
+  gradient: string;
+  heroGradient: string;
+}
+
+// ─── Notifications ───
+export type NotificationType =
+  | 'product_approved'
+  | 'product_rejected'
+  | 'new_message'
+  | 'subscription_change'
+  | 'system';
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: number;
+  data?: {
+    productSlug?: string;
+    sellerSlug?: string;
+    conversationId?: string;
+    link?: string;
+  };
+}
+
+export interface SearchFilters {
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  sort: 'relevance' | 'price_asc' | 'price_desc' | 'newest';
+  category?: string;
+}
