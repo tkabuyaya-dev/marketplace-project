@@ -1,0 +1,96 @@
+specVersion: v1alpha1
+requiredAPIs: []
+endpoints:
+  onProductWrite:
+    entryPoint: onProductWrite
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 10
+    secretEnvironmentVariables:
+      - key: ALGOLIA_APP_ID
+      - key: ALGOLIA_ADMIN_KEY
+      - key: REDIS_URL
+    eventTrigger:
+      eventType: google.cloud.firestore.document.v1.written
+      eventFilters:
+        database: "(default)"
+        namespace: "(default)"
+      eventFilterPathPatterns:
+        document: "products/{productId}"
+      retry: false
+  onSellerWrite:
+    entryPoint: onSellerWrite
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 10
+    secretEnvironmentVariables:
+      - key: ALGOLIA_APP_ID
+      - key: ALGOLIA_ADMIN_KEY
+    eventTrigger:
+      eventType: google.cloud.firestore.document.v1.written
+      eventFilters:
+        database: "(default)"
+        namespace: "(default)"
+      eventFilterPathPatterns:
+        document: "users/{userId}"
+      retry: false
+  setupAlgoliaIndexes:
+    entryPoint: setupAlgoliaIndexes
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 1
+    timeoutSeconds: 540
+    secretEnvironmentVariables:
+      - key: ALGOLIA_APP_ID
+      - key: ALGOLIA_ADMIN_KEY
+    httpsTrigger: {}
+  getTrending:
+    entryPoint: getTrending
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 5
+    secretEnvironmentVariables:
+      - key: REDIS_URL
+    httpsTrigger: {}
+  getPopular:
+    entryPoint: getPopular
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 5
+    secretEnvironmentVariables:
+      - key: REDIS_URL
+    httpsTrigger: {}
+  getRecommendations:
+    entryPoint: getRecommendations
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 5
+    secretEnvironmentVariables:
+      - key: REDIS_URL
+    httpsTrigger: {}
+  getAlsoViewed:
+    entryPoint: getAlsoViewed
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 5
+    secretEnvironmentVariables:
+      - key: REDIS_URL
+    httpsTrigger: {}
+  cachedSearch:
+    entryPoint: cachedSearch
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 10
+    secretEnvironmentVariables:
+      - key: ALGOLIA_APP_ID
+      - key: ALGOLIA_ADMIN_KEY
+      - key: REDIS_URL
+    httpsTrigger: {}
