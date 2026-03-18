@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Product, User, ProductStatus, Category, MarketplaceId } from '../types';
-import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct } from '../services/firebase';
+import { Product, User, ProductStatus, Category, MarketplaceId, Currency, Marketplace } from '../types';
+import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, getMarketplacesByCountry, getFirstAdmin, downgradeToFree } from '../services/firebase';
 import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
-import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BURUNDI, MARKETPLACES, getMarketplaceInfo } from '../constants';
+import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
@@ -53,9 +53,22 @@ export const SellerDashboard: React.FC = () => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const shopImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Dynamic data (country-aware)
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [sellerMarketplaces, setSellerMarketplaces] = useState<Marketplace[]>([]);
+  const sellerCountryId = currentUser.sellerDetails?.countryId || 'bi';
+  const sellerProvinces = PROVINCES_BY_COUNTRY[sellerCountryId] || [];
+
+  // Subscription expiration
+  const subscriptionExpiresAt = currentUser.sellerDetails?.subscriptionExpiresAt;
+  const daysRemaining = subscriptionExpiresAt ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))) : null;
+  const isExpired = subscriptionExpiresAt ? Date.now() > subscriptionExpiresAt : false;
+  const isPaidTier = (currentUser.sellerDetails?.maxProducts ?? 5) > 5;
+
   // Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [productCurrency, setProductCurrency] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
   const [desc, setDesc] = useState('');
   const [category, setCategory] = useState('');
@@ -65,6 +78,38 @@ export const SellerDashboard: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState('');
   const [formError, setFormError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit rejected product state
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editSubCategory, setEditSubCategory] = useState('');
+  const [editImages, setEditImages] = useState<string[]>([]);
+  const [editNewImages, setEditNewImages] = useState<File[]>([]);
+  const [editNewPreviews, setEditNewPreviews] = useState<string[]>([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const editFileRef = useRef<HTMLInputElement>(null);
+
+  // Load currencies + marketplaces for seller's country
+  useEffect(() => {
+    getActiveCurrencies().then(all => {
+      setCurrencies(all);
+      // Default product currency = seller's country currency
+      const countryCurrency = all.find(c => c.countryId === sellerCountryId);
+      if (countryCurrency && !productCurrency) setProductCurrency(countryCurrency.code);
+    });
+    getMarketplacesByCountry(sellerCountryId).then(setSellerMarketplaces);
+  }, [sellerCountryId]);
+
+  // Auto-downgrade if subscription expired
+  useEffect(() => {
+    if (isPaidTier && isExpired) {
+      downgradeToFree(currentUser.id);
+      toast("Votre abonnement a expiré. Vous êtes revenu au plan gratuit (5 produits max). Contactez l'admin pour renouveler.", 'error');
+    }
+  }, [isExpired, isPaidTier]);
 
   useEffect(() => {
     const load = async () => {
@@ -79,13 +124,15 @@ export const SellerDashboard: React.FC = () => {
   const hasNif = !!currentUser.sellerDetails?.nif;
   const currentCount = myProducts.length;
 
-  // LOGIQUE DE LIMITATION — Utilise maxProducts/tierLabel défini par l'admin (temps réel)
+  // LOGIQUE DE LIMITATION — Priorité: admin-set > expired-check > NIF-based > free
   const adminMaxProducts = currentUser.sellerDetails?.maxProducts;
   const adminTierLabel = currentUser.sellerDetails?.tierLabel;
 
   let currentTier;
-  if (adminMaxProducts !== undefined && adminTierLabel) {
-      // L'admin a configuré l'abonnement de ce vendeur → utiliser ses valeurs
+  if (isPaidTier && isExpired) {
+      // Abonnement expiré → force free tier
+      currentTier = INITIAL_SUBSCRIPTION_TIERS[0];
+  } else if (adminMaxProducts !== undefined && adminTierLabel) {
       currentTier = {
         id: 'admin_set',
         label: adminTierLabel,
@@ -95,14 +142,16 @@ export const SellerDashboard: React.FC = () => {
         requiresNif: true,
       };
   } else if (!hasNif) {
-      // Pas de NIF → tier gratuit limité
-      currentTier = INITIAL_SUBSCRIPTION_TIERS[0]; // min:0, max:1
+      currentTier = INITIAL_SUBSCRIPTION_TIERS[0]; // free: max 5
   } else {
-      // Logique par défaut basée sur les tiers initiaux
       currentTier = INITIAL_SUBSCRIPTION_TIERS.find(t =>
         t.requiresNif && currentCount >= t.min && (t.max === null || currentCount <= t.max)
       ) || INITIAL_SUBSCRIPTION_TIERS[1];
   }
+
+  // Warning flags
+  const showUpgradeWarning = currentTier.id === 'free' && currentCount >= FREE_TIER_WARNING_AT;
+  const showExpirationWarning = isPaidTier && daysRemaining !== null && daysRemaining <= 7 && !isExpired;
 
   const nextTier = INITIAL_SUBSCRIPTION_TIERS.find(t => t.min > (currentTier.max || 9999)) || currentTier;
   const isLimitReached = currentTier.max !== null && currentCount >= currentTier.max;
@@ -160,6 +209,7 @@ export const SellerDashboard: React.FC = () => {
         title: title.trim(),
         price: Number(price),
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
+        currency: productCurrency || undefined,
         description: desc.trim(),
         category,
         subCategory,
@@ -197,6 +247,86 @@ export const SellerDashboard: React.FC = () => {
       toast("Produit renvoye en validation !", 'success');
   };
 
+  const openEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setEditTitle(product.title);
+    setEditPrice(String(product.price));
+    setEditDesc(product.description);
+    setEditCategory(product.category);
+    setEditSubCategory(product.subCategory || '');
+    setEditImages(product.images || []);
+    setEditNewImages([]);
+    setEditNewPreviews([]);
+  };
+
+  const handleEditNewImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setEditNewImages(prev => [...prev, ...files]);
+    files.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setEditNewPreviews(prev => [...prev, ev.target?.result as string]);
+      reader.readAsDataURL(f);
+    });
+  };
+
+  const removeEditExistingImage = (index: number) => {
+    setEditImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeEditNewImage = (index: number) => {
+    setEditNewImages(prev => prev.filter((_, i) => i !== index));
+    setEditNewPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProduct) return;
+    const trimmedTitle = editTitle.trim();
+    const numPrice = Number(editPrice);
+    if (!trimmedTitle || !numPrice || !editCategory) {
+      toast("Titre, prix et catégorie sont requis.", 'error');
+      return;
+    }
+    if (editImages.length === 0 && editNewImages.length === 0) {
+      toast("Au moins une image est requise.", 'error');
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      let finalImages = [...editImages];
+      if (editNewImages.length > 0) {
+        const uploaded = await uploadImages(editNewImages, { folder: 'aurabuja-app-2026/products' });
+        finalImages = [...finalImages, ...uploaded];
+      }
+
+      await updateProduct(editingProduct.id, {
+        title: trimmedTitle,
+        description: editDesc.trim(),
+        price: numPrice,
+        category: editCategory,
+        subCategory: editSubCategory,
+        images: finalImages,
+      });
+
+      // Resubmit for review
+      await resubmitProduct(editingProduct.id);
+
+      setMyProducts(prev => prev.map(p =>
+        p.id === editingProduct.id
+          ? { ...p, title: trimmedTitle, description: editDesc.trim(), price: numPrice, category: editCategory, subCategory: editSubCategory, images: finalImages, status: 'pending' as ProductStatus, resubmittedAt: Date.now() }
+          : p
+      ));
+
+      setEditingProduct(null);
+      toast("Produit modifié et renvoyé en validation !", 'success');
+    } catch (err: any) {
+      toast(err?.message || "Erreur lors de la modification.", 'error');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const filteredProducts = productStatusFilter === 'all'
     ? myProducts
     : myProducts.filter(p => p.status === productStatusFilter);
@@ -217,6 +347,10 @@ export const SellerDashboard: React.FC = () => {
       toast("La géolocalisation n'est pas supportée par votre navigateur.", 'error');
       return;
     }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      toast("La géolocalisation nécessite une connexion HTTPS sécurisée.", 'error');
+      return;
+    }
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -224,14 +358,21 @@ export const SellerDashboard: React.FC = () => {
           ...prev,
           gps: { lat: position.coords.latitude, lng: position.coords.longitude },
         }));
+        toast("Position GPS capturée !", 'success');
         setGpsLoading(false);
       },
       (error) => {
-        console.error(error);
-        toast("Impossible de récupérer la position. Vérifiez vos permissions.", 'error');
+        console.error('[GPS]', error.code, error.message);
+        let msg = "Impossible de récupérer la position.";
+        switch (error.code) {
+          case 1: msg = "Accès refusé. Autorisez la localisation dans les paramètres du navigateur."; break;
+          case 2: msg = "Position indisponible. Activez le GPS et réessayez."; break;
+          case 3: msg = "Délai dépassé. Sortez à l'extérieur pour un meilleur signal."; break;
+        }
+        toast(msg, 'error');
         setGpsLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
   };
 
@@ -343,45 +484,115 @@ export const SellerDashboard: React.FC = () => {
 
   // --- VIEWS ---
 
+  const contactAdmin = async () => {
+    try {
+      const admin = await getFirstAdmin();
+      if (admin) handleContactSeller(admin);
+      else toast("Aucun admin trouvé.", 'error');
+    } catch { toast("Erreur de contact.", 'error'); }
+  };
+
   const renderOverview = () => (
     <div className="space-y-6 animate-fade-in">
-        {/* Welcome Banner with Subscription Info */}
-        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl p-6 border border-blue-800 relative overflow-hidden">
-            <div className="absolute right-0 top-0 h-full w-1/2 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-               <div>
-                  <h2 className="text-2xl font-bold text-white mb-1">Bonjour, {currentUser.name.split(' ')[0]} 👋</h2>
-                  <p className="text-blue-200 text-sm">
-                      {!hasNif ? "⚠️ Compte Limité (Pas de NIF)" : "Votre boutique est active."}
-                  </p>
-                  {currentUser.sellerDetails?.marketplace && (() => {
-                    const mp = getMarketplaceInfo(currentUser.sellerDetails!.marketplace);
-                    return <span className={`inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${mp.color} text-white`}>{mp.icon} {mp.name}</span>;
-                  })()}
+        {/* Welcome Banner */}
+        <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 rounded-2xl p-6 border border-blue-800/50 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(59,130,246,0.3),transparent_50%)]"></div>
+            <div className="relative z-10">
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                 <div>
+                    <h2 className="text-2xl font-black text-white mb-1">
+                      {currentUser.sellerDetails?.shopName || currentUser.name}
+                    </h2>
+                    <p className="text-blue-200/80 text-sm flex items-center gap-2">
+                      {currentUser.isVerified && <span className="text-green-400">Verifie</span>}
+                      {!hasNif && <span className="text-yellow-400">Sans NIF</span>}
+                      {currentUser.sellerDetails?.sellerType === 'shop' && '🏪 Magasin'}
+                      {currentUser.sellerDetails?.sellerType === 'street' && '🚶 Ambulant'}
+                      {currentUser.sellerDetails?.sellerType === 'online' && '🌐 En ligne'}
+                    </p>
+                 </div>
+
+                 {/* Subscription Widget */}
+                 <div className="bg-black/30 backdrop-blur-md p-4 rounded-xl border border-white/10 min-w-[220px]">
+                    <div className="flex justify-between items-center text-xs mb-2">
+                        <span className="text-blue-200 font-bold">{currentTier.label}</span>
+                        <span className={`${isLimitReached ? 'text-red-400' : 'text-white'} font-bold`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
+                    </div>
+                    <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            isLimitReached ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
+                            progressPercentage > 80 ? 'bg-gradient-to-r from-yellow-600 to-orange-400 shadow-[0_0_6px_rgba(234,179,8,0.3)]' :
+                            progressPercentage > 50 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' :
+                            'bg-gradient-to-r from-emerald-500 to-blue-400'
+                          }`}
+                          style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
+                        ></div>
+                    </div>
+                    {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">Limite atteinte. Contactez l'admin pour un upgrade.</p>}
+                    {daysRemaining !== null && isPaidTier && !isExpired && (
+                      <p className={`text-[10px] mt-1.5 font-medium ${daysRemaining <= 7 ? 'text-red-300' : daysRemaining <= 15 ? 'text-yellow-300' : 'text-green-300'}`}>
+                        {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
+                      </p>
+                    )}
+                 </div>
                </div>
-               
-               {/* Subscription Widget */}
-               <div className="bg-gray-900/40 backdrop-blur-md p-3 rounded-xl border border-white/10 min-w-[200px]">
-                  <div className="flex justify-between items-center text-xs mb-1">
-                      <span className="text-blue-200 font-medium">{currentTier.label}</span>
-                      <span className={`${isLimitReached ? 'text-red-400' : 'text-white'} font-bold`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
-                  </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${isLimitReached ? 'bg-red-500' : 'bg-blue-400'}`} 
-                        style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
-                      ></div>
-                  </div>
-                  {isLimitReached && <p className="text-[10px] text-red-300 mt-1">Limite atteinte. {hasNif ? 'Upgrade requis.' : 'Ajoutez votre NIF.'}</p>}
-               </div>
-            </div>
-            
-            <div className="mt-6">
+
+               <div className="mt-5 flex flex-wrap gap-2">
                  <Button size="sm" variant="secondary" className="bg-white/10 border-white/20 hover:bg-white/20 text-white" onClick={() => setActiveTab('add_product')}>
                     + Ajouter un article
                  </Button>
+                 <Button size="sm" variant="secondary" className="bg-white/5 border-white/10 hover:bg-white/15 text-white/80" onClick={() => setActiveTab('shop')}>
+                    Modifier ma boutique
+                 </Button>
+               </div>
             </div>
         </div>
+
+        {/* Expiration Alert */}
+        {isExpired && isPaidTier && (
+          <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl">🚨</span>
+            <div className="flex-1">
+              <p className="text-sm text-red-400 font-bold">Abonnement expiré</p>
+              <p className="text-xs text-gray-400 mt-1">Votre boutique est limitée à 5 produits. Contactez l'admin pour renouveler.</p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={contactAdmin} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg">Contacter par chat</button>
+                <a href="https://wa.me/25768515135?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja." target="_blank" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp Admin</a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Expiration Warning (< 7 days) */}
+        {showExpirationWarning && (
+          <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl">⏰</span>
+            <div className="flex-1">
+              <p className="text-sm text-yellow-400 font-bold">Abonnement expire dans {daysRemaining} jour{daysRemaining! > 1 ? 's' : ''}</p>
+              <p className="text-xs text-gray-400 mt-1">Renouvelez pour continuer à publier. Après expiration, votre boutique sera limitée à 5 produits.</p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={contactAdmin} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg">Contacter par chat</button>
+                <a href="https://wa.me/25768515135?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja." target="_blank" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp Admin</a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Warning (free plan, 3+ products) */}
+        {showUpgradeWarning && !isExpired && (
+          <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl">💡</span>
+            <div className="flex-1">
+              <p className="text-sm text-blue-400 font-bold">Passez au plan supérieur</p>
+              <p className="text-xs text-gray-400 mt-1">Vous avez {currentCount} produit{currentCount > 1 ? 's' : ''} sur 5 max (plan gratuit). Souscrivez à un plan pour publier plus !</p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={contactAdmin} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg">Souscrire via chat</button>
+                <a href="https://wa.me/25768515135?text=Bonjour, je souhaite souscrire à un plan AuraBuja." target="_blank" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp Admin</a>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -396,14 +607,32 @@ export const SellerDashboard: React.FC = () => {
           <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-xl">⚠️</span>
             <div>
-              <p className="text-sm text-red-400 font-bold">{myProducts.filter(p => p.status === 'rejected').length} produit(s) rejete(s)</p>
-              <p className="text-xs text-gray-400 mt-1">Consultez la raison du rejet et renvoyez apres correction.</p>
+              <p className="text-sm text-red-400 font-bold">{myProducts.filter(p => p.status === 'rejected').length} produit(s) rejeté(s)</p>
+              <p className="text-xs text-gray-400 mt-1">Consultez la raison du rejet et renvoyez après correction.</p>
               <button onClick={() => { setActiveTab('products'); setProductStatusFilter('rejected'); }} className="text-xs text-blue-400 hover:underline mt-1">
-                Voir les produits rejetes →
+                Voir les produits rejetés →
               </button>
             </div>
           </div>
         )}
+
+        {/* Quick Actions */}
+        <div>
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Actions rapides</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { icon: '➕', label: 'Ajouter produit', action: () => setActiveTab('add_product') },
+              { icon: '🎨', label: 'Ma boutique', action: () => setActiveTab('shop') },
+              { icon: '📦', label: 'Mes produits', action: () => setActiveTab('products') },
+              { icon: '💬', label: 'Contacter admin', action: contactAdmin },
+            ].map(item => (
+              <button key={item.label} onClick={item.action} className="bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-xl p-4 text-center transition-all group">
+                <span className="text-2xl block mb-1 group-hover:scale-110 transition-transform">{item.icon}</span>
+                <span className="text-xs text-gray-400 font-medium">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Top products by views */}
         {myProducts.filter(p => p.status === 'approved' && p.views > 0).length > 0 && (
@@ -453,7 +682,7 @@ export const SellerDashboard: React.FC = () => {
                                 Vous avez utilisé vos <strong>{currentTier.max} emplacements</strong> du pack {currentTier.label}.
                             </p>
                             <a
-                              href="https://wa.me/25779000000"
+                              href="https://wa.me/25768515135"
                               target="_blank"
                               className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all"
                             >
@@ -534,9 +763,9 @@ export const SellerDashboard: React.FC = () => {
                 <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">Prix & Images</h3>
                      
-                     <div className="grid grid-cols-2 gap-4">
+                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Prix de vente (FBu) *</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Prix *</label>
                           <input
                             required type="number" min="100" value={price} onChange={e => setPrice(e.target.value)}
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
@@ -544,7 +773,17 @@ export const SellerDashboard: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Ancien prix (optionnel)</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Devise</label>
+                          <select
+                            value={productCurrency}
+                            onChange={e => setProductCurrency(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                          >
+                            {currencies.map(c => <option key={c.id} value={c.code}>{c.symbol} ({c.code})</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Ancien prix</label>
                           <input
                             type="number" min="0" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)}
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
@@ -750,11 +989,12 @@ export const SellerDashboard: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* MARCHÉ PHYSIQUE */}
+                  {/* MARCHÉ PHYSIQUE — Dynamique selon le pays du vendeur */}
+                  {sellerMarketplaces.length > 0 && (
                   <div>
                       <label className="block text-xs font-bold text-gray-400 mb-2">Marché physique</label>
                       <div className="grid grid-cols-1 gap-2">
-                        {MARKETPLACES.map(mp => (
+                        {sellerMarketplaces.map(mp => (
                           <button
                             key={mp.id}
                             type="button"
@@ -771,6 +1011,7 @@ export const SellerDashboard: React.FC = () => {
                         ))}
                       </div>
                   </div>
+                  )}
 
                   {/* PHOTO DE LA BOUTIQUE (distincte du logo/avatar) */}
                   <div>
@@ -819,15 +1060,24 @@ export const SellerDashboard: React.FC = () => {
                       <label className="block text-xs font-bold text-gray-400 mb-1">Adresse</label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Province</label>
-                          <select
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
-                            value={shopProfile.province}
-                            onChange={(e) => setShopProfile({...shopProfile, province: e.target.value})}
-                          >
-                            <option value="">Sélectionner...</option>
-                            {PROVINCES_BURUNDI.map(p => <option key={p} value={p}>{p}</option>)}
-                          </select>
+                          <label className="block text-[10px] text-gray-500 mb-1">Province / Région</label>
+                          {sellerProvinces.length > 0 ? (
+                            <select
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
+                              value={shopProfile.province}
+                              onChange={(e) => setShopProfile({...shopProfile, province: e.target.value})}
+                            >
+                              <option value="">Sélectionner...</option>
+                              {sellerProvinces.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                          ) : (
+                            <input
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
+                              value={shopProfile.province}
+                              onChange={(e) => setShopProfile({...shopProfile, province: e.target.value})}
+                              placeholder="Votre province ou région"
+                            />
+                          )}
                         </div>
                         <div>
                           <label className="block text-[10px] text-gray-500 mb-1">Commune / Ville</label>
@@ -965,30 +1215,54 @@ export const SellerDashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {filteredProducts.map(product => (
-                      <div key={product.id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 space-y-2">
+                    {filteredProducts.map(product => {
+                      const cur = product.currency || CURRENCY;
+                      return (
+                      <div key={product.id} className={`bg-gray-800/50 border rounded-xl p-4 space-y-2 transition-all ${
+                        product.status === 'rejected' ? 'border-red-800/40' :
+                        product.status === 'pending' ? 'border-yellow-800/30' :
+                        'border-gray-700/50'
+                      }`}>
                         <div className="flex items-center gap-4">
-                          <img
-                            src={product.images[0] ? getOptimizedUrl(product.images[0], 80) : ''}
-                            alt={product.title}
-                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-700"
-                          />
+                          <div className="relative flex-shrink-0">
+                            <img
+                              src={product.images[0] ? getOptimizedUrl(product.images[0], 80) : ''}
+                              alt={product.title}
+                              className="w-16 h-16 rounded-lg object-cover bg-gray-700"
+                            />
+                            {product.images.length > 1 && (
+                              <span className="absolute -bottom-1 -right-1 bg-gray-700 text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-gray-600">
+                                +{product.images.length - 1}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="text-white font-medium text-sm truncate">{product.title}</h4>
-                            <p className="text-gray-400 text-xs">{product.price.toLocaleString('fr-FR')} {CURRENCY}</p>
-                            <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              product.status === 'approved' ? 'bg-green-900/30 text-green-400' :
-                              product.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' :
-                              'bg-red-900/30 text-red-400'
-                            }`}>
-                              {product.status === 'approved' ? 'Approuve' : product.status === 'pending' ? 'En attente' : 'Rejete'}
-                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-blue-400 text-sm font-bold">{product.price.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-500">{cur}</span></p>
+                              {product.originalPrice && product.originalPrice > product.price && (
+                                <p className="text-gray-600 text-xs line-through">{product.originalPrice.toLocaleString('fr-FR')}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                product.status === 'approved' ? 'bg-green-900/30 text-green-400 border border-green-800/30' :
+                                product.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/30' :
+                                'bg-red-900/30 text-red-400 border border-red-800/30'
+                              }`}>
+                                {product.status === 'approved' ? 'Actif' : product.status === 'pending' ? 'En attente' : 'Rejete'}
+                              </span>
+                              {product.isPromoted && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/30">Sponsorise</span>}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-xs text-gray-500">👁 {product.views}</span>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span>👁 {product.views}</span>
+                              <span>❤️ {product.likesCount || 0}</span>
+                            </div>
                             <button
                               onClick={() => handleDeleteProduct(product.id)}
-                              className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                              className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20"
                               title="Supprimer"
                             >
                               🗑️
@@ -996,7 +1270,7 @@ export const SellerDashboard: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Rejection reason + resubmit button */}
+                        {/* Rejection reason + edit & resubmit buttons */}
                         {product.status === 'rejected' && (
                           <div className="bg-red-900/10 border border-red-800/30 rounded-lg p-3 space-y-2">
                             {product.rejectionReason && (
@@ -1004,16 +1278,25 @@ export const SellerDashboard: React.FC = () => {
                                 <span className="font-bold">Raison du rejet :</span> {product.rejectionReason}
                               </p>
                             )}
-                            <button
-                              onClick={() => handleResubmit(product.id)}
-                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
-                            >
-                              Renvoyer en validation
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openEditProduct(product)}
+                                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors"
+                              >
+                                Modifier et resoumettre
+                              </button>
+                              <button
+                                onClick={() => handleResubmit(product.id)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+                              >
+                                Resoumettre tel quel
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
                </div>
@@ -1044,6 +1327,98 @@ export const SellerDashboard: React.FC = () => {
            ))}
          </div>
        </div>
+
+       {/* Edit Rejected Product Modal */}
+       {editingProduct && (
+         <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEditingProduct(null)}>
+           <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
+             <div className="flex items-center justify-between">
+               <h3 className="text-lg font-bold text-white">Modifier le produit</h3>
+               <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-white text-xl">&times;</button>
+             </div>
+
+             {editingProduct.rejectionReason && (
+               <div className="bg-red-900/20 border border-red-800/30 rounded-lg p-3">
+                 <p className="text-xs text-red-400"><span className="font-bold">Raison du rejet :</span> {editingProduct.rejectionReason}</p>
+               </div>
+             )}
+
+             <div>
+               <label className="block text-xs font-bold text-gray-400 mb-1">Titre *</label>
+               <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" />
+             </div>
+
+             <div className="grid grid-cols-2 gap-3">
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 mb-1">Prix *</label>
+                 <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" />
+               </div>
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 mb-1">Categorie *</label>
+                 <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none">
+                   <option value="">Choisir</option>
+                   {firestoreCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                 </select>
+               </div>
+             </div>
+
+             <div>
+               <label className="block text-xs font-bold text-gray-400 mb-1">Description</label>
+               <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 resize-none" />
+             </div>
+
+             {/* Existing images */}
+             {editImages.length > 0 && (
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 mb-2">Images actuelles</label>
+                 <div className="flex gap-2 flex-wrap">
+                   {editImages.map((img, i) => (
+                     <div key={i} className="relative w-16 h-16">
+                       <img src={getOptimizedUrl(img, 80)} className="w-full h-full object-cover rounded-lg" />
+                       <button onClick={() => removeEditExistingImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">&times;</button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+
+             {/* New images */}
+             {editNewPreviews.length > 0 && (
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 mb-2">Nouvelles images</label>
+                 <div className="flex gap-2 flex-wrap">
+                   {editNewPreviews.map((src, i) => (
+                     <div key={i} className="relative w-16 h-16">
+                       <img src={src} className="w-full h-full object-cover rounded-lg" />
+                       <button onClick={() => removeEditNewImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">&times;</button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+
+             <div>
+               <input ref={editFileRef} type="file" accept="image/*" multiple onChange={handleEditNewImages} className="hidden" />
+               <button onClick={() => editFileRef.current?.click()} className="w-full border border-dashed border-gray-600 rounded-xl p-3 text-sm text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">
+                 + Ajouter des images
+               </button>
+             </div>
+
+             <div className="flex gap-3 pt-2">
+               <button onClick={() => setEditingProduct(null)} className="flex-1 px-4 py-2.5 bg-gray-800 text-gray-300 rounded-xl font-medium hover:bg-gray-700 transition-colors">
+                 Annuler
+               </button>
+               <button
+                 onClick={handleSaveEdit}
+                 disabled={editLoading}
+                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors disabled:opacity-50"
+               >
+                 {editLoading ? 'Envoi...' : 'Modifier et resoumettre'}
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 };

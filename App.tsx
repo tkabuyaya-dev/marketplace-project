@@ -12,6 +12,7 @@ const App: React.FC = () => {
     isOnline,
     isSearchOpen, setIsSearchOpen,
     handleSellerAccess,
+    unreadMessagesCount,
   } = useAppContext();
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ const App: React.FC = () => {
             onSearchClick={() => setIsSearchOpen(true)}
             onSellerAccess={handleSellerAccess}
             isOnline={isOnline}
+            unreadMessagesCount={unreadMessagesCount}
           />
         )}
         <main>

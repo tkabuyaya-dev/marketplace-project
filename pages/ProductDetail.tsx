@@ -131,7 +131,8 @@ const ProductDetail: React.FC = () => {
 
   const handleWhatsApp = () => {
     if (product.seller.whatsapp) {
-      const message = `Bonjour, je suis intéressé par votre produit: ${product.title} sur AuraBuja.`;
+      const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
+      const message = `Bonjour, je suis intéressé par votre produit: *${product.title}* sur AuraBuja.\n\n${productUrl}`;
       const url = `https://wa.me/${product.seller.whatsapp}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     } else {
@@ -299,22 +300,24 @@ const ProductDetail: React.FC = () => {
           <h1 className="text-2xl font-bold text-white mb-2 font-sans">{product.title}</h1>
 
           {/* Price with promotion support */}
+          {(() => { const cur = product.currency || CURRENCY; return (
           <div className="mb-2">
             {isOnPromotion ? (
               <div className="flex items-baseline gap-3">
                 <p className="text-3xl font-bold text-red-400">
-                  {displayPrice.toLocaleString()} <span className="text-lg text-red-400/70">{CURRENCY}</span>
+                  {displayPrice.toLocaleString()} <span className="text-lg text-red-400/70">{cur}</span>
                 </p>
                 <p className="text-lg text-gray-500 line-through">
-                  {product.price.toLocaleString()} {CURRENCY}
+                  {product.price.toLocaleString()} {cur}
                 </p>
               </div>
             ) : (
               <p className={`text-3xl font-bold ${tc.text400}`}>
-                {product.price.toLocaleString()} <span className={`text-lg ${tc.text400_70}`}>{CURRENCY}</span>
+                {product.price.toLocaleString()} <span className={`text-lg ${tc.text400_70}`}>{cur}</span>
               </p>
             )}
           </div>
+          ); })()}
 
           <div className="flex items-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-1"><span className="text-yellow-400">★</span> {product.rating || 0}</span>
@@ -332,7 +335,7 @@ const ProductDetail: React.FC = () => {
             promotionEnd={product.promotionEnd}
             discountPrice={product.discountPrice!}
             originalPrice={product.price}
-            currency={CURRENCY}
+            currency={product.currency || CURRENCY}
           />
         )}
 

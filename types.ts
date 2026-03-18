@@ -1,6 +1,30 @@
 export type Role = 'buyer' | 'seller' | 'admin';
 export type ProductStatus = 'pending' | 'approved' | 'rejected';
-export type MarketplaceId = 'bata' | 'kamenge' | 'centre-ville' | 'kinama' | 'autres';
+export type MarketplaceId = string; // extensible — admin-managed via Firestore
+
+// Multi-city / multi-country support
+export type CityId = string; // extensible
+
+export interface CityInfo {
+  id: CityId;
+  name: string;
+  countryId: string; // links to Country.id
+  flag: string;
+  marketplaces: MarketplaceId[];
+}
+
+// Firestore-managed marketplace
+export interface Marketplace {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  borderColor: string;
+  textColor: string;
+  cityId: string;
+  countryId: string;
+  isActive: boolean;
+}
 
 // Structure GPS
 export interface Coordinates {
@@ -19,18 +43,18 @@ export interface Country {
 
 // Informations légales Vendeur (Burundi + Future)
 export interface SellerDetails {
-  cni: string; 
+  cni: string;
   phone: string;
-  countryId: string; // Nouveau: Lien vers le pays
+  countryId: string;
   province: string;
   commune: string;
   quartier: string;
   shopName?: string;
-  shopImage?: string; // Nouveau: Photo de la boutique
+  shopImage?: string;
   sellerType: 'shop' | 'street' | 'online';
-  locationUrl?: string; // Gardé pour compatibilité
-  gps?: Coordinates; // Nouveau: Coordonnées exactes
-  marketplace: MarketplaceId;
+  locationUrl?: string;
+  gps?: Coordinates;
+  marketplace?: MarketplaceId; // optional — not relevant for all countries
   categories: string[];
   nif?: string;
   registryNumber?: string;
@@ -43,6 +67,7 @@ export interface SellerDetails {
   };
   maxProducts?: number;
   tierLabel?: string;
+  subscriptionExpiresAt?: number; // timestamp — 30-day expiration for paid tiers
 }
 
 export interface User {
@@ -77,6 +102,7 @@ export interface Product {
   title: string;
   price: number;
   originalPrice?: number;
+  currency?: string; // code devise (BIF, CDF, USD, etc.) — defaults to seller's country currency
   description: string;
   images: string[];
   category: string;
@@ -84,6 +110,7 @@ export interface Product {
   tags?: string[];
   rating: number;
   reviews: number;
+  countryId?: string;
   marketplace?: MarketplaceId;
   seller: User;
   isPromoted?: boolean;
@@ -99,6 +126,16 @@ export interface Product {
   discountPrice?: number;
   promotionStart?: number;
   promotionEnd?: number;
+}
+
+// ─── Currencies ───
+export interface Currency {
+  id: string;       // ex: 'BIF', 'CDF', 'USD'
+  code: string;     // same as id
+  name: string;     // ex: 'Franc Burundais'
+  symbol: string;   // ex: 'FBu', 'FC', '$'
+  countryId: string; // linked country ('bi', 'cd', etc.) or 'intl' for USD
+  isActive: boolean;
 }
 
 // --- Reviews ---
@@ -148,6 +185,7 @@ export interface Category {
   name: string;
   icon: string;
   slug: string;
+  order?: number;
   subCategories: string[];
 }
 

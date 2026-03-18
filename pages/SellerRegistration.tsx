@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { User, SellerDetails, Country } from '../types';
-import { PROVINCES_BURUNDI } from '../constants';
-import { registerSeller, getCountries, updateUserProfile } from '../services/firebase';
+import { User, SellerDetails, Country, Marketplace } from '../types';
+import { PROVINCES_BY_COUNTRY } from '../constants';
+import { registerSeller, getCountries, updateUserProfile, getMarketplacesByCountry } from '../services/firebase';
 import { uploadImage } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
-import { MARKETPLACES } from '../constants';
-import { MarketplaceId } from '../types';
 
 export const SellerRegistration: React.FC = () => {
   const { currentUser } = useAppContext();
@@ -31,7 +29,9 @@ export const SellerRegistration: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);
   const [editName, setEditName] = useState(currentUser.name || '');
-  
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [marketplaces, setMarketplaces] = useState<Marketplace[]>([]);
+
   const [formData, setFormData] = useState<SellerDetails>({
     cni: '',
     phone: '',
@@ -40,7 +40,7 @@ export const SellerRegistration: React.FC = () => {
     commune: '',
     quartier: '',
     shopName: '',
-    marketplace: 'autres' as MarketplaceId,
+    marketplace: undefined,
     sellerType: 'shop',
     gps: undefined,
     categories: [],
@@ -54,19 +54,43 @@ export const SellerRegistration: React.FC = () => {
   const [gpsLoading, setGpsLoading] = useState(false);
 
   useEffect(() => {
-      // On ne récupère que les pays activés par l'admin
       getCountries().then(all => {
           const activeCountries = all.filter(c => c.isActive);
           setCountries(activeCountries);
-          // Si le pays sélectionné par défaut n'est pas actif, sélectionner le premier
           if (!activeCountries.find(c => c.id === formData.countryId) && activeCountries.length > 0) {
               setFormData(prev => ({...prev, countryId: activeCountries[0].id}));
           }
       });
   }, []);
 
+  // Load marketplaces when country changes
+  useEffect(() => {
+    getMarketplacesByCountry(formData.countryId).then(mps => {
+      setMarketplaces(mps);
+      // Reset marketplace if switching to a country without markets
+      if (mps.length === 0) {
+        setFormData(prev => ({ ...prev, marketplace: undefined }));
+      } else if (!mps.find(m => m.id === formData.marketplace)) {
+        // Default to first marketplace or 'autres'
+        const autres = mps.find(m => m.id === 'autres');
+        setFormData(prev => ({ ...prev, marketplace: autres?.id || mps[0].id }));
+      }
+    });
+  }, [formData.countryId]);
+
   const handleChange = (field: keyof SellerDetails, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCountryChange = (countryId: string) => {
+    const provinces = PROVINCES_BY_COUNTRY[countryId];
+    setFormData(prev => ({
+      ...prev,
+      countryId,
+      province: provinces?.[0] || '',
+      commune: '',
+      quartier: '',
+    }));
   };
 
   const handleFileChange = (field: 'cni' | 'nif' | 'reg' | 'shop', file: File) => {
@@ -88,6 +112,13 @@ export const SellerRegistration: React.FC = () => {
           toast("La géolocalisation n'est pas supportée par votre navigateur.", 'error');
           return;
       }
+
+      // Check HTTPS (geolocation requires secure context except localhost)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+          toast("La géolocalisation nécessite une connexion HTTPS sécurisée.", 'error');
+          return;
+      }
+
       setGpsLoading(true);
       navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -98,19 +129,37 @@ export const SellerRegistration: React.FC = () => {
                       lng: position.coords.longitude
                   }
               }));
+              toast("Position GPS capturée avec succès !", 'success');
               setGpsLoading(false);
           },
           (error) => {
-              console.error(error);
-              toast("Impossible de récupérer la position. Vérifiez vos permissions.", 'error');
+              console.error('[GPS]', error.code, error.message);
+              let msg = "Impossible de récupérer la position.";
+              switch (error.code) {
+                  case 1: // PERMISSION_DENIED
+                      msg = "Accès à la localisation refusé. Allez dans les paramètres de votre navigateur → Autorisations du site → Localisation → Autoriser.";
+                      break;
+                  case 2: // POSITION_UNAVAILABLE
+                      msg = "Position indisponible. Assurez-vous que le GPS est activé sur votre appareil et réessayez.";
+                      break;
+                  case 3: // TIMEOUT
+                      msg = "Délai dépassé. Sortez à l'extérieur pour un meilleur signal GPS et réessayez.";
+                      break;
+              }
+              toast(msg, 'error');
               setGpsLoading(false);
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
       );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    // Validate terms acceptance (tracked in React state for reliable cross-browser UX)
+    if (!acceptedTerms) {
+      toast("Veuillez accepter les conditions d'utilisation.", 'error');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -128,7 +177,7 @@ export const SellerRegistration: React.FC = () => {
              return;
         }
 
-        // Upload documents (dans un sous-dossier séparé pour organisation)
+        // Upload documents
         const documents: any = {};
         if (files.cni) documents.cniUrl = await uploadImage(files.cni, { folder: 'aurabuja-app-2026/documents' });
         if (files.nif) documents.nifUrl = await uploadImage(files.nif, { folder: 'aurabuja-app-2026/documents' });
@@ -147,15 +196,18 @@ export const SellerRegistration: React.FC = () => {
         // Register via Service
         await registerSeller(currentUser.id, finalData);
         onSuccess();
-    } catch (error) {
-        console.error(error);
-        toast("Une erreur est survenue lors de l'inscription.", 'error');
+    } catch (error: any) {
+        console.error('Registration error:', error);
+        toast(error?.message || "Une erreur est survenue lors de l'inscription.", 'error');
     } finally {
         setLoading(false);
     }
   };
 
-  const isBurundi = formData.countryId === 'bi';
+  const provinces = PROVINCES_BY_COUNTRY[formData.countryId];
+  const hasProvinceList = !!provinces && provinces.length > 0;
+  const hasMarketplaces = marketplaces.length > 0;
+  const selectedCountry = countries.find(c => c.id === formData.countryId);
 
   // --- RENDERING SECTIONS ---
 
@@ -173,7 +225,7 @@ export const SellerRegistration: React.FC = () => {
   const renderStep1_Personal = () => (
     <div className="space-y-4 animate-fade-in">
         <h2 className="text-xl font-bold text-white mb-4">Informations Personnelles</h2>
-        
+
         <div>
             <label className="block text-xs font-bold text-gray-400 mb-1">Nom complet</label>
             <input
@@ -188,9 +240,9 @@ export const SellerRegistration: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1">Pays *</label>
-                <select 
+                <select
                     value={formData.countryId}
-                    onChange={e => handleChange('countryId', e.target.value)}
+                    onChange={e => handleCountryChange(e.target.value)}
                     className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
                 >
                     {countries.map(c => <option key={c.id} value={c.id}>{c.flag} {c.name}</option>)}
@@ -198,100 +250,73 @@ export const SellerRegistration: React.FC = () => {
             </div>
             <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1">CNI / Passeport *</label>
-                <input 
-                    required
+                <input
                     value={formData.cni}
                     onChange={e => handleChange('cni', e.target.value)}
                     className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
                 />
             </div>
         </div>
-        
+
         <div>
             <label className="block text-xs font-bold text-gray-400 mb-1">Téléphone Principal (WhatsApp) *</label>
-            <input 
+            <input
                 type="tel"
-                required
                 value={formData.phone}
                 onChange={e => handleChange('phone', e.target.value)}
-                placeholder={isBurundi ? "+257..." : "Code pays + Numéro"}
+                placeholder={formData.countryId === 'bi' ? "+257..." : formData.countryId === 'cd' ? "+243..." : "Code pays + Numéro"}
                 className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
             />
         </div>
 
-        {/* LOGIQUE DYNAMIQUE D'ADRESSE */}
-        {isBurundi ? (
-            <>
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-1">Province *</label>
-                    <select 
-                        value={formData.province}
-                        onChange={e => handleChange('province', e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                    >
-                        {PROVINCES_BURUNDI.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                </div>
+        {/* Province — dropdown for all countries with known provinces, free text otherwise */}
+        <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1">
+              {formData.countryId === 'bi' ? 'Province' : 'Province / Ville'} *
+            </label>
+            {hasProvinceList ? (
+                <select
+                    value={formData.province}
+                    onChange={e => handleChange('province', e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+                >
+                    {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+            ) : (
+                <input
+                    value={formData.province}
+                    onChange={e => handleChange('province', e.target.value)}
+                    placeholder="Votre province ou région"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+                />
+            )}
+        </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1">Commune *</label>
-                        <input 
-                            required
-                            value={formData.commune}
-                            onChange={e => handleChange('commune', e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1">Quartier *</label>
-                        <input 
-                            required
-                            value={formData.quartier}
-                            onChange={e => handleChange('quartier', e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                        />
-                    </div>
-                </div>
-            </>
-        ) : (
-            <>
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-1">Région / Province *</label>
-                    <input 
-                        required
-                        value={formData.province}
-                        onChange={e => handleChange('province', e.target.value)}
-                        placeholder="Ex: Nord-Kivu, Kigali..."
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                    />
-                </div>
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+                <label className="block text-xs font-bold text-gray-400 mb-1">
+                  {formData.countryId === 'bi' ? 'Commune' : 'Ville / Cité'} *
+                </label>
+                <input
+                    value={formData.commune}
+                    onChange={e => handleChange('commune', e.target.value)}
+                    placeholder={formData.countryId === 'cd' ? 'Ex: Goma, Bukavu...' : ''}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+                />
+            </div>
+            <div>
+                <label className="block text-xs font-bold text-gray-400 mb-1">
+                  {formData.countryId === 'bi' ? 'Quartier' : 'Adresse / Quartier'} *
+                </label>
+                <input
+                    value={formData.quartier}
+                    onChange={e => handleChange('quartier', e.target.value)}
+                    placeholder={formData.countryId !== 'bi' ? 'Avenue, Rue...' : ''}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+                />
+            </div>
+        </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1">Ville / Cité *</label>
-                        <input 
-                            required
-                            value={formData.commune}
-                            onChange={e => handleChange('commune', e.target.value)}
-                            placeholder="Ex: Goma"
-                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1">Adresse / Quartier *</label>
-                        <input 
-                            required
-                            value={formData.quartier}
-                            onChange={e => handleChange('quartier', e.target.value)}
-                            placeholder="Avenue, Rue..."
-                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                        />
-                    </div>
-                </div>
-            </>
-        )}
-        
         <div className="pt-4 flex justify-end">
             <Button type="button" onClick={() => setStep(2)} disabled={!formData.cni || !formData.phone || !formData.province || !formData.commune}>Suivant</Button>
         </div>
@@ -304,7 +329,7 @@ export const SellerRegistration: React.FC = () => {
 
         <div>
             <label className="block text-xs font-bold text-gray-400 mb-1">Nom du commerce</label>
-            <input 
+            <input
                 value={formData.shopName}
                 onChange={e => handleChange('shopName', e.target.value)}
                 placeholder={currentUser.name}
@@ -312,10 +337,12 @@ export const SellerRegistration: React.FC = () => {
             />
         </div>
 
-        <div>
+        {/* Marketplace picker — ONLY for countries with physical markets (e.g. Burundi) */}
+        {hasMarketplaces && (
+          <div>
             <label className="block text-xs font-bold text-gray-400 mb-2">Votre marché physique *</label>
             <div className="grid grid-cols-1 gap-2">
-                {MARKETPLACES.map(mp => (
+                {marketplaces.map(mp => (
                     <button
                         key={mp.id}
                         type="button"
@@ -331,13 +358,23 @@ export const SellerRegistration: React.FC = () => {
                     </button>
                 ))}
             </div>
-        </div>
+          </div>
+        )}
+
+        {/* Info for countries without physical markets */}
+        {!hasMarketplaces && selectedCountry && (
+          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+            <p className="text-sm text-gray-400">
+              {selectedCountry.flag} Pour {selectedCountry.name}, le marché physique n'est pas requis. Votre boutique sera visible dans la section {selectedCountry.name}.
+            </p>
+          </div>
+        )}
 
         <div>
             <label className="block text-xs font-bold text-gray-400 mb-2">Type de vendeur</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[{ id: 'shop', label: '🏪 Magasin Fixe' }, { id: 'street', label: '🚶 Ambulant' }, { id: 'online', label: '🌐 En Ligne' }].map(type => (
-                    <button 
+                    <button
                         key={type.id}
                         type="button"
                         onClick={() => handleChange('sellerType', type.id)}
@@ -348,15 +385,15 @@ export const SellerRegistration: React.FC = () => {
                 ))}
             </div>
         </div>
-        
+
         {/* GPS CAPTURE */}
         {formData.sellerType === 'shop' && (
              <div className="bg-blue-900/10 border border-blue-500/30 p-4 rounded-xl animate-fade-in space-y-4">
                 <div>
                     <label className="block text-xs font-bold text-blue-300 mb-2">Localisation GPS Exacte *</label>
-                    <Button 
-                        type="button" 
-                        onClick={captureGPS} 
+                    <Button
+                        type="button"
+                        onClick={captureGPS}
                         isLoading={gpsLoading}
                         className={`w-full ${formData.gps ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600'}`}
                         icon={<span>📍</span>}
@@ -365,10 +402,10 @@ export const SellerRegistration: React.FC = () => {
                     </Button>
                     <p className="text-[10px] text-gray-500 mt-2">Activez la localisation sur votre téléphone. Indispensable pour que les clients vous trouvent.</p>
                 </div>
-                
+
                 <div className="border border-dashed border-gray-600 rounded-xl p-4 text-center">
                     <p className="text-sm font-bold text-gray-300 mb-2">Photo de la devanture/Logo *</p>
-                    <input type="file" required onChange={e => e.target.files && handleFileChange('shop', e.target.files[0])} className="text-xs text-gray-500" />
+                    <input type="file" accept="image/*" onChange={e => e.target.files && handleFileChange('shop', e.target.files[0])} className="text-xs text-gray-500" />
                 </div>
              </div>
         )}
@@ -391,7 +428,17 @@ export const SellerRegistration: React.FC = () => {
 
         <div className="pt-4 flex justify-between">
             <Button type="button" variant="ghost" onClick={() => setStep(1)}>Retour</Button>
-            <Button type="button" onClick={() => setStep(3)} disabled={!formData.marketplace || formData.categories.length === 0 || (formData.sellerType === 'shop' && (!formData.gps || !files.shop))}>Suivant</Button>
+            <Button
+              type="button"
+              onClick={() => setStep(3)}
+              disabled={
+                (hasMarketplaces && !formData.marketplace) ||
+                formData.categories.length === 0 ||
+                (formData.sellerType === 'shop' && (!formData.gps || !files.shop))
+              }
+            >
+              Suivant
+            </Button>
         </div>
     </div>
   );
@@ -399,7 +446,7 @@ export const SellerRegistration: React.FC = () => {
   const renderStep3_Legal = () => (
     <div className="space-y-6 animate-fade-in">
         <h2 className="text-xl font-bold text-white mb-1">Fiscalité & NIF</h2>
-        
+
         <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
             <label className="block text-sm font-bold text-white mb-3">Avez-vous un NIF ?</label>
             <div className="flex gap-4 mb-3">
@@ -413,7 +460,7 @@ export const SellerRegistration: React.FC = () => {
                 </label>
             </div>
             {formData.hasNif && (
-                <input 
+                <input
                     value={formData.nif}
                     onChange={e => handleChange('nif', e.target.value)}
                     placeholder="Numéro NIF"
@@ -441,24 +488,29 @@ export const SellerRegistration: React.FC = () => {
   const renderStep4_Final = () => (
       <div className="space-y-6 animate-fade-in">
           <h2 className="text-xl font-bold text-white mb-4">Justificatifs</h2>
-          
+
           <div className="space-y-4">
               <div className="border border-dashed border-gray-700 rounded-xl p-4 text-center">
                   <p className="text-sm font-bold text-gray-300 mb-2">Photo CNI/Passeport (Recto/Verso)</p>
-                  <input type="file" onChange={e => e.target.files && handleFileChange('cni', e.target.files[0])} className="text-xs text-gray-500" />
+                  <input type="file" accept="image/*" onChange={e => e.target.files && handleFileChange('cni', e.target.files[0])} className="text-xs text-gray-500" />
               </div>
-              
+
               {formData.hasNif && (
                   <div className="border border-dashed border-gray-700 rounded-xl p-4 text-center">
                       <p className="text-sm font-bold text-gray-300 mb-2">Photo du document NIF</p>
-                      <input type="file" onChange={e => e.target.files && handleFileChange('nif', e.target.files[0])} className="text-xs text-gray-500" />
+                      <input type="file" accept="image/*" onChange={e => e.target.files && handleFileChange('nif', e.target.files[0])} className="text-xs text-gray-500" />
                   </div>
               )}
           </div>
 
-          <div className="bg-gray-800 p-4 rounded-xl border-l-4 border-blue-500">
+          <div className={`bg-gray-800 p-4 rounded-xl border-l-4 ${acceptedTerms ? 'border-green-500' : 'border-blue-500'}`}>
               <label className="flex gap-3 cursor-pointer items-start">
-                  <input type="checkbox" required className="mt-1 accent-blue-500 w-5 h-5 shrink-0" />
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={e => setAcceptedTerms(e.target.checked)}
+                    className="mt-1 accent-blue-500 w-5 h-5 shrink-0"
+                  />
                   <span className="text-xs text-gray-300 leading-relaxed">
                       Je certifie l'exactitude des informations. AuraBuja se réserve le droit de suspendre tout compte frauduleux.
                   </span>
@@ -467,7 +519,15 @@ export const SellerRegistration: React.FC = () => {
 
           <div className="pt-4 flex justify-between gap-4">
               <Button variant="ghost" type="button" onClick={() => setStep(3)}>Retour</Button>
-              <Button type="submit" className="flex-1" isLoading={loading}>Créer ma boutique</Button>
+              <Button
+                type="button"
+                className="flex-1"
+                isLoading={loading}
+                disabled={!acceptedTerms || loading}
+                onClick={handleSubmit}
+              >
+                Créer ma boutique
+              </Button>
           </div>
       </div>
   );
@@ -483,14 +543,14 @@ export const SellerRegistration: React.FC = () => {
                 <p className="text-gray-400 text-sm">Créez votre boutique professionnelle sur AuraBuja.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 shadow-2xl rounded-3xl p-6 md:p-8">
+            <div className="bg-gray-900 border border-gray-800 shadow-2xl rounded-3xl p-6 md:p-8">
                 {renderProgress()}
-                
+
                 {step === 1 && renderStep1_Personal()}
                 {step === 2 && renderStep2_Activity()}
                 {step === 3 && renderStep3_Legal()}
                 {step === 4 && renderStep4_Final()}
-            </form>
+            </div>
 
             <button onClick={onCancel} className="mt-6 text-sm text-gray-500 hover:text-white w-full text-center">
                 Annuler

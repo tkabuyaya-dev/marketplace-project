@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { THEME, TC, MARKETPLACES, getMarketplaceInfo } from '../constants';
-import { Product, MarketplaceId } from '../types';
+import { THEME, TC } from '../constants';
+import { Product, MarketplaceId, Country, Marketplace } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { ProductSection } from '../components/ProductSection';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
-import { getProducts, getBanners, checkIsLikedBatch, getTrendingProducts, getPopularProducts } from '../services/firebase';
+import { getProducts, getBanners, checkIsLikedBatch, getTrendingProducts, getPopularProducts, getCountries, getMarketplacesByCountry } from '../services/firebase';
 import { getRecentlyViewedIds, getPersonalizedRecommendations } from '../services/recommendations';
 import { getProductsByIds } from '../services/firebase';
 import { useAppContext } from '../contexts/AppContext';
 import { useCategories } from '../hooks/useCategories';
 
 export const Home: React.FC = () => {
-  const { currentUser, activeMarketplace, setActiveMarketplace } = useAppContext();
+  const { currentUser, activeCountry, setActiveCountry, activeMarketplace, setActiveMarketplace } = useAppContext();
   const navigate = useNavigate();
   const onProductClick = (product: Product) => {
     navigate(`/product/${product.slug || product.id}`, { state: { product } });
@@ -27,6 +27,10 @@ export const Home: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
 
+  // Country & marketplace state
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [marketplaces, setMarketplaces] = useState<Marketplace[]>([]);
+
   // Recommendation sections state
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
@@ -36,6 +40,24 @@ export const Home: React.FC = () => {
 
   const tc = TC;
 
+  // Load active countries once
+  useEffect(() => {
+    getCountries().then(all => {
+      const active = all.filter(c => c.isActive);
+      setCountries(active);
+      // If current country isn't active, switch to first active
+      if (active.length > 0 && !active.find(c => c.id === activeCountry)) {
+        setActiveCountry(active[0].id);
+      }
+    });
+  }, []);
+
+  // Load marketplaces when country changes
+  useEffect(() => {
+    setActiveMarketplace(null);
+    getMarketplacesByCountry(activeCountry).then(setMarketplaces);
+  }, [activeCountry]);
+
   // Chargement initial avec pagination (cout Firebase maitrise)
   useEffect(() => {
     const loadData = async () => {
@@ -43,7 +65,7 @@ export const Home: React.FC = () => {
       setLastDoc(null);
       setHasMore(true);
       const [{ products: fetchedProducts, lastDoc: newLastDoc }, fetchedBanners] = await Promise.all([
-        getProducts(activeCategory, undefined, undefined, activeMarketplace || undefined),
+        getProducts(activeCategory, undefined, undefined, activeMarketplace || undefined, activeCountry),
         getBanners(),
       ]);
       setBanners(fetchedBanners as Banner[]);
@@ -57,7 +79,7 @@ export const Home: React.FC = () => {
       }
     };
     loadData();
-  }, [activeCategory, activeMarketplace]);
+  }, [activeCategory, activeMarketplace, activeCountry]);
 
   // Load recommendation sections (once, non-blocking)
   useEffect(() => {
@@ -92,48 +114,83 @@ export const Home: React.FC = () => {
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
     setLoadingMore(true);
-    const { products: moreProducts, lastDoc: newLastDoc } = await getProducts(activeCategory, lastDoc, undefined, activeMarketplace || undefined);
+    const { products: moreProducts, lastDoc: newLastDoc } = await getProducts(activeCategory, lastDoc, undefined, activeMarketplace || undefined, activeCountry);
     setProducts(prev => [...prev, ...moreProducts]);
     setLastDoc(newLastDoc);
     setHasMore(newLastDoc !== null);
     setLoadingMore(false);
-  }, [hasMore, loadingMore, lastDoc, activeCategory, activeMarketplace]);
+  }, [hasMore, loadingMore, lastDoc, activeCategory, activeMarketplace, activeCountry]);
+
+  const activeCountryInfo = countries.find(c => c.id === activeCountry);
 
   return (
     <div className="pb-24 pt-[68px] md:pt-24 px-4 max-w-7xl mx-auto space-y-8">
-      {/* Filtres Marketplaces Physiques */}
-      <div>
-        <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-          📍 Marchés de Bujumbura
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {/* Bouton "Tous" */}
-          <button
-            onClick={() => setActiveMarketplace(null)}
-            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border ${
-              activeMarketplace === null
-                ? 'bg-white text-gray-900 border-white shadow-lg shadow-white/20'
-                : 'bg-gray-800/80 text-gray-400 border-gray-700 hover:bg-gray-700 hover:text-white'
-            }`}
-          >
-            <span>🏪</span>
-            <span>Tous</span>
-          </button>
-          {MARKETPLACES.map((mp) => (
-            <button
-              key={mp.id}
-              onClick={() => setActiveMarketplace(mp.id)}
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border ${
-                activeMarketplace === mp.id
-                  ? `${mp.color} text-white border-transparent shadow-lg`
-                  : `bg-gray-800/80 ${mp.textColor} ${mp.borderColor}/30 border hover:${mp.borderColor}/60`
-              }`}
-            >
-              <span>{mp.icon}</span>
-              <span className="truncate">{mp.name.replace('Marché de ', '').replace('Marché du ', '')}</span>
-            </button>
-          ))}
+      {/* Location Filter — Country → Marketplace hierarchy */}
+      <div className="space-y-2">
+        {/* Country selector row */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-sm text-gray-400">
+            <span>🌍</span>
+            <span>Pays</span>
+          </div>
+          <div className="overflow-x-auto scrollbar-hide -mr-4 pr-4">
+            <div className="flex gap-1.5">
+              {countries.map((country) => (
+                <button
+                  key={country.id}
+                  onClick={() => setActiveCountry(country.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
+                    activeCountry === country.id
+                      ? 'bg-white text-gray-900 border-white shadow-md'
+                      : 'bg-gray-800/60 text-gray-400 border-gray-700/50 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <span>{country.flag}</span>
+                  <span>{country.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {/* Marketplace pills — only shown for countries that have marketplaces */}
+        {marketplaces.length > 0 && (
+          <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveMarketplace(null)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                  activeMarketplace === null
+                    ? 'bg-white text-gray-900 border-white shadow-md'
+                    : 'bg-gray-800/60 text-gray-400 border-gray-700/50 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                🏪 Tous les marchés
+              </button>
+              {marketplaces.map((mp) => (
+                <button
+                  key={mp.id}
+                  onClick={() => setActiveMarketplace(mp.id)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                    activeMarketplace === mp.id
+                      ? `${mp.color} text-white border-transparent shadow-md`
+                      : `bg-gray-800/60 ${mp.textColor} ${mp.borderColor}/30 border hover:bg-gray-700`
+                  }`}
+                >
+                  <span>{mp.icon}</span>
+                  <span>{mp.name.replace('Marché de ', '').replace('Marché du ', '')}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Hint when no marketplaces for selected country */}
+        {marketplaces.length === 0 && activeCountryInfo && (
+          <p className="text-xs text-gray-500 pl-1">
+            {activeCountryInfo.flag} Tous les produits de {activeCountryInfo.name}
+          </p>
+        )}
       </div>
 
       {/* Banner Carousel */}

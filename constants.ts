@@ -1,6 +1,6 @@
-import { Product, User, ThemeColors, Category, SubscriptionTier, Country, MarketplaceId } from './types';
+import { Product, User, ThemeColors, Category, SubscriptionTier, Country, MarketplaceId, CityInfo, Currency } from './types';
 
-export const CURRENCY = 'FBu';
+export const CURRENCY = 'FBu'; // legacy default — use Currency system for multi-currency
 export const LOW_STOCK_THRESHOLD = 5;
 
 // --- MARKETPLACES PHYSIQUES DE BUJUMBURA ---
@@ -24,11 +24,63 @@ export const MARKETPLACES: MarketplaceInfo[] = [
 export const getMarketplaceInfo = (id: MarketplaceId): MarketplaceInfo =>
   MARKETPLACES.find(m => m.id === id) || MARKETPLACES[4];
 
+// --- VILLES & MARCHÉS (Multi-pays extensible) ---
+export const CITIES: CityInfo[] = [
+  { id: 'bujumbura', name: 'Bujumbura',  countryId: 'bi', flag: '🇧🇮', marketplaces: ['bata', 'kamenge', 'centre-ville', 'kinama', 'autres'] },
+  { id: 'gitega',    name: 'Gitega',     countryId: 'bi', flag: '🇧🇮', marketplaces: [] },
+  { id: 'kinshasa',  name: 'Kinshasa',   countryId: 'cd', flag: '🇨🇩', marketplaces: [] },
+  { id: 'lubumbashi',name: 'Lubumbashi', countryId: 'cd', flag: '🇨🇩', marketplaces: [] },
+  { id: 'kigali',    name: 'Kigali',     countryId: 'rw', flag: '🇷🇼', marketplaces: [] },
+  { id: 'kampala',   name: 'Kampala',     countryId: 'ug', flag: '🇺🇬', marketplaces: [] },
+  { id: 'daressalaam', name: 'Dar es Salaam', countryId: 'tz', flag: '🇹🇿', marketplaces: [] },
+  { id: 'dodoma',   name: 'Dodoma',     countryId: 'tz', flag: '🇹🇿', marketplaces: [] },
+];
+
+export const getMarketplacesForCity = (cityId: string): MarketplaceInfo[] => {
+  const city = CITIES.find(c => c.id === cityId);
+  if (!city) return [];
+  return city.marketplaces.map(mpId => getMarketplaceInfo(mpId));
+};
+
 export const PROVINCES_BURUNDI = [
-  'Bubanza', 'Bujumbura Mairie', 'Bujumbura Rural', 'Bururi', 'Cankuzo', 
-  'Cibitoke', 'Gitega', 'Karuzi', 'Kayanza', 'Kirundo', 'Makamba', 
+  'Bubanza', 'Bujumbura Mairie', 'Bujumbura Rural', 'Bururi', 'Cankuzo',
+  'Cibitoke', 'Gitega', 'Karuzi', 'Kayanza', 'Kirundo', 'Makamba',
   'Muramvya', 'Muyinga', 'Mwaro', 'Ngozi', 'Rumonge', 'Rutana', 'Ruyigi'
 ];
+
+export const PROVINCES_RDC = [
+  'Bas-Uélé', 'Équateur', 'Haut-Katanga', 'Haut-Lomami', 'Haut-Uélé',
+  'Ituri', 'Kasaï', 'Kasaï Central', 'Kasaï Oriental', 'Kinshasa',
+  'Kongo Central', 'Kwango', 'Kwilu', 'Lomami', 'Lualaba', 'Mai-Ndombe',
+  'Maniema', 'Mongala', 'Nord-Kivu', 'Nord-Ubangi', 'Sankuru',
+  'Sud-Kivu', 'Sud-Ubangi', 'Tanganyika', 'Tshopo', 'Tshuapa'
+];
+
+export const PROVINCES_RWANDA = [
+  'Kigali', 'Est', 'Nord', 'Ouest', 'Sud'
+];
+
+export const PROVINCES_UGANDA = [
+  'Central', 'Eastern', 'Northern', 'Western', 'Kampala'
+];
+
+export const PROVINCES_TANZANIE = [
+  'Dar es Salaam', 'Dodoma', 'Arusha', 'Mwanza', 'Zanzibar',
+  'Mbeya', 'Morogoro', 'Tanga', 'Kagera', 'Kigoma',
+  'Kilimanjaro', 'Iringa', 'Mara', 'Mtwara', 'Tabora',
+  'Lindi', 'Rukwa', 'Ruvuma', 'Shinyanga', 'Singida',
+  'Geita', 'Katavi', 'Njombe', 'Simiyu', 'Songwe',
+  'Pemba North', 'Pemba South', 'Unguja North', 'Unguja South',
+];
+
+/** Lookup provinces by country ID */
+export const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
+  bi: PROVINCES_BURUNDI,
+  cd: PROVINCES_RDC,
+  rw: PROVINCES_RWANDA,
+  ug: PROVINCES_UGANDA,
+  tz: PROVINCES_TANZANIE,
+};
 
 // --- PAYS SUPPORTÉS (Extensible par Admin) ---
 export const INITIAL_COUNTRIES: Country[] = [
@@ -36,6 +88,17 @@ export const INITIAL_COUNTRIES: Country[] = [
     { id: 'cd', name: 'RDC', code: 'CD', currency: 'FC', flag: '🇨🇩', isActive: true },
     { id: 'rw', name: 'Rwanda', code: 'RW', currency: 'FRw', flag: '🇷🇼', isActive: true },
     { id: 'ug', name: 'Ouganda', code: 'UG', currency: 'USh', flag: '🇺🇬', isActive: true },
+    { id: 'tz', name: 'Tanzanie', code: 'TZ', currency: 'TZS', flag: '🇹🇿', isActive: true },
+];
+
+// --- DEVISES (Admin-managed via Firestore, seeded from here) ---
+export const INITIAL_CURRENCIES: Currency[] = [
+  { id: 'BIF', code: 'BIF', name: 'Franc Burundais',       symbol: 'FBu', countryId: 'bi',   isActive: true },
+  { id: 'CDF', code: 'CDF', name: 'Franc Congolais',       symbol: 'FC',  countryId: 'cd',   isActive: true },
+  { id: 'RWF', code: 'RWF', name: 'Franc Rwandais',        symbol: 'FRw', countryId: 'rw',   isActive: true },
+  { id: 'UGX', code: 'UGX', name: 'Shilling Ougandais',    symbol: 'USh', countryId: 'ug',   isActive: true },
+  { id: 'TZS', code: 'TZS', name: 'Shilling Tanzanien',    symbol: 'TZS', countryId: 'tz',   isActive: true },
+  { id: 'USD', code: 'USD', name: 'Dollar Américain',       symbol: '$',   countryId: 'intl', isActive: true },
 ];
 
 export const THEME: ThemeColors = {
@@ -62,14 +125,17 @@ export const TC = {
 } as const;
 
 // --- SUBSCRIPTION TIERS (Business Model) ---
-// Modifiable par l'admin
+// Free: 0-5 produits (gratuit) — alerte à 3 produits pour encourager upgrade
+// Starter: 6-15 — payant, 30 jours renouvelable
+// Pro+: payant, 30 jours renouvelable, NIF requis
 export const INITIAL_SUBSCRIPTION_TIERS: SubscriptionTier[] = [
-  { id: 'free', min: 0, max: 3, price: 0, label: 'Découverte (Gratuit)', requiresNif: false },
-  { id: 'starter', min: 4, max: 8, price: 15000, label: 'Starter', requiresNif: false },
-  { id: 'pro', min: 9, max: 15, price: 45000, label: 'Business Pro', requiresNif: true },
-  { id: 'elite', min: 16, max: 50, price: 100000, label: 'Élite', requiresNif: true },
+  { id: 'free', min: 0, max: 5, price: 0, label: 'Découverte (Gratuit)', requiresNif: false },
+  { id: 'starter', min: 6, max: 15, price: 15000, label: 'Starter', requiresNif: false },
+  { id: 'pro', min: 16, max: 30, price: 45000, label: 'Business Pro', requiresNif: true },
+  { id: 'elite', min: 31, max: 50, price: 100000, label: 'Élite', requiresNif: true },
   { id: 'unlimited', min: 51, max: null, price: 250000, label: 'Grossiste Illimité', requiresNif: true },
 ];
+export const FREE_TIER_WARNING_AT = 3; // Show upgrade warning when reaching this count on free plan
 
 // --- USERS MOCK ---
 export const MOCK_ADMIN: User = {
@@ -95,12 +161,14 @@ export const MOCK_USER: User = {
 };
 
 // --- CATÉGORIES UNIFIÉES (10 catégories + sous-catégories) ---
+// Ordered by priority — Electronique, Mode, Beauté first, then the rest
 export const INITIAL_CATEGORIES: Category[] = [
   {
     id: 'electronique-telephonie',
     name: 'Électronique & Téléphonie',
     icon: '📱',
     slug: 'electronique-telephonie',
+    order: 1,
     subCategories: [
       'Smartphones', 'Accessoires Téléphone', 'Audio & Casques',
       'Ordinateurs Portables', 'PC Bureau & Écrans', 'Tablettes',
@@ -114,6 +182,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: 'Mode & Accessoires',
     icon: '👗',
     slug: 'mode-accessoires',
+    order: 2,
     subCategories: [
       'Homme', 'Femme', 'Enfant', 'Chaussures',
       'Sacs à main & Bagages', 'Montres', 'Bijoux & Joaillerie',
@@ -122,29 +191,11 @@ export const INITIAL_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'maison-cuisine',
-    name: 'Maison & Cuisine',
-    icon: '🏠',
-    slug: 'maison-cuisine',
-    subCategories: ['Ustensiles', 'Décoration', 'Literie', 'Petit électroménager'],
-  },
-  {
-    id: 'supermarche-alimentaire',
-    name: 'Supermarché & Produits alimentaires',
-    icon: '🛒',
-    slug: 'supermarche-alimentaire',
-    subCategories: [
-      'Produits secs (riz, farine, pâtes)', 'Boissons (jus, sodas, eau)',
-      'Produits locaux (haricots, manioc, bananes)', 'Produits importés',
-      'Huiles & Condiments', 'Conserves & Sauces', 'Produits laitiers',
-      'Snacks & Biscuits', 'Épices & Assaisonnements', 'Café & Thé',
-    ],
-  },
-  {
     id: 'beaute-sante',
     name: 'Beauté & Santé',
     icon: '💄',
     slug: 'beaute-sante',
+    order: 3,
     subCategories: [
       'Maquillage', 'Soins Visage', 'Soins du Corps',
       'Produits Capillaires', 'Huiles Naturelles', 'Parfums',
@@ -154,10 +205,45 @@ export const INITIAL_CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'restaurant',
+    name: 'Restaurant',
+    icon: '🍽️',
+    slug: 'restaurant',
+    order: 4,
+    subCategories: [
+      'Plats locaux', 'Grillades & Brochettes', 'Fast-food',
+      'Pizzeria', 'Pâtisserie & Boulangerie', 'Boissons & Jus frais',
+      'Buffet & Traiteur', 'Cuisine africaine', 'Cuisine internationale',
+      'Café & Salon de thé', 'Livraison repas',
+    ],
+  },
+  {
+    id: 'supermarche-alimentaire',
+    name: 'Supermarché & Produits alimentaires',
+    icon: '🛒',
+    slug: 'supermarche-alimentaire',
+    order: 5,
+    subCategories: [
+      'Produits secs (riz, farine, pâtes)', 'Boissons (jus, sodas, eau)',
+      'Produits locaux (haricots, manioc, bananes)', 'Produits importés',
+      'Huiles & Condiments', 'Conserves & Sauces', 'Produits laitiers',
+      'Snacks & Biscuits', 'Épices & Assaisonnements', 'Café & Thé',
+    ],
+  },
+  {
+    id: 'maison-cuisine',
+    name: 'Maison & Cuisine',
+    icon: '🏠',
+    slug: 'maison-cuisine',
+    order: 6,
+    subCategories: ['Ustensiles', 'Décoration', 'Literie', 'Petit électroménager'],
+  },
+  {
     id: 'bebe-enfants',
     name: 'Bébé & Enfants',
     icon: '👶',
     slug: 'bebe-enfants',
+    order: 7,
     subCategories: ['Vêtements', 'Jouets', 'Accessoires scolaires'],
   },
   {
@@ -165,6 +251,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: 'Construction & BTP',
     icon: '🏗️',
     slug: 'construction-btp',
+    order: 8,
     subCategories: ['Matériaux', 'Outils', 'Quincaillerie'],
   },
   {
@@ -172,6 +259,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: 'Auto & Moto',
     icon: '🚗',
     slug: 'auto-moto',
+    order: 9,
     subCategories: ['Pièces détachées', 'Accessoires', 'Pneus'],
   },
   {
@@ -179,6 +267,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: 'Agriculture & Élevage',
     icon: '🌾',
     slug: 'agriculture-elevage',
+    order: 10,
     subCategories: ['Semences', 'Engrais', 'Outils agricoles', 'Produits vétérinaires'],
   },
   {
@@ -186,6 +275,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: 'Services',
     icon: '🔧',
     slug: 'services',
+    order: 11,
     subCategories: ['Réparation électroménager', 'Livraison', 'Couture', 'Plomberie', 'Électricité'],
   },
 ];

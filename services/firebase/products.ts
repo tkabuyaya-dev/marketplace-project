@@ -14,13 +14,18 @@ import {
 } from './constants';
 import type { QueryDocumentSnapshot } from './constants';
 
+/** Returns true if this product doc should be hidden from public views */
+const isHiddenProduct = (data: any): boolean =>
+  !!data.sellerSuspended || !!data.countryDeactivated;
+
 // ── Read ──
 
 export const getProducts = async (
   category: string = 'all',
   lastDoc?: QueryDocumentSnapshot,
   pageSize: number = PRODUCTS_PAGE_SIZE,
-  marketplace?: MarketplaceId
+  marketplace?: MarketplaceId,
+  countryId?: string
 ): Promise<{ products: Product[]; lastDoc: QueryDocumentSnapshot | null }> => {
   if (!db) return { products: [], lastDoc: null };
 
@@ -31,6 +36,7 @@ export const getProducts = async (
     limit(pageSize),
   ];
 
+  if (countryId) constraints.splice(1, 0, where('countryId', '==', countryId));
   if (marketplace) constraints.splice(1, 0, where('marketplace', '==', marketplace));
   if (category !== 'all') constraints.splice(1, 0, where('category', '==', category));
   if (lastDoc) constraints.push(startAfter(lastDoc));
@@ -38,7 +44,9 @@ export const getProducts = async (
   const q = query(productsRef, ...constraints);
   const snap = await getDocs(q);
 
-  const products = snap.docs.map(d => docToProduct(d.data(), d.id));
+  const products = snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id));
   const newLastDoc = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1] : null;
 
   return { products, lastDoc: newLastDoc };
@@ -55,12 +63,14 @@ export const getProductBySlugOrId = async (slugOrId: string): Promise<Product | 
   );
   const slugSnap = await getDocs(slugQuery);
   if (!slugSnap.empty) {
-    return docToProduct(slugSnap.docs[0].data(), slugSnap.docs[0].id);
+    const d = slugSnap.docs[0];
+    if (isHiddenProduct(d.data())) return null;
+    return docToProduct(d.data(), d.id);
   }
 
   try {
     const docSnap = await getDoc(doc(db, COLLECTIONS.PRODUCTS, slugOrId));
-    if (docSnap.exists() && docSnap.data().status === 'approved') {
+    if (docSnap.exists() && docSnap.data().status === 'approved' && !isHiddenProduct(docSnap.data())) {
       return docToProduct(docSnap.data(), docSnap.id);
     }
   } catch { /* Invalid ID */ }
@@ -84,7 +94,9 @@ export const getProductsByIds = async (ids: string[]): Promise<Product[]> => {
       where('__name__', 'in', batch)
     );
     const snap = await getDocs(q);
-    snap.docs.forEach(d => products.push(docToProduct(d.data(), d.id)));
+    snap.docs.forEach(d => {
+      if (!isHiddenProduct(d.data())) products.push(docToProduct(d.data(), d.id));
+    });
   }
 
   const productMap = new Map(products.map(p => [p.id, p]));
@@ -106,6 +118,7 @@ export const getProductsByCategory = async (
   );
   const snap = await getDocs(q);
   return snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
     .map(d => docToProduct(d.data(), d.id))
     .filter(p => p.id !== excludeId)
     .slice(0, maxResults);
@@ -123,7 +136,9 @@ export const getTrendingProducts = async (maxResults: number = 12): Promise<Prod
     limit(50)
   );
   const snap = await getDocs(q);
-  const products = snap.docs.map(d => docToProduct(d.data(), d.id));
+  const products = snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id));
 
   const now = Date.now();
   const scored = products.map(p => {
@@ -146,7 +161,9 @@ export const getPopularProducts = async (maxResults: number = 12): Promise<Produ
     limit(maxResults)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => docToProduct(d.data(), d.id));
+  return snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id));
 };
 
 export const getAllProductsForAdmin = async (
@@ -183,7 +200,9 @@ export const searchProducts = async (
   );
 
   const snap = await getDocs(q);
-  let results = snap.docs.map(d => docToProduct(d.data(), d.id));
+  let results = snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id));
 
   if (filters?.minPrice !== undefined) results = results.filter(p => p.price >= filters.minPrice!);
   if (filters?.maxPrice !== undefined) results = results.filter(p => p.price <= filters.maxPrice!);
@@ -218,6 +237,7 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     titleLower:      title.toLowerCase(),
     price:           productData.price || 0,
     originalPrice:   productData.originalPrice || null,
+    currency:        productData.currency || null,
     description:     (productData.description || '').trim(),
     images:          productData.images || [],
     category:        productData.category || '',
@@ -235,6 +255,7 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     sellerAvatar:    userData.avatar || '',
     sellerIsVerified: userData.isVerified || false,
     sellerWhatsapp:  userData.whatsapp || null,
+    countryId:       userData.sellerDetails?.countryId || null,
     marketplace:     userData.sellerDetails?.marketplace || null,
     createdAt:       serverTimestamp(),
   };
@@ -304,7 +325,9 @@ export const getSellerProducts = async (sellerId: string): Promise<Product[]> =>
     limit(50)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => docToProduct(d.data(), d.id));
+  return snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id));
 };
 
 export const getSellerAllProducts = async (sellerId: string): Promise<Product[]> => {

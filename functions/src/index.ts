@@ -29,3 +29,6 @@ export {
   getRecommendations,
   getAlsoViewed,
 } from "./recommendations.js";
+
+// Cached search proxy (Redis-backed Algolia proxy)
+export { cachedSearch } from "./search-proxy.js";

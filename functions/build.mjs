@@ -22,6 +22,8 @@ const result = await build({
   external: [
     "firebase-admin",
     "firebase-admin/*",
+    // firebase-functions is BUNDLED (not external) to avoid Node 22's
+    // slow module resolution exceeding Firebase CLI's 10s discovery timeout
     "algoliasearch",
     "ioredis",
   ],

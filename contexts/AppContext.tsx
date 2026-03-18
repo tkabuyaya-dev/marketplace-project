@@ -5,6 +5,7 @@ import {
   subscribeToAuth,
   subscribeToUserProfile,
   subscribeToNotifications,
+  subscribeToUnreadMessages,
   signInWithGoogle,
   signOut as firebaseSignOut,
   createOrGetConversation,
@@ -21,10 +22,13 @@ interface AppContextType {
   isOnline: boolean;
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
+  activeCountry: string;
+  setActiveCountry: (country: string) => void;
   activeMarketplace: MarketplaceId | null;
   setActiveMarketplace: (mp: MarketplaceId | null) => void;
   notifications: AppNotification[];
   unreadCount: number;
+  unreadMessagesCount: number;
   handleLogin: () => Promise<void>;
   handleLogout: () => Promise<void>;
   handleContactSeller: (seller: User, productId?: string) => Promise<void>;
@@ -45,14 +49,17 @@ export const useAppContext = () => {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeCountry, setActiveCountry] = useState<string>('bi');
   const [activeMarketplace, setActiveMarketplace] = useState<MarketplaceId | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
   const userProfileUnsub = useRef<(() => void) | null>(null);
   const notifUnsub = useRef<(() => void) | null>(null);
+  const msgUnsub = useRef<(() => void) | null>(null);
 
   // Network status with automatic token refresh on reconnect
   const handleReconnect = useCallback(async () => {
@@ -82,10 +89,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Cleanup previous subscriptions
     if (userProfileUnsub.current) { userProfileUnsub.current(); userProfileUnsub.current = null; }
     if (notifUnsub.current) { notifUnsub.current(); notifUnsub.current = null; }
+    if (msgUnsub.current) { msgUnsub.current(); msgUnsub.current = null; }
 
     if (!currentUser) {
       setNotifications([]);
       setUnreadCount(0);
+      setUnreadMessagesCount(0);
       return;
     }
 
@@ -94,15 +103,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser(updatedUser);
     });
 
-    // Real-time notifications
+    // Real-time notifications (exclude new_message from bell — those go on chat icon)
     notifUnsub.current = subscribeToNotifications(currentUser.id, (notifs) => {
       setNotifications(notifs);
-      setUnreadCount(notifs.filter(n => !n.read).length);
+      setUnreadCount(notifs.filter(n => !n.read && n.type !== 'new_message').length);
+    });
+
+    // Real-time unread messages count (for chat icon badge)
+    msgUnsub.current = subscribeToUnreadMessages((count) => {
+      setUnreadMessagesCount(count);
     });
 
     return () => {
       if (userProfileUnsub.current) userProfileUnsub.current();
       if (notifUnsub.current) notifUnsub.current();
+      if (msgUnsub.current) msgUnsub.current();
     };
   }, [currentUser?.id]);
 
@@ -182,8 +197,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentUser,
       isOnline,
       isSearchOpen, setIsSearchOpen,
+      activeCountry, setActiveCountry,
       activeMarketplace, setActiveMarketplace,
-      notifications, unreadCount,
+      notifications, unreadCount, unreadMessagesCount,
       handleLogin, handleLogout,
       handleContactSeller, handleSellerAccess,
       loginLoading,

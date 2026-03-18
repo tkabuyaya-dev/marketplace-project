@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
-import { Product, User, SubscriptionTier, Category, Country } from '../types';
+import { Product, User, SubscriptionTier, Category, Country, Marketplace, Currency } from '../types';
 import {
     getAllProductsForAdmin, updateProductStatus, deleteProduct,
     getAllUsers, deleteUser, updateUserStatus,
@@ -10,14 +10,16 @@ import {
     getSubscriptionTiers, updateSubscriptionTiers,
     getCountries, addCountry, updateCountry, deleteCountry,
     getBanners, addBanner, updateBanner, deleteBanner,
+    getMarketplaces, addMarketplace, updateMarketplace, deleteMarketplace,
     BannerData, BannerActionType, updateUserSubscription, updateUserProfile,
     createNotification,
+    getCurrencies, updateCurrency, renewSubscription,
 } from '../services/firebase';
 import { uploadImage, getOptimizedUrl } from '../services/cloudinary';
-import { CURRENCY, MARKETPLACES, getMarketplaceInfo } from '../constants';
+import { CURRENCY } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
 
-type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'countries';
+type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'countries' | 'currencies';
 
 export const AdminDashboard: React.FC = () => {
   const { currentUser, handleContactSeller } = useAppContext();
@@ -40,7 +42,15 @@ export const AdminDashboard: React.FC = () => {
   const [countries, setCountries] = useState<Country[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [banners, setBanners] = useState<BannerData[]>([]);
+  const [allMarketplaces, setAllMarketplaces] = useState<Marketplace[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Seller filters
+  const [sellerSearch, setSellerSearch] = useState('');
+  const [sellerCountryFilter, setSellerCountryFilter] = useState<string>('all');
+  const [sellerStatusFilter, setSellerStatusFilter] = useState<'all' | 'active' | 'suspended' | 'expiring'>('all');
+  const [sellerTierFilter, setSellerTierFilter] = useState<string>('all');
 
   // Filter for products (client-side filtering to avoid index issues)
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -73,6 +83,8 @@ export const AdminDashboard: React.FC = () => {
       getCountries(),
       getCategories(),
       getBanners(),
+      getMarketplaces(),
+      getCurrencies(),
     ]);
 
     const val = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
@@ -87,6 +99,8 @@ export const AdminDashboard: React.FC = () => {
     setCountries(val(results[3], []));
     setCategories(val(results[4], []));
     setBanners(val(results[5], []));
+    setAllMarketplaces(val(results[6], []));
+    setCurrencies(val(results[7], []));
     setLoading(false);
   };
 
@@ -198,6 +212,49 @@ export const AdminDashboard: React.FC = () => {
   const toggleCountryStatus = async (country: Country) => {
     await updateCountry(country.id, { isActive: !country.isActive });
     setCountries(prev => prev.map(c => c.id === country.id ? { ...c, isActive: !c.isActive } : c));
+  };
+  const handleDeleteCountry = async (id: string) => {
+    if (window.confirm('Supprimer ce pays ? Les marchés associés ne seront plus visibles.')) {
+      await deleteCountry(id);
+      refreshData();
+    }
+  };
+
+  // --- MARKETPLACE ACTIONS ---
+  const [newMarket, setNewMarket] = useState({ name: '', icon: '🟠', countryId: 'bi', cityId: '' });
+  const MARKET_COLORS = [
+    { color: 'bg-orange-600', borderColor: 'border-orange-500', textColor: 'text-orange-400' },
+    { color: 'bg-green-600', borderColor: 'border-green-500', textColor: 'text-green-400' },
+    { color: 'bg-blue-600', borderColor: 'border-blue-500', textColor: 'text-blue-400' },
+    { color: 'bg-purple-600', borderColor: 'border-purple-500', textColor: 'text-purple-400' },
+    { color: 'bg-red-600', borderColor: 'border-red-500', textColor: 'text-red-400' },
+    { color: 'bg-yellow-600', borderColor: 'border-yellow-500', textColor: 'text-yellow-400' },
+    { color: 'bg-gray-600', borderColor: 'border-gray-500', textColor: 'text-gray-400' },
+  ];
+  const handleAddMarketplace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const colorIdx = allMarketplaces.length % MARKET_COLORS.length;
+    await addMarketplace({
+      name: newMarket.name,
+      icon: newMarket.icon,
+      ...MARKET_COLORS[colorIdx],
+      countryId: newMarket.countryId,
+      cityId: newMarket.cityId || newMarket.countryId,
+      isActive: true,
+    });
+    setNewMarket({ name: '', icon: '🟠', countryId: 'bi', cityId: '' });
+    refreshData();
+    toast("Marché ajouté !", 'success');
+  };
+  const toggleMarketplace = async (mp: Marketplace) => {
+    await updateMarketplace(mp.id, { isActive: !mp.isActive });
+    setAllMarketplaces(prev => prev.map(m => m.id === mp.id ? { ...m, isActive: !m.isActive } : m));
+  };
+  const handleDeleteMarketplace = async (id: string) => {
+    if (window.confirm('Supprimer ce marché ?')) {
+      await deleteMarketplace(id);
+      setAllMarketplaces(prev => prev.filter(m => m.id !== id));
+    }
   };
 
   // --- CATEGORY ACTIONS ---
@@ -613,11 +670,11 @@ export const AdminDashboard: React.FC = () => {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   const TIER_OPTIONS = [
-    { label: 'Gratuit (1 produit)', maxProducts: 1, tierLabel: 'Gratuit' },
-    { label: 'Starter (8 produits)', maxProducts: 8, tierLabel: 'Starter' },
-    { label: 'Pro (25 produits)', maxProducts: 25, tierLabel: 'Pro' },
-    { label: 'Business (100 produits)', maxProducts: 100, tierLabel: 'Business' },
-    { label: 'Illimité', maxProducts: 99999, tierLabel: 'Illimité' },
+    { label: 'Gratuit (0-5 produits)', maxProducts: 5, tierLabel: 'Gratuit' },
+    { label: 'Starter (6-15 produits)', maxProducts: 15, tierLabel: 'Starter' },
+    { label: 'Pro (16-30 produits)', maxProducts: 30, tierLabel: 'Pro' },
+    { label: 'Elite (31-50 produits)', maxProducts: 50, tierLabel: 'Elite' },
+    { label: 'Illimité (51+)', maxProducts: 99999, tierLabel: 'Illimité' },
   ];
 
   const handleUpgradeUser = async (userId: string, option: typeof TIER_OPTIONS[0]) => {
@@ -651,11 +708,134 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleRenewSub = async (userId: string, userName: string) => {
+    try {
+      await renewSubscription(userId, 30);
+      await createNotification({
+        userId,
+        type: 'subscription_change',
+        title: 'Abonnement renouvelé',
+        body: 'Votre abonnement a été renouvelé pour 30 jours.',
+        read: false,
+        createdAt: Date.now(),
+      });
+      toast(`Abonnement de ${userName} renouvelé pour 30 jours`, 'success');
+      refreshData();
+    } catch (err) {
+      console.error('Erreur renouvellement:', err);
+      toast('Erreur lors du renouvellement.', 'error');
+    }
+  };
+
+  // --- CURRENCY ACTIONS ---
+  const toggleCurrencyStatus = async (currency: Currency) => {
+    await updateCurrency(currency.id, { isActive: !currency.isActive });
+    setCurrencies(prev => prev.map(c => c.id === currency.id ? { ...c, isActive: !c.isActive } : c));
+    toast(`Devise ${currency.code} ${!currency.isActive ? 'activée' : 'désactivée'}`, 'success');
+  };
+
+  // --- Filtered sellers/users ---
+  const filteredUsers = users.filter(u => {
+    // Search
+    if (sellerSearch) {
+      const q = sellerSearch.toLowerCase();
+      const match = u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.whatsapp?.includes(q) || u.sellerDetails?.phone?.includes(q);
+      if (!match) return false;
+    }
+    // Country
+    if (sellerCountryFilter !== 'all' && u.sellerDetails?.countryId !== sellerCountryFilter && u.role === 'seller') return false;
+    // Status
+    if (sellerStatusFilter === 'active' && u.isSuspended) return false;
+    if (sellerStatusFilter === 'suspended' && !u.isSuspended) return false;
+    if (sellerStatusFilter === 'expiring') {
+      const exp = u.sellerDetails?.subscriptionExpiresAt;
+      if (!exp || exp - Date.now() > 7 * 24 * 60 * 60 * 1000 || exp < Date.now()) return false;
+    }
+    // Tier
+    if (sellerTierFilter !== 'all' && u.sellerDetails?.tierLabel !== sellerTierFilter) return false;
+    return true;
+  });
+
+  // Seller stats
+  const allSellers = users.filter(u => u.role === 'seller');
+  const activeSellers = allSellers.filter(u => !u.isSuspended);
+  const suspendedSellers = allSellers.filter(u => u.isSuspended);
+  const expiringSoonSellers = allSellers.filter(u => {
+    const exp = u.sellerDetails?.subscriptionExpiresAt;
+    return exp && exp > Date.now() && (exp - Date.now()) < 7 * 24 * 60 * 60 * 1000;
+  });
+  const expiredSellers = allSellers.filter(u => {
+    const exp = u.sellerDetails?.subscriptionExpiresAt;
+    return exp && exp < Date.now();
+  });
+
   const renderUsers = () => (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-xl font-bold text-white">Utilisateurs ({users.length})</h2>
+
+      {/* Seller Stats Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+          <p className="text-2xl font-black text-blue-400">{allSellers.length}</p>
+          <p className="text-[10px] text-gray-500 uppercase font-bold">Vendeurs</p>
+        </div>
+        <div className="bg-gray-900 border border-green-900/30 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-800/50" onClick={() => setSellerStatusFilter('active')}>
+          <p className="text-2xl font-black text-green-400">{activeSellers.length}</p>
+          <p className="text-[10px] text-gray-500 uppercase font-bold">Actifs</p>
+        </div>
+        <div className="bg-gray-900 border border-red-900/30 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-800/50" onClick={() => setSellerStatusFilter('suspended')}>
+          <p className="text-2xl font-black text-red-400">{suspendedSellers.length}</p>
+          <p className="text-[10px] text-gray-500 uppercase font-bold">Suspendus</p>
+        </div>
+        <div className="bg-gray-900 border border-yellow-900/30 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-800/50" onClick={() => setSellerStatusFilter('expiring')}>
+          <p className="text-2xl font-black text-yellow-400">{expiringSoonSellers.length}</p>
+          <p className="text-[10px] text-gray-500 uppercase font-bold">Expire bientôt</p>
+        </div>
+        <div className="bg-gray-900 border border-orange-900/30 rounded-xl p-3 text-center">
+          <p className="text-2xl font-black text-orange-400">{expiredSellers.length}</p>
+          <p className="text-[10px] text-gray-500 uppercase font-bold">Expirés</p>
+        </div>
+      </div>
+
+      {/* Search + Filters */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
+        <input
+          type="text"
+          placeholder="Rechercher par nom, email ou téléphone..."
+          value={sellerSearch}
+          onChange={e => setSellerSearch(e.target.value)}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500 placeholder-gray-500"
+        />
+        <div className="flex flex-wrap gap-2">
+          <select value={sellerCountryFilter} onChange={e => setSellerCountryFilter(e.target.value)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 outline-none">
+            <option value="all">Tous les pays</option>
+            {countries.map(c => <option key={c.id} value={c.id}>{c.flag} {c.name}</option>)}
+          </select>
+          <select value={sellerStatusFilter} onChange={e => setSellerStatusFilter(e.target.value as any)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 outline-none">
+            <option value="all">Tous statuts</option>
+            <option value="active">Actifs</option>
+            <option value="suspended">Suspendus</option>
+            <option value="expiring">Expire &lt;7j</option>
+          </select>
+          <select value={sellerTierFilter} onChange={e => setSellerTierFilter(e.target.value)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 outline-none">
+            <option value="all">Tous les plans</option>
+            {TIER_OPTIONS.map(t => <option key={t.tierLabel} value={t.tierLabel}>{t.tierLabel}</option>)}
+          </select>
+          {(sellerSearch || sellerCountryFilter !== 'all' || sellerStatusFilter !== 'all' || sellerTierFilter !== 'all') && (
+            <button onClick={() => { setSellerSearch(''); setSellerCountryFilter('all'); setSellerStatusFilter('all'); setSellerTierFilter('all'); }}
+              className="text-xs text-gray-400 hover:text-white px-3 py-1.5 bg-gray-800 rounded-lg border border-gray-700">
+              Effacer filtres
+            </button>
+          )}
+          <span className="text-xs text-gray-500 self-center ml-auto">{filteredUsers.length} résultat(s)</span>
+        </div>
+      </div>
+
       <div className="space-y-3">
-        {users.map(u => (
+        {filteredUsers.map(u => (
           <div key={u.id} className={`bg-gray-900 p-4 rounded-xl border ${u.isSuspended ? 'border-red-600/30 opacity-60' : 'border-gray-800'}`}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div className="flex items-center gap-4 min-w-0">
@@ -676,7 +856,40 @@ export const AdminDashboard: React.FC = () => {
                   </p>
                   <p className="text-xs text-gray-500 truncate">{u.email}</p>
                   {u.sellerDetails?.tierLabel && (
-                    <p className="text-[10px] text-blue-400 mt-0.5">Plan: {u.sellerDetails.tierLabel} ({u.sellerDetails.maxProducts || '?'} max)</p>
+                    <div className="mt-0.5">
+                      <p className="text-[10px] text-blue-400">
+                        Plan: {u.sellerDetails.tierLabel} ({u.sellerDetails.maxProducts || '?'} max)
+                        {u.sellerDetails.countryId && (() => {
+                          const c = countries.find(cc => cc.id === u.sellerDetails!.countryId);
+                          return c ? <span className="ml-1 text-gray-500">{c.flag}</span> : null;
+                        })()}
+                      </p>
+                      {/* Visual expiration timer */}
+                      {u.sellerDetails.subscriptionExpiresAt && (() => {
+                        const days = Math.ceil((u.sellerDetails.subscriptionExpiresAt - Date.now()) / (24*60*60*1000));
+                        const pct = Math.max(0, Math.min(100, (days / 30) * 100));
+                        return (
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="h-1.5 flex-1 max-w-[120px] bg-gray-700 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  days <= 0 ? 'bg-red-500 w-full' :
+                                  days <= 3 ? 'bg-red-500' :
+                                  days <= 7 ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`}
+                                style={{ width: days <= 0 ? '100%' : `${pct}%` }}
+                              />
+                            </div>
+                            <span className={`text-[10px] font-bold ${
+                              days <= 0 ? 'text-red-400' : days <= 7 ? 'text-yellow-400' : 'text-gray-500'
+                            }`}>
+                              {days <= 0 ? 'EXPIRÉ' : `${days}j`}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
               </div>
@@ -702,6 +915,10 @@ export const AdminDashboard: React.FC = () => {
                     <button onClick={() => setUpgradingUser(upgradingUser === u.id ? null : u.id)}
                       className="px-3 py-1.5 bg-purple-600/20 text-purple-400 border border-purple-600/30 text-xs font-bold rounded-lg hover:bg-purple-600 hover:text-white transition-colors">
                       {upgradingUser === u.id ? '✕ Fermer' : '⬆ Abonnement'}
+                    </button>
+                    <button onClick={() => handleRenewSub(u.id, u.name || 'Vendeur')}
+                      className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 text-xs font-bold rounded-lg hover:bg-emerald-600 hover:text-white transition-colors">
+                      🔄 +30j
                     </button>
                   </>
                 )}
@@ -839,7 +1056,8 @@ export const AdminDashboard: React.FC = () => {
                     )}
                   </div>
                   {u.sellerDetails.marketplace && (() => {
-                    const mp = getMarketplaceInfo(u.sellerDetails.marketplace);
+                    const mp = allMarketplaces.find(m => m.id === u.sellerDetails!.marketplace);
+                    if (!mp) return null;
                     return (
                       <div className="mt-2">
                         <p className="text-[10px] text-gray-500 uppercase mb-1">Marché physique</p>
@@ -904,30 +1122,86 @@ export const AdminDashboard: React.FC = () => {
   );
 
   const renderCountries = () => (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-xl font-bold text-white">Pays Supportés</h2>
-      <div className="flex gap-4 flex-wrap">
-        {countries.map(c => (
-          <div key={c.id} className={`bg-gray-900 p-4 rounded-xl border ${c.isActive ? 'border-green-600/30' : 'border-red-600/30 opacity-60'} flex flex-col items-center min-w-[140px]`}>
-            <span className="text-4xl mb-2">{c.flag}</span>
-            <h3 className="font-bold text-white">{c.name}</h3>
-            <p className="text-xs text-gray-500 mb-2">{c.currency}</p>
-            <button onClick={() => toggleCountryStatus(c)} className={`px-3 py-1 rounded-lg text-xs font-bold ${c.isActive ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
-              {c.isActive ? 'Actif' : 'Inactif'}
-            </button>
-          </div>
-        ))}
-      </div>
-      <form onSubmit={handleAddCountry} className="bg-gray-900 p-4 rounded-xl border border-gray-800 max-w-lg mt-4">
-        <h3 className="font-bold text-white mb-4">Ajouter un pays</h3>
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <input placeholder="Nom" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.name} onChange={e => setNewCountry({...newCountry, name: e.target.value})} required />
-          <input placeholder="Code (RW)" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.code} onChange={e => setNewCountry({...newCountry, code: e.target.value})} required />
-          <input placeholder="Devise" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.currency} onChange={e => setNewCountry({...newCountry, currency: e.target.value})} required />
-          <input placeholder="Drapeau emoji" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.flag} onChange={e => setNewCountry({...newCountry, flag: e.target.value})} required />
+    <div className="space-y-8 animate-fade-in">
+      {/* --- PAYS --- */}
+      <div>
+        <h2 className="text-xl font-bold text-white mb-4">Pays Supportés</h2>
+        <div className="flex gap-4 flex-wrap">
+          {countries.map(c => (
+            <div key={c.id} className={`bg-gray-900 p-4 rounded-xl border ${c.isActive ? 'border-green-600/30' : 'border-red-600/30 opacity-60'} flex flex-col items-center min-w-[140px]`}>
+              <span className="text-4xl mb-2">{c.flag}</span>
+              <h3 className="font-bold text-white">{c.name}</h3>
+              <p className="text-xs text-gray-500 mb-2">{c.currency}</p>
+              <div className="flex gap-2">
+                <button onClick={() => toggleCountryStatus(c)} className={`px-3 py-1 rounded-lg text-xs font-bold ${c.isActive ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                  {c.isActive ? 'Actif' : 'Inactif'}
+                </button>
+                <button onClick={() => handleDeleteCountry(c.id)} className="px-2 py-1 rounded-lg text-xs font-bold bg-red-900/50 text-red-400 hover:bg-red-800">
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-        <Button type="submit">Ajouter</Button>
-      </form>
+        <form onSubmit={handleAddCountry} className="bg-gray-900 p-4 rounded-xl border border-gray-800 max-w-lg mt-4">
+          <h3 className="font-bold text-white mb-4">Ajouter un pays</h3>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <input placeholder="Nom" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.name} onChange={e => setNewCountry({...newCountry, name: e.target.value})} required />
+            <input placeholder="Code (RW)" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.code} onChange={e => setNewCountry({...newCountry, code: e.target.value})} required />
+            <input placeholder="Devise" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.currency} onChange={e => setNewCountry({...newCountry, currency: e.target.value})} required />
+            <input placeholder="Drapeau emoji" className="bg-gray-800 p-2 rounded text-white text-sm" value={newCountry.flag} onChange={e => setNewCountry({...newCountry, flag: e.target.value})} required />
+          </div>
+          <Button type="submit">Ajouter</Button>
+        </form>
+      </div>
+
+      {/* --- MARCHÉS PHYSIQUES --- */}
+      <div>
+        <h2 className="text-xl font-bold text-white mb-4">Marchés Physiques ({allMarketplaces.length})</h2>
+        <p className="text-xs text-gray-500 mb-4">Les marchés apparaissent sur la page d'accueil et lors de l'inscription vendeur. Désactivez un pays pour masquer tous ses marchés.</p>
+
+        {/* Liste des marchés groupés par pays */}
+        {countries.map(country => {
+          const countryMarkets = allMarketplaces.filter(m => m.countryId === country.id);
+          if (countryMarkets.length === 0) return null;
+          return (
+            <div key={country.id} className="mb-4">
+              <h4 className="text-sm font-bold text-gray-400 mb-2">{country.flag} {country.name}</h4>
+              <div className="space-y-2">
+                {countryMarkets.map(mp => (
+                  <div key={mp.id} className={`flex items-center justify-between p-3 bg-gray-900 border rounded-lg ${mp.isActive ? 'border-gray-800' : 'border-red-900/30 opacity-60'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`w-3 h-3 rounded-full ${mp.color}`}></span>
+                      <span className="text-white text-sm font-medium">{mp.icon} {mp.name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => toggleMarketplace(mp)} className={`px-3 py-1 rounded-lg text-xs font-bold ${mp.isActive ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                        {mp.isActive ? 'Actif' : 'Inactif'}
+                      </button>
+                      <button onClick={() => handleDeleteMarketplace(mp.id)} className="px-2 py-1 rounded-lg text-xs font-bold bg-red-900/50 text-red-400 hover:bg-red-800">
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Formulaire ajout marché */}
+        <form onSubmit={handleAddMarketplace} className="bg-gray-900 p-4 rounded-xl border border-gray-800 max-w-lg mt-4">
+          <h3 className="font-bold text-white mb-4">Ajouter un marché</h3>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <input placeholder="Nom du marché" className="bg-gray-800 p-2 rounded text-white text-sm" value={newMarket.name} onChange={e => setNewMarket({...newMarket, name: e.target.value})} required />
+            <input placeholder="Icône (emoji)" className="bg-gray-800 p-2 rounded text-white text-sm w-20" value={newMarket.icon} onChange={e => setNewMarket({...newMarket, icon: e.target.value})} required />
+            <select className="bg-gray-800 p-2 rounded text-white text-sm col-span-2" value={newMarket.countryId} onChange={e => setNewMarket({...newMarket, countryId: e.target.value})}>
+              {countries.map(c => <option key={c.id} value={c.id}>{c.flag} {c.name}</option>)}
+            </select>
+          </div>
+          <Button type="submit">Ajouter</Button>
+        </form>
+      </div>
     </div>
   );
 
@@ -975,12 +1249,51 @@ export const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  const renderCurrencies = () => (
+    <div className="space-y-6 animate-fade-in">
+      <h2 className="text-xl font-bold text-white">Gestion des Devises ({currencies.length})</h2>
+      <p className="text-sm text-gray-400">Activez ou désactivez les devises disponibles pour les vendeurs lors de la création de produits.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {currencies.map(cur => (
+          <div key={cur.id} className={`bg-gray-900 border rounded-xl p-4 flex items-center justify-between ${cur.isActive ? 'border-green-600/30' : 'border-gray-800 opacity-60'}`}>
+            <div>
+              <p className="text-white font-bold">{cur.symbol} <span className="text-gray-400 font-normal">({cur.code})</span></p>
+              <p className="text-xs text-gray-500">{cur.name}</p>
+              {cur.countryId !== 'intl' && (() => {
+                const c = countries.find(cc => cc.id === cur.countryId);
+                return c ? <p className="text-[10px] text-gray-600 mt-0.5">{c.flag} {c.name}</p> : null;
+              })()}
+              {cur.countryId === 'intl' && <p className="text-[10px] text-gray-600 mt-0.5">🌐 International</p>}
+            </div>
+            <button
+              onClick={() => toggleCurrencyStatus(cur)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                cur.isActive
+                  ? 'bg-green-600/20 text-green-400 border border-green-600/30 hover:bg-green-600 hover:text-white'
+                  : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700'
+              }`}
+            >
+              {cur.isActive ? 'Actif' : 'Inactif'}
+            </button>
+          </div>
+        ))}
+      </div>
+      {currencies.length === 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center text-gray-500">
+          <p className="text-3xl mb-2">💱</p>
+          <p className="text-sm">Aucune devise configurée. Lancez le seed initial pour ajouter les devises par défaut.</p>
+        </div>
+      )}
+    </div>
+  );
+
   const tabs: { id: AdminTab; label: string; badge?: number }[] = [
     { id: 'overview', label: 'Vue Global' },
     { id: 'products', label: 'Produits', badge: pendingCount },
     { id: 'banners', label: 'Bannières' },
     { id: 'subs', label: 'Abonnements' },
     { id: 'users', label: 'Utilisateurs' },
+    { id: 'currencies', label: 'Devises' },
     { id: 'categories', label: 'Catégories' },
     { id: 'countries', label: 'Pays' },
   ];
@@ -1046,12 +1359,18 @@ export const AdminDashboard: React.FC = () => {
                 {pendingCount} produit(s) en attente de validation — Cliquez pour modérer
               </button>
             )}
+            {expiringSoonSellers.length > 0 && (
+              <button onClick={() => { setActiveTab('users'); setSellerStatusFilter('expiring'); }}
+                className="w-full bg-orange-600/10 border border-orange-600/30 text-orange-400 p-4 rounded-xl text-sm font-bold hover:bg-orange-600/20 transition-colors">
+                {expiringSoonSellers.length} vendeur(s) avec abonnement expirant dans moins de 7 jours
+              </button>
+            )}
 
             {/* Stats par Marketplace */}
             <div>
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Vendeurs par Marché</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {MARKETPLACES.map(mp => {
+                {allMarketplaces.map(mp => {
                   const mpSellers = users.filter(u => u.role === 'seller' && u.sellerDetails?.marketplace === mp.id);
                   const mpProducts = allProducts.filter(p => p.marketplace === mp.id && p.status === 'approved');
                   return (
@@ -1073,6 +1392,7 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'banners' && renderBanners()}
         {activeTab === 'subs' && renderSubscriptions()}
         {activeTab === 'users' && renderUsers()}
+        {activeTab === 'currencies' && renderCurrencies()}
         {activeTab === 'categories' && renderCategories()}
         {activeTab === 'countries' && renderCountries()}
       </div>

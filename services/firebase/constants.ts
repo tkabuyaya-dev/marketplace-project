@@ -70,9 +70,11 @@ export const COLLECTIONS = {
   REPORTS:            'reports',
   AUDIT_LOGS:         'auditLogs',
   BANNERS:            'banners',
+  MARKETPLACES:       'marketplaces',
   NOTIFICATIONS:      'notifications',
   REVIEWS:            'reviews',
   USER_ACTIVITY:      'userActivity',
+  CURRENCIES:         'currencies',
 } as const;
 
 /** Converts a Firestore document to User type */
@@ -119,6 +121,8 @@ export function docToProduct(docData: any, id: string): Product {
       joinDate:  0,
       whatsapp:  docData.sellerWhatsapp,
     },
+    currency:    docData.currency || undefined,
+    countryId:   docData.countryId || undefined,
     marketplace: docData.marketplace || undefined,
     isPromoted:  docData.isPromoted || false,
     status:      docData.status,

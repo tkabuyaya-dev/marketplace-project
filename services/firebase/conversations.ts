@@ -155,6 +155,32 @@ export const resetConversationUnread = async (conversationId: string): Promise<v
 
 export const getAllMessagesAdmin = async (): Promise<Message[]> => { return []; };
 
+/** Subscribe to total unread message count across all conversations */
+export const subscribeToUnreadMessages = (
+  callback: (count: number) => void
+): Unsubscribe => {
+  if (!db || !auth?.currentUser) { callback(0); return () => {}; }
+
+  const q = query(
+    collection(db, COLLECTIONS.CONVERSATIONS),
+    where('participantIds', 'array-contains', auth.currentUser.uid),
+    orderBy('lastMessageAt', 'desc'),
+    limit(50)
+  );
+
+  return onSnapshot(q, (snap) => {
+    let total = 0;
+    snap.docs.forEach(d => {
+      const data = d.data();
+      // Only count unread if last message was NOT sent by current user
+      if (data.lastMessage && data.lastMessage.senderId !== auth.currentUser!.uid) {
+        total += data.unreadCount || 0;
+      }
+    });
+    callback(total);
+  }, () => callback(0));
+};
+
 export const createOrGetConversation = async (
   otherUserId: string,
   productId?: string

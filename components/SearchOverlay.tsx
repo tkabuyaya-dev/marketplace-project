@@ -1,20 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Product, SearchFilters, User } from '../types';
 import { searchProducts, searchSellers } from '../services/firebase';
 import { algoliaSearchProducts, algoliaSearchSellers } from '../services/algolia';
-import { CURRENCY, THEME, TC } from '../constants';
+import { getCachedProducts, setCachedProducts, getCachedSellers, setCachedSellers } from '../services/search-cache';
+import { getLocalSuggestions, addToSearchHistory, getSearchHistory, removeFromSearchHistory, getPopularSearches } from '../services/popular-searches';
+import { CURRENCY, THEME } from '../constants';
 
 interface SearchOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   onProductClick: (product: Product) => void;
-  onShopClick?: (seller: User) => void; // New Prop
+  onShopClick?: (seller: User) => void;
 }
 
 const DEFAULT_FILTERS: SearchFilters = {
   sort: 'relevance',
   minRating: 0,
 };
+
+const DEBOUNCE_MS = 350;
 
 export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, onProductClick, onShopClick }) => {
   const [query, setQuery] = useState('');
@@ -23,20 +27,36 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
   const [isSearching, setIsSearching] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
-  
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       document.body.style.overflow = 'hidden';
+      setRecentSearches(getSearchHistory().slice(0, 5));
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
-  // Main Search Effect — Algolia first, Firestore fallback
+  // --- Layer 1: Local autocomplete suggestions ---
+  useEffect(() => {
+    if (query.length >= 1 && query.length <= 3) {
+      const local = getLocalSuggestions(query);
+      setSuggestions(local);
+      setShowSuggestions(local.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [query]);
+
+  // --- Main Search Pipeline: Browser Cache → Backend Proxy → Algolia Direct → Firestore ---
   useEffect(() => {
     let cancelled = false;
 
@@ -47,11 +67,33 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
         return;
       }
 
+      // Layer 2: Browser cache check (instant)
+      const cachedProducts = getCachedProducts(query, filters);
+      const cachedSellers = getCachedSellers(query);
+      if (cachedProducts !== undefined) {
+        setProductResults(cachedProducts);
+        setShopResults(cachedSellers || []);
+        setIsSearching(false);
+        return;
+      }
+
       setIsSearching(true);
+      setShowSuggestions(false);
 
       const searchShops = filters.minPrice === undefined && filters.maxPrice === undefined;
 
-      // Try Algolia first (returns null if not configured or on error)
+      // Layer 3: Try backend cached search proxy first
+      const proxyResult = await tryBackendProxy(query, filters, searchShops);
+      if (!cancelled && proxyResult) {
+        setProductResults(proxyResult.products);
+        setShopResults(proxyResult.sellers);
+        setCachedProducts(query, filters, proxyResult.products);
+        if (proxyResult.sellers.length > 0) setCachedSellers(query, proxyResult.sellers);
+        setIsSearching(false);
+        return;
+      }
+
+      // Layer 4: Direct Algolia (returns null if not configured or on error)
       const [algoliaProducts, algoliaShops] = await Promise.all([
         algoliaSearchProducts(query, filters),
         searchShops ? algoliaSearchSellers(query) : Promise.resolve([]),
@@ -59,15 +101,16 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
 
       if (cancelled) return;
 
-      // If Algolia returned results, use them
       if (algoliaProducts !== null) {
         setProductResults(algoliaProducts);
         setShopResults(algoliaShops || []);
+        setCachedProducts(query, filters, algoliaProducts);
+        if (algoliaShops && algoliaShops.length > 0) setCachedSellers(query, algoliaShops);
         setIsSearching(false);
         return;
       }
 
-      // Fallback to Firestore prefix search
+      // Layer 5: Firestore fallback
       const [products, shops] = await Promise.all([
         searchProducts(query, filters),
         searchShops ? searchSellers(query) : Promise.resolve([]),
@@ -76,12 +119,33 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
       if (cancelled) return;
       setProductResults(products);
       setShopResults(shops);
+      setCachedProducts(query, filters, products);
+      if (shops.length > 0) setCachedSellers(query, shops);
       setIsSearching(false);
     };
 
-    const debounce = setTimeout(doSearch, 200); // Faster debounce with Algolia
+    const debounce = setTimeout(doSearch, DEBOUNCE_MS);
     return () => { cancelled = true; clearTimeout(debounce); };
   }, [query, filters, showFilters]);
+
+  const handleSelectSuggestion = useCallback((term: string) => {
+    setQuery(term);
+    setShowSuggestions(false);
+    addToSearchHistory(term);
+  }, []);
+
+  const handleSubmitSearch = useCallback(() => {
+    if (query.trim().length >= 2) {
+      addToSearchHistory(query.trim());
+      setShowSuggestions(false);
+      setRecentSearches(getSearchHistory().slice(0, 5));
+    }
+  }, [query]);
+
+  const handleRemoveRecent = useCallback((term: string) => {
+    removeFromSearchHistory(term);
+    setRecentSearches(prev => prev.filter(t => t !== term));
+  }, []);
 
   const toggleFilter = (key: keyof SearchFilters, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -94,15 +158,17 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
 
   if (!isOpen) return null;
 
+  const showEmptyState = !isSearching && productResults.length === 0 && shopResults.length === 0 && query.length === 0;
+  const showNoResults = !isSearching && productResults.length === 0 && shopResults.length === 0 && query.length > 0;
+
   return (
     <div className="fixed inset-0 z-[100] bg-gray-950/95 backdrop-blur-2xl animate-fade-in flex flex-col font-sans">
-      
+
       {/* --- HEADER --- */}
       <div className="pt-safe px-4 pb-4 border-b border-gray-800 bg-gray-900/80 shadow-2xl z-20">
         <div className="max-w-4xl mx-auto w-full pt-4 space-y-4">
-           {/* Top Row: Search Input & Controls */}
            <div className="flex items-center gap-3">
-               <button 
+               <button
                  onClick={onClose}
                  className="md:hidden p-3 text-gray-400 hover:text-white transition-colors"
                >
@@ -118,6 +184,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                    type="text"
                    value={query}
                    onChange={(e) => setQuery(e.target.value)}
+                   onKeyDown={(e) => e.key === 'Enter' && handleSubmitSearch()}
                    placeholder="Rechercher produits ou boutiques..."
                    className="w-full bg-gray-800/50 border border-gray-700/50 rounded-2xl pl-12 pr-12 py-3.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-gray-800 transition-all outline-none"
                  />
@@ -126,9 +193,25 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                    </button>
                  )}
+
+                 {/* --- SUGGESTIONS DROPDOWN --- */}
+                 {showSuggestions && suggestions.length > 0 && (
+                   <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-30">
+                     {suggestions.map((s, i) => (
+                       <button
+                         key={i}
+                         onClick={() => handleSelectSuggestion(s)}
+                         className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white flex items-center gap-3 transition-colors"
+                       >
+                         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-gray-600 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                         <span>{s}</span>
+                       </button>
+                     ))}
+                   </div>
+                 )}
                </div>
 
-               <button 
+               <button
                  onClick={() => setShowFilters(!showFilters)}
                  className={`p-3.5 rounded-2xl border transition-all duration-300 flex items-center gap-2 ${showFilters ? 'bg-white text-gray-950 border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'}`}
                >
@@ -137,7 +220,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                </button>
            </div>
 
-           {/* --- FILTER PANEL (Same as before) --- */}
+           {/* --- FILTER PANEL --- */}
            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
               <div className="bg-gray-900 border border-gray-700 rounded-3xl p-5 shadow-inner shadow-black/50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  <div>
@@ -161,25 +244,97 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
       {/* --- RESULTS AREA --- */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          
-          {/* Default / Empty State */}
-          {!isSearching && productResults.length === 0 && shopResults.length === 0 && query.length === 0 && (
-             <div className="text-center mt-20 opacity-70">
-               <div className="text-6xl mb-4">🛍️</div>
-               <p className="text-gray-400 text-lg">Recherchez des produits ou des vendeurs</p>
-             </div>
+
+          {/* Empty State with Recent & Popular */}
+          {showEmptyState && (
+            <div className="mt-8 space-y-8">
+              {/* Recent searches */}
+              {recentSearches.length > 0 && (
+                <div className="animate-fade-in">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recherches récentes</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {recentSearches.map((term, i) => (
+                      <div key={i} className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/50 rounded-full">
+                        <button
+                          onClick={() => handleSelectSuggestion(term)}
+                          className="pl-3 pr-1 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
+                        >
+                          {term}
+                        </button>
+                        <button
+                          onClick={() => handleRemoveRecent(term)}
+                          className="pr-2 py-1.5 text-gray-600 hover:text-red-400 transition-colors"
+                        >
+                          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Popular searches */}
+              <div className="animate-fade-in">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recherches populaires</h3>
+                <div className="flex flex-wrap gap-2">
+                  {getPopularSearches().map((term, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSelectSuggestion(term)}
+                      className="px-3 py-1.5 text-sm text-gray-400 bg-gray-800/40 border border-gray-700/50 rounded-full hover:bg-gray-800 hover:text-white hover:border-gray-600 transition-all"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Loading */}
           {isSearching && <div className="text-center mt-10"><div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>}
 
-          {/* SHOPS RESULTS */}
+          {/* PRODUCTS RESULTS (priorité) */}
+          {productResults.length > 0 && (
+              <div className="animate-fade-in">
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Produits ({productResults.length})</h3>
+                  <div className="space-y-2">
+                    {productResults.map((product) => (
+                        <div
+                            key={product.id}
+                            onClick={() => {
+                            onProductClick(product);
+                            addToSearchHistory(query.trim());
+                            onClose();
+                            }}
+                            className="group flex items-center gap-4 p-3 rounded-2xl bg-gray-900/40 hover:bg-gray-800 border border-gray-800 hover:border-gray-600 transition-all cursor-pointer"
+                        >
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0">
+                                <img src={product.images[0]} className="w-full h-full object-cover" alt="" />
+                                <div className={`absolute bottom-0 w-full h-1 bg-gradient-to-r ${THEME.gradient}`}></div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-medium truncate text-lg group-hover:text-blue-400 transition-colors">{product.title}</h4>
+                                <p className="text-gray-400 text-sm truncate">{product.seller.name}</p>
+                            </div>
+
+                            <div className="text-right">
+                                <span className="block font-bold text-white whitespace-nowrap">{product.price.toLocaleString()} <span className="text-xs text-gray-500">{CURRENCY}</span></span>
+                            </div>
+                        </div>
+                    ))}
+                  </div>
+              </div>
+          )}
+
+          {/* SHOPS RESULTS (après les produits) */}
           {shopResults.length > 0 && (
             <div className="animate-fade-in">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Boutiques Trouvées ({shopResults.length})</h3>
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Boutiques ({shopResults.length})</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {shopResults.map((shop, idx) => (
-                        <div 
+                    {shopResults.map((shop) => (
+                        <div
                             key={shop.id}
                             onClick={() => {
                                 if (onShopClick) {
@@ -204,40 +359,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
             </div>
           )}
 
-          {/* PRODUCTS RESULTS */}
-          {productResults.length > 0 && (
-              <div className="animate-fade-in">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Produits ({productResults.length})</h3>
-                  <div className="space-y-2">
-                    {productResults.map((product) => (
-                        <div
-                            key={product.id}
-                            onClick={() => {
-                            onProductClick(product);
-                            onClose();
-                            }}
-                            className="group flex items-center gap-4 p-3 rounded-2xl bg-gray-900/40 hover:bg-gray-800 border border-gray-800 hover:border-gray-600 transition-all cursor-pointer"
-                        >
-                            <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                                <img src={product.images[0]} className="w-full h-full object-cover" alt="" />
-                                <div className={`absolute bottom-0 w-full h-1 bg-gradient-to-r ${THEME.gradient}`}></div>
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-medium truncate text-lg group-hover:text-blue-400 transition-colors">{product.title}</h4>
-                                <p className="text-gray-400 text-sm truncate">{product.seller.name}</p>
-                            </div>
-
-                            <div className="text-right">
-                                <span className="block font-bold text-white whitespace-nowrap">{product.price.toLocaleString()} <span className="text-xs text-gray-500">{CURRENCY}</span></span>
-                            </div>
-                        </div>
-                    ))}
-                  </div>
-              </div>
-          )}
-          
-          {!isSearching && productResults.length === 0 && shopResults.length === 0 && query.length > 0 && (
+          {showNoResults && (
              <div className="text-center mt-10 text-gray-500">
                <p>Aucun résultat trouvé.</p>
              </div>
@@ -245,10 +367,95 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
 
         </div>
       </div>
-      
+
       <div className="hidden md:block text-center py-3 text-[10px] text-gray-600 border-t border-gray-800 bg-gray-900">
         <span className="mx-2">ESC pour fermer</span>
       </div>
     </div>
   );
 };
+
+/**
+ * Try the backend cached search proxy (Cloud Function).
+ * Returns null if unavailable or times out.
+ */
+async function tryBackendProxy(
+  query: string,
+  filters: SearchFilters,
+  searchShops: boolean
+): Promise<{ products: Product[]; sellers: User[] } | null> {
+  const baseUrl = import.meta.env.VITE_FUNCTIONS_BASE_URL;
+  if (!baseUrl) return null;
+
+  try {
+    const params = new URLSearchParams({ q: query, limit: '20' });
+    if (filters.category) params.set('category', filters.category);
+    if (filters.minPrice !== undefined) params.set('minPrice', String(filters.minPrice));
+    if (filters.maxPrice !== undefined) params.set('maxPrice', String(filters.maxPrice));
+    if (filters.sort && filters.sort !== 'relevance') params.set('sort', filters.sort);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    const res = await fetch(`${baseUrl}/cachedSearch?${params}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+
+    // Convert proxy response to our types
+    const products: Product[] = (data.products || []).map((p: any) => ({
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      price: p.price,
+      originalPrice: p.originalPrice || undefined,
+      description: '',
+      images: p.images || [],
+      category: p.category,
+      subCategory: p.subCategory,
+      tags: p.tags || [],
+      rating: p.rating || 0,
+      reviews: p.reviews || 0,
+      marketplace: p.marketplace || undefined,
+      seller: {
+        id: p.sellerId,
+        name: p.sellerName || 'Vendeur',
+        email: '',
+        avatar: '',
+        isVerified: p.sellerIsVerified || false,
+        role: 'seller' as const,
+        joinDate: 0,
+      },
+      isPromoted: false,
+      status: 'approved' as const,
+      views: p.views || 0,
+      likesCount: p.likesCount || 0,
+      reports: 0,
+      createdAt: p.createdAt || Date.now(),
+      stockQuantity: p.stockQuantity ?? undefined,
+      discountPrice: p.discountPrice ?? undefined,
+    }));
+
+    const sellers: User[] = searchShops
+      ? (data.sellers || []).map((s: any) => ({
+          id: s.id,
+          slug: s.slug,
+          name: s.name || 'Vendeur',
+          email: '',
+          avatar: s.avatar || '',
+          isVerified: s.isVerified || false,
+          role: 'seller' as const,
+          joinDate: 0,
+          productCount: s.productCount || 0,
+        }))
+      : [];
+
+    return { products, sellers };
+  } catch {
+    return null; // Timeout or network error — fallback to direct Algolia
+  }
+}

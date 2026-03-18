@@ -23,7 +23,9 @@ export function useCategories(): { categories: Category[]; loading: boolean } {
       collection(db, 'categories'),
       (snap) => {
         if (!snap.empty) {
-          setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
+          const cats = snap.docs.map(d => ({ id: d.id, ...d.data() } as Category));
+          cats.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+          setCategories(cats);
         }
         setLoading(false);
       },

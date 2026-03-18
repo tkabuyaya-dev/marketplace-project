@@ -158,27 +158,27 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
 
         <div className="flex items-end justify-between">
           <div>
-            {isOnPromotion ? (
+            {(() => { const cur = product.currency || CURRENCY; return isOnPromotion ? (
               <>
                 <p className="text-red-400 font-bold text-base">
-                  {product.discountPrice!.toLocaleString('fr-FR')} <span className="text-xs font-normal text-red-400/70">{CURRENCY}</span>
+                  {product.discountPrice!.toLocaleString('fr-FR')} <span className="text-xs font-normal text-red-400/70">{cur}</span>
                 </p>
                 <p className="text-gray-500 text-xs line-through">
-                  {product.price.toLocaleString('fr-FR')} {CURRENCY}
+                  {product.price.toLocaleString('fr-FR')} {cur}
                 </p>
               </>
             ) : (
               <>
                 <p className={`${tc.text400} font-bold text-base`}>
-                  {product.price.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-400">{CURRENCY}</span>
+                  {product.price.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-400">{cur}</span>
                 </p>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <p className="text-gray-500 text-xs line-through">
-                    {product.originalPrice.toLocaleString('fr-FR')} {CURRENCY}
+                    {product.originalPrice.toLocaleString('fr-FR')} {cur}
                   </p>
                 )}
               </>
-            )}
+            ); })()}
           </div>
           <div className="flex items-center gap-1">
             <span className="text-yellow-400 text-xs">★</span>

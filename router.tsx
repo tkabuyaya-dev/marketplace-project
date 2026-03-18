@@ -33,6 +33,7 @@ const SellerRegistrationPage = lazyRetry(() => import('./pages/SellerRegistratio
 const AdminDashboardPage = lazyRetry(() => import('./pages/AdminDashboard'));
 const LoginPage = lazyRetry(() => import('./pages/Login'));
 const ProfilePage = lazyRetry(() => import('./pages/Profile'));
+const FavoritesPage = lazyRetry(() => import('./pages/Favorites'));
 
 // Prefetch critical routes after initial load
 if (typeof window !== 'undefined') {
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <SuspenseWrapper><SellerDashboardPage /></SuspenseWrapper> },
       { path: 'register-seller', element: <SuspenseWrapper><SellerRegistrationPage /></SuspenseWrapper> },
       { path: 'admin', element: <SuspenseWrapper><AdminDashboardPage /></SuspenseWrapper> },
+      { path: 'favorites', element: <SuspenseWrapper><FavoritesPage /></SuspenseWrapper> },
       { path: 'profile', element: <SuspenseWrapper><ProfilePage /></SuspenseWrapper> },
       { path: 'login', element: <SuspenseWrapper><LoginPage /></SuspenseWrapper> },
       { path: '*', element: <Navigate to="/" replace /> },

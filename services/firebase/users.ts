@@ -6,7 +6,7 @@ import { User, SellerDetails } from '../../types';
 import { slugify, generateUniqueSlug } from '../../utils/slug';
 import {
   db, collection, doc, getDoc, getDocs, updateDoc, deleteDoc,
-  query, where, orderBy, limit, startAfter, COLLECTIONS, docToUser,
+  query, where, orderBy, limit, startAfter, writeBatch, COLLECTIONS, docToUser,
 } from './constants';
 import type { QueryDocumentSnapshot } from './constants';
 
@@ -66,6 +66,20 @@ export const getAllUsers = async (lastDoc?: QueryDocumentSnapshot): Promise<{ us
 export const updateUserStatus = async (userId: string, isSuspended: boolean): Promise<void> => {
   if (!db) return;
   await updateDoc(doc(db, COLLECTIONS.USERS, userId), { isSuspended });
+
+  // Batch-update all seller's products: mark/unmark as sellerSuspended
+  const productsQuery = query(
+    collection(db, COLLECTIONS.PRODUCTS),
+    where('sellerId', '==', userId)
+  );
+  const snap = await getDocs(productsQuery);
+  if (snap.empty) return;
+
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => {
+    batch.update(d.ref, { sellerSuspended: isSuspended });
+  });
+  await batch.commit();
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {

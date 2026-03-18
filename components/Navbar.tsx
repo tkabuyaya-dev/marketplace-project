@@ -9,9 +9,10 @@ interface NavbarProps {
   onSearchClick: () => void;
   onSellerAccess: () => void;
   isOnline?: boolean;
+  unreadMessagesCount?: number;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSellerAccess, isOnline = true }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSellerAccess, isOnline = true, unreadMessagesCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -26,6 +27,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
 
   const navItems = [
     { path: '/', icon: '🏠', label: 'Accueil', useSellerAccess: false },
+    ...(currentUser
+      ? [{ path: '/favorites', icon: '❤️', label: 'Favoris', useSellerAccess: false }]
+      : []),
     { path: '/messenger', icon: '💬', label: 'Chat', useSellerAccess: false },
     actionItem,
     { path: '/profile', icon: '⚙️', label: 'Compte', useSellerAccess: false },
@@ -82,7 +86,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
                   isActive(item.path) ? TC.text400 : 'text-gray-400 hover:text-white'
                 }`}
               >
-                {item.label}
+                <span className="relative">
+                  {item.label}
+                  {item.path === '/messenger' && unreadMessagesCount > 0 && (
+                    <span className="absolute -top-1.5 -right-4 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1 shadow-lg shadow-red-500/40">
+                      {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
@@ -120,8 +131,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
                 isActive(item.path) ? TC.text500 : 'text-gray-500'
               }`}
             >
-              <span className={`text-xl transition-transform duration-200 ${isActive(item.path) ? 'scale-110' : ''}`}>
+              <span className={`relative text-xl transition-transform duration-200 ${isActive(item.path) ? 'scale-110' : ''}`}>
                 {item.icon}
+                {item.path === '/messenger' && unreadMessagesCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1 shadow-lg shadow-red-500/40 animate-pulse">
+                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                  </span>
+                )}
               </span>
               <span className="text-[10px] font-medium">{item.label}</span>
               {isActive(item.path) && (
