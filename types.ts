@@ -243,4 +243,6 @@ export interface SearchFilters {
   minRating?: number;
   sort: 'relevance' | 'price_asc' | 'price_desc' | 'newest';
   category?: string;
+  sellerId?: string;
+  inStock?: boolean;
 }

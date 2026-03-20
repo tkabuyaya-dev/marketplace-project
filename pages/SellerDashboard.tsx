@@ -523,7 +523,7 @@ export const SellerDashboard: React.FC = () => {
                           className={`h-full rounded-full transition-all duration-700 ${
                             isLimitReached ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
                             progressPercentage > 80 ? 'bg-gradient-to-r from-yellow-600 to-orange-400 shadow-[0_0_6px_rgba(234,179,8,0.3)]' :
-                            progressPercentage > 50 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' :
+                            progressPercentage > 50 ? 'bg-gradient-to-r from-gold-400 to-gold-600' :
                             'bg-gradient-to-r from-emerald-500 to-blue-400'
                           }`}
                           style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
@@ -767,7 +767,7 @@ export const SellerDashboard: React.FC = () => {
                         <div>
                           <label className="block text-xs font-bold text-gray-400 mb-1">Prix *</label>
                           <input
-                            required type="number" min="100" value={price} onChange={e => setPrice(e.target.value)}
+                            required type="number" min="0.01" step="any" value={price} onChange={e => setPrice(e.target.value)}
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
                             placeholder="0"
                           />
@@ -1140,8 +1140,8 @@ export const SellerDashboard: React.FC = () => {
        <aside className="hidden md:flex flex-col w-64 bg-gray-900 border-r border-gray-800 h-screen sticky top-0 p-4">
            {/* ... Sidebar content same as before ... */}
            <div className="flex items-center gap-2 mb-8 px-2">
-               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"></div>
-               <span className="font-black text-xl text-white tracking-tight">Espace <span className="text-blue-500">Vendeur</span></span>
+               <div className="w-8 h-8 bg-gradient-to-br from-gold-400 to-gold-600 rounded-lg"></div>
+               <span className="font-black text-xl text-white tracking-tight">Espace <span className="text-gold-400">Vendeur</span></span>
            </div>
            <div className="space-y-2 flex-1">
                <SidebarItem id="overview" icon="📊" label="Vue d'ensemble" />

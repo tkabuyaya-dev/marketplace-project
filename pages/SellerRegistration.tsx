@@ -8,6 +8,7 @@ import { uploadImage } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
+import { verifyRecaptcha } from '../services/recaptcha';
 
 export const SellerRegistration: React.FC = () => {
   const { currentUser } = useAppContext();
@@ -163,6 +164,13 @@ export const SellerRegistration: React.FC = () => {
     setLoading(true);
 
     try {
+        // reCAPTCHA v3 verification before registration
+        const passed = await verifyRecaptcha('seller_registration');
+        if (!passed) {
+          toast("Vérification de sécurité échouée. Réessayez.", 'error');
+          setLoading(false);
+          return;
+        }
         if (formData.sellerType === 'shop' && !formData.gps) {
             toast("La localisation GPS est obligatoire pour un magasin fixe.", 'error');
             setStep(2);
@@ -537,7 +545,7 @@ export const SellerRegistration: React.FC = () => {
         <div className="w-full max-w-lg">
             {/* Header */}
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">
+                <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gold-400 to-gold-600 mb-2">
                     Devenir Vendeur
                 </h1>
                 <p className="text-gray-400 text-sm">Créez votre boutique professionnelle sur AuraBuja.</p>

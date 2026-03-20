@@ -14,8 +14,11 @@ import {
   markAllNotificationsRead,
 } from '../services/firebase';
 import { auth } from '../firebase-config';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { trackPageView, setUserProperties, trackLogin, trackContactSeller as analyticsContactSeller } from '../services/analytics';
+import { setSentryUser, clearSentryUser } from '../services/sentry';
+import i18n from '../i18n';
 
 interface AppContextType {
   currentUser: User | null;
@@ -56,6 +59,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const userProfileUnsub = useRef<(() => void) | null>(null);
   const notifUnsub = useRef<(() => void) | null>(null);
@@ -65,7 +69,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleReconnect = useCallback(async () => {
     if (auth?.currentUser) {
       await auth.currentUser.getIdToken(true);
-      toast('Connexion rétablie', 'success');
+      toast(i18n.t('toast.connectionRestored'), 'success');
     }
   }, []);
   const { isOnline } = useNetworkStatus(handleReconnect);
@@ -121,6 +125,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [currentUser?.id]);
 
+  // GA4: Track page views on route change
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+
+  // GA4 + Sentry: Set user properties when user changes
+  useEffect(() => {
+    if (currentUser) {
+      setUserProperties(currentUser.id, currentUser.role, currentUser.sellerDetails?.countryId || 'bi');
+      setSentryUser(currentUser.id, currentUser.email, currentUser.role);
+    } else {
+      clearSentryUser();
+    }
+  }, [currentUser?.id, currentUser?.role]);
+
   // Keyboard shortcut: Cmd+K (optimized — listener created once)
   const isSearchOpenRef = useRef(isSearchOpen);
   useEffect(() => { isSearchOpenRef.current = isSearchOpen; }, [isSearchOpen]);
@@ -144,6 +163,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const user = await signInWithGoogle();
       setCurrentUser(user);
+      // GA4: Track login (first-time users tracked as sign_up by auth service)
+      trackLogin('google');
       if (user.role === 'admin') {
         navigate('/admin');
       } else {
@@ -170,6 +191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     try {
       const conversationId = await createOrGetConversation(seller.id, productId);
+      analyticsContactSeller(seller.id, seller.name, productId);
       navigate(`/messenger/${conversationId}`, { state: { contactSeller: seller } });
     } catch (err) {
       console.error('Erreur création conversation:', err);

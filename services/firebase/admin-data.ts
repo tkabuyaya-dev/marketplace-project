@@ -70,7 +70,28 @@ export const getCountries = async (): Promise<Country[]> => {
   if (!db) return INITIAL_COUNTRIES;
 
   const snap = await getDocs(collection(db, COLLECTIONS.COUNTRIES));
-  if (snap.empty) return INITIAL_COUNTRIES;
+  if (snap.empty) {
+    // Seed all countries on first access
+    const batch = writeBatch(db);
+    INITIAL_COUNTRIES.forEach(c => batch.set(doc(db, COLLECTIONS.COUNTRIES, c.id), { ...c }));
+    await batch.commit();
+    return INITIAL_COUNTRIES;
+  }
+
+  // Additive sync: add any missing countries (e.g. Tanzania added later)
+  const existing = new Set(snap.docs.map(d => d.id));
+  const missing = INITIAL_COUNTRIES.filter(c => !existing.has(c.id));
+  if (missing.length > 0) {
+    try {
+      const batch = writeBatch(db);
+      missing.forEach(c => batch.set(doc(db, COLLECTIONS.COUNTRIES, c.id), { ...c }));
+      await batch.commit();
+    } catch {
+      // Write may fail for non-admin users — that's OK, admin will sync on next visit
+    }
+    // Always return the full list (including missing ones from constants)
+    return [...snap.docs.map(d => ({ id: d.id, ...d.data() } as Country)), ...missing];
+  }
 
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Country));
 };
@@ -215,6 +236,19 @@ export const getCurrencies = async (): Promise<Currency[]> => {
     await seedCurrencies();
     return INITIAL_CURRENCIES;
   }
+  // Additive sync: add any missing currencies from INITIAL_CURRENCIES
+  const existing = new Set(snap.docs.map(d => d.id));
+  const missing = INITIAL_CURRENCIES.filter(c => !existing.has(c.id));
+  if (missing.length > 0) {
+    try {
+      const batch = writeBatch(db);
+      missing.forEach(cur => batch.set(doc(db, COLLECTIONS.CURRENCIES, cur.id), { ...cur }));
+      await batch.commit();
+    } catch {
+      // Write may fail for non-admin users — admin will sync on next visit
+    }
+    return [...snap.docs.map(d => ({ id: d.id, ...d.data() } as Currency)), ...missing];
+  }
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Currency));
 };
 
@@ -258,7 +292,7 @@ export const downgradeToFree = async (userId: string): Promise<void> => {
 
 // ── Seeder ──
 
-const seedInitialData = async (): Promise<void> => {
+export const seedInitialData = async (): Promise<void> => {
   if (!db) return;
 
   const batch = writeBatch(db);

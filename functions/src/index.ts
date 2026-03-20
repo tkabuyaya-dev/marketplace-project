@@ -32,3 +32,6 @@ export {
 
 // Cached search proxy (Redis-backed Algolia proxy)
 export { cachedSearch } from "./search-proxy.js";
+
+// reCAPTCHA v3 verification
+export { verifyRecaptcha } from "./recaptcha.js";

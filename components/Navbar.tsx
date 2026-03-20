@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { User } from '../types';
 import { THEME, TC } from '../constants';
 import { NotificationBell } from './NotificationBell';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -15,24 +17,25 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSellerAccess, isOnline = true, unreadMessagesCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const renderActionItem = () => {
-    if (!currentUser) return { path: '/login', icon: '👤', label: 'Connexion', useSellerAccess: false };
-    if (currentUser.role === 'admin') return { path: '/admin', icon: '🛡️', label: 'Admin', useSellerAccess: true };
-    if (currentUser.role === 'seller') return { path: '/dashboard', icon: '📊', label: 'Ma Boutique', useSellerAccess: true };
-    return { path: '/dashboard', icon: '💼', label: 'Vendre', useSellerAccess: true };
+    if (!currentUser) return { path: '/login', icon: '👤', label: t('nav.login'), useSellerAccess: false };
+    if (currentUser.role === 'admin') return { path: '/admin', icon: '🛡️', label: t('nav.admin'), useSellerAccess: true };
+    if (currentUser.role === 'seller') return { path: '/dashboard', icon: '📊', label: t('nav.myShop'), useSellerAccess: true };
+    return { path: '/dashboard', icon: '💼', label: t('nav.sell'), useSellerAccess: true };
   };
 
   const actionItem = renderActionItem();
 
   const navItems = [
-    { path: '/', icon: '🏠', label: 'Accueil', useSellerAccess: false },
+    { path: '/', icon: '🏠', label: t('nav.home'), useSellerAccess: false },
     ...(currentUser
-      ? [{ path: '/favorites', icon: '❤️', label: 'Favoris', useSellerAccess: false }]
+      ? [{ path: '/favorites', icon: '❤️', label: t('nav.favorites'), useSellerAccess: false }]
       : []),
-    { path: '/messenger', icon: '💬', label: 'Chat', useSellerAccess: false },
+    { path: '/messenger', icon: '💬', label: t('nav.chat'), useSellerAccess: false },
     actionItem,
-    { path: '/profile', icon: '⚙️', label: 'Compte', useSellerAccess: false },
+    { path: '/profile', icon: '⚙️', label: t('nav.account'), useSellerAccess: false },
   ];
 
   const isActive = (path: string) => {
@@ -53,7 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
       {/* Offline Banner */}
       {!isOnline && (
         <div className="fixed top-0 left-0 w-full z-[60] bg-yellow-600 text-yellow-950 text-center text-xs font-bold py-1.5 px-4">
-          Mode hors-ligne — Les données affichées peuvent ne pas être à jour
+          {t('offline.banner')}
         </div>
       )}
 
@@ -70,9 +73,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
             className="group flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-full border border-gray-700 transition-all text-gray-400 hover:text-white"
           >
              <span className="text-lg group-hover:scale-110 transition-transform">🔍</span>
-             <span className="text-sm">Rechercher...</span>
-             <span className="ml-2 text-xs bg-gray-700 px-1.5 py-0.5 rounded border border-gray-600 hidden lg:inline-block">Cmd+K</span>
+             <span className="text-sm">{t('nav.search')}</span>
+             <span className="ml-2 text-xs bg-gray-700 px-1.5 py-0.5 rounded border border-gray-600 hidden lg:inline-block">{t('nav.shortcut')}</span>
           </button>
+
+          {/* Language Switcher */}
+          <LanguageSwitcher />
 
           {/* Notification Bell */}
           {currentUser && <NotificationBell />}
@@ -107,6 +113,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
          </button>
 
          <div className="flex gap-2">
+           {/* Language Switcher Mobile */}
+           <LanguageSwitcher compact />
+
            {/* Notification Bell Mobile */}
            {currentUser && <NotificationBell />}
 
@@ -121,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
       </div>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-t border-blue-900/30 pb-safe transition-all duration-500">
+      <nav className="md:hidden fixed bottom-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-t border-gold-900/30 pb-safe transition-all duration-500">
         <div className="flex justify-around items-center h-16">
           {navItems.map((item) => (
             <button

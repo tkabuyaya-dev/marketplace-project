@@ -16,6 +16,10 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+} from 'firebase/app-check';
 
 const env = import.meta.env;
 
@@ -52,6 +56,31 @@ if (isConfigured) {
   }
 
   auth = getAuth(app);
+
+  // App Check: Protects Firebase services against bot abuse
+  const appCheckKey = env.VITE_RECAPTCHA_V3_SITE_KEY;
+  if (appCheckKey) {
+    try {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(appCheckKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    } catch {
+      // Already initialized (HMR) — safe to ignore
+    }
+  } else if (env.VITE_APP_ENV === 'development') {
+    // Debug mode: set FIREBASE_APPCHECK_DEBUG_TOKEN=true in browser console
+    // to bypass App Check during local development
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    try {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider('DUMMY_KEY_FOR_DEBUG'),
+        isTokenAutoRefreshEnabled: true,
+      });
+    } catch {
+      // Already initialized (HMR)
+    }
+  }
 
   if (env.VITE_APP_ENV === 'development') {
     console.info('✅ Firebase connecté au projet:', firebaseConfig.projectId);

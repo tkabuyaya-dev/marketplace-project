@@ -327,6 +327,25 @@ const ProductDetail: React.FC = () => {
               <span className="flex items-center gap-1">💬 {product.reviews} avis</span>
             )}
           </div>
+
+          {/* Social proof badges */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {product.views > 10 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold-400/10 text-gold-400 text-xs font-bold rounded-full">
+                👀 {Math.max(2, Math.floor(product.views / 50) + Math.floor(Math.random() * 3))} personnes regardent
+              </span>
+            )}
+            {product.seller.isVerified && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
+                🛡️ Vendeur vérifié · depuis {new Date(product.seller.joinDate || Date.now()).getFullYear()}
+              </span>
+            )}
+            {product.views > 50 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 text-orange-400 text-xs font-bold rounded-full">
+                🔥 Tendance
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Promotion countdown */}
@@ -355,10 +374,10 @@ const ProductDetail: React.FC = () => {
           onClick={() => onVisitShop(product.seller)}
           className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 cursor-pointer hover:bg-gray-800 transition-colors group"
         >
-          <img src={product.seller.avatar} alt={product.seller.name} className="w-12 h-12 rounded-full border border-gray-600 group-hover:border-blue-500" />
+          <img src={product.seller.avatar} alt={product.seller.name} className="w-12 h-12 rounded-full border border-gray-600 group-hover:border-gold-400" />
           <div className="flex-1">
             <div className="flex items-center gap-1">
-              <h4 className="text-white font-medium group-hover:text-blue-400 transition-colors">{product.seller.name}</h4>
+              <h4 className="text-white font-medium group-hover:text-gold-400 transition-colors">{product.seller.name}</h4>
               {product.seller.isVerified && <span className={tc.text500}>✓</span>}
             </div>
             <p className="text-xs text-gray-400">Membre depuis {new Date(product.seller.joinDate || Date.now()).getFullYear()}</p>

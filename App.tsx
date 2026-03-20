@@ -33,11 +33,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-blue-500/30">
+    <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-gold-400/30">
       {/* Background gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-20%] w-[70%] h-[70%] rounded-full blur-[120px] bg-blue-600/20" />
-        <div className="absolute bottom-[-20%] right-[-20%] w-[70%] h-[70%] rounded-full blur-[120px] bg-purple-600/20" />
+        <div className="absolute top-[-20%] left-[-20%] w-[70%] h-[70%] rounded-full blur-[120px] bg-gold-400/[0.06]" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[70%] h-[70%] rounded-full blur-[120px] bg-gold-600/[0.04]" />
       </div>
 
       <div className="relative z-10">

@@ -6,6 +6,7 @@
  *   firebase functions:secrets:set ALGOLIA_APP_ID
  *   firebase functions:secrets:set ALGOLIA_ADMIN_KEY
  *   firebase functions:secrets:set REDIS_URL
+ *   firebase functions:secrets:set RECAPTCHA_SECRET_KEY
  *
  * Or via .env in functions/ for local development:
  *   ALGOLIA_APP_ID=xxx
@@ -18,6 +19,7 @@ import { defineSecret } from "firebase-functions/params";
 export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
 export const ALGOLIA_ADMIN_KEY = defineSecret("ALGOLIA_ADMIN_KEY");
 export const REDIS_URL = defineSecret("REDIS_URL");
+export const RECAPTCHA_SECRET_KEY = defineSecret("RECAPTCHA_SECRET_KEY");
 
 // Index names
 export const ALGOLIA_PRODUCTS_INDEX = "products";

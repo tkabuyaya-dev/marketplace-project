@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { Button } from '../components/Button';
 import { updateUserProfile } from '../services/firebase';
@@ -7,6 +8,7 @@ import { updateUserProfile } from '../services/firebase';
 const Profile: React.FC = () => {
   const { currentUser, handleLogout, handleSellerAccess } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editWhatsapp, setEditWhatsapp] = useState('');
@@ -39,7 +41,7 @@ const Profile: React.FC = () => {
   };
 
   const joinYear = new Date(currentUser.joinDate || Date.now()).getFullYear();
-  const roleLabel = currentUser.role === 'admin' ? 'Administrateur' : currentUser.role === 'seller' ? 'Vendeur' : 'Acheteur';
+  const roleLabel = currentUser.role === 'admin' ? t('profile.roleAdmin') : currentUser.role === 'seller' ? t('profile.roleSeller') : t('profile.roleBuyer');
 
   return (
     <div className="pt-20 md:pt-24 px-4 pb-24">
@@ -55,7 +57,7 @@ const Profile: React.FC = () => {
         {editing ? (
           <div className="space-y-3 text-left mb-6">
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">Nom</label>
+              <label className="block text-xs font-bold text-gray-400 mb-1">{t('profile.name')}</label>
               <input
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
@@ -63,16 +65,16 @@ const Profile: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">Bio</label>
+              <label className="block text-xs font-bold text-gray-400 mb-1">{t('profile.bio')}</label>
               <textarea
                 value={editBio}
                 onChange={e => setEditBio(e.target.value)}
-                placeholder="Quelques mots sur vous..."
+                placeholder={t('profile.bioPlaceholder')}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none min-h-[60px]"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">WhatsApp</label>
+              <label className="block text-xs font-bold text-gray-400 mb-1">{t('profile.whatsapp')}</label>
               <input
                 value={editWhatsapp}
                 onChange={e => setEditWhatsapp(e.target.value)}
@@ -81,8 +83,8 @@ const Profile: React.FC = () => {
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <Button variant="ghost" className="flex-1" onClick={() => setEditing(false)}>Annuler</Button>
-              <Button className="flex-1" onClick={handleSave} isLoading={saving}>Enregistrer</Button>
+              <Button variant="ghost" className="flex-1" onClick={() => setEditing(false)}>{t('profile.cancel')}</Button>
+              <Button className="flex-1" onClick={handleSave} isLoading={saving}>{t('profile.save')}</Button>
             </div>
           </div>
         ) : (
@@ -92,32 +94,32 @@ const Profile: React.FC = () => {
             {currentUser.bio && <p className="text-gray-500 text-xs mb-2 italic">"{currentUser.bio}"</p>}
             <div className="flex items-center justify-center gap-3 mb-4">
               <span className="inline-block px-3 py-1 bg-gray-700 rounded-full text-xs text-gray-300 uppercase tracking-wider">{roleLabel}</span>
-              <span className="text-xs text-gray-500">Depuis {joinYear}</span>
+              <span className="text-xs text-gray-500">{t('profile.since', { year: joinYear })}</span>
             </div>
-            <button onClick={startEdit} className="text-xs text-blue-400 hover:underline mb-4 block mx-auto">Modifier le profil</button>
+            <button onClick={startEdit} className="text-xs text-blue-400 hover:underline mb-4 block mx-auto">{t('profile.editProfile')}</button>
           </>
         )}
 
         <div className="space-y-3">
           {currentUser.role === 'seller' && currentUser.slug && (
             <Button className="w-full" variant="secondary" onClick={() => navigate(`/shop/${currentUser.slug}`)}>
-              Voir ma boutique publique
+              {t('profile.viewMyShop')}
             </Button>
           )}
           {currentUser.role === 'buyer' && (
             <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 border-none text-white" onClick={() => navigate('/register-seller')}>
-              Devenir Vendeur
+              {t('profile.becomeSeller')}
             </Button>
           )}
           {(currentUser.role === 'seller' || currentUser.role === 'admin') && (
             <Button className="w-full" variant="secondary" onClick={handleSellerAccess}>
-              {currentUser.role === 'admin' ? 'Admin Console' : 'Espace Vendeur'}
+              {currentUser.role === 'admin' ? t('profile.adminConsole') : t('profile.sellerArea')}
             </Button>
           )}
           <Button className="w-full" variant="secondary" onClick={() => navigate('/messenger')}>
-            Mes Messages
+            {t('profile.myMessages')}
           </Button>
-          <Button className="w-full border-red-900/50 text-red-400 hover:bg-red-900/20" variant="outline" onClick={handleLogout}>Se déconnecter</Button>
+          <Button className="w-full border-red-900/50 text-red-400 hover:bg-red-900/20" variant="outline" onClick={handleLogout}>{t('profile.logout')}</Button>
         </div>
       </div>
     </div>

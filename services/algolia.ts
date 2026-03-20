@@ -164,11 +164,20 @@ export async function algoliaSearchProducts(
     if (filters?.category) {
       facetFilters.push([`category:${filters.category}`]);
     }
+    if (filters?.sellerId) {
+      facetFilters.push([`sellerId:${filters.sellerId}`]);
+    }
+
+    // Build base filter string
+    let baseFilters = "status:approved";
+    if (filters?.inStock) {
+      numericFilters.push("stockQuantity > 0");
+    }
 
     const result = await algoliaSearch(PRODUCTS_INDEX, {
       query: queryText,
       hitsPerPage: maxResults,
-      filters: "status:approved",
+      filters: baseFilters,
       numericFilters: numericFilters.length > 0 ? numericFilters : undefined,
       facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
     });

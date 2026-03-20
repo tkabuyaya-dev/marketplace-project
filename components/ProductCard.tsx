@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Product } from '../types';
 import { CURRENCY, TC } from '../constants';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
@@ -17,6 +18,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
   currentUserId = null,
   initialLiked,
 }) => {
+  const { t } = useTranslation();
   const tc = TC;
   const [liked, setLiked] = useState(initialLiked || false);
   const [likeCount, setLikeCount] = useState(product.likesCount || 0);
@@ -112,7 +114,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
         {/* Badge Promu / Tendance */}
         {product.isPromoted && (
           <div className={`absolute top-2 left-2 ${tc.bg600} text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
-            Sponsorisé
+            {t('product.sponsored')}
           </div>
         )}
 
@@ -130,14 +132,14 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
         {/* Low stock badge */}
         {product.stockQuantity !== undefined && product.stockQuantity > 0 && product.stockQuantity <= 5 && (
           <div className="absolute bottom-2 left-2 bg-amber-500/90 text-white text-[10px] font-bold px-2 py-1 rounded-full">
-            Plus que {product.stockQuantity}
+            {t('product.onlyLeft', { count: product.stockQuantity })}
           </div>
         )}
 
         {/* Bouton Like (mise à jour optimiste) */}
         <button
           onClick={handleLike}
-          aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          aria-label={liked ? t('product.removeFromFavorites') : t('product.addToFavorites')}
           className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all duration-200 ${
             liked
               ? 'bg-red-500/30 text-red-400 scale-110'

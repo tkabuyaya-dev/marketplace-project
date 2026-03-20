@@ -13,7 +13,7 @@ import {
     getMarketplaces, addMarketplace, updateMarketplace, deleteMarketplace,
     BannerData, BannerActionType, updateUserSubscription, updateUserProfile,
     createNotification,
-    getCurrencies, updateCurrency, renewSubscription,
+    getCurrencies, updateCurrency, renewSubscription, seedInitialData,
 } from '../services/firebase';
 import { uploadImage, getOptimizedUrl } from '../services/cloudinary';
 import { CURRENCY } from '../constants';
@@ -1280,8 +1280,23 @@ export const AdminDashboard: React.FC = () => {
       </div>
       {currencies.length === 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center text-gray-500">
-          <p className="text-3xl mb-2">💱</p>
-          <p className="text-sm">Aucune devise configurée. Lancez le seed initial pour ajouter les devises par défaut.</p>
+          <p className="text-3xl mb-3">💱</p>
+          <p className="text-sm mb-4">Aucune devise configurée.</p>
+          <button
+            onClick={async () => {
+              try {
+                await seedInitialData();
+                await refreshData();
+                toast('Devises par défaut ajoutées avec succès', 'success');
+              } catch (err) {
+                console.error('Seed error:', err);
+                toast('Erreur lors du seed initial', 'error');
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg transition-colors"
+          >
+            Initialiser les devises par défaut
+          </button>
         </div>
       )}
     </div>

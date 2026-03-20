@@ -121,6 +121,14 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['status', 'sellerId', 'reports', 'isPromoted']))
         || (isAuth()
+          // Vendeur peut re-soumettre un produit rejeté (status: rejected → pending)
+          && resource.data.sellerId == request.auth.uid
+          && isNotSuspended()
+          && resource.data.status == 'rejected'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'resubmittedAt']))
+        || (isAuth()
           // Tout utilisateur auth peut incrémenter views ou likesCount uniquement
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likesCount']));
 
@@ -211,6 +219,22 @@ service cloud.firestore {
     // ─────────────────────────────────────────────────────────
     match /banners/{bannerId} {
       allow read: if true; // Public (affiché sur la home)
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CURRENCIES — Devises (admin gère, public lit)
+    // ─────────────────────────────────────────────────────────
+    match /currencies/{currencyId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // MARKETPLACES — Marchés physiques (admin gère, public lit)
+    // ─────────────────────────────────────────────────────────
+    match /marketplaces/{marketplaceId} {
+      allow read: if true;
       allow write: if isAdmin();
     }
 

@@ -9,6 +9,7 @@ import { updateMetaTags } from '../utils/meta';
 import { getMarketplaceInfo } from '../constants';
 
 const ShopMap = lazy(() => import('../components/ShopMap'));
+const ShopSearch = lazy(() => import('../components/ShopSearch'));
 
 const ShopProfile: React.FC = () => {
   const { slugOrId } = useParams<{ slugOrId: string }>();
@@ -190,6 +191,20 @@ const ShopProfile: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 mb-10">
           <Suspense fallback={<div className="h-48 bg-gray-800 rounded-xl animate-pulse" />}>
             <ShopMap coordinates={seller.sellerDetails.gps} shopName={seller.sellerDetails.shopName || seller.name} />
+          </Suspense>
+        </div>
+      )}
+
+      {/* SHOP SEARCH — intra-boutique search with filters */}
+      {!loadingProducts && products.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 mb-8">
+          <Suspense fallback={null}>
+            <ShopSearch
+              products={products}
+              sellerId={seller.id}
+              sellerName={seller.sellerDetails?.shopName || seller.name}
+              allLoaded={products.length < 50}
+            />
           </Suspense>
         </div>
       )}

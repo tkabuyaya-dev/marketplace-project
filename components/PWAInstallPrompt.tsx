@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useToast } from './Toast';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -10,6 +11,7 @@ const DISMISS_KEY = 'aurabuja_pwa_dismissed';
 const DISMISS_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
 export const PWAInstallPrompt: React.FC = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [show, setShow] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -62,7 +64,7 @@ export const PWAInstallPrompt: React.FC = () => {
       setDeferredPrompt(null);
     } else {
       // iOS fallback: show manual instructions
-      toast("Pour installer : Partager → Sur l'écran d'accueil → Confirmer", 'info');
+      toast(t('pwa.iosInstructions'), 'info');
     }
   };
 
@@ -77,27 +79,26 @@ export const PWAInstallPrompt: React.FC = () => {
     <div className="fixed inset-0 z-[9999] bg-gray-950/95 backdrop-blur-xl flex items-center justify-center p-6 animate-fade-in">
       <div className="w-full max-w-sm text-center space-y-6">
         {/* Logo */}
-        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-600 to-rose-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-900/50">
-          <span className="text-3xl font-black text-white">A</span>
+        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-gold-400 to-gold-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-gold-900/50">
+          <span className="text-3xl font-black text-gray-900">A</span>
         </div>
 
         <div>
           <h2 className="text-2xl font-black text-white mb-2">
-            Installez AuraBuja
+            {t('pwa.installTitle')}
           </h2>
           <p className="text-gray-400 text-sm leading-relaxed">
-            Accédez au marketplace directement depuis votre écran d'accueil.
-            Plus rapide, fonctionne hors-ligne, zéro espace de stockage.
+            {t('pwa.installSubtitle')}
           </p>
         </div>
 
         {/* Benefits */}
         <div className="space-y-3 text-left">
           {[
-            { icon: '⚡', text: 'Chargement instantané' },
-            { icon: '📴', text: 'Fonctionne sans internet' },
-            { icon: '🔔', text: 'Notifications en temps réel' },
-            { icon: '💾', text: "Pas d'espace de stockage utilisé" },
+            { icon: '⚡', text: t('pwa.benefit1') },
+            { icon: '📴', text: t('pwa.benefit2') },
+            { icon: '🔔', text: t('pwa.benefit3') },
+            { icon: '💾', text: t('pwa.benefit4') },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-4 py-3 border border-gray-700/50">
               <span className="text-lg">{item.icon}</span>
@@ -111,15 +112,15 @@ export const PWAInstallPrompt: React.FC = () => {
           <button
             onClick={handleInstall}
             disabled={installing}
-            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-rose-600 text-white font-bold rounded-2xl text-sm shadow-lg shadow-blue-900/30 active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="w-full py-3.5 bg-gradient-to-r from-gold-400 to-gold-600 text-gray-900 font-bold rounded-2xl text-sm shadow-lg shadow-gold-900/30 active:scale-[0.98] transition-transform disabled:opacity-50"
           >
-            {installing ? 'Installation...' : 'Installer l\'application'}
+            {installing ? t('pwa.installing') : t('pwa.installBtn')}
           </button>
           <button
             onClick={handleDismiss}
             className="w-full py-3 text-gray-500 text-sm hover:text-white transition-colors"
           >
-            Continuer sur le web
+            {t('pwa.continueWeb')}
           </button>
         </div>
       </div>

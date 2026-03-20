@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Product, SearchFilters, User } from '../types';
 import { searchProducts, searchSellers } from '../services/firebase';
 import { algoliaSearchProducts, algoliaSearchSellers } from '../services/algolia';
@@ -21,6 +22,7 @@ const DEFAULT_FILTERS: SearchFilters = {
 const DEBOUNCE_MS = 350;
 
 export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, onProductClick, onShopClick }) => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
   const [shopResults, setShopResults] = useState<User[]>([]);
@@ -185,7 +187,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                    value={query}
                    onChange={(e) => setQuery(e.target.value)}
                    onKeyDown={(e) => e.key === 'Enter' && handleSubmitSearch()}
-                   placeholder="Rechercher produits ou boutiques..."
+                   placeholder={t('search.searchPlaceholder')}
                    className="w-full bg-gray-800/50 border border-gray-700/50 rounded-2xl pl-12 pr-12 py-3.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-gray-800 transition-all outline-none"
                  />
                  {query && (
@@ -216,7 +218,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                  className={`p-3.5 rounded-2xl border transition-all duration-300 flex items-center gap-2 ${showFilters ? 'bg-white text-gray-950 border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'}`}
                >
                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                 <span className="hidden md:inline text-sm font-bold">Filtres</span>
+                 <span className="hidden md:inline text-sm font-bold">{t('search.filters')}</span>
                </button>
            </div>
 
@@ -224,18 +226,18 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
               <div className="bg-gray-900 border border-gray-700 rounded-3xl p-5 shadow-inner shadow-black/50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Trier</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">{t('search.sortLabel')}</label>
                     <div className="flex flex-wrap gap-2">
-                       {[{ id: 'price_asc', label: 'Prix -' }, { id: 'price_desc', label: 'Prix +' }, { id: 'newest', label: 'Nouveautés' }].map(opt => (
+                       {[{ id: 'price_asc', label: t('search.priceAsc') }, { id: 'price_desc', label: t('search.priceDesc') }, { id: 'newest', label: t('search.newest') }].map(opt => (
                          <button key={opt.id} onClick={() => toggleFilter('sort', opt.id)} className={`px-3 py-1.5 rounded-lg text-xs border ${filters.sort === opt.id ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>{opt.label}</button>
                        ))}
                     </div>
                  </div>
                  <div>
-                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Prix (FBu)</label>
-                     <div className="flex gap-2"><input type="number" placeholder="Min" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white" onChange={e => toggleFilter('minPrice', e.target.value ? Number(e.target.value) : undefined)} /><input type="number" placeholder="Max" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white" onChange={e => toggleFilter('maxPrice', e.target.value ? Number(e.target.value) : undefined)} /></div>
+                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">{t('search.priceLabel')}</label>
+                     <div className="flex gap-2"><input type="number" placeholder={t('search.min')} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white" onChange={e => toggleFilter('minPrice', e.target.value ? Number(e.target.value) : undefined)} /><input type="number" placeholder={t('search.max')} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white" onChange={e => toggleFilter('maxPrice', e.target.value ? Number(e.target.value) : undefined)} /></div>
                  </div>
-                 <div className="flex justify-end items-end"><button onClick={clearFilters} className="text-xs text-red-400 underline">Reset</button></div>
+                 <div className="flex justify-end items-end"><button onClick={clearFilters} className="text-xs text-red-400 underline">{t('search.reset')}</button></div>
               </div>
            </div>
         </div>
@@ -251,7 +253,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
               {/* Recent searches */}
               {recentSearches.length > 0 && (
                 <div className="animate-fade-in">
-                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recherches récentes</h3>
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.recentSearches')}</h3>
                   <div className="flex flex-wrap gap-2">
                     {recentSearches.map((term, i) => (
                       <div key={i} className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/50 rounded-full">
@@ -275,7 +277,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
 
               {/* Popular searches */}
               <div className="animate-fade-in">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recherches populaires</h3>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.popularSearches')}</h3>
                 <div className="flex flex-wrap gap-2">
                   {getPopularSearches().map((term, i) => (
                     <button
@@ -297,7 +299,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
           {/* PRODUCTS RESULTS (priorité) */}
           {productResults.length > 0 && (
               <div className="animate-fade-in">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Produits ({productResults.length})</h3>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.productsCount', { count: productResults.length })}</h3>
                   <div className="space-y-2">
                     {productResults.map((product) => (
                         <div
@@ -331,7 +333,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
           {/* SHOPS RESULTS (après les produits) */}
           {shopResults.length > 0 && (
             <div className="animate-fade-in">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Boutiques ({shopResults.length})</h3>
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.shopsCount', { count: shopResults.length })}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {shopResults.map((shop) => (
                         <div
@@ -350,9 +352,9 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                                     <h4 className="text-white font-bold group-hover:text-blue-400 transition-colors">{shop.name}</h4>
                                     {shop.isVerified && <span className="text-blue-500 text-xs">✓</span>}
                                 </div>
-                                <p className="text-xs text-gray-500">Boutique Officielle</p>
+                                <p className="text-xs text-gray-500">{t('search.officialShop')}</p>
                             </div>
-                            <button className="px-4 py-1.5 rounded-full bg-blue-600/10 text-blue-400 text-xs font-bold group-hover:bg-blue-600 group-hover:text-white transition-all">Visiter</button>
+                            <button className="px-4 py-1.5 rounded-full bg-blue-600/10 text-blue-400 text-xs font-bold group-hover:bg-blue-600 group-hover:text-white transition-all">{t('search.visit')}</button>
                         </div>
                     ))}
                 </div>
@@ -361,7 +363,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
 
           {showNoResults && (
              <div className="text-center mt-10 text-gray-500">
-               <p>Aucun résultat trouvé.</p>
+               <p>{t('search.noResultsFound')}</p>
              </div>
           )}
 
@@ -369,7 +371,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
       </div>
 
       <div className="hidden md:block text-center py-3 text-[10px] text-gray-600 border-t border-gray-800 bg-gray-900">
-        <span className="mx-2">ESC pour fermer</span>
+        <span className="mx-2">{t('search.escToClose')}</span>
       </div>
     </div>
   );

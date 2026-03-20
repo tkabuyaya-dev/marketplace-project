@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { TC } from '../constants';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
@@ -10,6 +11,7 @@ import { useAppContext } from '../contexts/AppContext';
 export const Favorites: React.FC = () => {
   const { currentUser } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const tc = TC;
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -80,15 +82,15 @@ export const Favorites: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Connectez-vous</h2>
+          <h2 className="text-xl font-bold text-white mb-2">{t('favorites.loginRequired')}</h2>
           <p className="text-gray-400 mb-6 max-w-sm">
-            Connectez-vous pour voir vos produits favoris et ne rien manquer.
+            {t('favorites.loginSubtitle')}
           </p>
           <button
             onClick={() => navigate('/login')}
             className={`px-6 py-3 ${tc.bg600} text-white rounded-full font-medium hover:opacity-90 transition-opacity`}
           >
-            Se connecter
+            {t('favorites.loginBtn')}
           </button>
         </div>
       </div>
@@ -105,9 +107,9 @@ export const Favorites: React.FC = () => {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">Mes Favoris</h1>
+          <h1 className="text-2xl font-bold text-white">{t('favorites.title')}</h1>
           {!loading && products.length > 0 && (
-            <p className="text-sm text-gray-400">{products.length} produit{products.length > 1 ? 's' : ''}</p>
+            <p className="text-sm text-gray-400">{t('favorites.productCount', { count: products.length })}</p>
           )}
         </div>
       </div>
@@ -127,15 +129,15 @@ export const Favorites: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Aucun favori</h2>
+          <h2 className="text-xl font-bold text-white mb-2">{t('favorites.empty')}</h2>
           <p className="text-gray-400 mb-6 max-w-sm">
-            Vous n'avez pas encore aime de produits. Explorez le marche et ajoutez vos coups de coeur !
+            {t('favorites.emptySubtitle')}
           </p>
           <button
             onClick={() => navigate('/')}
             className={`px-6 py-3 ${tc.bg600} text-white rounded-full font-medium hover:opacity-90 transition-opacity`}
           >
-            Explorer les produits
+            {t('favorites.explore')}
           </button>
         </div>
       ) : (

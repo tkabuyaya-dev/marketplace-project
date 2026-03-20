@@ -13,7 +13,7 @@
 
   body {
     overscroll-behavior-y: none;
-    background-color: #0b0f19;
+    background-color: #111318;
     color: #f3f4f6;
   }
 
@@ -40,13 +40,13 @@
 
   /* Gradient text */
   .text-gradient-tech {
-    background: linear-gradient(to right, #3b82f6, #22d3ee);
+    background: linear-gradient(to right, #F5C842, #D4941A);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .text-gradient-beauty {
-    background: linear-gradient(to right, #f43f5e, #fbbf24);
+    background: linear-gradient(to right, #FFD866, #F5C842);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

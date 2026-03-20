@@ -34,6 +34,9 @@ export const CITIES: CityInfo[] = [
   { id: 'kampala',   name: 'Kampala',     countryId: 'ug', flag: '🇺🇬', marketplaces: [] },
   { id: 'daressalaam', name: 'Dar es Salaam', countryId: 'tz', flag: '🇹🇿', marketplaces: [] },
   { id: 'dodoma',   name: 'Dodoma',     countryId: 'tz', flag: '🇹🇿', marketplaces: [] },
+  { id: 'nairobi',  name: 'Nairobi',    countryId: 'ke', flag: '🇰🇪', marketplaces: [] },
+  { id: 'mombasa',  name: 'Mombasa',    countryId: 'ke', flag: '🇰🇪', marketplaces: [] },
+  { id: 'kisumu',   name: 'Kisumu',     countryId: 'ke', flag: '🇰🇪', marketplaces: [] },
 ];
 
 export const getMarketplacesForCity = (cityId: string): MarketplaceInfo[] => {
@@ -73,6 +76,19 @@ export const PROVINCES_TANZANIE = [
   'Pemba North', 'Pemba South', 'Unguja North', 'Unguja South',
 ];
 
+export const PROVINCES_KENYA = [
+  'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu',
+  'Kiambu', 'Machakos', 'Kajiado', 'Kilifi', 'Kwale',
+  'Nyeri', 'Murang\'a', 'Kakamega', 'Bungoma', 'Nandi',
+  'Kericho', 'Bomet', 'Trans-Nzoia', 'Laikipia', 'Embu',
+  'Meru', 'Tharaka-Nithi', 'Makueni', 'Kitui', 'Taita-Taveta',
+  'Lamu', 'Tana River', 'Garissa', 'Wajir', 'Mandera',
+  'Marsabit', 'Isiolo', 'Samburu', 'Turkana', 'West Pokot',
+  'Baringo', 'Elgeyo-Marakwet', 'Nyandarua', 'Kirinyaga',
+  'Nyamira', 'Kisii', 'Homa Bay', 'Migori', 'Siaya',
+  'Vihiga', 'Busia', 'Narok',
+];
+
 /** Lookup provinces by country ID */
 export const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
   bi: PROVINCES_BURUNDI,
@@ -80,6 +96,7 @@ export const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
   rw: PROVINCES_RWANDA,
   ug: PROVINCES_UGANDA,
   tz: PROVINCES_TANZANIE,
+  ke: PROVINCES_KENYA,
 };
 
 // --- PAYS SUPPORTÉS (Extensible par Admin) ---
@@ -89,6 +106,7 @@ export const INITIAL_COUNTRIES: Country[] = [
     { id: 'rw', name: 'Rwanda', code: 'RW', currency: 'FRw', flag: '🇷🇼', isActive: true },
     { id: 'ug', name: 'Ouganda', code: 'UG', currency: 'USh', flag: '🇺🇬', isActive: true },
     { id: 'tz', name: 'Tanzanie', code: 'TZ', currency: 'TZS', flag: '🇹🇿', isActive: true },
+    { id: 'ke', name: 'Kenya', code: 'KE', currency: 'KES', flag: '🇰🇪', isActive: true },
 ];
 
 // --- DEVISES (Admin-managed via Firestore, seeded from here) ---
@@ -99,29 +117,32 @@ export const INITIAL_CURRENCIES: Currency[] = [
   { id: 'UGX', code: 'UGX', name: 'Shilling Ougandais',    symbol: 'USh', countryId: 'ug',   isActive: true },
   { id: 'TZS', code: 'TZS', name: 'Shilling Tanzanien',    symbol: 'TZS', countryId: 'tz',   isActive: true },
   { id: 'USD', code: 'USD', name: 'Dollar Américain',       symbol: '$',   countryId: 'intl', isActive: true },
+  { id: 'KES', code: 'KES', name: 'Shilling Kényan',        symbol: 'KES', countryId: 'ke',   isActive: true },
 ];
 
 export const THEME: ThemeColors = {
-  primary: 'blue',
-  accent: 'cyan',
-  gradient: 'from-blue-500 to-cyan-400',
-  heroGradient: 'from-blue-950 via-indigo-900 to-slate-900',
+  primary: 'gold',
+  accent: 'amber',
+  gradient: 'from-gold-400 to-gold-600',
+  heroGradient: 'from-gray-950 via-gold-950 to-gray-950',
 };
 
 // --- THEME CLASSES STATIQUES (Tailwind JIT ne compile pas les interpolations dynamiques) ---
 export const TC = {
-  bg600: 'bg-blue-600',
-  bg500: 'bg-blue-500',
-  bg500_10: 'bg-blue-500/10',
-  text400: 'text-blue-400',
-  text500: 'text-blue-500',
-  text400_70: 'text-blue-400/70',
-  border500: 'border-blue-500',
-  border500_50: 'border-blue-500/50',
-  border500_20: 'border-blue-500/20',
-  shadowLg: 'shadow-lg shadow-blue-500/25',
-  hoverBorder: 'hover:border-blue-500/50',
-  hoverShadow: 'hover:shadow-blue-900/20',
+  bg600: 'bg-gold-400',
+  bg500: 'bg-gold-500',
+  bg500_10: 'bg-gold-400/10',
+  bg950: 'bg-gold-950',
+  text400: 'text-gold-400',
+  text500: 'text-gold-400',
+  text400_70: 'text-gold-400/70',
+  border400: 'border-gold-400',
+  border500: 'border-gold-400',
+  border500_50: 'border-gold-400/50',
+  border500_20: 'border-gold-400/20',
+  shadowLg: 'shadow-lg shadow-gold-400/20',
+  hoverBorder: 'hover:border-gold-400/50',
+  hoverShadow: 'hover:shadow-gold-900/20',
 } as const;
 
 // --- SUBSCRIPTION TIERS (Business Model) ---

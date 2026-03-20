@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { THEME, TC } from '../constants';
 import { Product, MarketplaceId, Country, Marketplace } from '../types';
 import { ProductCard } from '../components/ProductCard';
@@ -8,12 +9,14 @@ import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { getProducts, getBanners, checkIsLikedBatch, getTrendingProducts, getPopularProducts, getCountries, getMarketplacesByCountry } from '../services/firebase';
 import { getRecentlyViewedIds, getPersonalizedRecommendations } from '../services/recommendations';
 import { getProductsByIds } from '../services/firebase';
+import { trackCountrySwitch } from '../services/analytics';
 import { useAppContext } from '../contexts/AppContext';
 import { useCategories } from '../hooks/useCategories';
 
 export const Home: React.FC = () => {
   const { currentUser, activeCountry, setActiveCountry, activeMarketplace, setActiveMarketplace } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const onProductClick = (product: Product) => {
     navigate(`/product/${product.slug || product.id}`, { state: { product } });
   };
@@ -131,14 +134,14 @@ export const Home: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-sm text-gray-400">
             <span>🌍</span>
-            <span>Pays</span>
+            <span>{t('home.country')}</span>
           </div>
           <div className="overflow-x-auto scrollbar-hide -mr-4 pr-4">
             <div className="flex gap-1.5">
               {countries.map((country) => (
                 <button
                   key={country.id}
-                  onClick={() => setActiveCountry(country.id)}
+                  onClick={() => { trackCountrySwitch(activeCountry, country.id); setActiveCountry(country.id); }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
                     activeCountry === country.id
                       ? 'bg-white text-gray-900 border-white shadow-md'
@@ -165,7 +168,7 @@ export const Home: React.FC = () => {
                     : 'bg-gray-800/60 text-gray-400 border-gray-700/50 hover:bg-gray-700 hover:text-white'
                 }`}
               >
-                🏪 Tous les marchés
+                🏪 {t('home.allMarketplaces')}
               </button>
               {marketplaces.map((mp) => (
                 <button
@@ -188,7 +191,7 @@ export const Home: React.FC = () => {
         {/* Hint when no marketplaces for selected country */}
         {marketplaces.length === 0 && activeCountryInfo && (
           <p className="text-xs text-gray-500 pl-1">
-            {activeCountryInfo.flag} Tous les produits de {activeCountryInfo.name}
+            {activeCountryInfo.flag} {t('home.allProductsFrom', { name: activeCountryInfo.name })}
           </p>
         )}
       </div>
@@ -200,7 +203,7 @@ export const Home: React.FC = () => {
 
       {/* Trending Products */}
       <ProductSection
-        title="Tendances du moment"
+        title={t('home.sections.trending')}
         icon="🔥"
         products={trendingProducts}
         loading={sectionsLoading}
@@ -222,7 +225,7 @@ export const Home: React.FC = () => {
               }`}
             >
               <span className="text-lg">🔍</span>
-              <span className="text-sm font-medium">Tout</span>
+              <span className="text-sm font-medium">{t('home.all')}</span>
             </button>
 
           {categories.map((cat) => (
@@ -246,7 +249,7 @@ export const Home: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            🛒 Dernières annonces
+            🛒 {t('home.latestListings')}
           </h3>
         </div>
 
@@ -268,7 +271,7 @@ export const Home: React.FC = () => {
               />
             ))}
             {products.length === 0 && !loading && (
-              <div className="col-span-full text-center py-10 text-gray-500">Aucun produit dans cette catégorie.</div>
+              <div className="col-span-full text-center py-10 text-gray-500">{t('home.noProductsInCategory')}</div>
             )}
           </div>
         )}
@@ -282,14 +285,14 @@ export const Home: React.FC = () => {
             disabled={loadingMore}
             className="px-8 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-full text-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
-            {loadingMore ? 'Chargement...' : 'Voir plus'}
+            {loadingMore ? t('home.loading') : t('home.loadMore')}
           </button>
         </div>
       )}
 
       {/* Recommended for you */}
       <ProductSection
-        title="Recommandé pour vous"
+        title={t('home.recommendedForYou')}
         icon="✨"
         products={recommended}
         loading={sectionsLoading}
@@ -300,7 +303,7 @@ export const Home: React.FC = () => {
 
       {/* Popular Products */}
       <ProductSection
-        title="Les plus populaires"
+        title={t('home.mostPopular')}
         icon="⭐"
         products={popularProducts}
         loading={sectionsLoading}
@@ -311,7 +314,7 @@ export const Home: React.FC = () => {
 
       {/* Recently Viewed */}
       <ProductSection
-        title="Vus récemment"
+        title={t('home.recentlyViewed')}
         icon="👁"
         products={recentlyViewed}
         currentUserId={currentUser?.id}
