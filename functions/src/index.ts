@@ -35,3 +35,6 @@ export { cachedSearch } from "./search-proxy.js";
 
 // reCAPTCHA v3 verification
 export { verifyRecaptcha } from "./recaptcha.js";
+
+// Subscription expiration cron (daily at 02:00 UTC)
+export { checkSubscriptions } from "./subscription-cron.js";

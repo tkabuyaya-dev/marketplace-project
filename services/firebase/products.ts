@@ -228,6 +228,24 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     throw new Error(`Rôle insuffisant: votre rôle Firestore est "${userData.role}". Vous devez compléter l'inscription vendeur.`);
   }
 
+  // ── Subscription validation (defense in depth — Firestore rules also enforce this) ──
+  const sellerDetails = userData.sellerDetails || {};
+  const maxProducts = sellerDetails.maxProducts ?? 5;
+  const productCount = userData.productCount ?? 0;
+  const expiresAt = sellerDetails.subscriptionExpiresAt;
+  const isPaidTier = maxProducts > 5;
+
+  // If paid tier is expired, enforce free tier limit
+  const effectiveLimit = (isPaidTier && expiresAt && Date.now() > expiresAt) ? 5 : maxProducts;
+
+  if (productCount >= effectiveLimit) {
+    throw new Error(
+      isPaidTier && expiresAt && Date.now() > expiresAt
+        ? 'Votre abonnement a expiré. Renouvelez votre plan pour publier plus de produits.'
+        : `Limite de produits atteinte (${effectiveLimit} max). Passez au plan supérieur.`
+    );
+  }
+
   const title = (productData.title || '').trim();
   const slug = generateUniqueSlug(title);
 

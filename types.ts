@@ -198,7 +198,8 @@ export enum RouteName {
   SELLER_REGISTRATION = 'seller_registration', 
   ADMIN_DASHBOARD = 'admin_dashboard',
   PROFILE = 'profile',
-  LOGIN = 'login'
+  LOGIN = 'login',
+  PLANS = 'plans'
 }
 
 export interface NavigationState {
@@ -245,4 +246,38 @@ export interface SearchFilters {
   category?: string;
   sellerId?: string;
   inStock?: boolean;
+}
+
+// ─── Subscription Requests ───
+export type SubscriptionRequestStatus = 'pending' | 'pending_validation' | 'approved' | 'rejected';
+
+export interface SubscriptionRequest {
+  id: string;
+  userId: string;
+  sellerName: string;
+  countryId: string;
+  planId: string;
+  planLabel: string;
+  amount: number;
+  currency: string;
+  status: SubscriptionRequestStatus;
+  transactionRef: string | null;
+  proofUrl: string | null;
+  createdAt: number;
+  updatedAt: number;
+  approvedBy: string | null;
+  expiresAt: number | null;
+  rejectionReason: string | null;
+  maxProducts: number;
+}
+
+export interface PaymentMethod {
+  name: string;
+  number: string;
+  icon: string;
+}
+
+export interface SubscriptionPricing {
+  prices: Record<string, number>; // tierId → price in local currency
+  currency: string;
 }

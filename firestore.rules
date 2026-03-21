@@ -55,6 +55,23 @@ service cloud.firestore {
       return price is number && price >= 0 && price <= 999999999;
     }
 
+    // ── Subscription Enforcement (server-side) ──
+
+    // Check if seller's subscription allows creating products
+    function canCreateProduct() {
+      let seller = getUserData();
+      let maxProducts = seller.get('sellerDetails', {}).get('maxProducts', 5);
+      let productCount = seller.get('productCount', 0);
+      let expiresAt = seller.get('sellerDetails', {}).get('subscriptionExpiresAt', null);
+      let isPaid = maxProducts > 5;
+
+      // Rule 1: If paid tier and expired → enforce free tier limit (5)
+      // Rule 2: If within limits → allow
+      return (isPaid && expiresAt != null && expiresAt < request.time.toMillis())
+        ? productCount < 5                // Expired → free tier limit
+        : productCount < maxProducts;     // Active → tier limit
+    }
+
     // ─────────────────────────────────────────────────────────
     // USERS — Profils publics, écriture = soi-même uniquement
     // ─────────────────────────────────────────────────────────
@@ -96,9 +113,10 @@ service cloud.firestore {
         || (isAuth() && resource.data.sellerId == request.auth.uid)
         || isAdmin();
 
-      // Création: vendeur authentifié, non suspendu, champs validés
+      // Création: vendeur authentifié, non suspendu, abonnement valide, champs validés
       allow create: if isSeller()
         && isNotSuspended()
+        && canCreateProduct()
         && request.resource.data.sellerId == request.auth.uid
         && validString(request.resource.data.title, 200)
         && validString(request.resource.data.description, 5000)
@@ -311,6 +329,40 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['userId', 'productId', 'category', 'action', 'createdAt']);
 
       allow update, delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // SUBSCRIPTION REQUESTS — Demandes d'abonnement
+    // ─────────────────────────────────────────────────────────
+    match /subscriptionRequests/{requestId} {
+      // Lecture: admin voit tout, seller voit ses propres demandes
+      allow read: if isAdmin()
+        || (isAuth() && resource.data.userId == request.auth.uid);
+
+      // Création: vendeur authentifié crée sa propre demande
+      allow create: if isAuth()
+        && isNotSuspended()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll(['userId', 'sellerName', 'countryId', 'planId', 'planLabel', 'amount', 'currency', 'status', 'maxProducts']);
+
+      // Update: admin peut tout modifier, seller peut seulement confirmer paiement
+      allow update: if isAdmin()
+        || (isAuth()
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'pending_validation'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'transactionRef', 'updatedAt']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // SUBSCRIPTION PRICING — Prix par pays (admin gère, public lit)
+    // ─────────────────────────────────────────────────────────
+    match /subscriptionPricing/{countryId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // ─────────────────────────────────────────────────────────

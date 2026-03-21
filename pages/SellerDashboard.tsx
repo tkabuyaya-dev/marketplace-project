@@ -1,13 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Product, User, ProductStatus, Category, MarketplaceId, Currency, Marketplace } from '../types';
-import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, getMarketplacesByCountry, getFirstAdmin, downgradeToFree } from '../services/firebase';
+import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, getMarketplacesByCountry, getFirstAdmin } from '../services/firebase';
 import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
-import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT } from '../constants';
+import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
+import { useProductScore } from '../hooks/useProductScore';
+import { compressImages } from '../utils/imageCompressor';
+import { generateDescription } from '../utils/descriptionTemplates';
+import { getSubscriptionStatus } from '../utils/subscription';
+import { SmartImageUpload } from '../components/SmartImageUpload';
+import { SmartTitleInput } from '../components/SmartTitleInput';
+import { ProductQualityScore } from '../components/ProductQualityScore';
+import { ProductPreview } from '../components/ProductPreview';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product';
 
@@ -59,11 +67,9 @@ export const SellerDashboard: React.FC = () => {
   const sellerCountryId = currentUser.sellerDetails?.countryId || 'bi';
   const sellerProvinces = PROVINCES_BY_COUNTRY[sellerCountryId] || [];
 
-  // Subscription expiration
-  const subscriptionExpiresAt = currentUser.sellerDetails?.subscriptionExpiresAt;
-  const daysRemaining = subscriptionExpiresAt ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))) : null;
-  const isExpired = subscriptionExpiresAt ? Date.now() > subscriptionExpiresAt : false;
-  const isPaidTier = (currentUser.sellerDetails?.maxProducts ?? 5) > 5;
+  // Subscription status — computed from shared utility (single source of truth)
+  // Server-side enforcement via Firestore rules + Cloud Function cron.
+  // This is UI-only: reflects data already validated server-side.
 
   // Form State
   const [title, setTitle] = useState('');
@@ -78,6 +84,14 @@ export const SellerDashboard: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState('');
   const [formError, setFormError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+
+  // Product Quality Score
+  const productScore = useProductScore({
+    title, description: desc, price, category, subCategory, originalPrice,
+    imageCount: imageFiles.length,
+  });
 
   // Edit rejected product state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -103,14 +117,6 @@ export const SellerDashboard: React.FC = () => {
     getMarketplacesByCountry(sellerCountryId).then(setSellerMarketplaces);
   }, [sellerCountryId]);
 
-  // Auto-downgrade if subscription expired
-  useEffect(() => {
-    if (isPaidTier && isExpired) {
-      downgradeToFree(currentUser.id);
-      toast("Votre abonnement a expiré. Vous êtes revenu au plan gratuit (5 produits max). Contactez l'admin pour renouveler.", 'error');
-    }
-  }, [isExpired, isPaidTier]);
-
   useEffect(() => {
     const load = async () => {
       const data = await getSellerAllProducts(currentUser.id);
@@ -124,65 +130,89 @@ export const SellerDashboard: React.FC = () => {
   const hasNif = !!currentUser.sellerDetails?.nif;
   const currentCount = myProducts.length;
 
-  // LOGIQUE DE LIMITATION — Priorité: admin-set > expired-check > NIF-based > free
-  const adminMaxProducts = currentUser.sellerDetails?.maxProducts;
-  const adminTierLabel = currentUser.sellerDetails?.tierLabel;
-
-  let currentTier;
-  if (isPaidTier && isExpired) {
-      // Abonnement expiré → force free tier
-      currentTier = INITIAL_SUBSCRIPTION_TIERS[0];
-  } else if (adminMaxProducts !== undefined && adminTierLabel) {
-      currentTier = {
-        id: 'admin_set',
-        label: adminTierLabel,
-        min: 0,
-        max: adminMaxProducts >= 99999 ? null : adminMaxProducts,
-        price: 0,
-        requiresNif: true,
-      };
-  } else if (!hasNif) {
-      currentTier = INITIAL_SUBSCRIPTION_TIERS[0]; // free: max 5
-  } else {
-      currentTier = INITIAL_SUBSCRIPTION_TIERS.find(t =>
-        t.requiresNif && currentCount >= t.min && (t.max === null || currentCount <= t.max)
-      ) || INITIAL_SUBSCRIPTION_TIERS[1];
-  }
+  // Subscription status — single source of truth from shared utility.
+  // Server-side enforcement: Firestore rules + Cloud Function cron.
+  // This is UI-only: reflects data already validated server-side.
+  const subStatus = getSubscriptionStatus({
+    maxProducts: currentUser.sellerDetails?.maxProducts,
+    tierLabel: currentUser.sellerDetails?.tierLabel,
+    subscriptionExpiresAt: currentUser.sellerDetails?.subscriptionExpiresAt,
+    productCount: currentCount,
+    hasNif,
+  });
+  const { currentTier, isExpired, isPaidTier, daysRemaining, isLimitReached, progressPercentage } = subStatus;
 
   // Warning flags
   const showUpgradeWarning = currentTier.id === 'free' && currentCount >= FREE_TIER_WARNING_AT;
   const showExpirationWarning = isPaidTier && daysRemaining !== null && daysRemaining <= 7 && !isExpired;
-
+  const showUrgentWarning = isPaidTier && daysRemaining !== null && daysRemaining <= 3 && daysRemaining > 0;
   const nextTier = INITIAL_SUBSCRIPTION_TIERS.find(t => t.min > (currentTier.max || 9999)) || currentTier;
-  const isLimitReached = currentTier.max !== null && currentCount >= currentTier.max;
-  const progressPercentage = currentTier.max ? (currentCount / currentTier.max) * 100 : 100;
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  // UI-only toast for expired sellers visiting dashboard
+  useEffect(() => {
+    if (isPaidTier && isExpired) {
+      toast("Votre abonnement a expire. Rendez-vous sur la page Plans pour renouveler.", 'error');
+    }
+  }, [isExpired, isPaidTier]);
 
-    const total = imageFiles.length + files.length;
+  const handleSmartImageAdd = useCallback(async (newFiles: File[], newPreviews: string[]) => {
+    const total = imageFiles.length + newFiles.length;
     if (total > 5) {
       setFormError('Maximum 5 images par produit.');
       return;
     }
     setFormError('');
-    setImageFiles(prev => [...prev, ...files]);
 
-    // Generate previews
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setImagePreviews(prev => [...prev, ev.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+    // Show previews immediately (before compression)
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+
+    // Compress in background
+    setCompressing(true);
+    try {
+      const compressed = await compressImages(newFiles);
+      setImageFiles(prev => [...prev, ...compressed]);
+    } catch {
+      // Fallback to originals
+      setImageFiles(prev => [...prev, ...newFiles]);
+    } finally {
+      setCompressing(false);
+    }
+  }, [imageFiles.length]);
 
   const removeImage = (index: number) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
+
+  const reorderImages = useCallback((from: number, to: number) => {
+    setImageFiles(prev => {
+      const arr = [...prev];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return arr;
+    });
+    setImagePreviews(prev => {
+      const arr = [...prev];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return arr;
+    });
+  }, []);
+
+  const handleSuggestionSelect = useCallback((product: Product) => {
+    if (product.category) setCategory(product.category);
+    if (product.subCategory) setSubCategory(product.subCategory);
+  }, []);
+
+  const handleGenerateDescription = useCallback(() => {
+    if (!title.trim()) {
+      toast('Entrez d\'abord un titre pour generer la description.', 'error');
+      return;
+    }
+    const generated = generateDescription(title, category, price ? `${price} ${productCurrency || CURRENCY}` : undefined);
+    setDesc(generated);
+    toast('Description generee ! Personnalisez-la selon votre produit.', 'success');
+  }, [title, category, price, productCurrency, toast]);
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -529,7 +559,7 @@ export const SellerDashboard: React.FC = () => {
                           style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
                         ></div>
                     </div>
-                    {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">Limite atteinte. Contactez l'admin pour un upgrade.</p>}
+                    {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">Limite atteinte. <a href="/plans" className="underline text-gold-400">Upgrade votre plan</a></p>}
                     {daysRemaining !== null && isPaidTier && !isExpired && (
                       <p className={`text-[10px] mt-1.5 font-medium ${daysRemaining <= 7 ? 'text-red-300' : daysRemaining <= 15 ? 'text-yellow-300' : 'text-green-300'}`}>
                         {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
@@ -554,26 +584,28 @@ export const SellerDashboard: React.FC = () => {
           <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-2xl">🚨</span>
             <div className="flex-1">
-              <p className="text-sm text-red-400 font-bold">Abonnement expiré</p>
-              <p className="text-xs text-gray-400 mt-1">Votre boutique est limitée à 5 produits. Contactez l'admin pour renouveler.</p>
+              <p className="text-sm text-red-400 font-bold">Abonnement expire</p>
+              <p className="text-xs text-gray-400 mt-1">Votre boutique est limitee a 5 produits. Renouvelez votre plan pour continuer.</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={contactAdmin} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg">Contacter par chat</button>
-                <a href="https://wa.me/25768515135?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja." target="_blank" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp Admin</a>
+                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">Renouveler mon plan</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
           </div>
         )}
 
-        {/* Expiration Warning (< 7 days) */}
+        {/* Expiration Warning (< 7 days, urgent at <= 3 days) */}
         {showExpirationWarning && (
-          <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-2xl">⏰</span>
+          <div className={`${showUrgentWarning ? 'bg-red-900/20 border-red-500/30' : 'bg-yellow-900/20 border-yellow-500/30'} border rounded-xl p-4 flex items-start gap-3`}>
+            <span className="text-2xl">{showUrgentWarning ? '&#9888;' : '&#9200;'}</span>
             <div className="flex-1">
-              <p className="text-sm text-yellow-400 font-bold">Abonnement expire dans {daysRemaining} jour{daysRemaining! > 1 ? 's' : ''}</p>
-              <p className="text-xs text-gray-400 mt-1">Renouvelez pour continuer à publier. Après expiration, votre boutique sera limitée à 5 produits.</p>
+              <p className={`text-sm font-bold ${showUrgentWarning ? 'text-red-400' : 'text-yellow-400'}`}>
+                {showUrgentWarning ? 'URGENT — ' : ''}Abonnement expire dans {daysRemaining} jour{daysRemaining! > 1 ? 's' : ''}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Renouvelez pour continuer a publier. Apres expiration, votre boutique sera limitee a 5 produits.</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={contactAdmin} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg">Contacter par chat</button>
-                <a href="https://wa.me/25768515135?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja." target="_blank" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp Admin</a>
+                <button onClick={() => navigate('/plans')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>Renouveler maintenant</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
           </div>
@@ -581,14 +613,14 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Upgrade Warning (free plan, 3+ products) */}
         {showUpgradeWarning && !isExpired && (
-          <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-2xl">💡</span>
+          <div className="bg-gold-400/5 border border-gold-400/30 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl">&#128640;</span>
             <div className="flex-1">
-              <p className="text-sm text-blue-400 font-bold">Passez au plan supérieur</p>
-              <p className="text-xs text-gray-400 mt-1">Vous avez {currentCount} produit{currentCount > 1 ? 's' : ''} sur 5 max (plan gratuit). Souscrivez à un plan pour publier plus !</p>
+              <p className="text-sm text-gold-400 font-bold">Passez au plan superieur</p>
+              <p className="text-xs text-gray-400 mt-1">Vous avez {currentCount} produit{currentCount > 1 ? 's' : ''} sur 5 max (plan gratuit). Souscrivez a un plan pour publier plus !</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={contactAdmin} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg">Souscrire via chat</button>
-                <a href="https://wa.me/25768515135?text=Bonjour, je souhaite souscrire à un plan AuraBuja." target="_blank" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp Admin</a>
+                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">Voir les plans</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan AuraBuja.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
           </div>
@@ -700,7 +732,7 @@ export const SellerDashboard: React.FC = () => {
       }
 
       return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
+        <div className="max-w-5xl mx-auto animate-fade-in">
             <div className="flex items-center gap-4 mb-6">
                 <button onClick={() => setActiveTab('products')} className="text-gray-400 hover:text-white">← Retour</button>
                 <h2 className="text-xl font-bold text-white">Ajouter un produit</h2>
@@ -708,32 +740,38 @@ export const SellerDashboard: React.FC = () => {
                     Quota: {currentCount}/{currentTier.max === null ? '∞' : currentTier.max}
                 </span>
             </div>
-            
-            <form onSubmit={handleAddProduct} className="space-y-6">
-                <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
+
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Form Column */}
+              <div className="flex-1 min-w-0">
+                <form onSubmit={handleAddProduct} className="space-y-6">
+                  {/* Quality Score */}
+                  <ProductQualityScore score={productScore} />
+
+                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">Informations de base</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                        <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Catégorie</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Categorie</label>
                           <select
                               required value={category} onChange={e => { setCategory(e.target.value); setSubCategory(''); }}
                               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
                           >
-                              <option value="">Sélectionner...</option>
+                              <option value="">Selectionner...</option>
                               {categoriesList.map(c => (
                                   <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                               ))}
                           </select>
                        </div>
                        <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Sous-catégorie</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Sous-categorie</label>
                           <select
                               value={subCategory} onChange={e => setSubCategory(e.target.value)}
                               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
                               disabled={!category}
                           >
-                              <option value="">Sélectionner...</option>
+                              <option value="">Selectionner...</option>
                               {(categoriesList.find(c => c.id === category)?.subCategories || []).map(sub => (
                                   <option key={sub} value={sub}>{sub}</option>
                               ))}
@@ -741,28 +779,38 @@ export const SellerDashboard: React.FC = () => {
                        </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1">Nom du produit</label>
-                        <input 
-                          required value={title} onChange={e => setTitle(e.target.value)}
-                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:ring-1 focus:ring-blue-500 outline-none"
-                          placeholder="Ex: MacBook Pro M3..."
-                        />
-                    </div>
+                    {/* Smart Title Input with autocomplete */}
+                    <SmartTitleInput
+                      value={title}
+                      onChange={setTitle}
+                      existingProducts={myProducts}
+                      categories={categoriesList}
+                      onSuggestionSelect={handleSuggestionSelect}
+                    />
 
+                    {/* Description with generate button */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1">Description détaillée</label>
-                        <textarea 
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold text-gray-400">Description detaillee</label>
+                          <button
+                            type="button"
+                            onClick={handleGenerateDescription}
+                            className="text-[10px] font-bold text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-gold-400/10"
+                          >
+                            <span>✨</span> Generer description
+                          </button>
+                        </div>
+                        <textarea
                           required value={desc} onChange={e => setDesc(e.target.value)}
                           className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:ring-1 focus:ring-blue-500 outline-none min-h-[100px]"
-                          placeholder="Décrivez l'état, les caractéristiques..."
+                          placeholder="Decrivez l'etat, les caracteristiques..."
                         />
                     </div>
-                </div>
+                  </div>
 
-                <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
+                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">Prix & Images</h3>
-                     
+
                      <div className="grid grid-cols-3 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-gray-400 mb-1">Prix *</label>
@@ -792,73 +840,71 @@ export const SellerDashboard: React.FC = () => {
                         </div>
                      </div>
 
-                    {/* Image Upload Zone */}
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">Photos du produit * (max 5)</label>
+                    {/* Smart Image Upload */}
+                    <SmartImageUpload
+                      previews={imagePreviews}
+                      maxImages={5}
+                      onAdd={handleSmartImageAdd}
+                      onRemove={removeImage}
+                      onReorder={reorderImages}
+                      compressing={compressing}
+                    />
+                  </div>
 
-                      {/* Preview grid */}
-                      {imagePreviews.length > 0 && (
-                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-3">
-                          {imagePreviews.map((preview, i) => (
-                            <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-700 group">
-                              <img src={preview} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={() => removeImage(i)}
-                                className="absolute top-1 right-1 w-6 h-6 bg-red-600 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              >
-                                ✕
-                              </button>
-                              {i === 0 && (
-                                <span className="absolute bottom-1 left-1 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded">Principal</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        onChange={handleImageSelect}
-                        className="hidden"
-                      />
-
-                      {imageFiles.length < 5 && (
-                        <div
-                          onClick={() => fileInputRef.current?.click()}
-                          className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center hover:border-blue-500/50 transition-colors cursor-pointer bg-gray-900/30"
-                        >
-                          <div className="text-3xl mb-2">📸</div>
-                          <p className="text-gray-300 font-medium text-sm">Cliquez pour ajouter des photos</p>
-                          <p className="text-xs text-gray-500 mt-1">JPG, PNG ou WebP — max 10MB/image</p>
-                        </div>
-                      )}
+                  {formError && (
+                    <div className="bg-red-900/20 border border-red-500/40 text-red-300 text-sm p-3 rounded-xl">
+                      {formError}
                     </div>
-                </div>
+                  )}
 
-                {formError && (
-                  <div className="bg-red-900/20 border border-red-500/40 text-red-300 text-sm p-3 rounded-xl">
-                    {formError}
+                  {uploadProgress && (
+                    <div className="bg-blue-900/20 border border-blue-500/40 text-blue-300 text-sm p-3 rounded-xl flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      {uploadProgress}
+                    </div>
+                  )}
+
+                  {/* Mobile Preview Toggle */}
+                  <div className="md:hidden">
+                    <ProductPreview
+                      data={{
+                        title, price, originalPrice, currency: productCurrency,
+                        imagePreviews,
+                        sellerName: currentUser.sellerDetails?.shopName || currentUser.name,
+                        sellerAvatar: currentUser.avatar || '',
+                        isVerified: currentUser.isVerified,
+                      }}
+                      visible={showPreview}
+                      onToggle={() => setShowPreview(v => !v)}
+                    />
                   </div>
-                )}
 
-                {uploadProgress && (
-                  <div className="bg-blue-900/20 border border-blue-500/40 text-blue-300 text-sm p-3 rounded-xl flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                    {uploadProgress}
-                  </div>
-                )}
-
-                <div className="flex gap-4 pt-4 pb-24 md:pb-4">
+                  <div className="flex gap-4 pt-4 pb-24 md:pb-4">
                     <Button type="button" variant="ghost" className="flex-1" onClick={() => setActiveTab('products')}>Annuler</Button>
-                    <Button type="submit" className="flex-[2]" isLoading={loading} disabled={loading}>
-                      {loading ? 'Publication...' : 'Publier maintenant'}
+                    <Button type="submit" className="flex-[2]" isLoading={loading} disabled={loading || compressing}>
+                      {loading ? 'Publication...' : compressing ? 'Optimisation...' : 'Publier maintenant'}
                     </Button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Desktop Preview Sidebar */}
+              <div className="hidden md:block w-[300px] flex-shrink-0">
+                <div className="sticky top-24">
+                  <ProductPreview
+                    data={{
+                      title, price, originalPrice, currency: productCurrency,
+                      imagePreviews,
+                      sellerName: currentUser.sellerDetails?.shopName || currentUser.name,
+                      sellerAvatar: currentUser.avatar || '',
+                      isVerified: currentUser.isVerified,
+                    }}
+                    visible={true}
+                    onToggle={() => {}}
+                  />
                 </div>
-            </form>
+              </div>
+            </div>
         </div>
       );
   };

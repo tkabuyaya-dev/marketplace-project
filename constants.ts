@@ -1,4 +1,4 @@
-import { Product, User, ThemeColors, Category, SubscriptionTier, Country, MarketplaceId, CityInfo, Currency } from './types';
+import { Product, User, ThemeColors, Category, SubscriptionTier, Country, MarketplaceId, CityInfo, Currency, PaymentMethod, SubscriptionPricing } from './types';
 
 export const CURRENCY = 'FBu'; // legacy default — use Currency system for multi-currency
 export const LOW_STOCK_THRESHOLD = 5;
@@ -157,6 +157,55 @@ export const INITIAL_SUBSCRIPTION_TIERS: SubscriptionTier[] = [
   { id: 'unlimited', min: 51, max: null, price: 250000, label: 'Grossiste Illimité', requiresNif: true },
 ];
 export const FREE_TIER_WARNING_AT = 3; // Show upgrade warning when reaching this count on free plan
+
+// --- PAYMENT METHODS PAR PAYS ---
+export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
+  bi: [
+    { name: 'Lumicash', number: '68 515 135', icon: '📱' },
+    { name: 'Ecocash', number: '68 515 135', icon: '📱' },
+    { name: 'Bancobu / BCB', number: 'Contactez via WhatsApp', icon: '🏦' },
+  ],
+  cd: [
+    { name: 'Airtel Money', number: '+243 979 055 933', icon: '📱' },
+    { name: 'Orange Money', number: '+243 979 055 933', icon: '📱' },
+    { name: 'M-Pesa', number: '+243 979 055 933', icon: '📱' },
+  ],
+  rw: [
+    { name: 'MTN MoMo', number: 'Contactez support', icon: '📱' },
+    { name: 'Airtel Money', number: 'Contactez support', icon: '📱' },
+  ],
+  ug: [
+    { name: 'MTN MoMo', number: 'Contactez support', icon: '📱' },
+    { name: 'Airtel Money', number: 'Contactez support', icon: '📱' },
+  ],
+  tz: [
+    { name: 'M-Pesa', number: 'Contactez support', icon: '📱' },
+    { name: 'Tigo Pesa', number: 'Contactez support', icon: '📱' },
+  ],
+  ke: [
+    { name: 'M-Pesa', number: 'Contactez support', icon: '📱' },
+  ],
+};
+
+// --- SUPPORT WHATSAPP PAR PAYS ---
+export const SUPPORT_WHATSAPP: Record<string, string> = {
+  bi: '+25768515135',
+  cd: '+243979055933',
+  rw: '+25768515135',  // fallback BI
+  ug: '+25768515135',  // fallback BI
+  tz: '+25768515135',  // fallback BI
+  ke: '+25768515135',  // fallback BI
+};
+
+// --- PRIX D'ABONNEMENT PAR PAYS (defaults — admin peut modifier via Firestore) ---
+export const DEFAULT_SUBSCRIPTION_PRICING: Record<string, SubscriptionPricing> = {
+  bi: { prices: { starter: 15000, pro: 45000, elite: 100000, unlimited: 250000 }, currency: 'BIF' },
+  cd: { prices: { starter: 5, pro: 15, elite: 30, unlimited: 75 }, currency: 'USD' },
+  rw: { prices: { starter: 5000, pro: 15000, elite: 30000, unlimited: 75000 }, currency: 'RWF' },
+  ug: { prices: { starter: 20000, pro: 60000, elite: 120000, unlimited: 300000 }, currency: 'UGX' },
+  tz: { prices: { starter: 10000, pro: 30000, elite: 60000, unlimited: 150000 }, currency: 'TZS' },
+  ke: { prices: { starter: 500, pro: 1500, elite: 3000, unlimited: 7500 }, currency: 'KES' },
+};
 
 // --- USERS MOCK ---
 export const MOCK_ADMIN: User = {

@@ -75,6 +75,8 @@ export const COLLECTIONS = {
   REVIEWS:            'reviews',
   USER_ACTIVITY:      'userActivity',
   CURRENCIES:         'currencies',
+  SUBSCRIPTION_REQUESTS: 'subscriptionRequests',
+  SUBSCRIPTION_PRICING:  'subscriptionPricing',
 } as const;
 
 /** Converts a Firestore document to User type */
