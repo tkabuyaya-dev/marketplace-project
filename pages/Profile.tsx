@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { Button } from '../components/Button';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { updateUserProfile } from '../services/firebase';
 
 const Profile: React.FC = () => {
@@ -14,6 +15,7 @@ const Profile: React.FC = () => {
   const [editWhatsapp, setEditWhatsapp] = useState('');
   const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   if (!currentUser) return <Navigate to="/login" replace />;
 
@@ -118,7 +120,29 @@ const Profile: React.FC = () => {
           )}
           <Button className="w-full border-red-900/50 text-red-400 hover:bg-red-900/20" variant="outline" onClick={handleLogout}>{t('profile.logout')}</Button>
         </div>
+
+        {/* Danger zone */}
+        <div className="border-t border-gray-700 mt-6 pt-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{t('profile.dangerZone')}</p>
+          <p className="text-xs text-gray-600 mb-3">{t('profile.dangerZoneHint')}</p>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full py-2.5 border border-red-600/30 text-red-400 text-sm font-bold rounded-xl hover:bg-red-600/10 transition-colors"
+          >
+            {t('profile.deleteAccountTitle')}
+          </button>
+        </div>
       </div>
+
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onLogout={handleLogout}
+        hasActiveSubscription={!!(currentUser.sellerDetails?.subscriptionExpiresAt && currentUser.sellerDetails.subscriptionExpiresAt > Date.now())}
+        subscriptionExpiresAt={currentUser.sellerDetails?.subscriptionExpiresAt ?? null}
+        tierLabel={currentUser.sellerDetails?.tierLabel ?? null}
+        isVendor={currentUser.role === 'seller'}
+      />
     </div>
   );
 };

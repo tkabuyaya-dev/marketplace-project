@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
-import { Product, User, ProductStatus, Category, Currency } from '../types';
-import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies } from '../services/firebase';
+import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest } from '../types';
+import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, getMySubscriptionRequests } from '../services/firebase';
 import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
 import { generateBlurhash } from '../utils/blurhash';
 import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
@@ -41,6 +41,7 @@ export const SellerDashboard: React.FC = () => {
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | ProductStatus>('all');
+  const [subRequests, setSubRequests] = useState<SubscriptionRequest[]>([]);
   
   // Profile Editable State
   const [shopProfile, setShopProfile] = useState({
@@ -133,12 +134,17 @@ export const SellerDashboard: React.FC = () => {
       setMyProducts(data);
       const cats = await getCategories();
       setCategoriesList(cats);
+      // Sync productCount with real active products
+      syncProductCount(currentUser.id);
+      // Fetch subscription request history
+      getMySubscriptionRequests(currentUser.id).then(setSubRequests).catch(() => {});
     };
     load();
   }, [currentUser.id, activeTab]);
 
   const hasNif = !!currentUser.sellerDetails?.nif;
-  const currentCount = myProducts.length;
+  // Count only active products (approved + pending), not rejected/deleted
+  const currentCount = myProducts.filter(p => p.status === 'approved' || p.status === 'pending').length;
 
   // Subscription status — single source of truth from shared utility.
   // Server-side enforcement: Firestore rules + Cloud Function cron.
@@ -740,6 +746,133 @@ export const SellerDashboard: React.FC = () => {
             <StatCard title={t('dashboard.statTotalViews')} value={myProducts.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} trend="👁" sub={t('dashboard.allListings')} color="blue" />
             <StatCard title={t('dashboard.statTotalLikes')} value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} trend="❤️" sub={t('dashboard.allListings')} color="red" />
             <StatCard title={t('dashboard.statPending')} value={myProducts.filter(p => p.status === 'pending').length} trend="⏳" sub={t('dashboard.adminValidation')} color="yellow" />
+        </div>
+
+        {/* ── My Subscription Card ── */}
+        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">{t('dashboard.mySubscription')}</h3>
+
+          {/* Current plan info */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+                isPaidTier && !isExpired
+                  ? 'bg-gold-400/20 text-gold-400'
+                  : isExpired
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'bg-gray-700 text-gray-400'
+              }`}>
+                {isPaidTier && !isExpired ? '★' : isExpired ? '!' : '○'}
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">{currentTier.label}</p>
+                <p className="text-gray-500 text-xs">
+                  {currentTier.max === null
+                    ? t('dashboard.subUnlimited')
+                    : t('dashboard.subProductLimit', { max: currentTier.max })}
+                </p>
+              </div>
+            </div>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+              isExpired
+                ? 'bg-red-500/20 text-red-400'
+                : isPaidTier
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-gray-700 text-gray-400'
+            }`}>
+              {isExpired ? t('dashboard.subExpired') : isPaidTier ? t('dashboard.subActive') : t('dashboard.subFree')}
+            </span>
+          </div>
+
+          {/* Expiration details (paid tier only) */}
+          {isPaidTier && !isExpired && daysRemaining !== null && (
+            <div className="bg-gray-900/50 rounded-xl p-3 flex items-center justify-between">
+              <span className="text-xs text-gray-400">{t('dashboard.subExpiresOn')}</span>
+              <span className={`text-xs font-bold ${daysRemaining <= 7 ? 'text-red-400' : daysRemaining <= 15 ? 'text-yellow-400' : 'text-green-400'}`}>
+                {currentUser.sellerDetails?.subscriptionExpiresAt
+                  ? new Date(currentUser.sellerDetails.subscriptionExpiresAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+                  : '—'} ({daysRemaining} {t('dashboard.subDays')})
+              </span>
+            </div>
+          )}
+
+          {/* Usage bar */}
+          <div>
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-gray-400">{t('dashboard.subUsage')}</span>
+              <span className={`font-bold ${isLimitReached ? 'text-red-400' : 'text-white'}`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
+            </div>
+            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  isLimitReached ? 'bg-red-500' : progressPercentage > 80 ? 'bg-yellow-500' : 'bg-emerald-500'
+                }`}
+                style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* CTA button */}
+          <div>
+            {(() => {
+              const hasPendingRequest = subRequests.some(r => r.status === 'pending' || r.status === 'pending_validation');
+              if (hasPendingRequest) {
+                return (
+                  <button disabled className="w-full py-2.5 bg-gray-700 text-gray-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 border-2 border-gray-500 border-t-gray-300 rounded-full animate-spin" />
+                    {t('dashboard.subPendingRequest')}
+                  </button>
+                );
+              }
+              if (isExpired) {
+                return <button onClick={() => navigate('/plans')} className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-colors">{t('dashboard.subRenew')}</button>;
+              }
+              return <button onClick={() => navigate('/plans')} className="w-full py-2.5 bg-gold-400/10 border border-gold-400/30 text-gold-400 hover:bg-gold-400/20 text-xs font-bold rounded-xl transition-colors">{isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')}</button>;
+            })()}
+          </div>
+
+          {/* Request history */}
+          {subRequests.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('dashboard.subHistory')}</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {subRequests.slice(0, 5).map(req => (
+                  <div key={req.id} className="flex items-center justify-between bg-gray-900/50 rounded-lg p-2.5 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        req.status === 'approved' ? 'bg-green-400' :
+                        req.status === 'rejected' ? 'bg-red-400' :
+                        req.status === 'pending_validation' ? 'bg-blue-400' :
+                        'bg-yellow-400'
+                      }`} />
+                      <span className="text-white truncate">{req.planLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`font-medium ${
+                        req.status === 'approved' ? 'text-green-400' :
+                        req.status === 'rejected' ? 'text-red-400' :
+                        req.status === 'pending_validation' ? 'text-blue-400' :
+                        'text-yellow-400'
+                      }`}>
+                        {req.status === 'approved' ? t('dashboard.subApproved') :
+                         req.status === 'rejected' ? t('dashboard.subRejected') :
+                         req.status === 'pending_validation' ? t('dashboard.subValidating') :
+                         t('dashboard.subPending')}
+                      </span>
+                      <span className="text-gray-600">{new Date(req.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {subRequests.some(r => r.status === 'rejected' && r.rejectionReason) && (
+                <div className="mt-2 bg-red-900/10 border border-red-800/20 rounded-lg p-2.5">
+                  <p className="text-xs text-red-400">
+                    {t('dashboard.subLastRejection')}: {subRequests.find(r => r.status === 'rejected')?.rejectionReason}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Rejected products alert */}

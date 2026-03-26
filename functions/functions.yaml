@@ -94,3 +94,10 @@ endpoints:
       - key: ALGOLIA_ADMIN_KEY
       - key: REDIS_URL
     httpsTrigger: {}
+  deleteUserAccount:
+    entryPoint: deleteUserAccount
+    platform: gcfv2
+    region:
+      - europe-west1
+    maxInstances: 5
+    callableTrigger: {}

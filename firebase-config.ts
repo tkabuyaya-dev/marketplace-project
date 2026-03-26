@@ -16,6 +16,7 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
+import { getFunctions, Functions } from 'firebase/functions';
 import {
   initializeAppCheck,
   ReCaptchaV3Provider,
@@ -36,6 +37,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
+let functions: Functions;
 
 const isConfigured = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
 
@@ -56,6 +58,7 @@ if (isConfigured) {
   }
 
   auth = getAuth(app);
+  functions = getFunctions(app, 'europe-west1');
 
   // App Check: Protects Firebase services against bot abuse
   // Only initialize if explicitly enabled AND key is configured
@@ -92,4 +95,4 @@ if (isConfigured) {
   console.warn('⚠️ Firebase non configuré. Vérifiez votre fichier .env.local');
 }
 
-export { db, auth, isConfigured };
+export { db, auth, functions, isConfigured };

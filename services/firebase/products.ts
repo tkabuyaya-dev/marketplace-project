@@ -233,14 +233,26 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
   // ── Subscription validation (defense in depth — Firestore rules also enforce this) ──
   const sellerDetails = userData.sellerDetails || {};
   const maxProducts = sellerDetails.maxProducts ?? 5;
-  const productCount = userData.productCount ?? 0;
   const expiresAt = sellerDetails.subscriptionExpiresAt;
   const isPaidTier = maxProducts > 5;
 
   // If paid tier is expired, enforce free tier limit
   const effectiveLimit = (isPaidTier && expiresAt && Date.now() > expiresAt) ? 5 : maxProducts;
 
-  if (productCount >= effectiveLimit) {
+  // Count only active products (approved + pending), not rejected/deleted
+  const activeQuery = query(
+    collection(db, COLLECTIONS.PRODUCTS),
+    where('sellerId', '==', auth.currentUser.uid),
+    where('status', 'in', ['approved', 'pending'])
+  );
+  const activeCount = (await getDocs(activeQuery)).size;
+
+  // Sync the cached productCount with reality
+  if (activeCount !== (userData.productCount ?? 0)) {
+    await updateDoc(doc(db, COLLECTIONS.USERS, auth.currentUser.uid), { productCount: activeCount });
+  }
+
+  if (activeCount >= effectiveLimit) {
     throw new Error(
       isPaidTier && expiresAt && Date.now() > expiresAt
         ? 'Votre abonnement a expiré. Renouvelez votre plan pour publier plus de produits.'
@@ -302,11 +314,19 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
 };
 
 export const deleteProduct = async (productId: string): Promise<void> => {
-  if (!db || !auth?.currentUser) return;
+  if (!db) return;
+  // Read the product first to get the real seller ID
+  const productSnap = await getDoc(doc(db, COLLECTIONS.PRODUCTS, productId));
+  const sellerId = productSnap.data()?.sellerId;
+
   await deleteDoc(doc(db, COLLECTIONS.PRODUCTS, productId));
-  await updateDoc(doc(db, COLLECTIONS.USERS, auth.currentUser.uid), {
-    productCount: increment(-1),
-  });
+
+  // Decrement the actual seller's count, not the current user's
+  if (sellerId) {
+    await updateDoc(doc(db, COLLECTIONS.USERS, sellerId), {
+      productCount: increment(-1),
+    });
+  }
 };
 
 export const updateProductStatus = async (
@@ -369,4 +389,17 @@ export const getSellerAllProducts = async (sellerId: string): Promise<Product[]>
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => docToProduct(d.data(), d.id));
+};
+
+/** Recalculates productCount from actual active products and syncs to Firestore */
+export const syncProductCount = async (sellerId: string): Promise<number> => {
+  if (!db) return 0;
+  const q = query(
+    collection(db, COLLECTIONS.PRODUCTS),
+    where('sellerId', '==', sellerId),
+    where('status', 'in', ['approved', 'pending'])
+  );
+  const count = (await getDocs(q)).size;
+  await updateDoc(doc(db, COLLECTIONS.USERS, sellerId), { productCount: count });
+  return count;
 };

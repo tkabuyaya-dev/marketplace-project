@@ -5,8 +5,6 @@ import App from './App';
 import { AppProvider } from './contexts/AppContext';
 import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Home } from './pages/Home';
-
 // Lazy-loaded pages with auto-retry on chunk load failure (reload once only)
 const lazyRetry = (importFn: () => Promise<any>) =>
   lazy(() =>
@@ -26,6 +24,7 @@ const lazyRetry = (importFn: () => Promise<any>) =>
     })
   );
 
+const HomePage = lazyRetry(() => import('./pages/Home'));
 const ProductDetailPage = lazyRetry(() => import('./pages/ProductDetail'));
 const ShopProfilePage = lazyRetry(() => import('./pages/ShopProfile'));
 const SellerDashboardPage = lazyRetry(() => import('./pages/SellerDashboard'));
@@ -38,6 +37,8 @@ const PlansPage = lazyRetry(() => import('./pages/PlansPage'));
 
 // Prefetch critical routes after initial load
 if (typeof window !== 'undefined') {
+  // Home is lazy but first to load — prefetch immediately after shell renders
+  import('./pages/Home');
   window.addEventListener('load', () => {
     setTimeout(() => {
       import('./pages/ProductDetail');
@@ -91,7 +92,7 @@ export const router = createBrowserRouter([
     element: <AppWithProvider />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      { index: true, element: <Home /> },
+      { index: true, element: <SuspenseWrapper><HomePage /></SuspenseWrapper> },
       { path: 'product/:slugOrId', element: <SuspenseWrapper><ProductDetailPage /></SuspenseWrapper> },
       { path: 'shop/:slugOrId', element: <SuspenseWrapper><ShopProfilePage /></SuspenseWrapper> },
       { path: 'shop/:shopSlug/product/:slugOrId', element: <SuspenseWrapper><ProductDetailPage /></SuspenseWrapper> },

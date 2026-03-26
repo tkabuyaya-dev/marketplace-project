@@ -7,6 +7,7 @@
 
 import {
   signInWithPopup,
+  reauthenticateWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -133,4 +134,11 @@ export const subscribeToUserProfile = (
       callback(docToUser(snap.data(), userId));
     }
   });
+};
+
+export const reauthenticateWithGoogle = async (): Promise<void> => {
+  const user = getCurrentUser();
+  if (!user) throw new Error('No user logged in');
+  const provider = new GoogleAuthProvider();
+  await reauthenticateWithPopup(user, provider);
 };

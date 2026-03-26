@@ -38,3 +38,6 @@ export { verifyRecaptcha } from "./recaptcha.js";
 
 // Subscription expiration cron (daily at 02:00 UTC)
 export { checkSubscriptions } from "./subscription-cron.js";
+
+// Account deletion (callable)
+export { deleteUserAccount } from "./delete-account.js";
