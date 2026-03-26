@@ -23,52 +23,71 @@ export function initSentry(): void {
     return;
   }
 
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: IS_PRODUCTION ? 'production' : 'development',
-    release: `aurabuja@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+  try {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      environment: IS_PRODUCTION ? 'production' : 'development',
+      release: `aurabuja@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
 
-    // Performance: sample 20% of transactions in production
-    tracesSampleRate: IS_PRODUCTION ? 0.2 : 1.0,
+      // Performance: sample 20% of transactions in production
+      tracesSampleRate: IS_PRODUCTION ? 0.2 : 1.0,
 
-    // Session replay: capture 10% of sessions, 100% on error
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
+      // Session replay: capture 10% of sessions, 100% on error
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
 
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
-      }),
-    ],
+      integrations: [
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration({
+          maskAllText: false,
+          blockAllMedia: false,
+        }),
+      ],
 
-    // Filter out noisy errors
-    beforeSend(event) {
-      // Ignore chunk load failures (handled by lazyRetry)
-      if (event.exception?.values?.some(v =>
-        v.value?.includes('dynamically imported module') ||
-        v.value?.includes('Chunk load failed')
-      )) {
-        return null;
-      }
-      // Ignore network errors (transient)
-      if (event.exception?.values?.some(v =>
-        v.value?.includes('Failed to fetch') ||
-        v.value?.includes('NetworkError')
-      )) {
-        return null;
-      }
-      return event;
-    },
+      // Silence transport errors (invalid DSN, 403, etc.)
+      transport: (options) => {
+        const transport = Sentry.makeFetchTransport(options);
+        return {
+          ...transport,
+          send: async (envelope) => {
+            try {
+              return await transport.send(envelope);
+            } catch {
+              return { statusCode: 0 } as any;
+            }
+          },
+        };
+      },
 
-    // Don't send events from dev tools
-    denyUrls: [
-      /extensions\//i,
-      /^chrome:\/\//i,
-      /^moz-extension:\/\//i,
-    ],
-  });
+      // Filter out noisy errors
+      beforeSend(event) {
+        // Ignore chunk load failures (handled by lazyRetry)
+        if (event.exception?.values?.some(v =>
+          v.value?.includes('dynamically imported module') ||
+          v.value?.includes('Chunk load failed')
+        )) {
+          return null;
+        }
+        // Ignore network errors (transient)
+        if (event.exception?.values?.some(v =>
+          v.value?.includes('Failed to fetch') ||
+          v.value?.includes('NetworkError')
+        )) {
+          return null;
+        }
+        return event;
+      },
+
+      // Don't send events from dev tools
+      denyUrls: [
+        /extensions\//i,
+        /^chrome:\/\//i,
+        /^moz-extension:\/\//i,
+      ],
+    });
+  } catch {
+    // Sentry init failed — continue without monitoring
+  }
 }
 
 /** Tag the current user for error context */

@@ -1,30 +1,5 @@
 export type Role = 'buyer' | 'seller' | 'admin';
 export type ProductStatus = 'pending' | 'approved' | 'rejected';
-export type MarketplaceId = string; // extensible — admin-managed via Firestore
-
-// Multi-city / multi-country support
-export type CityId = string; // extensible
-
-export interface CityInfo {
-  id: CityId;
-  name: string;
-  countryId: string; // links to Country.id
-  flag: string;
-  marketplaces: MarketplaceId[];
-}
-
-// Firestore-managed marketplace
-export interface Marketplace {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  borderColor: string;
-  textColor: string;
-  cityId: string;
-  countryId: string;
-  isActive: boolean;
-}
 
 // Structure GPS
 export interface Coordinates {
@@ -54,7 +29,6 @@ export interface SellerDetails {
   sellerType: 'shop' | 'street' | 'online';
   locationUrl?: string;
   gps?: Coordinates;
-  marketplace?: MarketplaceId; // optional — not relevant for all countries
   categories: string[];
   nif?: string;
   registryNumber?: string;
@@ -65,6 +39,8 @@ export interface SellerDetails {
     nifUrl?: string;
     registryUrl?: string;
   };
+  verificationStatus?: 'none' | 'pending' | 'verified' | 'rejected';
+  verificationNote?: string;
   maxProducts?: number;
   tierLabel?: string;
   subscriptionExpiresAt?: number; // timestamp — 30-day expiration for paid tiers
@@ -111,7 +87,6 @@ export interface Product {
   rating: number;
   reviews: number;
   countryId?: string;
-  marketplace?: MarketplaceId;
   seller: User;
   isPromoted?: boolean;
   status: ProductStatus;
@@ -126,6 +101,19 @@ export interface Product {
   discountPrice?: number;
   promotionStart?: number;
   promotionEnd?: number;
+  // B2B Wholesale
+  isWholesale?: boolean;
+  minOrderQuantity?: number;
+  wholesalePrice?: number;
+  // Auction
+  isAuction?: boolean;
+  auctionEndTime?: number;
+  startingBid?: number;
+  currentBid?: number;
+  currentBidderId?: string;
+  bidCount?: number;
+  // Progressive image (LQIP)
+  blurhash?: string;
 }
 
 // ─── Currencies ───
@@ -163,23 +151,6 @@ export interface UserActivity {
   createdAt: number;
 }
 
-export interface Message {
-  id: string;
-  text: string;
-  senderId: string;
-  receiverId: string; 
-  timestamp: number;
-  read: boolean;
-}
-
-export interface Conversation {
-  id: string;
-  participants: [User, User]; 
-  lastMessage: Message;
-  unreadCount: number;
-  productId?: string;
-}
-
 export interface Category {
   id: string;
   name: string;
@@ -193,7 +164,6 @@ export enum RouteName {
   HOME = 'home',
   PRODUCT = 'product',
   SHOP = 'shop',
-  MESSENGER = 'messenger',
   SELLER_DASHBOARD = 'seller_dashboard',
   SELLER_REGISTRATION = 'seller_registration', 
   ADMIN_DASHBOARD = 'admin_dashboard',
@@ -233,7 +203,6 @@ export interface AppNotification {
   data?: {
     productSlug?: string;
     sellerSlug?: string;
-    conversationId?: string;
     link?: string;
   };
 }
@@ -246,6 +215,7 @@ export interface SearchFilters {
   category?: string;
   sellerId?: string;
   inStock?: boolean;
+  countryId?: string;
 }
 
 // ─── Subscription Requests ───

@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   CURRENCY,
-  MARKETPLACES,
-  getMarketplaceInfo,
   PROVINCES_BURUNDI,
   INITIAL_COUNTRIES,
   INITIAL_SUBSCRIPTION_TIERS,
@@ -11,23 +9,6 @@ import {
 describe('Constants', () => {
   it('uses FBu as currency', () => {
     expect(CURRENCY).toBe('FBu');
-  });
-
-  it('has 5 marketplaces', () => {
-    expect(MARKETPLACES).toHaveLength(5);
-    expect(MARKETPLACES.map(m => m.id)).toEqual([
-      'bata', 'kamenge', 'centre-ville', 'kinama', 'autres',
-    ]);
-  });
-
-  it('getMarketplaceInfo returns correct marketplace', () => {
-    const bata = getMarketplaceInfo('bata');
-    expect(bata.name).toBe('Marché de Bata');
-  });
-
-  it('getMarketplaceInfo falls back to "autres" for unknown ID', () => {
-    const unknown = getMarketplaceInfo('nonexistent' as any);
-    expect(unknown.id).toBe('autres');
   });
 
   it('has 18 Burundi provinces', () => {

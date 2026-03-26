@@ -31,16 +31,8 @@
     <meta name="twitter:description" content="Achetez et vendez facilement sur AuraBuja." />
     <meta name="twitter:image" content="/icons/icon-512.png" />
     <title>AuraBuja — Marketplace</title>
-    <!-- reCAPTCHA v3 (invisible) -->
-    <script src="https://www.google.com/recaptcha/api.js?render=6Lc7eI8sAAAAAIkau8HWQXWvROFQWsajPJvSdLhC" async defer></script>
-    <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CGJSW9FE9C"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-CGJSW9FE9C', { send_page_view: false });
-    </script>
+    <!-- reCAPTCHA v3 and Google Analytics are loaded dynamically from environment variables -->
+    <!-- See services/recaptcha.ts and services/analytics.ts -->
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       body {
@@ -118,6 +110,13 @@
       <div class="spinner"></div>
     </div>
     <div id="root"></div>
+    <script>
+      // Safety net: hide loader after 3s max even if JS bundle is slow
+      setTimeout(function() {
+        var l = document.getElementById('app-loader');
+        if (l) { l.classList.add('hidden'); setTimeout(function() { l.remove(); }, 300); }
+      }, 3000);
+    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

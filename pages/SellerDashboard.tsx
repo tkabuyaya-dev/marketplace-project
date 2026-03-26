@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
-import { Product, User, ProductStatus, Category, MarketplaceId, Currency, Marketplace } from '../types';
-import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, getMarketplacesByCountry, getFirstAdmin } from '../services/firebase';
+import { Product, User, ProductStatus, Category, Currency } from '../types';
+import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies } from '../services/firebase';
 import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
+import { generateBlurhash } from '../utils/blurhash';
 import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useCategories } from '../hooks/useCategories';
 import { useProductScore } from '../hooks/useProductScore';
 import { compressImages } from '../utils/imageCompressor';
@@ -16,12 +19,14 @@ import { SmartImageUpload } from '../components/SmartImageUpload';
 import { SmartTitleInput } from '../components/SmartTitleInput';
 import { ProductQualityScore } from '../components/ProductQualityScore';
 import { ProductPreview } from '../components/ProductPreview';
+import { useOfflineQueue } from '../hooks/useOfflineQueue';
 
-type Tab = 'overview' | 'products' | 'shop' | 'add_product';
+type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification';
 
 export const SellerDashboard: React.FC = () => {
-  const { currentUser, handleContactSeller } = useAppContext();
+  const { currentUser } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (!currentUser || (currentUser.role !== 'seller' && currentUser.role !== 'admin')) {
     navigate('/');
@@ -29,6 +34,8 @@ export const SellerDashboard: React.FC = () => {
   }
   const { toast } = useToast();
   const { categories: firestoreCategories } = useCategories();
+  const { queue: offlineQueue, queueCount, addToQueue, removeFromQueue, syncing, setSyncing } = useOfflineQueue();
+  const isOnline = navigator.onLine;
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
@@ -51,7 +58,6 @@ export const SellerDashboard: React.FC = () => {
       commune: currentUser.sellerDetails?.commune || '',
       quartier: currentUser.sellerDetails?.quartier || '',
       shopImage: currentUser.sellerDetails?.shopImage || '',
-      marketplace: (currentUser.sellerDetails?.marketplace || 'autres') as MarketplaceId,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatar || '');
@@ -63,7 +69,6 @@ export const SellerDashboard: React.FC = () => {
 
   // Dynamic data (country-aware)
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [sellerMarketplaces, setSellerMarketplaces] = useState<Marketplace[]>([]);
   const sellerCountryId = currentUser.sellerDetails?.countryId || 'bi';
   const sellerProvinces = PROVINCES_BY_COUNTRY[sellerCountryId] || [];
 
@@ -86,6 +91,12 @@ export const SellerDashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [isWholesale, setIsWholesale] = useState(false);
+  const [minOrderQty, setMinOrderQty] = useState('');
+  const [wholesalePrice, setWholesalePrice] = useState('');
+  const [isAuction, setIsAuction] = useState(false);
+  const [auctionDuration, setAuctionDuration] = useState('7');
+  const [startingBid, setStartingBid] = useState('');
 
   // Product Quality Score
   const productScore = useProductScore({
@@ -114,7 +125,6 @@ export const SellerDashboard: React.FC = () => {
       const countryCurrency = all.find(c => c.countryId === sellerCountryId);
       if (countryCurrency && !productCurrency) setProductCurrency(countryCurrency.code);
     });
-    getMarketplacesByCountry(sellerCountryId).then(setSellerMarketplaces);
   }, [sellerCountryId]);
 
   useEffect(() => {
@@ -151,14 +161,14 @@ export const SellerDashboard: React.FC = () => {
   // UI-only toast for expired sellers visiting dashboard
   useEffect(() => {
     if (isPaidTier && isExpired) {
-      toast("Votre abonnement a expire. Rendez-vous sur la page Plans pour renouveler.", 'error');
+      toast(t('dashboard.subscriptionExpiredToast'), 'error');
     }
   }, [isExpired, isPaidTier]);
 
   const handleSmartImageAdd = useCallback(async (newFiles: File[], newPreviews: string[]) => {
     const total = imageFiles.length + newFiles.length;
     if (total > 5) {
-      setFormError('Maximum 5 images par produit.');
+      setFormError(t('dashboard.maxImages'));
       return;
     }
     setFormError('');
@@ -206,12 +216,12 @@ export const SellerDashboard: React.FC = () => {
 
   const handleGenerateDescription = useCallback(() => {
     if (!title.trim()) {
-      toast('Entrez d\'abord un titre pour generer la description.', 'error');
+      toast(t('dashboard.generateTitleFirst'), 'error');
       return;
     }
     const generated = generateDescription(title, category, price ? `${price} ${productCurrency || CURRENCY}` : undefined);
     setDesc(generated);
-    toast('Description generee ! Personnalisez-la selon votre produit.', 'success');
+    toast(t('dashboard.descriptionGenerated'), 'success');
   }, [title, category, price, productCurrency, toast]);
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -220,21 +230,50 @@ export const SellerDashboard: React.FC = () => {
     setFormError('');
 
     if (imageFiles.length === 0) {
-      setFormError('Ajoutez au moins une photo du produit.');
+      setFormError(t('dashboard.addPhoto'));
       return;
     }
 
     if (!title.trim() || !desc.trim() || !price || !category) {
-      setFormError('Remplissez tous les champs obligatoires.');
+      setFormError(t('dashboard.fillRequired'));
+      return;
+    }
+
+    // Offline mode: save draft locally
+    if (!navigator.onLine) {
+      addToQueue({
+        title: title.trim(),
+        price: Number(price),
+        originalPrice: originalPrice ? Number(originalPrice) : undefined,
+        currency: productCurrency || undefined,
+        description: desc.trim(),
+        category,
+        subCategory,
+        isWholesale,
+        minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
+        wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
+        isAuction,
+        auctionEndTime: isAuction ? Date.now() + Number(auctionDuration) * 86400000 : undefined,
+        startingBid: isAuction && startingBid ? Number(startingBid) : undefined,
+      }, imagePreviews);
+      setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
+      setImageFiles([]); setImagePreviews([]);
+      setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
+      setIsAuction(false); setAuctionDuration('7'); setStartingBid('');
+      toast(t('dashboard.savedOffline'), 'success');
+      setActiveTab('products');
       return;
     }
 
     setLoading(true);
     try {
-      setUploadProgress('Upload des images...');
+      setUploadProgress(t('dashboard.uploadingImages'));
       const imageUrls = await uploadImages(imageFiles);
 
-      setUploadProgress('Enregistrement du produit...');
+      // Generate BlurHash from first image (instant placeholder for 2G/3G/offline)
+      const blurhash = imageFiles[0] ? await generateBlurhash(imageFiles[0]) : null;
+
+      setUploadProgress(t('dashboard.savingProduct'));
       await addProduct({
         title: title.trim(),
         price: Number(price),
@@ -244,11 +283,20 @@ export const SellerDashboard: React.FC = () => {
         category,
         subCategory,
         images: imageUrls,
+        blurhash: blurhash || undefined,
+        isWholesale,
+        minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
+        wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
+        isAuction,
+        auctionEndTime: isAuction ? Date.now() + Number(auctionDuration) * 24 * 60 * 60 * 1000 : undefined,
+        startingBid: isAuction && startingBid ? Number(startingBid) : undefined,
       });
 
       // Reset form
       setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
       setImageFiles([]); setImagePreviews([]);
+      setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
+      setIsAuction(false); setAuctionDuration('7'); setStartingBid('');
       setUploadProgress('');
 
       // Refresh products list
@@ -257,7 +305,7 @@ export const SellerDashboard: React.FC = () => {
       setActiveTab('products');
     } catch (error: any) {
       console.error('Erreur ajout produit:', error);
-      setFormError(error?.message || 'Erreur lors de la publication. Réessayez.');
+      setFormError(error?.message || t('dashboard.publishError'));
     } finally {
       setLoading(false);
       setUploadProgress('');
@@ -265,7 +313,7 @@ export const SellerDashboard: React.FC = () => {
   };
 
   const handleDeleteProduct = async (id: string) => {
-      if (window.confirm('Voulez-vous vraiment supprimer ce produit ? Cette action est irreversible.')) {
+      if (window.confirm(t('dashboard.confirmDelete'))) {
           await deleteProduct(id);
           setMyProducts(prev => prev.filter(p => p.id !== id));
       }
@@ -274,7 +322,7 @@ export const SellerDashboard: React.FC = () => {
   const handleResubmit = async (id: string) => {
       await resubmitProduct(id);
       setMyProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'pending' as ProductStatus, resubmittedAt: Date.now() } : p));
-      toast("Produit renvoye en validation !", 'success');
+      toast(t('dashboard.resubmitted'), 'success');
   };
 
   const openEditProduct = (product: Product) => {
@@ -314,11 +362,11 @@ export const SellerDashboard: React.FC = () => {
     const trimmedTitle = editTitle.trim();
     const numPrice = Number(editPrice);
     if (!trimmedTitle || !numPrice || !editCategory) {
-      toast("Titre, prix et catégorie sont requis.", 'error');
+      toast(t('dashboard.titleRequired'), 'error');
       return;
     }
     if (editImages.length === 0 && editNewImages.length === 0) {
-      toast("Au moins une image est requise.", 'error');
+      toast(t('dashboard.imageRequired'), 'error');
       return;
     }
 
@@ -349,9 +397,9 @@ export const SellerDashboard: React.FC = () => {
       ));
 
       setEditingProduct(null);
-      toast("Produit modifié et renvoyé en validation !", 'success');
+      toast(t('dashboard.productEdited'), 'success');
     } catch (err: any) {
-      toast(err?.message || "Erreur lors de la modification.", 'error');
+      toast(err?.message || t('dashboard.editError'), 'error');
     } finally {
       setEditLoading(false);
     }
@@ -374,11 +422,11 @@ export const SellerDashboard: React.FC = () => {
 
   const captureGPS = () => {
     if (!navigator.geolocation) {
-      toast("La géolocalisation n'est pas supportée par votre navigateur.", 'error');
+      toast(t('dashboard.gpsNotSupported'), 'error');
       return;
     }
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-      toast("La géolocalisation nécessite une connexion HTTPS sécurisée.", 'error');
+      toast(t('dashboard.gpsNeedsHttps'), 'error');
       return;
     }
     setGpsLoading(true);
@@ -388,16 +436,16 @@ export const SellerDashboard: React.FC = () => {
           ...prev,
           gps: { lat: position.coords.latitude, lng: position.coords.longitude },
         }));
-        toast("Position GPS capturée !", 'success');
+        toast(t('dashboard.gpsCapturedSuccess'), 'success');
         setGpsLoading(false);
       },
       (error) => {
         console.error('[GPS]', error.code, error.message);
-        let msg = "Impossible de récupérer la position.";
+        let msg = t('dashboard.gpsErrorGeneric');
         switch (error.code) {
-          case 1: msg = "Accès refusé. Autorisez la localisation dans les paramètres du navigateur."; break;
-          case 2: msg = "Position indisponible. Activez le GPS et réessayez."; break;
-          case 3: msg = "Délai dépassé. Sortez à l'extérieur pour un meilleur signal."; break;
+          case 1: msg = t('dashboard.gpsErrorDenied'); break;
+          case 2: msg = t('dashboard.gpsErrorUnavailable'); break;
+          case 3: msg = t('dashboard.gpsErrorTimeout'); break;
         }
         toast(msg, 'error');
         setGpsLoading(false);
@@ -452,7 +500,6 @@ export const SellerDashboard: React.FC = () => {
           'sellerDetails.commune': shopProfile.commune.trim(),
           'sellerDetails.quartier': shopProfile.quartier.trim(),
           'sellerDetails.shopImage': shopImageUrl,
-          'sellerDetails.marketplace': shopProfile.marketplace,
         };
 
         if (shopProfile.gps) {
@@ -466,10 +513,10 @@ export const SellerDashboard: React.FC = () => {
         if (shopImageFile) setShopImagePreview(shopImageUrl);
         setAvatarFile(null);
         setShopImageFile(null);
-        toast("Profil mis à jour avec succès !", 'success');
+        toast(t('dashboard.profileUpdated'), 'success');
       } catch (err) {
         console.error('Erreur mise à jour profil:', err);
-        toast("Erreur lors de la sauvegarde. Réessayez.", 'error');
+        toast(t('dashboard.profileSaveError'), 'error');
       } finally {
         setSavingProfile(false);
       }
@@ -514,16 +561,77 @@ export const SellerDashboard: React.FC = () => {
 
   // --- VIEWS ---
 
-  const contactAdmin = async () => {
-    try {
-      const admin = await getFirstAdmin();
-      if (admin) handleContactSeller(admin);
-      else toast("Aucun admin trouvé.", 'error');
-    } catch { toast("Erreur de contact.", 'error'); }
+  const contactAdmin = () => {
+    const supportNum = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
+    window.open(`https://wa.me/${supportNum.replace('+', '')}?text=${encodeURIComponent('Bonjour, je suis vendeur sur AuraBuja et j\'ai besoin d\'aide.')}`, '_blank', 'noopener,noreferrer');
   };
+
+  // Sync offline queue when online
+  const handleSyncQueue = async () => {
+    if (syncing || !navigator.onLine || offlineQueue.length === 0) return;
+    setSyncing(true);
+    let synced = 0;
+    for (const draft of offlineQueue) {
+      try {
+        // Convert base64 previews to files for upload
+        const files: File[] = [];
+        for (const dataUrl of draft.images) {
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          files.push(new File([blob], `draft_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        }
+        const imageUrls = await uploadImages(files);
+        const draftBlurhash = files[0] ? await generateBlurhash(files[0]) : null;
+        await addProduct({ ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined });
+        removeFromQueue(draft.id);
+        synced++;
+      } catch (err) {
+        console.error('[OfflineSync] Failed:', draft.id, err);
+      }
+    }
+    if (synced > 0) {
+      toast(t('dashboard.syncSuccess', { count: synced }), 'success');
+      const data = await getSellerAllProducts(currentUser.id);
+      setMyProducts(data);
+    }
+    setSyncing(false);
+  };
+
+  // Auto-sync when coming back online
+  useEffect(() => {
+    const handler = () => {
+      if (offlineQueue.length > 0) handleSyncQueue();
+    };
+    window.addEventListener('online', handler);
+    return () => window.removeEventListener('online', handler);
+  }, [offlineQueue.length]);
 
   const renderOverview = () => (
     <div className="space-y-6 animate-fade-in">
+        {/* Offline Queue Banner */}
+        {queueCount > 0 && (
+          <div className={`${navigator.onLine ? 'bg-green-500/10 border-green-500/30' : 'bg-orange-500/10 border-orange-500/30'} border rounded-2xl p-4 flex items-center gap-3`}>
+            <span className="text-2xl">{navigator.onLine ? '🔄' : '📦'}</span>
+            <div className="flex-1">
+              <p className={`${navigator.onLine ? 'text-green-400' : 'text-orange-400'} font-semibold text-sm`}>
+                {t('dashboard.offlineQueue', { count: queueCount })}
+              </p>
+              <p className="text-gray-500 text-xs">
+                {navigator.onLine ? t('dashboard.readyToSync') : t('dashboard.willSyncOnline')}
+              </p>
+            </div>
+            {navigator.onLine && (
+              <button
+                onClick={handleSyncQueue}
+                disabled={syncing}
+                className="text-green-400 text-xs px-4 py-2 border border-green-500/30 rounded-xl hover:bg-green-500/10 transition-colors disabled:opacity-50"
+              >
+                {syncing ? t('dashboard.syncing') : t('dashboard.syncNow')}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Welcome Banner */}
         <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 rounded-2xl p-6 border border-blue-800/50 relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(59,130,246,0.3),transparent_50%)]"></div>
@@ -534,11 +642,11 @@ export const SellerDashboard: React.FC = () => {
                       {currentUser.sellerDetails?.shopName || currentUser.name}
                     </h2>
                     <p className="text-blue-200/80 text-sm flex items-center gap-2">
-                      {currentUser.isVerified && <span className="text-green-400">Verifie</span>}
-                      {!hasNif && <span className="text-yellow-400">Sans NIF</span>}
-                      {currentUser.sellerDetails?.sellerType === 'shop' && '🏪 Magasin'}
-                      {currentUser.sellerDetails?.sellerType === 'street' && '🚶 Ambulant'}
-                      {currentUser.sellerDetails?.sellerType === 'online' && '🌐 En ligne'}
+                      {currentUser.isVerified && <span className="text-green-400">{t('dashboard.verified')}</span>}
+                      {!hasNif && <span className="text-yellow-400">{t('dashboard.noNif')}</span>}
+                      {currentUser.sellerDetails?.sellerType === 'shop' && `🏪 ${t('dashboard.shopType')}`}
+                      {currentUser.sellerDetails?.sellerType === 'street' && `🚶 ${t('dashboard.streetType')}`}
+                      {currentUser.sellerDetails?.sellerType === 'online' && `🌐 ${t('dashboard.onlineType')}`}
                     </p>
                  </div>
 
@@ -559,7 +667,7 @@ export const SellerDashboard: React.FC = () => {
                           style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
                         ></div>
                     </div>
-                    {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">Limite atteinte. <a href="/plans" className="underline text-gold-400">Upgrade votre plan</a></p>}
+                    {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">{t('dashboard.limitReached')}. <button onClick={() => navigate('/plans')} className="underline text-gold-400 bg-transparent border-none cursor-pointer p-0">{t('dashboard.upgradePlan')}</button></p>}
                     {daysRemaining !== null && isPaidTier && !isExpired && (
                       <p className={`text-[10px] mt-1.5 font-medium ${daysRemaining <= 7 ? 'text-red-300' : daysRemaining <= 15 ? 'text-yellow-300' : 'text-green-300'}`}>
                         {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
@@ -570,10 +678,10 @@ export const SellerDashboard: React.FC = () => {
 
                <div className="mt-5 flex flex-wrap gap-2">
                  <Button size="sm" variant="secondary" className="bg-white/10 border-white/20 hover:bg-white/20 text-white" onClick={() => setActiveTab('add_product')}>
-                    + Ajouter un article
+                    {t('dashboard.addArticle')}
                  </Button>
                  <Button size="sm" variant="secondary" className="bg-white/5 border-white/10 hover:bg-white/15 text-white/80" onClick={() => setActiveTab('shop')}>
-                    Modifier ma boutique
+                    {t('dashboard.editShop')}
                  </Button>
                </div>
             </div>
@@ -584,10 +692,10 @@ export const SellerDashboard: React.FC = () => {
           <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-2xl">🚨</span>
             <div className="flex-1">
-              <p className="text-sm text-red-400 font-bold">Abonnement expire</p>
-              <p className="text-xs text-gray-400 mt-1">Votre boutique est limitee a 5 produits. Renouvelez votre plan pour continuer.</p>
+              <p className="text-sm text-red-400 font-bold">{t('dashboard.subscriptionExpired')}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('dashboard.expiredLimitMessage')}</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">Renouveler mon plan</button>
+                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
@@ -600,11 +708,11 @@ export const SellerDashboard: React.FC = () => {
             <span className="text-2xl">{showUrgentWarning ? '&#9888;' : '&#9200;'}</span>
             <div className="flex-1">
               <p className={`text-sm font-bold ${showUrgentWarning ? 'text-red-400' : 'text-yellow-400'}`}>
-                {showUrgentWarning ? 'URGENT — ' : ''}Abonnement expire dans {daysRemaining} jour{daysRemaining! > 1 ? 's' : ''}
+                {showUrgentWarning ? 'URGENT — ' : ''}{t('dashboard.expiresIn', { days: daysRemaining })}
               </p>
-              <p className="text-xs text-gray-400 mt-1">Renouvelez pour continuer a publier. Apres expiration, votre boutique sera limitee a 5 produits.</p>
+              <p className="text-xs text-gray-400 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => navigate('/plans')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>Renouveler maintenant</button>
+                <button onClick={() => navigate('/plans')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>{t('dashboard.renewNow')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
@@ -616,10 +724,10 @@ export const SellerDashboard: React.FC = () => {
           <div className="bg-gold-400/5 border border-gold-400/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-2xl">&#128640;</span>
             <div className="flex-1">
-              <p className="text-sm text-gold-400 font-bold">Passez au plan superieur</p>
-              <p className="text-xs text-gray-400 mt-1">Vous avez {currentCount} produit{currentCount > 1 ? 's' : ''} sur 5 max (plan gratuit). Souscrivez a un plan pour publier plus !</p>
+              <p className="text-sm text-gold-400 font-bold">{t('dashboard.upgradeTitle')}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">Voir les plans</button>
+                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.viewPlans')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan AuraBuja.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
@@ -628,10 +736,10 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard title="Produits" value={myProducts.length} trend={`${myProducts.filter(p => p.status === 'approved').length} actifs`} sub="publies" color="blue" />
-            <StatCard title="Vues Total" value={myProducts.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} trend="👁" sub="toutes annonces" color="blue" />
-            <StatCard title="Likes Total" value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} trend="❤️" sub="toutes annonces" color="red" />
-            <StatCard title="En Attente" value={myProducts.filter(p => p.status === 'pending').length} trend="⏳" sub="validation admin" color="yellow" />
+            <StatCard title={t('dashboard.statProducts')} value={myProducts.length} trend={`${myProducts.filter(p => p.status === 'approved').length} ${t('dashboard.active')}`} sub={t('dashboard.published')} color="blue" />
+            <StatCard title={t('dashboard.statTotalViews')} value={myProducts.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} trend="👁" sub={t('dashboard.allListings')} color="blue" />
+            <StatCard title={t('dashboard.statTotalLikes')} value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} trend="❤️" sub={t('dashboard.allListings')} color="red" />
+            <StatCard title={t('dashboard.statPending')} value={myProducts.filter(p => p.status === 'pending').length} trend="⏳" sub={t('dashboard.adminValidation')} color="yellow" />
         </div>
 
         {/* Rejected products alert */}
@@ -639,10 +747,10 @@ export const SellerDashboard: React.FC = () => {
           <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-xl">⚠️</span>
             <div>
-              <p className="text-sm text-red-400 font-bold">{myProducts.filter(p => p.status === 'rejected').length} produit(s) rejeté(s)</p>
-              <p className="text-xs text-gray-400 mt-1">Consultez la raison du rejet et renvoyez après correction.</p>
+              <p className="text-sm text-red-400 font-bold">{t('dashboard.rejectedProducts', { count: myProducts.filter(p => p.status === 'rejected').length })}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('dashboard.rejectedHint')}</p>
               <button onClick={() => { setActiveTab('products'); setProductStatusFilter('rejected'); }} className="text-xs text-blue-400 hover:underline mt-1">
-                Voir les produits rejetés →
+                {t('dashboard.viewRejected')}
               </button>
             </div>
           </div>
@@ -650,13 +758,13 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <div>
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Actions rapides</h3>
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.quickActions')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { icon: '➕', label: 'Ajouter produit', action: () => setActiveTab('add_product') },
-              { icon: '🎨', label: 'Ma boutique', action: () => setActiveTab('shop') },
-              { icon: '📦', label: 'Mes produits', action: () => setActiveTab('products') },
-              { icon: '💬', label: 'Contacter admin', action: contactAdmin },
+              { icon: '➕', label: t('dashboard.addProduct'), action: () => setActiveTab('add_product') },
+              { icon: '🎨', label: t('dashboard.myShopAction'), action: () => setActiveTab('shop') },
+              { icon: '📦', label: t('dashboard.myProducts'), action: () => setActiveTab('products') },
+              { icon: '💬', label: t('dashboard.contactAdmin'), action: contactAdmin },
             ].map(item => (
               <button key={item.label} onClick={item.action} className="bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-xl p-4 text-center transition-all group">
                 <span className="text-2xl block mb-1 group-hover:scale-110 transition-transform">{item.icon}</span>
@@ -669,7 +777,7 @@ export const SellerDashboard: React.FC = () => {
         {/* Top products by views */}
         {myProducts.filter(p => p.status === 'approved' && p.views > 0).length > 0 && (
           <div>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Top produits par vues</h3>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.topByViews')}</h3>
             <div className="space-y-2">
               {[...myProducts].filter(p => p.status === 'approved').sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5).map((p, i) => (
                 <div key={p.id} className="flex items-center gap-3 bg-gray-800/30 rounded-lg p-2.5">
@@ -697,34 +805,34 @@ export const SellerDashboard: React.FC = () => {
                         <span className="text-4xl">🔒</span>
                     </div>
                     
-                    <h2 className="text-2xl font-black text-white mb-2">Limite Atteinte</h2>
-                    
+                    <h2 className="text-2xl font-black text-white mb-2">{t('dashboard.limitReachedTitle')}</h2>
+
                     {!hasNif ? (
                          <div className="mb-6">
                             <p className="text-gray-300 text-sm mb-4">
-                                En tant que vendeur sans NIF, vous êtes limité à <strong>1 seul produit</strong>.
+                                {t('dashboard.noNifLimit')}
                             </p>
                             <Button onClick={() => setActiveTab('shop')} className="w-full bg-blue-600 text-white">
-                                Ajouter mon NIF maintenant
+                                {t('dashboard.addNifNow')}
                             </Button>
                          </div>
                     ) : (
                         <div className="mb-6 space-y-3">
                             <p className="text-gray-400 mb-4 text-sm leading-relaxed">
-                                Vous avez utilisé vos <strong>{currentTier.max} emplacements</strong> du pack {currentTier.label}.
+                                {t('dashboard.usedSlots', { max: currentTier.max, label: currentTier.label })}
                             </p>
                             <a
                               href="https://wa.me/25768515135"
                               target="_blank"
                               className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all"
                             >
-                              <span>📱</span> Contacter via WhatsApp pour un Upgrade
+                              <span>📱</span> {t('dashboard.whatsappUpgrade')}
                             </a>
                         </div>
                     )}
-                    
+
                     <button onClick={() => setActiveTab('overview')} className="mt-4 text-sm text-gray-500 hover:text-white underline">
-                        Retour au tableau de bord
+                        {t('dashboard.backToDashboard')}
                     </button>
                 </div>
             </div>
@@ -734,10 +842,10 @@ export const SellerDashboard: React.FC = () => {
       return (
         <div className="max-w-5xl mx-auto animate-fade-in">
             <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => setActiveTab('products')} className="text-gray-400 hover:text-white">← Retour</button>
-                <h2 className="text-xl font-bold text-white">Ajouter un produit</h2>
+                <button onClick={() => setActiveTab('products')} className="text-gray-400 hover:text-white">{t('dashboard.backButton')}</button>
+                <h2 className="text-xl font-bold text-white">{t('dashboard.addProductTitle')}</h2>
                 <span className="ml-auto text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded border border-gray-700">
-                    Quota: {currentCount}/{currentTier.max === null ? '∞' : currentTier.max}
+                    {t('dashboard.quota', { current: currentCount, max: currentTier.max === null ? '∞' : currentTier.max })}
                 </span>
             </div>
 
@@ -749,29 +857,29 @@ export const SellerDashboard: React.FC = () => {
                   <ProductQualityScore score={productScore} />
 
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">Informations de base</h3>
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">{t('dashboard.basicInfo')}</h3>
 
                     <div className="grid grid-cols-2 gap-4">
                        <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Categorie</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.categoryLabel')}</label>
                           <select
                               required value={category} onChange={e => { setCategory(e.target.value); setSubCategory(''); }}
                               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
                           >
-                              <option value="">Selectionner...</option>
+                              <option value="">{t('dashboard.selectPlaceholder')}</option>
                               {categoriesList.map(c => (
                                   <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                               ))}
                           </select>
                        </div>
                        <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Sous-categorie</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.subCategoryLabel')}</label>
                           <select
                               value={subCategory} onChange={e => setSubCategory(e.target.value)}
                               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
                               disabled={!category}
                           >
-                              <option value="">Selectionner...</option>
+                              <option value="">{t('dashboard.selectPlaceholder')}</option>
                               {(categoriesList.find(c => c.id === category)?.subCategories || []).map(sub => (
                                   <option key={sub} value={sub}>{sub}</option>
                               ))}
@@ -791,29 +899,29 @@ export const SellerDashboard: React.FC = () => {
                     {/* Description with generate button */}
                     <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-bold text-gray-400">Description detaillee</label>
+                          <label className="block text-xs font-bold text-gray-400">{t('dashboard.detailedDescription')}</label>
                           <button
                             type="button"
                             onClick={handleGenerateDescription}
                             className="text-[10px] font-bold text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-gold-400/10"
                           >
-                            <span>✨</span> Generer description
+                            <span>✨</span> {t('dashboard.generateDescription')}
                           </button>
                         </div>
                         <textarea
                           required value={desc} onChange={e => setDesc(e.target.value)}
                           className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:ring-1 focus:ring-blue-500 outline-none min-h-[100px]"
-                          placeholder="Decrivez l'etat, les caracteristiques..."
+                          placeholder={t('dashboard.descriptionPlaceholder')}
                         />
                     </div>
                   </div>
 
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
-                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">Prix & Images</h3>
+                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">{t('dashboard.priceAndImages')}</h3>
 
                      <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Prix *</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.priceLabel')}</label>
                           <input
                             required type="number" min="0.01" step="any" value={price} onChange={e => setPrice(e.target.value)}
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
@@ -821,7 +929,7 @@ export const SellerDashboard: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Devise</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.currencyLabel')}</label>
                           <select
                             value={productCurrency}
                             onChange={e => setProductCurrency(e.target.value)}
@@ -831,7 +939,7 @@ export const SellerDashboard: React.FC = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Ancien prix</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.oldPrice')}</label>
                           <input
                             type="number" min="0" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)}
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
@@ -839,6 +947,79 @@ export const SellerDashboard: React.FC = () => {
                           />
                         </div>
                      </div>
+
+                    {/* B2B Wholesale Toggle */}
+                    <div className="border border-indigo-500/20 bg-indigo-500/5 rounded-xl p-4 space-y-3">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className={`relative w-11 h-6 rounded-full transition-colors ${isWholesale ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                          onClick={() => setIsWholesale(!isWholesale)}>
+                          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isWholesale ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-white">{t('dashboard.wholesaleToggle')}</span>
+                          <p className="text-xs text-gray-500">{t('dashboard.wholesaleHint')}</p>
+                        </div>
+                      </label>
+                      {isWholesale && (
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.minOrder')}</label>
+                            <input
+                              type="number" min="2" value={minOrderQty} onChange={e => setMinOrderQty(e.target.value)}
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
+                              placeholder="10"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.wholesalePrice')}</label>
+                            <input
+                              type="number" min="0" step="any" value={wholesalePrice} onChange={e => setWholesalePrice(e.target.value)}
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Auction Toggle */}
+                    <div className="border border-red-500/20 bg-red-500/5 rounded-xl p-4 space-y-3">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className={`relative w-11 h-6 rounded-full transition-colors ${isAuction ? 'bg-red-600' : 'bg-gray-700'}`}
+                          onClick={() => { setIsAuction(!isAuction); if (!isAuction) setIsWholesale(false); }}>
+                          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isAuction ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-white">{t('dashboard.auctionToggle')}</span>
+                          <p className="text-xs text-gray-500">{t('dashboard.auctionHint')}</p>
+                        </div>
+                      </label>
+                      {isAuction && (
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.startingBid')}</label>
+                            <input
+                              type="number" min="1" value={startingBid} onChange={e => setStartingBid(e.target.value)}
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-red-500 outline-none"
+                              placeholder="1000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.auctionDuration')}</label>
+                            <select
+                              value={auctionDuration} onChange={e => setAuctionDuration(e.target.value)}
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white text-sm focus:ring-1 focus:ring-red-500 outline-none"
+                            >
+                              <option value="1">1 {t('dashboard.day')}</option>
+                              <option value="3">3 {t('dashboard.days')}</option>
+                              <option value="7">7 {t('dashboard.days')}</option>
+                              <option value="14">14 {t('dashboard.days')}</option>
+                              <option value="30">30 {t('dashboard.days')}</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Smart Image Upload */}
                     <SmartImageUpload
@@ -880,9 +1061,9 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4 pt-4 pb-24 md:pb-4">
-                    <Button type="button" variant="ghost" className="flex-1" onClick={() => setActiveTab('products')}>Annuler</Button>
+                    <Button type="button" variant="ghost" className="flex-1" onClick={() => setActiveTab('products')}>{t('dashboard.cancelButton')}</Button>
                     <Button type="submit" className="flex-[2]" isLoading={loading} disabled={loading || compressing}>
-                      {loading ? 'Publication...' : compressing ? 'Optimisation...' : 'Publier maintenant'}
+                      {loading ? t('dashboard.publishing') : compressing ? t('dashboard.optimizing') : t('dashboard.publishNow')}
                     </Button>
                   </div>
                 </form>
@@ -911,13 +1092,13 @@ export const SellerDashboard: React.FC = () => {
 
   const renderShopSettings = () => (
       <div className="max-w-2xl mx-auto animate-fade-in space-y-6 pb-24 md:pb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Personnalisation Boutique</h2>
+          <h2 className="text-xl font-bold text-white mb-4">{t('dashboard.shopCustomization')}</h2>
 
           <form onSubmit={handleSaveProfile} className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6">
               <div className="space-y-4">
                   {/* Logo / Image boutique */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">Logo / Image boutique</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.logoLabel')}</label>
                       <div className="flex items-center gap-4">
                         <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-700 bg-gray-900 flex-shrink-0">
                           <img
@@ -939,15 +1120,15 @@ export const SellerDashboard: React.FC = () => {
                             onClick={() => avatarInputRef.current?.click()}
                             className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-blue-500 transition-colors"
                           >
-                            Changer l'image
+                            {t('dashboard.changeImage')}
                           </button>
-                          <p className="text-[10px] text-gray-500 mt-1">JPG, PNG ou WebP. Cette image sera visible sur votre page boutique.</p>
+                          <p className="text-[10px] text-gray-500 mt-1">{t('dashboard.imageHint')}</p>
                         </div>
                       </div>
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">Nom de l'enseigne</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.shopNameLabel')}</label>
                       <input
                         className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                         value={shopProfile.name}
@@ -956,17 +1137,17 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">Bio / Description</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.bioLabel')}</label>
                       <textarea
                         className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none min-h-[80px]"
                         value={shopProfile.bio}
                         onChange={(e) => setShopProfile({...shopProfile, bio: e.target.value})}
-                        placeholder="Décrivez votre boutique en quelques mots..."
+                        placeholder={t('dashboard.bioPlaceholder')}
                       />
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">WhatsApp</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.whatsappLabel')}</label>
                       <input
                         className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                         value={shopProfile.whatsapp}
@@ -977,7 +1158,7 @@ export const SellerDashboard: React.FC = () => {
 
                   {/* GPS — Capture automatique */}
                   <div className="bg-blue-900/10 border border-blue-500/30 p-4 rounded-xl space-y-3">
-                      <label className="block text-xs font-bold text-blue-300">Localisation GPS de la boutique</label>
+                      <label className="block text-xs font-bold text-blue-300">{t('dashboard.gpsLabel')}</label>
                       <button
                         type="button"
                         onClick={captureGPS}
@@ -989,18 +1170,18 @@ export const SellerDashboard: React.FC = () => {
                         }`}
                       >
                         {gpsLoading ? (
-                          <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Capture en cours...</>
+                          <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {t('dashboard.capturingGps')}</>
                         ) : shopProfile.gps ? (
-                          <>📍 Position capturée ({shopProfile.gps.lat.toFixed(4)}, {shopProfile.gps.lng.toFixed(4)})</>
+                          <>📍 {t('dashboard.gpsCaptured')} ({shopProfile.gps.lat.toFixed(4)}, {shopProfile.gps.lng.toFixed(4)})</>
                         ) : (
-                          <>📍 Capturer ma position GPS</>
+                          <>📍 {t('dashboard.captureGps')}</>
                         )}
                       </button>
-                      <p className="text-[10px] text-gray-500">Rendez-vous à votre boutique et cliquez pour capturer la position exacte. Les clients pourront vous localiser sur la carte.</p>
+                      <p className="text-[10px] text-gray-500">{t('dashboard.gpsHint')}</p>
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">Lien Localisation (optionnel)</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.locationUrlLabel')}</label>
                       <input
                           className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                           value={shopProfile.locationUrl}
@@ -1011,12 +1192,12 @@ export const SellerDashboard: React.FC = () => {
                   
                   {/* TYPE DE VENTE */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">Type de vente</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.sellingTypeLabel')}</label>
                       <div className="grid grid-cols-3 gap-2">
                         {([
-                          { value: 'shop' as const, icon: '🏪', label: 'Magasin Fixe' },
-                          { value: 'street' as const, icon: '🚶', label: 'Ambulant' },
-                          { value: 'online' as const, icon: '🌐', label: 'En Ligne' },
+                          { value: 'shop' as const, icon: '🏪', label: t('dashboard.fixedShop') },
+                          { value: 'street' as const, icon: '🚶', label: t('dashboard.ambulant') },
+                          { value: 'online' as const, icon: '🌐', label: t('dashboard.online') },
                         ]).map(opt => (
                           <button
                             key={opt.value}
@@ -1035,33 +1216,9 @@ export const SellerDashboard: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* MARCHÉ PHYSIQUE — Dynamique selon le pays du vendeur */}
-                  {sellerMarketplaces.length > 0 && (
-                  <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">Marché physique</label>
-                      <div className="grid grid-cols-1 gap-2">
-                        {sellerMarketplaces.map(mp => (
-                          <button
-                            key={mp.id}
-                            type="button"
-                            onClick={() => setShopProfile({...shopProfile, marketplace: mp.id})}
-                            className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-bold transition-all text-left ${
-                              shopProfile.marketplace === mp.id
-                                ? `${mp.color} text-white border-transparent shadow-lg`
-                                : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-600'
-                            }`}
-                          >
-                            <span className="text-lg">{mp.icon}</span>
-                            <span>{mp.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                  </div>
-                  )}
-
                   {/* PHOTO DE LA BOUTIQUE (distincte du logo/avatar) */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">Photo de la boutique / vitrine</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.shopPhotoLabel')}</label>
                       <div className="flex items-center gap-4">
                         <div className="relative w-24 h-16 rounded-lg overflow-hidden border-2 border-gray-700 bg-gray-900 flex-shrink-0">
                           {shopImagePreview ? (
@@ -1073,16 +1230,16 @@ export const SellerDashboard: React.FC = () => {
                         <div className="flex-1">
                           <input ref={shopImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleShopImageSelect} className="hidden" />
                           <button type="button" onClick={() => shopImageInputRef.current?.click()} className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-blue-500 transition-colors">
-                            {shopImagePreview ? 'Changer la photo' : 'Ajouter une photo'}
+                            {shopImagePreview ? t('dashboard.changePhoto') : t('dashboard.addPhoto2')}
                           </button>
-                          <p className="text-[10px] text-gray-500 mt-1">Photo de votre enseigne ou devanture.</p>
+                          <p className="text-[10px] text-gray-500 mt-1">{t('dashboard.shopPhotoHint')}</p>
                         </div>
                       </div>
                   </div>
 
                   {/* CATÉGORIES */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">Catégories principales</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.categoriesLabel')}</label>
                       <div className="flex flex-wrap gap-2">
                         {firestoreCategories.map(c => (
                           <button
@@ -1103,17 +1260,17 @@ export const SellerDashboard: React.FC = () => {
 
                   {/* ADRESSE */}
                   <div className="bg-gray-900/50 border border-gray-700/50 p-4 rounded-xl space-y-3">
-                      <label className="block text-xs font-bold text-gray-400 mb-1">Adresse</label>
+                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.addressLabel')}</label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Province / Région</label>
+                          <label className="block text-[10px] text-gray-500 mb-1">{t('dashboard.provinceLabel')}</label>
                           {sellerProvinces.length > 0 ? (
                             <select
                               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
                               value={shopProfile.province}
                               onChange={(e) => setShopProfile({...shopProfile, province: e.target.value})}
                             >
-                              <option value="">Sélectionner...</option>
+                              <option value="">{t('dashboard.selectPlaceholder')}</option>
                               {sellerProvinces.map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                           ) : (
@@ -1126,7 +1283,7 @@ export const SellerDashboard: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Commune / Ville</label>
+                          <label className="block text-[10px] text-gray-500 mb-1">{t('dashboard.communeLabel')}</label>
                           <input
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
                             value={shopProfile.commune}
@@ -1135,7 +1292,7 @@ export const SellerDashboard: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Quartier / Avenue</label>
+                          <label className="block text-[10px] text-gray-500 mb-1">{t('dashboard.quarterLabel')}</label>
                           <input
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
                             value={shopProfile.quartier}
@@ -1150,17 +1307,17 @@ export const SellerDashboard: React.FC = () => {
                   <div className={`p-4 rounded-xl border ${!hasNif ? 'bg-red-900/10 border-red-500/30' : 'bg-green-900/10 border-green-500/30'}`}>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">Numéro NIF</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.nifLabel')}</label>
                           <input
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                             value={shopProfile.nif}
                             onChange={(e) => setShopProfile({...shopProfile, nif: e.target.value})}
-                            placeholder={!hasNif ? "Ajoutez votre NIF pour débloquer le compte..." : "Votre NIF est enregistré"}
+                            placeholder={!hasNif ? t('dashboard.nifPlaceholder') : t('dashboard.nifRegistered')}
                           />
-                          {!hasNif && <p className="text-xs text-red-400 mt-2">Ajoutez un NIF pour publier plus de 1 produit.</p>}
+                          {!hasNif && <p className="text-xs text-red-400 mt-2">{t('dashboard.addNifHint')}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">N° Registre de Commerce (optionnel)</label>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.registryLabel')}</label>
                           <input
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                             value={shopProfile.registryNumber}
@@ -1173,12 +1330,107 @@ export const SellerDashboard: React.FC = () => {
 
                   <div className="mt-6 flex justify-end">
                       <Button type="submit" isLoading={savingProfile} disabled={savingProfile}>
-                        {savingProfile ? 'Sauvegarde...' : 'Enregistrer les modifications'}
+                        {savingProfile ? t('dashboard.saving') : t('dashboard.saveChanges')}
                       </Button>
                   </div>
               </div>
           </form>
       </div>
+  );
+
+  const verificationStatus = currentUser.sellerDetails?.verificationStatus || 'none';
+  const hasDocuments = !!(currentUser.sellerDetails?.documents?.cniUrl);
+
+  const handleRequestVerification = async () => {
+    if (!currentUser.sellerDetails?.documents?.cniUrl) {
+      toast(t('dashboard.verifyUploadFirst'), 'error');
+      return;
+    }
+    try {
+      await updateUserProfile(currentUser.id, {
+        'sellerDetails.verificationStatus': 'pending',
+      });
+      toast(t('dashboard.verifyRequestSent'), 'success');
+    } catch {
+      toast(t('dashboard.verifyRequestError'), 'error');
+    }
+  };
+
+  const renderVerification = () => (
+    <div className="max-w-2xl mx-auto animate-fade-in space-y-6 pb-24 md:pb-6">
+      <h2 className="text-xl font-bold text-white">{t('dashboard.verification')}</h2>
+
+      {/* Statut actuel */}
+      <div className={`p-5 rounded-2xl border ${
+        verificationStatus === 'verified' ? 'bg-green-500/10 border-green-500/30' :
+        verificationStatus === 'pending' ? 'bg-blue-500/10 border-blue-500/30' :
+        verificationStatus === 'rejected' ? 'bg-red-500/10 border-red-500/30' :
+        'bg-gray-800/50 border-gray-700'
+      }`}>
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">
+            {verificationStatus === 'verified' ? '✅' : verificationStatus === 'pending' ? '⏳' : verificationStatus === 'rejected' ? '❌' : '🔒'}
+          </span>
+          <div>
+            <p className={`font-bold ${
+              verificationStatus === 'verified' ? 'text-green-400' :
+              verificationStatus === 'pending' ? 'text-blue-400' :
+              verificationStatus === 'rejected' ? 'text-red-400' : 'text-gray-300'
+            }`}>
+              {verificationStatus === 'verified' ? t('dashboard.verifyStatusVerified') :
+               verificationStatus === 'pending' ? t('dashboard.verifyStatusPending') :
+               verificationStatus === 'rejected' ? t('dashboard.verifyStatusRejected') :
+               t('dashboard.verifyStatusNone')}
+            </p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {verificationStatus === 'verified' ? t('dashboard.verifyStatusVerifiedDesc') :
+               verificationStatus === 'pending' ? t('dashboard.verifyStatusPendingDesc') :
+               verificationStatus === 'rejected' ? currentUser.sellerDetails?.verificationNote || t('dashboard.verifyStatusRejectedDesc') :
+               t('dashboard.verifyStatusNoneDesc')}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Documents uploadés */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+        <h3 className="text-white font-semibold">{t('dashboard.verifyDocuments')}</h3>
+        {currentUser.sellerDetails?.documents?.cniUrl ? (
+          <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+            <span className="text-xl">🪪</span>
+            <div className="flex-1">
+              <p className="text-sm text-white font-medium">{t('dashboard.verifyCNI')}</p>
+              <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+            </div>
+            <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
+               className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">{t('dashboard.verifyNoDocuments')}</p>
+        )}
+        {currentUser.sellerDetails?.documents?.nifUrl && (
+          <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+            <span className="text-xl">📄</span>
+            <div className="flex-1">
+              <p className="text-sm text-white font-medium">NIF</p>
+              <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+            </div>
+            <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
+               className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+          </div>
+        )}
+      </div>
+
+      {/* Bouton demander vérification */}
+      {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
+        <Button onClick={handleRequestVerification} disabled={!hasDocuments} className="w-full">
+          {t('dashboard.verifyRequest')}
+        </Button>
+      )}
+      {!hasDocuments && verificationStatus !== 'verified' && (
+        <p className="text-xs text-gray-500 text-center">{t('dashboard.verifyUploadHint')}</p>
+      )}
+    </div>
   );
 
   return (
@@ -1187,12 +1439,13 @@ export const SellerDashboard: React.FC = () => {
            {/* ... Sidebar content same as before ... */}
            <div className="flex items-center gap-2 mb-8 px-2">
                <div className="w-8 h-8 bg-gradient-to-br from-gold-400 to-gold-600 rounded-lg"></div>
-               <span className="font-black text-xl text-white tracking-tight">Espace <span className="text-gold-400">Vendeur</span></span>
+               <span className="font-black text-xl text-white tracking-tight">{t('dashboard.sellerSpace')}</span>
            </div>
            <div className="space-y-2 flex-1">
-               <SidebarItem id="overview" icon="📊" label="Vue d'ensemble" />
-               <SidebarItem id="products" icon="📦" label="Inventaire" count={myProducts.length} />
-               <SidebarItem id="shop" icon="🎨" label="Ma Boutique" />
+               <SidebarItem id="overview" icon="📊" label={t('dashboard.overview')} />
+               <SidebarItem id="products" icon="📦" label={t('dashboard.inventory')} count={myProducts.length} />
+               <SidebarItem id="shop" icon="🎨" label={t('dashboard.myShop')} />
+               <SidebarItem id="verification" icon="✅" label={t('dashboard.verification')} />
            </div>
            <div className="mb-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
                <div className="flex justify-between text-xs text-gray-400 mb-1">
@@ -1205,19 +1458,20 @@ export const SellerDashboard: React.FC = () => {
            </div>
            <div className="pt-4 border-t border-gray-800">
                <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-white transition-colors">
-                   <span>🚪</span> Retour au site
+                   <span>🚪</span> {t('dashboard.backToSite')}
                </button>
            </div>
        </aside>
 
        <div className="md:hidden bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 p-3 px-4 flex justify-between items-center sticky top-0 z-30">
-           <span className="font-black text-lg text-white">Espace <span className="text-blue-500">Vendeur</span></span>
+           <span className="font-black text-lg text-white">{t('dashboard.sellerSpace')}</span>
            <div className="flex items-center gap-2">
              <div className="bg-gray-800 px-2 py-1 rounded-lg border border-gray-700">
                <span className={`text-xs font-bold ${isLimitReached ? 'text-red-400' : 'text-blue-400'}`}>
                  {currentCount}/{currentTier.max || '∞'}
                </span>
              </div>
+             <LanguageSwitcher compact />
              <button onClick={() => navigate('/')} className="text-gray-400 p-1 hover:text-white">✕</button>
            </div>
        </div>
@@ -1227,17 +1481,17 @@ export const SellerDashboard: React.FC = () => {
            {activeTab === 'products' && (
                <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">Mon Inventaire</h2>
-                    <Button size="sm" onClick={() => setActiveTab('add_product')}>+ Nouveau</Button>
+                    <h2 className="text-xl font-bold text-white">{t('dashboard.myInventory')}</h2>
+                    <Button size="sm" onClick={() => setActiveTab('add_product')}>{t('dashboard.newButton')}</Button>
                 </div>
 
                 {/* Status filter tabs */}
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {([
-                    { value: 'all' as const, label: 'Tous', count: myProducts.length },
-                    { value: 'approved' as const, label: 'Approuves', count: myProducts.filter(p => p.status === 'approved').length },
-                    { value: 'pending' as const, label: 'En attente', count: myProducts.filter(p => p.status === 'pending').length },
-                    { value: 'rejected' as const, label: 'Rejetes', count: myProducts.filter(p => p.status === 'rejected').length },
+                    { value: 'all' as const, label: t('dashboard.all'), count: myProducts.length },
+                    { value: 'approved' as const, label: t('dashboard.approved'), count: myProducts.filter(p => p.status === 'approved').length },
+                    { value: 'pending' as const, label: t('dashboard.pendingStatus'), count: myProducts.filter(p => p.status === 'pending').length },
+                    { value: 'rejected' as const, label: t('dashboard.rejected'), count: myProducts.filter(p => p.status === 'rejected').length },
                   ]).map(tab => (
                     <button
                       key={tab.value}
@@ -1256,8 +1510,8 @@ export const SellerDashboard: React.FC = () => {
                 {filteredProducts.length === 0 ? (
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-8 text-center text-gray-400">
                     <div className="text-4xl mb-3">📦</div>
-                    <p className="font-medium text-white mb-1">Aucun produit</p>
-                    <p className="text-sm">{productStatusFilter === 'all' ? 'Commencez par ajouter votre premier article.' : 'Aucun produit dans cette categorie.'}</p>
+                    <p className="font-medium text-white mb-1">{t('dashboard.noProducts')}</p>
+                    <p className="text-sm">{productStatusFilter === 'all' ? t('dashboard.startAdding') : t('dashboard.noProductsInCategory')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1296,9 +1550,9 @@ export const SellerDashboard: React.FC = () => {
                                 product.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/30' :
                                 'bg-red-900/30 text-red-400 border border-red-800/30'
                               }`}>
-                                {product.status === 'approved' ? 'Actif' : product.status === 'pending' ? 'En attente' : 'Rejete'}
+                                {product.status === 'approved' ? t('dashboard.statusActive') : product.status === 'pending' ? t('dashboard.statusPending') : t('dashboard.statusRejected')}
                               </span>
-                              {product.isPromoted && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/30">Sponsorise</span>}
+                              {product.isPromoted && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/30">{t('dashboard.statusSponsored')}</span>}
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -1321,7 +1575,7 @@ export const SellerDashboard: React.FC = () => {
                           <div className="bg-red-900/10 border border-red-800/30 rounded-lg p-3 space-y-2">
                             {product.rejectionReason && (
                               <p className="text-xs text-red-400">
-                                <span className="font-bold">Raison du rejet :</span> {product.rejectionReason}
+                                <span className="font-bold">{t('dashboard.rejectionReason')}</span> {product.rejectionReason}
                               </p>
                             )}
                             <div className="flex gap-2">
@@ -1329,13 +1583,13 @@ export const SellerDashboard: React.FC = () => {
                                 onClick={() => openEditProduct(product)}
                                 className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors"
                               >
-                                Modifier et resoumettre
+                                {t('dashboard.editAndResubmit')}
                               </button>
                               <button
                                 onClick={() => handleResubmit(product.id)}
                                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
                               >
-                                Resoumettre tel quel
+                                {t('dashboard.resubmitAsIs')}
                               </button>
                             </div>
                           </div>
@@ -1349,16 +1603,17 @@ export const SellerDashboard: React.FC = () => {
            )}
            {activeTab === 'add_product' && renderAddProduct()}
            {activeTab === 'shop' && renderShopSettings()}
+           {activeTab === 'verification' && renderVerification()}
        </main>
 
        {/* Mobile Bottom Nav — All tabs visible with labels */}
        <div className="md:hidden fixed bottom-0 w-full bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 pb-safe z-50">
          <div className="flex justify-around items-center h-16">
            {([
-             { id: 'overview' as Tab, icon: '📊', label: 'Accueil' },
-             { id: 'products' as Tab, icon: '📦', label: 'Produits' },
-             { id: 'add_product' as Tab, icon: '➕', label: 'Ajouter' },
-             { id: 'shop' as Tab, icon: '🎨', label: 'Boutique' },
+             { id: 'overview' as Tab, icon: '📊', label: t('dashboard.mobileHome') },
+             { id: 'products' as Tab, icon: '📦', label: t('dashboard.mobileProducts') },
+             { id: 'add_product' as Tab, icon: '➕', label: t('dashboard.mobileAdd') },
+             { id: 'shop' as Tab, icon: '🎨', label: t('dashboard.mobileShop') },
            ]).map(item => (
              <button
                key={item.id}
@@ -1379,13 +1634,13 @@ export const SellerDashboard: React.FC = () => {
          <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEditingProduct(null)}>
            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
              <div className="flex items-center justify-between">
-               <h3 className="text-lg font-bold text-white">Modifier le produit</h3>
+               <h3 className="text-lg font-bold text-white">{t('dashboard.editProductTitle')}</h3>
                <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-white text-xl">&times;</button>
              </div>
 
              {editingProduct.rejectionReason && (
                <div className="bg-red-900/20 border border-red-800/30 rounded-lg p-3">
-                 <p className="text-xs text-red-400"><span className="font-bold">Raison du rejet :</span> {editingProduct.rejectionReason}</p>
+                 <p className="text-xs text-red-400"><span className="font-bold">{t('dashboard.rejectionReason')}</span> {editingProduct.rejectionReason}</p>
                </div>
              )}
 
@@ -1452,14 +1707,14 @@ export const SellerDashboard: React.FC = () => {
 
              <div className="flex gap-3 pt-2">
                <button onClick={() => setEditingProduct(null)} className="flex-1 px-4 py-2.5 bg-gray-800 text-gray-300 rounded-xl font-medium hover:bg-gray-700 transition-colors">
-                 Annuler
+                 {t('common.cancel')}
                </button>
                <button
                  onClick={handleSaveEdit}
                  disabled={editLoading}
                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors disabled:opacity-50"
                >
-                 {editLoading ? 'Envoi...' : 'Modifier et resoumettre'}
+                 {editLoading ? t('common.loading') : t('dashboard.editAndResubmit')}
                </button>
              </div>
            </div>

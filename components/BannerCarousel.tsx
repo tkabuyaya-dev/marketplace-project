@@ -147,16 +147,19 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
               onClick={() => handleBannerClick(banner)}
             >
               {/* Background image */}
-              <img
-                src={getOptimizedUrl(banner.imageUrl, 800, 'auto')}
-                alt={banner.title || 'Banner'}
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                <img
+                  src={getOptimizedUrl(banner.imageUrl, 800, 'auto')}
+                  alt={banner.title || 'Banner'}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  decoding="async"
+                />
+              </div>
               {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-950/90 via-gray-900/60 to-transparent" />
+              <div className="absolute inset-0 z-[1] bg-gradient-to-r from-gray-950/90 via-gray-900/60 to-transparent" />
 
-              {/* Content */}
+              {/* Content — z-10 ensures text is ALWAYS above image + gradient */}
               <div className="relative z-10 h-full flex flex-col justify-center px-6 md:px-10 max-w-lg">
                 {banner.title && (
                   <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight mb-1">

@@ -4,7 +4,7 @@
 
 import { ActivityAction } from '../../types';
 import {
-  db, collection, doc, addDoc, getDocs,
+  db, collection, addDoc, getDocs,
   query, where, orderBy, limit, serverTimestamp, COLLECTIONS,
 } from './constants';
 

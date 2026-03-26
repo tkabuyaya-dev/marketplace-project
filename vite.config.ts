@@ -51,7 +51,7 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'cloudinary-images',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             }
           },
@@ -68,8 +68,29 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'firestore-cache',
-              networkTimeoutSeconds: 5,
+              networkTimeoutSeconds: 3,
               expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
+              cacheableResponse: { statuses: [0, 200] },
+            }
+          },
+          {
+            // Firebase Auth SDK — critical for login speed on 2G/3G
+            urlPattern: /^https:\/\/(identitytoolkit|securetoken)\.googleapis\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'firebase-auth',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            }
+          },
+          {
+            // Google Sign-In APIs
+            urlPattern: /^https:\/\/(apis\.google\.com|accounts\.google\.com)\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-auth-apis',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 },
               cacheableResponse: { statuses: [0, 200] },
             }
           },
@@ -95,6 +116,8 @@ export default defineConfig({
           'firebase-core': ['firebase/app', 'firebase/auth'],
           'firebase-firestore': ['firebase/firestore'],
           'react-vendor': ['react', 'react-dom'],
+          'router-vendor': ['react-router-dom'],
+          'i18n-vendor': ['i18next', 'react-i18next'],
         }
       }
     },

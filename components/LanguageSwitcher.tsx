@@ -1,15 +1,23 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { TC } from '../constants';
 import { trackLanguageChange } from '../services/analytics';
+import { useAppContext } from '../contexts/AppContext';
 
 export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const { i18n } = useTranslation();
+  const { enabledLanguages } = useAppContext();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const current = SUPPORTED_LANGUAGES.find(l => l.code === i18n.language) || SUPPORTED_LANGUAGES[0];
+  // Filtrer les langues activées par l'admin
+  const visibleLanguages = useMemo(
+    () => SUPPORTED_LANGUAGES.filter(l => enabledLanguages.includes(l.code)),
+    [enabledLanguages],
+  );
+
+  const current = visibleLanguages.find(l => l.code === i18n.language) || visibleLanguages[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -26,6 +34,9 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
     setOpen(false);
   };
 
+  // Si une seule langue active, pas besoin d'afficher le switcher
+  if (visibleLanguages.length <= 1) return null;
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -34,14 +45,14 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
           open ? TC.border400 : ''
         }`}
       >
-        <span className="text-base">{current.flag}</span>
-        {!compact && <span className="text-gray-300 text-xs">{current.code.toUpperCase()}</span>}
+        <span className="text-base">{current?.flag}</span>
+        {!compact && <span className="text-gray-300 text-xs">{current?.code.toUpperCase()}</span>}
         <span className="text-gray-500 text-[10px]">▼</span>
       </button>
 
       {open && (
         <div className="absolute right-0 top-full mt-1.5 w-40 bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
-          {SUPPORTED_LANGUAGES.map((lang) => (
+          {visibleLanguages.map((lang) => (
             <button
               key={lang.code}
               onClick={() => switchLang(lang.code)}

@@ -12,6 +12,28 @@
 
 const GA_MEASUREMENT_ID = import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '';
 
+/** Load Google Analytics dynamically (avoids hardcoding ID in index.html) */
+let gaLoaded = false;
+function loadGA(): void {
+  if (gaLoaded || !GA_MEASUREMENT_ID || typeof document === 'undefined') return;
+  gaLoaded = true;
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+
+  (window as any).dataLayer = (window as any).dataLayer || [];
+  (window as any).gtag = function (...args: any[]) {
+    (window as any).dataLayer.push(args);
+  };
+  (window as any).gtag('js', new Date());
+  (window as any).gtag('config', GA_MEASUREMENT_ID, { send_page_view: false });
+}
+
+// Auto-load on import
+loadGA();
+
 /** Safe gtag wrapper — no-op if GA not loaded */
 function gtag(...args: any[]): void {
   if (typeof window !== 'undefined' && (window as any).gtag) {

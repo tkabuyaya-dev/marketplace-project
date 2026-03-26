@@ -32,6 +32,7 @@ function buildKey(query: string, filters?: SearchFilters): string {
   if (filters.maxPrice !== undefined) parts.push(`max:${filters.maxPrice}`);
   if (filters.minRating) parts.push(`r:${filters.minRating}`);
   if (filters.category) parts.push(`c:${filters.category}`);
+  if (filters.countryId) parts.push(`co:${filters.countryId}`);
   return parts.join('|');
 }
 

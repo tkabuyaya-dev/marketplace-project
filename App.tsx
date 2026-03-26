@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { SearchOverlay } from './components/SearchOverlay';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { BackgroundLoader } from './components/BackgroundLoader';
 import { useAppContext } from './contexts/AppContext';
 import { Product, User } from './types';
 
@@ -12,7 +13,7 @@ const App: React.FC = () => {
     isOnline,
     isSearchOpen, setIsSearchOpen,
     handleSellerAccess,
-    unreadMessagesCount,
+    backgroundLoading,
   } = useAppContext();
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,6 +35,9 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-gold-400/30">
+      {/* Background sync indicator */}
+      <BackgroundLoader visible={backgroundLoading} />
+
       {/* Background gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-20%] w-[70%] h-[70%] rounded-full blur-[120px] bg-gold-400/[0.06]" />
@@ -47,7 +51,6 @@ const App: React.FC = () => {
             onSearchClick={() => setIsSearchOpen(true)}
             onSellerAccess={handleSellerAccess}
             isOnline={isOnline}
-            unreadMessagesCount={unreadMessagesCount}
           />
         )}
         <main>
@@ -62,6 +65,8 @@ const App: React.FC = () => {
         onProductClick={handleProductClick}
         onShopClick={handleShopClick}
       />
+
+      {/* Language Switcher is now integrated directly in each page's header */}
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />

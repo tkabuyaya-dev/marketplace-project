@@ -3,12 +3,12 @@
  */
 
 import {
-  Category, SubscriptionTier, Country, Marketplace, Currency,
+  Category, SubscriptionTier, Country, Currency,
 } from '../../types';
-import { INITIAL_CATEGORIES, INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES, INITIAL_CURRENCIES, MARKETPLACES } from '../../constants';
+import { INITIAL_CATEGORIES, INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES, INITIAL_CURRENCIES } from '../../constants';
 import {
-  db, collection, doc, addDoc, getDocs, setDoc, updateDoc, deleteDoc,
-  query, where, orderBy, writeBatch, COLLECTIONS,
+  db, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  query, where, orderBy, limit, writeBatch, onSnapshot, serverTimestamp, COLLECTIONS,
 } from './constants';
 
 // ── Categories ──
@@ -96,13 +96,38 @@ export const getCountries = async (): Promise<Country[]> => {
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Country));
 };
 
-export const addCountry = async (country: Country): Promise<void> => {
+export const addCountry = async (country: Country, adminId?: string, adminEmail?: string): Promise<void> => {
   if (!db) return;
   await setDoc(doc(db, COLLECTIONS.COUNTRIES, country.id), country);
+  if (adminId) {
+    await addDoc(collection(db, COLLECTIONS.AUDIT_LOGS), {
+      action: 'country_add',
+      entityType: 'country',
+      entityId: country.id,
+      adminId,
+      adminEmail: adminEmail || '',
+      previousValue: null,
+      newValue: country,
+      timestamp: serverTimestamp(),
+    });
+  }
 };
 
-export const updateCountry = async (id: string, updates: Partial<Country>): Promise<void> => {
+export const updateCountry = async (
+  id: string,
+  updates: Partial<Country>,
+  adminId?: string,
+  adminEmail?: string,
+): Promise<void> => {
   if (!db) return;
+
+  // Capture previous state for audit log
+  let previousValue: Partial<Country> | null = null;
+  if (adminId) {
+    const snap = await getDoc(doc(db, COLLECTIONS.COUNTRIES, id));
+    if (snap.exists()) previousValue = snap.data() as Partial<Country>;
+  }
+
   await updateDoc(doc(db, COLLECTIONS.COUNTRIES, id), updates);
 
   // When toggling isActive, batch-update all products from this country
@@ -120,73 +145,110 @@ export const updateCountry = async (id: string, updates: Partial<Country>): Prom
       await batch.commit();
     }
   }
-};
 
-export const deleteCountry = async (id: string): Promise<void> => {
-  if (!db) return;
-  await deleteDoc(doc(db, COLLECTIONS.COUNTRIES, id));
-};
-
-// ── Marketplaces ──
-
-export const getMarketplaces = async (): Promise<Marketplace[]> => {
-  if (!db) return [];
-  const snap = await getDocs(collection(db, COLLECTIONS.MARKETPLACES));
-  if (snap.empty) {
-    // Seed from constants on first access
-    await seedMarketplaces();
-    return MARKETPLACES.map(m => ({
-      ...m, cityId: 'bujumbura', countryId: 'bi', isActive: true,
-    }));
+  // Write audit log
+  if (adminId) {
+    await addDoc(collection(db, COLLECTIONS.AUDIT_LOGS), {
+      action: updates.isActive !== undefined ? 'country_toggle' : 'country_update',
+      entityType: 'country',
+      entityId: id,
+      adminId,
+      adminEmail: adminEmail || '',
+      previousValue: previousValue || null,
+      newValue: updates,
+      timestamp: serverTimestamp(),
+    });
   }
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Marketplace));
 };
 
-export const getMarketplacesByCountry = async (countryId: string): Promise<Marketplace[]> => {
+export const deleteCountry = async (id: string, adminId?: string, adminEmail?: string): Promise<void> => {
+  if (!db) return;
+  let previousValue: any = null;
+  if (adminId) {
+    const snap = await getDoc(doc(db, COLLECTIONS.COUNTRIES, id));
+    if (snap.exists()) previousValue = snap.data();
+  }
+  await deleteDoc(doc(db, COLLECTIONS.COUNTRIES, id));
+  if (adminId) {
+    await addDoc(collection(db, COLLECTIONS.AUDIT_LOGS), {
+      action: 'country_delete',
+      entityType: 'country',
+      entityId: id,
+      adminId,
+      adminEmail: adminEmail || '',
+      previousValue,
+      newValue: null,
+      timestamp: serverTimestamp(),
+    });
+  }
+};
+
+/** Compteurs vendeurs et produits par pays */
+export const getCountryStats = async (): Promise<Record<string, { sellers: number; products: number }>> => {
+  if (!db) return {};
+  const stats: Record<string, { sellers: number; products: number }> = {};
+
+  // Count sellers by country
+  const usersSnap = await getDocs(query(
+    collection(db, COLLECTIONS.USERS),
+    where('role', '==', 'seller'),
+  ));
+  usersSnap.docs.forEach(d => {
+    const countryId = d.data().sellerDetails?.countryId;
+    if (countryId) {
+      if (!stats[countryId]) stats[countryId] = { sellers: 0, products: 0 };
+      stats[countryId].sellers++;
+    }
+  });
+
+  // Count products by country
+  const prodsSnap = await getDocs(query(
+    collection(db, COLLECTIONS.PRODUCTS),
+    where('status', '==', 'approved'),
+  ));
+  prodsSnap.docs.forEach(d => {
+    const countryId = d.data().countryId;
+    if (countryId) {
+      if (!stats[countryId]) stats[countryId] = { sellers: 0, products: 0 };
+      stats[countryId].products++;
+    }
+  });
+
+  return stats;
+};
+
+/** Récupérer les dernières entrées d'audit log pour les pays */
+export const getCountryAuditLogs = async (limitCount: number = 10): Promise<any[]> => {
   if (!db) return [];
   const q = query(
-    collection(db, COLLECTIONS.MARKETPLACES),
-    where('countryId', '==', countryId),
-    where('isActive', '==', true)
+    collection(db, COLLECTIONS.AUDIT_LOGS),
+    where('entityType', '==', 'country'),
+    orderBy('timestamp', 'desc'),
+    limit(limitCount),
   );
   const snap = await getDocs(q);
-  if (snap.empty && countryId === 'bi') {
-    await seedMarketplaces();
-    return MARKETPLACES.map(m => ({
-      ...m, cityId: 'bujumbura', countryId: 'bi', isActive: true,
-    }));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+/** Listener temps réel pour les pays actifs uniquement */
+export const subscribeToActiveCountries = (
+  callback: (countries: Country[]) => void,
+): (() => void) => {
+  if (!db) {
+    callback(INITIAL_COUNTRIES.filter(c => c.isActive));
+    return () => {};
   }
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Marketplace));
-};
-
-export const addMarketplace = async (marketplace: Omit<Marketplace, 'id'> & { id?: string }): Promise<Marketplace> => {
-  if (!db) throw new Error('Firebase non initialisé');
-  const id = marketplace.id || marketplace.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  const data = { ...marketplace, id };
-  await setDoc(doc(db, COLLECTIONS.MARKETPLACES, id), data);
-  return data as Marketplace;
-};
-
-export const updateMarketplace = async (id: string, updates: Partial<Marketplace>): Promise<void> => {
-  if (!db) return;
-  await updateDoc(doc(db, COLLECTIONS.MARKETPLACES, id), updates);
-};
-
-export const deleteMarketplace = async (id: string): Promise<void> => {
-  if (!db) return;
-  await deleteDoc(doc(db, COLLECTIONS.MARKETPLACES, id));
-};
-
-const seedMarketplaces = async (): Promise<void> => {
-  if (!db) return;
-  const batch = writeBatch(db);
-  MARKETPLACES.forEach(mp => {
-    const data: Marketplace = {
-      ...mp, cityId: 'bujumbura', countryId: 'bi', isActive: true,
-    };
-    batch.set(doc(db, COLLECTIONS.MARKETPLACES, mp.id), data);
+  const q = query(
+    collection(db, COLLECTIONS.COUNTRIES),
+    where('isActive', '==', true),
+  );
+  return onSnapshot(q, (snap) => {
+    const countries = snap.docs.map(d => ({ id: d.id, ...d.data() } as Country));
+    callback(countries);
+  }, (err) => {
+    console.error('subscribeToActiveCountries error:', err);
+    callback(INITIAL_COUNTRIES.filter(c => c.isActive));
   });
-  await batch.commit();
 };
 
 // ── Banners ──
@@ -315,4 +377,54 @@ export const seedInitialData = async (): Promise<void> => {
 
   await batch.commit();
   console.info('Données initiales seedées en Firestore');
+};
+
+// ── Language Settings (appSettings/languages) ──
+
+export interface LanguageSettings {
+  enabledLanguages: string[];
+  defaultLanguage: string;
+  updatedAt?: any;
+  updatedBy?: string;
+}
+
+const DEFAULT_LANGUAGE_SETTINGS: LanguageSettings = {
+  enabledLanguages: ['fr', 'en', 'rn', 'sw', 'rw'],
+  defaultLanguage: 'fr',
+};
+
+export const getLanguageSettings = async (): Promise<LanguageSettings> => {
+  if (!db) return DEFAULT_LANGUAGE_SETTINGS;
+  const snap = await getDoc(doc(db, COLLECTIONS.APP_SETTINGS, 'languages'));
+  if (!snap.exists()) return DEFAULT_LANGUAGE_SETTINGS;
+  return snap.data() as LanguageSettings;
+};
+
+export const updateLanguageSettings = async (
+  settings: Pick<LanguageSettings, 'enabledLanguages' | 'defaultLanguage'>,
+  adminId: string,
+): Promise<void> => {
+  if (!db) return;
+  await setDoc(doc(db, COLLECTIONS.APP_SETTINGS, 'languages'), {
+    ...settings,
+    updatedAt: serverTimestamp(),
+    updatedBy: adminId,
+  });
+};
+
+/** Listener temps réel pour les changements de langues */
+export const subscribeToLanguageSettings = (
+  callback: (settings: LanguageSettings) => void,
+): (() => void) => {
+  if (!db) {
+    callback(DEFAULT_LANGUAGE_SETTINGS);
+    return () => {};
+  }
+  return onSnapshot(doc(db, COLLECTIONS.APP_SETTINGS, 'languages'), (snap) => {
+    if (snap.exists()) {
+      callback(snap.data() as LanguageSettings);
+    } else {
+      callback(DEFAULT_LANGUAGE_SETTINGS);
+    }
+  });
 };

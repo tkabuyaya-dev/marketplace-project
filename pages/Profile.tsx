@@ -116,9 +116,6 @@ const Profile: React.FC = () => {
               {currentUser.role === 'admin' ? t('profile.adminConsole') : t('profile.sellerArea')}
             </Button>
           )}
-          <Button className="w-full" variant="secondary" onClick={() => navigate('/messenger')}>
-            {t('profile.myMessages')}
-          </Button>
           <Button className="w-full border-red-900/50 text-red-400 hover:bg-red-900/20" variant="outline" onClick={handleLogout}>{t('profile.logout')}</Button>
         </div>
       </div>

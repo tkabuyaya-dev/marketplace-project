@@ -5,6 +5,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { verifyRecaptcha } from '../services/recaptcha';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 const Login: React.FC = () => {
   const { handleLogin, loginLoading } = useAppContext();
@@ -34,7 +35,10 @@ const Login: React.FC = () => {
   const isLoading = loginLoading || recaptchaLoading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 pt-16">
+    <div className="min-h-screen flex items-center justify-center px-6 pt-16 relative">
+      <div className="absolute top-4 right-4 z-50">
+        <LanguageSwitcher compact />
+      </div>
       <div className="w-full max-w-sm text-center space-y-8">
         <div>
           <h1 className="text-4xl font-black bg-gradient-to-r from-gold-400 to-gold-600 text-transparent bg-clip-text mb-2">AuraBuja</h1>

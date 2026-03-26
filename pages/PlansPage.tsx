@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import {
@@ -18,7 +19,8 @@ import {
 type Step = 'plans' | 'payment' | 'confirmation' | 'done';
 
 export const PlansPage: React.FC = () => {
-  const { currentUser } = useAppContext();
+  const { t } = useTranslation();
+  const { currentUser, authReady } = useAppContext();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -41,6 +43,7 @@ export const PlansPage: React.FC = () => {
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
 
   useEffect(() => {
+    if (!authReady) return; // Wait for auth to resolve
     if (!currentUser || currentUser.role === 'buyer') {
       navigate('/');
       return;
@@ -57,7 +60,7 @@ export const PlansPage: React.FC = () => {
       setMyRequests(requests);
     };
     load();
-  }, [currentUser, sellerCountryId]);
+  }, [authReady, currentUser, sellerCountryId]);
 
   const getPrice = (tierId: string): number => {
     if (pricing?.prices[tierId] !== undefined) return pricing.prices[tierId];
@@ -86,7 +89,7 @@ export const PlansPage: React.FC = () => {
 
   const handleSelectPlan = (tier: SubscriptionTier) => {
     if (hasPendingRequest(tier.id)) {
-      toast('Vous avez deja une demande en cours pour ce plan.', 'error');
+      toast(t('plans.alreadyPending'), 'error');
       return;
     }
     setSelectedPlan(tier);
@@ -112,9 +115,9 @@ export const PlansPage: React.FC = () => {
       });
       setCurrentRequestId(requestId);
       setStep('confirmation');
-      toast('Demande creee ! Confirmez votre paiement.', 'success');
+      toast(t('plans.requestCreated'), 'success');
     } catch (err) {
-      toast('Erreur lors de la creation de la demande.', 'error');
+      toast(t('plans.requestCreateError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -122,24 +125,24 @@ export const PlansPage: React.FC = () => {
 
   const handleConfirmPayment = async () => {
     if (!currentRequestId || !transactionRef.trim()) {
-      toast('Entrez la reference de transaction.', 'error');
+      toast(t('plans.enterRef'), 'error');
       return;
     }
     setLoading(true);
     try {
       await confirmPayment(currentRequestId, transactionRef.trim());
       setStep('done');
-      toast('Paiement confirme ! L\'admin va valider sous peu.', 'success');
+      toast(t('plans.paymentConfirmed'), 'success');
     } catch (err) {
-      toast('Erreur lors de la confirmation.', 'error');
+      toast(t('plans.paymentConfirmError'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const whatsappMessage = selectedPlan
-    ? `Bonjour, je souhaite souscrire au plan ${selectedPlan.label} sur AuraBuja.%0APays: ${country?.name || sellerCountryId}%0AMontant: ${formatPrice(getPrice(selectedPlan.id))}%0ANom: ${currentUser?.sellerDetails?.shopName || currentUser?.name}`
-    : `Bonjour, je souhaite souscrire a un plan AuraBuja.`;
+    ? encodeURIComponent(t('plans.whatsappSubscribe', { plan: selectedPlan.label, country: country?.name || sellerCountryId, amount: formatPrice(getPrice(selectedPlan.id)), name: currentUser?.sellerDetails?.shopName || currentUser?.name }))
+    : encodeURIComponent(t('plans.whatsappGeneric'));
 
   if (!currentUser) return null;
 
@@ -151,19 +154,19 @@ export const PlansPage: React.FC = () => {
       <div className="bg-gradient-to-br from-gray-900 via-gold-950 to-gray-900 border-b border-gold-400/20">
         <div className="max-w-5xl mx-auto px-4 py-8">
           <button onClick={() => step === 'plans' ? navigate('/dashboard') : setStep('plans')} className="text-gold-400 text-sm mb-4 hover:underline">
-            &larr; {step === 'plans' ? 'Retour au dashboard' : 'Retour aux plans'}
+            &larr; {step === 'plans' ? t('plans.backToDashboard') : t('plans.backToPlans')}
           </button>
           <h1 className="text-3xl font-black">
-            {step === 'plans' && 'Choisissez votre plan'}
-            {step === 'payment' && `Paiement — ${selectedPlan?.label}`}
-            {step === 'confirmation' && 'Confirmez votre paiement'}
-            {step === 'done' && 'Demande envoyee !'}
+            {step === 'plans' && t('plans.choosePlan')}
+            {step === 'payment' && t('plans.paymentTitle', { plan: selectedPlan?.label })}
+            {step === 'confirmation' && t('plans.confirmPayment')}
+            {step === 'done' && t('plans.requestSent')}
           </h1>
           <p className="text-gray-400 mt-2">
-            {step === 'plans' && `Plan actuel : ${currentTierLabel} | Pays : ${country?.flag} ${country?.name}`}
-            {step === 'payment' && `Montant : ${selectedPlan ? formatPrice(getPrice(selectedPlan.id)) : ''} / 30 jours`}
-            {step === 'confirmation' && 'Entrez la reference de votre transaction pour que l\'admin puisse verifier.'}
-            {step === 'done' && 'Votre demande sera traitee dans les plus brefs delais.'}
+            {step === 'plans' && t('plans.currentPlanInfo', { plan: currentTierLabel, flag: country?.flag, country: country?.name })}
+            {step === 'payment' && t('plans.amountInfo', { amount: selectedPlan ? formatPrice(getPrice(selectedPlan.id)) : '' })}
+            {step === 'confirmation' && t('plans.confirmHint')}
+            {step === 'done' && t('plans.requestProcessed')}
           </p>
         </div>
       </div>
@@ -190,67 +193,67 @@ export const PlansPage: React.FC = () => {
                   >
                     {isPopular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold-400 text-gray-900 text-xs font-black px-3 py-1 rounded-full">
-                        POPULAIRE
+                        {t('plans.popularBadge')}
                       </div>
                     )}
 
                     {isCurrentPlan && (
                       <div className="absolute -top-3 right-4 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                        ACTUEL
+                        {t('plans.currentBadge')}
                       </div>
                     )}
 
                     <h3 className="text-lg font-black text-white mb-1">{tier.label}</h3>
                     <p className="text-gray-400 text-xs mb-4">
-                      {tier.max === null ? '51+ produits' : `${tier.min}-${tier.max} produits`}
+                      {tier.max === null ? t('plans.unlimitedProducts') : t('plans.productRange', { min: tier.min, max: tier.max })}
                     </p>
 
                     <div className="mb-4">
                       <span className="text-3xl font-black text-gold-400">{price.toLocaleString()}</span>
-                      <span className="text-gray-400 text-sm ml-1">{getCurrency()}/mois</span>
+                      <span className="text-gray-400 text-sm ml-1">{getCurrency()}{t('plans.perMonth')}</span>
                     </div>
 
                     <ul className="space-y-2 mb-6 flex-1 text-sm text-gray-300">
                       <li className="flex items-center gap-2">
                         <span className="text-green-400">&#10003;</span>
-                        {tier.max === null ? 'Produits illimites' : `Jusqu'a ${tier.max} produits`}
+                        {tier.max === null ? t('plans.featureUnlimited') : t('plans.featureUpTo', { max: tier.max })}
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="text-green-400">&#10003;</span>
-                        Boutique verifiee
+                        {t('plans.featureVerified')}
                       </li>
                       {tier.id === 'pro' && (
                         <li className="flex items-center gap-2">
                           <span className="text-green-400">&#10003;</span>
-                          Badge Pro visible
+                          {t('plans.featureProBadge')}
                         </li>
                       )}
                       {(tier.id === 'elite' || tier.id === 'unlimited') && (
                         <>
                           <li className="flex items-center gap-2">
                             <span className="text-green-400">&#10003;</span>
-                            Priorite dans les recherches
+                            {t('plans.featureSearchPriority')}
                           </li>
                           <li className="flex items-center gap-2">
                             <span className="text-green-400">&#10003;</span>
-                            Support prioritaire
+                            {t('plans.featurePrioritySupport')}
                           </li>
                         </>
                       )}
                       {tier.requiresNif && (
                         <li className="flex items-center gap-2 text-yellow-400 text-xs">
-                          NIF requis
+                          {t('plans.nifRequired')}
                         </li>
                       )}
                     </ul>
 
                     {isPending ? (
                       <button disabled className="w-full py-2.5 bg-yellow-600/20 text-yellow-400 text-sm font-bold rounded-xl border border-yellow-600/30">
-                        Demande en cours...
+                        {t('plans.pendingRequest')}
                       </button>
                     ) : isCurrentPlan ? (
                       <button disabled className="w-full py-2.5 bg-green-600/20 text-green-400 text-sm font-bold rounded-xl border border-green-600/30">
-                        Plan actuel
+                        {t('plans.currentPlan')}
                       </button>
                     ) : (
                       <button
@@ -261,7 +264,7 @@ export const PlansPage: React.FC = () => {
                             : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
                         }`}
                       >
-                        Choisir ce plan
+                        {t('plans.choosePlanBtn')}
                       </button>
                     )}
                   </div>
@@ -272,7 +275,7 @@ export const PlansPage: React.FC = () => {
             {/* Pending Requests */}
             {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').length > 0 && (
               <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-yellow-400 mb-3">Demandes en cours</h3>
+                <h3 className="text-sm font-bold text-yellow-400 mb-3">{t('plans.pendingRequestsTitle')}</h3>
                 <div className="space-y-2">
                   {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').map(req => (
                     <div key={req.id} className="flex items-center justify-between bg-black/20 rounded-lg px-4 py-2 text-sm">
@@ -283,7 +286,7 @@ export const PlansPage: React.FC = () => {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                         req.status === 'pending' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'
                       }`}>
-                        {req.status === 'pending' ? 'En attente de paiement' : 'Paiement en verification'}
+                        {req.status === 'pending' ? t('plans.paymentPending') : t('plans.paymentVerification')}
                       </span>
                     </div>
                   ))}
@@ -293,14 +296,14 @@ export const PlansPage: React.FC = () => {
 
             {/* WhatsApp Fallback */}
             <div className="bg-gray-900 border border-gray-700/50 rounded-xl p-4 text-center">
-              <p className="text-gray-400 text-sm mb-2">Besoin d'aide pour choisir ?</p>
+              <p className="text-gray-400 text-sm mb-2">{t('plans.needHelp')}</p>
               <a
                 href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-500 transition-colors"
               >
-                Contactez-nous sur WhatsApp
+                {t('plans.contactWhatsapp')}
               </a>
             </div>
           </div>
@@ -315,7 +318,7 @@ export const PlansPage: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold text-white">{selectedPlan.label}</h3>
                   <p className="text-gray-400 text-sm">
-                    {selectedPlan.max === null ? 'Produits illimites' : `${selectedPlan.max} produits max`} | 30 jours
+                    {selectedPlan.max === null ? t('plans.featureUnlimited') : t('plans.planSummary', { max: selectedPlan.max })}
                   </p>
                 </div>
                 <div className="text-right">
@@ -327,7 +330,7 @@ export const PlansPage: React.FC = () => {
             {/* Payment Methods */}
             <div className="bg-gray-900 border border-gray-700/50 rounded-xl p-5">
               <h3 className="text-sm font-bold text-white mb-4">
-                Payez via l'une de ces methodes ({country?.flag} {country?.name})
+                {t('plans.paymentMethods', { flag: country?.flag, country: country?.name })}
               </h3>
               <div className="space-y-3">
                 {paymentMethods.map((method, i) => (
@@ -342,11 +345,11 @@ export const PlansPage: React.FC = () => {
               </div>
 
               <div className="mt-4 bg-blue-900/20 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
-                <p className="font-bold mb-1">Instructions :</p>
+                <p className="font-bold mb-1">{t('plans.instructions')}</p>
                 <ol className="list-decimal ml-4 space-y-1">
-                  <li>Envoyez <strong>{formatPrice(getPrice(selectedPlan.id))}</strong> via l'une des methodes ci-dessus</li>
-                  <li>Notez la <strong>reference de transaction</strong> fournie</li>
-                  <li>Cliquez sur "J'ai paye" ci-dessous</li>
+                  <li dangerouslySetInnerHTML={{ __html: t('plans.instruction1', { amount: `<strong>${formatPrice(getPrice(selectedPlan.id))}</strong>` }) }} />
+                  <li>{t('plans.instruction2')}</li>
+                  <li>{t('plans.instruction3')}</li>
                 </ol>
               </div>
             </div>
@@ -358,7 +361,7 @@ export const PlansPage: React.FC = () => {
                 disabled={loading}
                 className="flex-1 py-3 bg-gold-400 text-gray-900 font-bold rounded-xl hover:bg-gold-300 transition-colors disabled:opacity-50"
               >
-                {loading ? 'Creation...' : "J'ai paye — Creer ma demande"}
+                {loading ? t('plans.creating') : t('plans.createRequest')}
               </button>
             </div>
 
@@ -369,7 +372,7 @@ export const PlansPage: React.FC = () => {
                 rel="noopener noreferrer"
                 className="text-green-400 text-sm hover:underline"
               >
-                Besoin d'aide ? WhatsApp
+                {t('plans.needHelpWhatsapp')}
               </a>
             </div>
           </div>
@@ -379,16 +382,16 @@ export const PlansPage: React.FC = () => {
         {step === 'confirmation' && (
           <div className="max-w-lg mx-auto space-y-6">
             <div className="bg-gray-900 border border-gray-700/50 rounded-xl p-5">
-              <h3 className="text-sm font-bold text-white mb-4">Reference de transaction</h3>
+              <h3 className="text-sm font-bold text-white mb-4">{t('plans.transactionRefTitle')}</h3>
               <input
                 type="text"
                 value={transactionRef}
                 onChange={(e) => setTransactionRef(e.target.value)}
-                placeholder="Ex: TXN123456789 ou code Lumicash"
+                placeholder={t('plans.transactionRefPlaceholder')}
                 className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-400 focus:outline-none"
               />
               <p className="text-gray-500 text-xs mt-2">
-                Entrez le code de confirmation que vous avez recu apres le paiement.
+                {t('plans.transactionRefHint')}
               </p>
             </div>
 
@@ -397,13 +400,13 @@ export const PlansPage: React.FC = () => {
               disabled={loading || !transactionRef.trim()}
               className="w-full py-3 bg-gold-400 text-gray-900 font-bold rounded-xl hover:bg-gold-300 transition-colors disabled:opacity-50"
             >
-              {loading ? 'Envoi...' : 'Confirmer le paiement'}
+              {loading ? t('plans.sending') : t('plans.confirmPaymentBtn')}
             </button>
 
             <p className="text-center text-gray-500 text-xs">
-              Vous n'avez pas encore paye ?{' '}
+              {t('plans.notPaidYet')}{' '}
               <button onClick={() => setStep('payment')} className="text-gold-400 hover:underline">
-                Voir les instructions de paiement
+                {t('plans.viewPaymentInstructions')}
               </button>
             </p>
           </div>
@@ -414,13 +417,12 @@ export const PlansPage: React.FC = () => {
           <div className="max-w-lg mx-auto text-center space-y-6">
             <div className="bg-green-900/20 border border-green-500/30 rounded-2xl p-8">
               <div className="text-5xl mb-4">&#9989;</div>
-              <h2 className="text-xl font-black text-white mb-2">Demande envoyee avec succes !</h2>
+              <h2 className="text-xl font-black text-white mb-2">{t('plans.successTitle')}</h2>
               <p className="text-gray-400">
-                L'admin va verifier votre paiement et activer votre plan{' '}
-                <strong className="text-gold-400">{selectedPlan?.label}</strong> sous peu.
+                {t('plans.successMessage', { plan: selectedPlan?.label })}
               </p>
               <p className="text-gray-500 text-sm mt-3">
-                Vous recevrez une notification une fois votre abonnement active.
+                {t('plans.notificationHint')}
               </p>
             </div>
 
@@ -429,15 +431,15 @@ export const PlansPage: React.FC = () => {
                 onClick={() => navigate('/dashboard')}
                 className="px-6 py-2.5 bg-white/10 text-white font-bold rounded-xl border border-white/20 hover:bg-white/20"
               >
-                Retour au dashboard
+                {t('plans.backToDashboardBtn')}
               </button>
               <a
-                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=Bonjour, j'ai soumis une demande d'abonnement ${selectedPlan?.label} sur AuraBuja. Ref: ${transactionRef}`}
+                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${encodeURIComponent(`${t('plans.whatsappGeneric')} ${selectedPlan?.label} - Ref: ${transactionRef}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-500"
               >
-                Contacter via WhatsApp
+                {t('plans.contactViaWhatsapp')}
               </a>
             </div>
           </div>

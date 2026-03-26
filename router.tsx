@@ -1,4 +1,5 @@
 import React, { lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createBrowserRouter, Navigate, useRouteError } from 'react-router-dom';
 import App from './App';
 import { AppProvider } from './contexts/AppContext';
@@ -27,10 +28,9 @@ const lazyRetry = (importFn: () => Promise<any>) =>
 
 const ProductDetailPage = lazyRetry(() => import('./pages/ProductDetail'));
 const ShopProfilePage = lazyRetry(() => import('./pages/ShopProfile'));
-const MessengerPage = lazyRetry(() => import('./pages/Messenger'));
 const SellerDashboardPage = lazyRetry(() => import('./pages/SellerDashboard'));
 const SellerRegistrationPage = lazyRetry(() => import('./pages/SellerRegistration'));
-const AdminDashboardPage = lazyRetry(() => import('./pages/AdminDashboard'));
+const AdminDashboardPage = lazyRetry(() => import('./pages/admin'));
 const LoginPage = lazyRetry(() => import('./pages/Login'));
 const ProfilePage = lazyRetry(() => import('./pages/Profile'));
 const FavoritesPage = lazyRetry(() => import('./pages/Favorites'));
@@ -53,6 +53,7 @@ const PageLoader = () => (
 );
 
 const RouteErrorBoundary = () => {
+  const { t } = useTranslation();
   const error = useRouteError();
   const isChunkError = error instanceof TypeError && error.message.includes('dynamically imported module');
   if (isChunkError) {
@@ -61,9 +62,9 @@ const RouteErrorBoundary = () => {
   }
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <p className="text-xl font-bold text-white mb-2">Une erreur est survenue</p>
+      <p className="text-xl font-bold text-white mb-2">{t('errors.pageError')}</p>
       <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">
-        Recharger la page
+        {t('errors.reloadPage')}
       </button>
     </div>
   );
@@ -94,8 +95,6 @@ export const router = createBrowserRouter([
       { path: 'product/:slugOrId', element: <SuspenseWrapper><ProductDetailPage /></SuspenseWrapper> },
       { path: 'shop/:slugOrId', element: <SuspenseWrapper><ShopProfilePage /></SuspenseWrapper> },
       { path: 'shop/:shopSlug/product/:slugOrId', element: <SuspenseWrapper><ProductDetailPage /></SuspenseWrapper> },
-      { path: 'messenger', element: <SuspenseWrapper><MessengerPage /></SuspenseWrapper> },
-      { path: 'messenger/:conversationId', element: <SuspenseWrapper><MessengerPage /></SuspenseWrapper> },
       { path: 'dashboard', element: <SuspenseWrapper><SellerDashboardPage /></SuspenseWrapper> },
       { path: 'register-seller', element: <SuspenseWrapper><SellerRegistrationPage /></SuspenseWrapper> },
       { path: 'admin', element: <SuspenseWrapper><AdminDashboardPage /></SuspenseWrapper> },

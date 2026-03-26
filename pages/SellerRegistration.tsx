@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
-import { User, SellerDetails, Country, Marketplace } from '../types';
+import { User, SellerDetails } from '../types';
 import { PROVINCES_BY_COUNTRY } from '../constants';
-import { registerSeller, getCountries, updateUserProfile, getMarketplacesByCountry } from '../services/firebase';
+import { registerSeller, updateUserProfile } from '../services/firebase';
 import { uploadImage } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
 import { verifyRecaptcha } from '../services/recaptcha';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useActiveCountries } from '../hooks/useActiveCountries';
 
 export const SellerRegistration: React.FC = () => {
   const { currentUser } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { categories: firestoreCategories } = useCategories();
 
@@ -22,26 +26,24 @@ export const SellerRegistration: React.FC = () => {
   }
 
   const onSuccess = () => {
-    toast("Inscription vendeur réussie !", 'success');
+    toast(t('registration.successToast'), 'success');
     navigate('/dashboard');
   };
   const onCancel = () => navigate('/');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [countries, setCountries] = useState<Country[]>([]);
+  const { countries } = useActiveCountries();
   const [editName, setEditName] = useState(currentUser.name || '');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [marketplaces, setMarketplaces] = useState<Marketplace[]>([]);
-
+  const { activeCountry } = useAppContext();
   const [formData, setFormData] = useState<SellerDetails>({
     cni: '',
     phone: '',
-    countryId: 'bi',
-    province: 'Bujumbura Mairie',
+    countryId: activeCountry || 'bi',
+    province: '',
     commune: '',
     quartier: '',
     shopName: '',
-    marketplace: undefined,
     sellerType: 'shop',
     gps: undefined,
     categories: [],
@@ -54,30 +56,14 @@ export const SellerRegistration: React.FC = () => {
   const [files, setFiles] = useState<{ cni?: File, nif?: File, reg?: File, shop?: File }>({});
   const [gpsLoading, setGpsLoading] = useState(false);
 
+  // Validate formData country against active countries
+  const regCountryIds = countries.map(c => c.id).join(',');
   useEffect(() => {
-      getCountries().then(all => {
-          const activeCountries = all.filter(c => c.isActive);
-          setCountries(activeCountries);
-          if (!activeCountries.find(c => c.id === formData.countryId) && activeCountries.length > 0) {
-              setFormData(prev => ({...prev, countryId: activeCountries[0].id}));
-          }
-      });
-  }, []);
+    if (countries.length > 0 && !countries.find(c => c.id === formData.countryId)) {
+      setFormData(prev => ({ ...prev, countryId: countries[0].id }));
+    }
+  }, [regCountryIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load marketplaces when country changes
-  useEffect(() => {
-    getMarketplacesByCountry(formData.countryId).then(mps => {
-      setMarketplaces(mps);
-      // Reset marketplace if switching to a country without markets
-      if (mps.length === 0) {
-        setFormData(prev => ({ ...prev, marketplace: undefined }));
-      } else if (!mps.find(m => m.id === formData.marketplace)) {
-        // Default to first marketplace or 'autres'
-        const autres = mps.find(m => m.id === 'autres');
-        setFormData(prev => ({ ...prev, marketplace: autres?.id || mps[0].id }));
-      }
-    });
-  }, [formData.countryId]);
 
   const handleChange = (field: keyof SellerDetails, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -110,13 +96,13 @@ export const SellerRegistration: React.FC = () => {
 
   const captureGPS = () => {
       if (!navigator.geolocation) {
-          toast("La géolocalisation n'est pas supportée par votre navigateur.", 'error');
+          toast(t('registration.gpsNotSupported'), 'error');
           return;
       }
 
       // Check HTTPS (geolocation requires secure context except localhost)
       if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-          toast("La géolocalisation nécessite une connexion HTTPS sécurisée.", 'error');
+          toast(t('registration.gpsNeedsHttps'), 'error');
           return;
       }
 
@@ -130,21 +116,21 @@ export const SellerRegistration: React.FC = () => {
                       lng: position.coords.longitude
                   }
               }));
-              toast("Position GPS capturée avec succès !", 'success');
+              toast(t('registration.gpsCapturedSuccess'), 'success');
               setGpsLoading(false);
           },
           (error) => {
               console.error('[GPS]', error.code, error.message);
-              let msg = "Impossible de récupérer la position.";
+              let msg = t('registration.gpsErrorGeneric');
               switch (error.code) {
                   case 1: // PERMISSION_DENIED
-                      msg = "Accès à la localisation refusé. Allez dans les paramètres de votre navigateur → Autorisations du site → Localisation → Autoriser.";
+                      msg = t('registration.gpsErrorDenied');
                       break;
                   case 2: // POSITION_UNAVAILABLE
-                      msg = "Position indisponible. Assurez-vous que le GPS est activé sur votre appareil et réessayez.";
+                      msg = t('registration.gpsErrorUnavailable');
                       break;
                   case 3: // TIMEOUT
-                      msg = "Délai dépassé. Sortez à l'extérieur pour un meilleur signal GPS et réessayez.";
+                      msg = t('registration.gpsErrorTimeout');
                       break;
               }
               toast(msg, 'error');
@@ -157,7 +143,7 @@ export const SellerRegistration: React.FC = () => {
   const handleSubmit = async () => {
     // Validate terms acceptance (tracked in React state for reliable cross-browser UX)
     if (!acceptedTerms) {
-      toast("Veuillez accepter les conditions d'utilisation.", 'error');
+      toast(t('registration.termsRequired'), 'error');
       return;
     }
 
@@ -167,19 +153,19 @@ export const SellerRegistration: React.FC = () => {
         // reCAPTCHA v3 verification before registration
         const passed = await verifyRecaptcha('seller_registration');
         if (!passed) {
-          toast("Vérification de sécurité échouée. Réessayez.", 'error');
+          toast(t('registration.securityFailed'), 'error');
           setLoading(false);
           return;
         }
         if (formData.sellerType === 'shop' && !formData.gps) {
-            toast("La localisation GPS est obligatoire pour un magasin fixe.", 'error');
+            toast(t('registration.gpsRequired'), 'error');
             setStep(2);
             setLoading(false);
             return;
         }
 
         if (formData.sellerType === 'shop' && !files.shop) {
-             toast("Une photo de la boutique est requise.", 'error');
+             toast(t('registration.shopPhotoRequired'), 'error');
              setStep(2);
              setLoading(false);
              return;
@@ -206,7 +192,7 @@ export const SellerRegistration: React.FC = () => {
         onSuccess();
     } catch (error: any) {
         console.error('Registration error:', error);
-        toast(error?.message || "Une erreur est survenue lors de l'inscription.", 'error');
+        toast(error?.message || t('registration.registrationError'), 'error');
     } finally {
         setLoading(false);
     }
@@ -214,7 +200,6 @@ export const SellerRegistration: React.FC = () => {
 
   const provinces = PROVINCES_BY_COUNTRY[formData.countryId];
   const hasProvinceList = !!provinces && provinces.length > 0;
-  const hasMarketplaces = marketplaces.length > 0;
   const selectedCountry = countries.find(c => c.id === formData.countryId);
 
   // --- RENDERING SECTIONS ---
@@ -232,14 +217,14 @@ export const SellerRegistration: React.FC = () => {
 
   const renderStep1_Personal = () => (
     <div className="space-y-4 animate-fade-in">
-        <h2 className="text-xl font-bold text-white mb-4">Informations Personnelles</h2>
+        <h2 className="text-xl font-bold text-white mb-4">{t('registration.step1Title')}</h2>
 
         <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1">Nom complet</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1">{t('registration.fullName')}</label>
             <input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Votre nom complet"
+                placeholder={t('registration.fullNamePlaceholder')}
                 maxLength={100}
                 className="w-full bg-gray-800/50 border border-gray-700 rounded-xl p-3 text-white focus:border-blue-500 outline-none"
             />
@@ -247,7 +232,7 @@ export const SellerRegistration: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">Pays *</label>
+                <label className="block text-xs font-bold text-gray-400 mb-1">{t('registration.countryLabel')}</label>
                 <select
                     value={formData.countryId}
                     onChange={e => handleCountryChange(e.target.value)}
@@ -257,7 +242,7 @@ export const SellerRegistration: React.FC = () => {
                 </select>
             </div>
             <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">CNI / Passeport *</label>
+                <label className="block text-xs font-bold text-gray-400 mb-1">{t('registration.cniLabel')}</label>
                 <input
                     value={formData.cni}
                     onChange={e => handleChange('cni', e.target.value)}
@@ -267,12 +252,12 @@ export const SellerRegistration: React.FC = () => {
         </div>
 
         <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1">Téléphone Principal (WhatsApp) *</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1">{t('registration.phoneLabel')}</label>
             <input
                 type="tel"
                 value={formData.phone}
                 onChange={e => handleChange('phone', e.target.value)}
-                placeholder={formData.countryId === 'bi' ? "+257..." : formData.countryId === 'cd' ? "+243..." : "Code pays + Numéro"}
+                placeholder={formData.countryId === 'bi' ? t('registration.phoneCodeBi') : formData.countryId === 'cd' ? t('registration.phoneCodeCd') : t('registration.phoneCodeGeneric')}
                 className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
             />
         </div>
@@ -280,7 +265,7 @@ export const SellerRegistration: React.FC = () => {
         {/* Province — dropdown for all countries with known provinces, free text otherwise */}
         <div>
             <label className="block text-xs font-bold text-gray-400 mb-1">
-              {formData.countryId === 'bi' ? 'Province' : 'Province / Ville'} *
+              {formData.countryId === 'bi' ? t('registration.provinceLabel') : t('registration.provinceCityLabel')} *
             </label>
             {hasProvinceList ? (
                 <select
@@ -294,7 +279,7 @@ export const SellerRegistration: React.FC = () => {
                 <input
                     value={formData.province}
                     onChange={e => handleChange('province', e.target.value)}
-                    placeholder="Votre province ou région"
+                    placeholder={t('registration.provincePlaceholder')}
                     className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
                 />
             )}
@@ -303,40 +288,40 @@ export const SellerRegistration: React.FC = () => {
         <div className="grid grid-cols-2 gap-4">
             <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1">
-                  {formData.countryId === 'bi' ? 'Commune' : 'Ville / Cité'} *
+                  {formData.countryId === 'bi' ? t('registration.communeLabel') : t('registration.communeCityLabel')} *
                 </label>
                 <input
                     value={formData.commune}
                     onChange={e => handleChange('commune', e.target.value)}
-                    placeholder={formData.countryId === 'cd' ? 'Ex: Goma, Bukavu...' : ''}
+                    placeholder={formData.countryId === 'cd' ? t('registration.communePlaceholder') : ''}
                     className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
                 />
             </div>
             <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1">
-                  {formData.countryId === 'bi' ? 'Quartier' : 'Adresse / Quartier'} *
+                  {formData.countryId === 'bi' ? t('registration.quarterLabel') : t('registration.quarterAddressLabel')} *
                 </label>
                 <input
                     value={formData.quartier}
                     onChange={e => handleChange('quartier', e.target.value)}
-                    placeholder={formData.countryId !== 'bi' ? 'Avenue, Rue...' : ''}
+                    placeholder={formData.countryId !== 'bi' ? t('registration.quarterPlaceholder') : ''}
                     className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
                 />
             </div>
         </div>
 
         <div className="pt-4 flex justify-end">
-            <Button type="button" onClick={() => setStep(2)} disabled={!formData.cni || !formData.phone || !formData.province || !formData.commune}>Suivant</Button>
+            <Button type="button" onClick={() => setStep(2)} disabled={!formData.cni || !formData.phone || !formData.province || !formData.commune}>{t('registration.next')}</Button>
         </div>
     </div>
   );
 
   const renderStep2_Activity = () => (
     <div className="space-y-4 animate-fade-in">
-        <h2 className="text-xl font-bold text-white mb-4">Votre Boutique</h2>
+        <h2 className="text-xl font-bold text-white mb-4">{t('registration.step2Title')}</h2>
 
         <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1">Nom du commerce</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1">{t('registration.shopName')}</label>
             <input
                 value={formData.shopName}
                 onChange={e => handleChange('shopName', e.target.value)}
@@ -345,43 +330,10 @@ export const SellerRegistration: React.FC = () => {
             />
         </div>
 
-        {/* Marketplace picker — ONLY for countries with physical markets (e.g. Burundi) */}
-        {hasMarketplaces && (
-          <div>
-            <label className="block text-xs font-bold text-gray-400 mb-2">Votre marché physique *</label>
-            <div className="grid grid-cols-1 gap-2">
-                {marketplaces.map(mp => (
-                    <button
-                        key={mp.id}
-                        type="button"
-                        onClick={() => handleChange('marketplace', mp.id)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-bold transition-all text-left ${
-                            formData.marketplace === mp.id
-                                ? `${mp.color} text-white border-transparent shadow-lg`
-                                : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600'
-                        }`}
-                    >
-                        <span className="text-lg">{mp.icon}</span>
-                        <span>{mp.name}</span>
-                    </button>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {/* Info for countries without physical markets */}
-        {!hasMarketplaces && selectedCountry && (
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <p className="text-sm text-gray-400">
-              {selectedCountry.flag} Pour {selectedCountry.name}, le marché physique n'est pas requis. Votre boutique sera visible dans la section {selectedCountry.name}.
-            </p>
-          </div>
-        )}
-
         <div>
-            <label className="block text-xs font-bold text-gray-400 mb-2">Type de vendeur</label>
+            <label className="block text-xs font-bold text-gray-400 mb-2">{t('registration.sellerTypeLabel')}</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[{ id: 'shop', label: '🏪 Magasin Fixe' }, { id: 'street', label: '🚶 Ambulant' }, { id: 'online', label: '🌐 En Ligne' }].map(type => (
+                {[{ id: 'shop', label: t('registration.typeShop') }, { id: 'street', label: t('registration.typeStreet') }, { id: 'online', label: t('registration.typeOnline') }].map(type => (
                     <button
                         key={type.id}
                         type="button"
@@ -398,7 +350,7 @@ export const SellerRegistration: React.FC = () => {
         {formData.sellerType === 'shop' && (
              <div className="bg-blue-900/10 border border-blue-500/30 p-4 rounded-xl animate-fade-in space-y-4">
                 <div>
-                    <label className="block text-xs font-bold text-blue-300 mb-2">Localisation GPS Exacte *</label>
+                    <label className="block text-xs font-bold text-blue-300 mb-2">{t('registration.gpsLabel')}</label>
                     <Button
                         type="button"
                         onClick={captureGPS}
@@ -406,20 +358,20 @@ export const SellerRegistration: React.FC = () => {
                         className={`w-full ${formData.gps ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600'}`}
                         icon={<span>📍</span>}
                     >
-                        {formData.gps ? `Position capturée (${formData.gps.lat.toFixed(4)}, ${formData.gps.lng.toFixed(4)})` : "Obtenir ma position GPS"}
+                        {formData.gps ? t('registration.gpsCaptured', { lat: formData.gps.lat.toFixed(4), lng: formData.gps.lng.toFixed(4) }) : t('registration.gpsButton')}
                     </Button>
-                    <p className="text-[10px] text-gray-500 mt-2">Activez la localisation sur votre téléphone. Indispensable pour que les clients vous trouvent.</p>
+                    <p className="text-[10px] text-gray-500 mt-2">{t('registration.gpsHint')}</p>
                 </div>
 
                 <div className="border border-dashed border-gray-600 rounded-xl p-4 text-center">
-                    <p className="text-sm font-bold text-gray-300 mb-2">Photo de la devanture/Logo *</p>
+                    <p className="text-sm font-bold text-gray-300 mb-2">{t('registration.shopPhotoLabel')}</p>
                     <input type="file" accept="image/*" onChange={e => e.target.files && handleFileChange('shop', e.target.files[0])} className="text-xs text-gray-500" />
                 </div>
              </div>
         )}
 
         <div>
-            <label className="block text-xs font-bold text-gray-400 mb-2">Catégories Principales</label>
+            <label className="block text-xs font-bold text-gray-400 mb-2">{t('registration.categoriesLabel')}</label>
             <div className="flex flex-wrap gap-2">
                 {firestoreCategories.map(c => c.name).map(cat => (
                     <button
@@ -435,17 +387,16 @@ export const SellerRegistration: React.FC = () => {
         </div>
 
         <div className="pt-4 flex justify-between">
-            <Button type="button" variant="ghost" onClick={() => setStep(1)}>Retour</Button>
+            <Button type="button" variant="ghost" onClick={() => setStep(1)}>{t('registration.back')}</Button>
             <Button
               type="button"
               onClick={() => setStep(3)}
               disabled={
-                (hasMarketplaces && !formData.marketplace) ||
                 formData.categories.length === 0 ||
                 (formData.sellerType === 'shop' && (!formData.gps || !files.shop))
               }
             >
-              Suivant
+              {t('registration.next')}
             </Button>
         </div>
     </div>
@@ -453,25 +404,25 @@ export const SellerRegistration: React.FC = () => {
 
   const renderStep3_Legal = () => (
     <div className="space-y-6 animate-fade-in">
-        <h2 className="text-xl font-bold text-white mb-1">Fiscalité & NIF</h2>
+        <h2 className="text-xl font-bold text-white mb-1">{t('registration.step3Title')}</h2>
 
         <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
-            <label className="block text-sm font-bold text-white mb-3">Avez-vous un NIF ?</label>
+            <label className="block text-sm font-bold text-white mb-3">{t('registration.hasNifQuestion')}</label>
             <div className="flex gap-4 mb-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" checked={formData.hasNif} onChange={() => handleChange('hasNif', true)} className="accent-blue-500" />
-                    <span className="text-sm text-gray-300">Oui</span>
+                    <span className="text-sm text-gray-300">{t('registration.yes')}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" checked={!formData.hasNif} onChange={() => handleChange('hasNif', false)} className="accent-blue-500" />
-                    <span className="text-sm text-gray-300">Non</span>
+                    <span className="text-sm text-gray-300">{t('registration.no')}</span>
                 </label>
             </div>
             {formData.hasNif && (
                 <input
                     value={formData.nif}
                     onChange={e => handleChange('nif', e.target.value)}
-                    placeholder="Numéro NIF"
+                    placeholder={t('registration.nifPlaceholder')}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white text-sm"
                 />
             )}
@@ -479,33 +430,33 @@ export const SellerRegistration: React.FC = () => {
 
         <div className={`p-4 rounded-xl border ${formData.hasNif ? 'bg-blue-900/20 border-blue-500/50' : 'bg-red-900/20 border-red-500/50'}`}>
             <h4 className={`text-sm font-bold mb-1 ${formData.hasNif ? 'text-blue-400' : 'text-red-400'}`}>
-                {formData.hasNif ? '✅ Compte illimité (selon forfait)' : '⚠️ Limite: 1 à 3 Produits Max'}
+                {formData.hasNif ? t('registration.nifUnlimited') : t('registration.nifLimited')}
             </h4>
             <p className="text-xs text-gray-400">
-                Sans NIF, vous êtes restreint au forfait gratuit. Avec NIF, vous pouvez souscrire aux forfaits Pro.
+                {t('registration.nifExplanation')}
             </p>
         </div>
 
         <div className="pt-4 flex justify-between">
-            <Button type="button" variant="ghost" onClick={() => setStep(2)}>Retour</Button>
-            <Button type="button" onClick={() => setStep(4)}>Suivant</Button>
+            <Button type="button" variant="ghost" onClick={() => setStep(2)}>{t('registration.back')}</Button>
+            <Button type="button" onClick={() => setStep(4)}>{t('registration.next')}</Button>
         </div>
     </div>
   );
 
   const renderStep4_Final = () => (
       <div className="space-y-6 animate-fade-in">
-          <h2 className="text-xl font-bold text-white mb-4">Justificatifs</h2>
+          <h2 className="text-xl font-bold text-white mb-4">{t('registration.step4Title')}</h2>
 
           <div className="space-y-4">
               <div className="border border-dashed border-gray-700 rounded-xl p-4 text-center">
-                  <p className="text-sm font-bold text-gray-300 mb-2">Photo CNI/Passeport (Recto/Verso)</p>
+                  <p className="text-sm font-bold text-gray-300 mb-2">{t('registration.cniPhotoLabel')}</p>
                   <input type="file" accept="image/*" onChange={e => e.target.files && handleFileChange('cni', e.target.files[0])} className="text-xs text-gray-500" />
               </div>
 
               {formData.hasNif && (
                   <div className="border border-dashed border-gray-700 rounded-xl p-4 text-center">
-                      <p className="text-sm font-bold text-gray-300 mb-2">Photo du document NIF</p>
+                      <p className="text-sm font-bold text-gray-300 mb-2">{t('registration.nifPhotoLabel')}</p>
                       <input type="file" accept="image/*" onChange={e => e.target.files && handleFileChange('nif', e.target.files[0])} className="text-xs text-gray-500" />
                   </div>
               )}
@@ -520,13 +471,13 @@ export const SellerRegistration: React.FC = () => {
                     className="mt-1 accent-blue-500 w-5 h-5 shrink-0"
                   />
                   <span className="text-xs text-gray-300 leading-relaxed">
-                      Je certifie l'exactitude des informations. AuraBuja se réserve le droit de suspendre tout compte frauduleux.
+                      {t('registration.termsAccept')}
                   </span>
               </label>
           </div>
 
           <div className="pt-4 flex justify-between gap-4">
-              <Button variant="ghost" type="button" onClick={() => setStep(3)}>Retour</Button>
+              <Button variant="ghost" type="button" onClick={() => setStep(3)}>{t('registration.back')}</Button>
               <Button
                 type="button"
                 className="flex-1"
@@ -534,21 +485,24 @@ export const SellerRegistration: React.FC = () => {
                 disabled={!acceptedTerms || loading}
                 onClick={handleSubmit}
               >
-                Créer ma boutique
+                {t('registration.createShop')}
               </Button>
           </div>
       </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center pt-20 pb-10 px-4">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center pt-20 pb-10 px-4 relative">
+        <div className="absolute top-4 right-4 z-50">
+          <LanguageSwitcher compact />
+        </div>
         <div className="w-full max-w-lg">
             {/* Header */}
             <div className="text-center mb-8">
                 <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gold-400 to-gold-600 mb-2">
-                    Devenir Vendeur
+                    {t('registration.title')}
                 </h1>
-                <p className="text-gray-400 text-sm">Créez votre boutique professionnelle sur AuraBuja.</p>
+                <p className="text-gray-400 text-sm">{t('registration.subtitle')}</p>
             </div>
 
             <div className="bg-gray-900 border border-gray-800 shadow-2xl rounded-3xl p-6 md:p-8">
@@ -561,7 +515,7 @@ export const SellerRegistration: React.FC = () => {
             </div>
 
             <button onClick={onCancel} className="mt-6 text-sm text-gray-500 hover:text-white w-full text-center">
-                Annuler
+                {t('registration.cancel')}
             </button>
         </div>
     </div>

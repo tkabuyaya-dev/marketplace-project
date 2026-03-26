@@ -88,8 +88,19 @@ service cloud.firestore {
       // Mise à jour: soi-même avec restrictions, ou admin sans restriction
       allow update: if isAdmin()
         || (isOwner(userId) && isNotSuspended() && (
-          // Cas 1: Mise à jour profil normale (pas de changement role/isVerified)
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isVerified'])
+          // Cas 1: Mise à jour profil normale (pas de changement role/isVerified/sellerDetails.subscription*)
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isVerified'])
+            // Empêcher la modification des champs d'abonnement par le vendeur
+            && (
+              !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sellerDetails'])
+              || (
+                request.resource.data.get('sellerDetails', {}).get('maxProducts', 5) == resource.data.get('sellerDetails', {}).get('maxProducts', 5)
+                && request.resource.data.get('sellerDetails', {}).get('subscriptionExpiresAt', null) == resource.data.get('sellerDetails', {}).get('subscriptionExpiresAt', null)
+                && request.resource.data.get('sellerDetails', {}).get('tierLabel', 'Gratuit') == resource.data.get('sellerDetails', {}).get('tierLabel', 'Gratuit')
+              )
+            )
+          )
           ||
           // Cas 2: Inscription vendeur — buyer → seller uniquement (isVerified reste false)
           (
@@ -147,8 +158,12 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['status', 'resubmittedAt']))
         || (isAuth()
-          // Tout utilisateur auth peut incrémenter views ou likesCount uniquement
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likesCount']));
+          // Tout utilisateur auth peut incrémenter/décrémenter views ou likesCount de 1 max
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likesCount'])
+          && (request.resource.data.views == resource.data.views || request.resource.data.views == resource.data.views + 1)
+          && (request.resource.data.likesCount == resource.data.likesCount
+              || request.resource.data.likesCount == resource.data.likesCount + 1
+              || request.resource.data.likesCount == resource.data.likesCount - 1));
 
       // Suppression: vendeur (son produit) ou admin
       allow delete: if (isAuth() && resource.data.sellerId == request.auth.uid) || isAdmin();
@@ -172,6 +187,7 @@ service cloud.firestore {
 
     // ─────────────────────────────────────────────────────────
     // CONVERSATIONS & MESSAGES — Chat P2P
+    // Chat supprimé — rules conservées pour migration données existantes
     // ─────────────────────────────────────────────────────────
     match /conversations/{convId} {
       // Lecture: participants uniquement
@@ -378,6 +394,14 @@ service cloud.firestore {
     // ─────────────────────────────────────────────────────────
     match /blocklist/{entryId} {
       allow read, write: if false; // Géré uniquement via Admin SDK
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // APP SETTINGS (langues, config globale)
+    // ─────────────────────────────────────────────────────────
+    match /appSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // ─────────────────────────────────────────────────────────

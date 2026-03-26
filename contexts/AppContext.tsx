@@ -1,18 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '../components/Toast';
-import { User, AppNotification, MarketplaceId } from '../types';
+import { User, AppNotification } from '../types';
 import {
   subscribeToAuth,
   subscribeToUserProfile,
   subscribeToNotifications,
-  subscribeToUnreadMessages,
   signInWithGoogle,
   signOut as firebaseSignOut,
-  createOrGetConversation,
-  getFirstAdmin,
   markNotificationRead,
   markAllNotificationsRead,
+  subscribeToLanguageSettings,
+  getCachedUser,
+  clearCachedUser,
 } from '../services/firebase';
+import type { LanguageSettings } from '../services/firebase/admin-data';
 import { auth } from '../firebase-config';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -27,18 +28,19 @@ interface AppContextType {
   setIsSearchOpen: (open: boolean) => void;
   activeCountry: string;
   setActiveCountry: (country: string) => void;
-  activeMarketplace: MarketplaceId | null;
-  setActiveMarketplace: (mp: MarketplaceId | null) => void;
   notifications: AppNotification[];
   unreadCount: number;
-  unreadMessagesCount: number;
   handleLogin: () => Promise<void>;
   handleLogout: () => Promise<void>;
-  handleContactSeller: (seller: User, productId?: string) => Promise<void>;
+  handleContactSeller: (seller: User, productId?: string) => void;
   handleSellerAccess: () => void;
   loginLoading: boolean;
+  authReady: boolean;
+  backgroundLoading: boolean;
   markNotifRead: (id: string) => Promise<void>;
   markAllNotifsRead: () => Promise<void>;
+  enabledLanguages: string[];
+  defaultLanguage: string;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -50,20 +52,30 @@ export const useAppContext = () => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Instant app shell: use cached user from localStorage (< 1ms)
+  // Firebase Auth verifies in background; updates silently if different
+  const cachedUser = useRef(getCachedUser()).current;
+
+  const [currentUser, setCurrentUser] = useState<User | null>(cachedUser);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [activeCountry, setActiveCountry] = useState<string>('bi');
-  const [activeMarketplace, setActiveMarketplace] = useState<MarketplaceId | null>(null);
+  // Restore saved country from localStorage, fallback handled by useActiveCountries
+  const [activeCountry, setActiveCountry] = useState<string>(() => {
+    try {
+      return localStorage.getItem('aurabuja_active_country') || '';
+    } catch { return ''; }
+  });
   const [loginLoading, setLoginLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(!!cachedUser);
+  const [backgroundLoading, setBackgroundLoading] = useState(!!cachedUser);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [enabledLanguages, setEnabledLanguages] = useState<string[]>(['fr', 'en', 'rn', 'sw', 'rw']);
+  const [defaultLanguage, setDefaultLanguage] = useState<string>('fr');
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const userProfileUnsub = useRef<(() => void) | null>(null);
   const notifUnsub = useRef<(() => void) | null>(null);
-  const msgUnsub = useRef<(() => void) | null>(null);
 
   // Network status with automatic token refresh on reconnect
   const handleReconnect = useCallback(async () => {
@@ -74,18 +86,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
   const { isOnline } = useNetworkStatus(handleReconnect);
 
-  // Auth subscription
+  // Hide splash loader helper
+  const hideLoader = useCallback(() => {
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+      loader.classList.add('hidden');
+      setTimeout(() => loader.remove(), 300);
+    }
+  }, []);
+
+  // If we have a cached user, hide the loader IMMEDIATELY (< 1ms)
   useEffect(() => {
-    const unsubscribe = subscribeToAuth((user) => {
-      setCurrentUser(user);
-      // Hide initial loader
-      const loader = document.getElementById('app-loader');
-      if (loader) {
-        loader.classList.add('hidden');
-        setTimeout(() => loader.remove(), 300);
+    if (cachedUser) hideLoader();
+  }, []);
+
+  // Auth subscription — Firebase verifies in background
+  useEffect(() => {
+    // Safety timeout: if Firebase Auth doesn't respond in 3s, show app anyway
+    const timeout = setTimeout(() => {
+      if (!authReady) {
+        setAuthReady(true);
+        setBackgroundLoading(false);
+        hideLoader();
       }
+    }, 3000);
+
+    const unsubscribe = subscribeToAuth((user) => {
+      clearTimeout(timeout);
+      setCurrentUser(user);
+      setAuthReady(true);
+      setBackgroundLoading(false);
+      hideLoader();
     });
-    return () => unsubscribe();
+
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, []);
 
   // Real-time user profile + notifications listener
@@ -93,12 +130,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Cleanup previous subscriptions
     if (userProfileUnsub.current) { userProfileUnsub.current(); userProfileUnsub.current = null; }
     if (notifUnsub.current) { notifUnsub.current(); notifUnsub.current = null; }
-    if (msgUnsub.current) { msgUnsub.current(); msgUnsub.current = null; }
 
     if (!currentUser) {
       setNotifications([]);
       setUnreadCount(0);
-      setUnreadMessagesCount(0);
       return;
     }
 
@@ -113,17 +148,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUnreadCount(notifs.filter(n => !n.read && n.type !== 'new_message').length);
     });
 
-    // Real-time unread messages count (for chat icon badge)
-    msgUnsub.current = subscribeToUnreadMessages((count) => {
-      setUnreadMessagesCount(count);
-    });
-
     return () => {
       if (userProfileUnsub.current) userProfileUnsub.current();
       if (notifUnsub.current) notifUnsub.current();
-      if (msgUnsub.current) msgUnsub.current();
     };
   }, [currentUser?.id]);
+
+  // Listener temps réel pour les paramètres de langues (admin)
+  useEffect(() => {
+    const unsub = subscribeToLanguageSettings((settings: LanguageSettings) => {
+      setEnabledLanguages(settings.enabledLanguages);
+      setDefaultLanguage(settings.defaultLanguage);
+      // Si la langue active est désactivée, basculer vers la langue par défaut
+      if (!settings.enabledLanguages.includes(i18n.language)) {
+        i18n.changeLanguage(settings.defaultLanguage);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // GA4: Track page views on route change
   useEffect(() => {
@@ -133,12 +175,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // GA4 + Sentry: Set user properties when user changes
   useEffect(() => {
     if (currentUser) {
-      setUserProperties(currentUser.id, currentUser.role, currentUser.sellerDetails?.countryId || 'bi');
+      setUserProperties(currentUser.id, currentUser.role, currentUser.sellerDetails?.countryId || activeCountry || 'unknown');
       setSentryUser(currentUser.id, currentUser.email, currentUser.role);
     } else {
       clearSentryUser();
     }
   }, [currentUser?.id, currentUser?.role]);
+
+  // Persist selected country to localStorage
+  useEffect(() => {
+    if (activeCountry) {
+      try { localStorage.setItem('aurabuja_active_country', activeCountry); } catch { /* ignore */ }
+    }
+  }, [activeCountry]);
 
   // Keyboard shortcut: Cmd+K (optimized — listener created once)
   const isSearchOpenRef = useRef(isSearchOpen);
@@ -178,25 +227,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const handleLogout = async () => {
+    clearCachedUser();
     await firebaseSignOut();
     setCurrentUser(null);
     navigate('/');
   };
 
-  const handleContactSeller = async (seller: User, productId?: string) => {
+  const handleContactSeller = (seller: User, productId?: string) => {
     if (!currentUser) {
-      toast("Connectez-vous pour contacter le vendeur.", 'info');
+      toast(i18n.t('toast.loginToContact'), 'info');
       navigate('/login');
       return;
     }
-    try {
-      const conversationId = await createOrGetConversation(seller.id, productId);
-      analyticsContactSeller(seller.id, seller.name, productId);
-      navigate(`/messenger/${conversationId}`, { state: { contactSeller: seller } });
-    } catch (err) {
-      console.error('Erreur création conversation:', err);
-      navigate('/messenger');
+    const whatsapp = seller.whatsapp || (seller as any).sellerDetails?.phone;
+    if (!whatsapp) {
+      toast(i18n.t('toast.noWhatsapp'), 'error');
+      return;
     }
+    analyticsContactSeller(seller.id, seller.name, productId);
+    const num = whatsapp.replace(/[^0-9+]/g, '');
+    window.open(`https://wa.me/${num}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleSellerAccess = () => {
@@ -220,12 +270,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isOnline,
       isSearchOpen, setIsSearchOpen,
       activeCountry, setActiveCountry,
-      activeMarketplace, setActiveMarketplace,
-      notifications, unreadCount, unreadMessagesCount,
+      notifications, unreadCount,
       handleLogin, handleLogout,
       handleContactSeller, handleSellerAccess,
       loginLoading,
+      authReady,
+      backgroundLoading,
       markNotifRead, markAllNotifsRead,
+      enabledLanguages, defaultLanguage,
     }}>
       {children}
     </AppContext.Provider>

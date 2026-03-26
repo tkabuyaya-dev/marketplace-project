@@ -4,6 +4,7 @@ import { Product } from '../types';
 import { CURRENCY, TC } from '../constants';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
 import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
+import { ProgressiveImage } from './ProgressiveImage';
 
 interface ProductCardProps {
   product: Product;
@@ -23,7 +24,6 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
   const [liked, setLiked] = useState(initialLiked || false);
   const [likeCount, setLikeCount] = useState(product.likesCount || 0);
   const [isVisible, setIsVisible] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // ── Intersection Observer: lazy loading (charge uniquement si visible) ──
@@ -88,27 +88,21 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
       onClick={onClick}
       className={`group relative bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl overflow-hidden ${tc.hoverBorder} transition-all duration-300 cursor-pointer shadow-lg ${tc.hoverShadow} active:scale-[0.98]`}
     >
-      {/* Image avec lazy loading natif + Observer */}
+      {/* Image avec progressive loading (BlurHash → micro-thumb → HD) */}
       <div className="aspect-[4/3] w-full overflow-hidden relative bg-gray-800">
-        {/* Placeholder skeleton pendant le chargement */}
-        {!imageLoaded && (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-700 animate-pulse" />
-        )}
-
-        {/* Image: chargée seulement quand visible dans le viewport */}
-        {isVisible && optimizedImage && (
-          <img
+        {isVisible && optimizedImage ? (
+          <ProgressiveImage
             src={optimizedImage}
             srcSet={srcSet || undefined}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             alt={product.title}
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setImageLoaded(true)}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            blurhash={product.blurhash}
+            originalUrl={product.images[0]}
+            className="absolute inset-0"
+            imgClassName="group-hover:scale-105 transition-transform duration-500"
           />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-700 animate-pulse" />
         )}
 
         {/* Badge Promu / Tendance */}
@@ -128,6 +122,20 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
             -{discount}%
           </div>
         ) : null}
+
+        {/* B2B Wholesale badge */}
+        {product.isWholesale && (
+          <div className="absolute top-2 right-12 bg-indigo-600/90 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-lg">
+            B2B
+          </div>
+        )}
+
+        {/* Auction badge */}
+        {product.isAuction && product.auctionEndTime && product.auctionEndTime > Date.now() && (
+          <div className="absolute bottom-2 right-2 bg-red-600/90 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse shadow-lg">
+            🔨 {t('product.auction')}
+          </div>
+        )}
 
         {/* Low stock badge */}
         {product.stockQuantity !== undefined && product.stockQuantity > 0 && product.stockQuantity <= 5 && (

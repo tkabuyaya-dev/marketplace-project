@@ -41,7 +41,6 @@ interface CachedProduct {
   reviews?: number;
   views: number;
   likesCount: number;
-  marketplace?: string;
   sellerId: string;
   sellerName: string;
   sellerAvatar?: string;
@@ -74,7 +73,6 @@ function cachedToProduct(p: CachedProduct): Product {
       role: 'seller',
       joinDate: 0,
     },
-    marketplace: p.marketplace as any,
     status: 'approved',
     views: p.views || 0,
     likesCount: p.likesCount || 0,

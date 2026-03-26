@@ -1,49 +1,7 @@
-import { Product, User, ThemeColors, Category, SubscriptionTier, Country, MarketplaceId, CityInfo, Currency, PaymentMethod, SubscriptionPricing } from './types';
+import { Product, User, ThemeColors, Category, SubscriptionTier, Country, Currency, PaymentMethod, SubscriptionPricing } from './types';
 
 export const CURRENCY = 'FBu'; // legacy default — use Currency system for multi-currency
 export const LOW_STOCK_THRESHOLD = 5;
-
-// --- MARKETPLACES PHYSIQUES DE BUJUMBURA ---
-export interface MarketplaceInfo {
-  id: MarketplaceId;
-  name: string;
-  icon: string;
-  color: string;       // Tailwind bg class
-  borderColor: string;  // Tailwind border class
-  textColor: string;    // Tailwind text class
-}
-
-export const MARKETPLACES: MarketplaceInfo[] = [
-  { id: 'bata',         name: 'Marché de Bata',        icon: '🟠', color: 'bg-orange-600',  borderColor: 'border-orange-500', textColor: 'text-orange-400' },
-  { id: 'kamenge',      name: 'Marché de Kamenge',      icon: '🟢', color: 'bg-green-600',   borderColor: 'border-green-500',  textColor: 'text-green-400' },
-  { id: 'centre-ville', name: 'Marché du Centre Ville', icon: '🔵', color: 'bg-blue-600',    borderColor: 'border-blue-500',   textColor: 'text-blue-400' },
-  { id: 'kinama',       name: 'Marché de Kinama',       icon: '🟣', color: 'bg-purple-600',  borderColor: 'border-purple-500', textColor: 'text-purple-400' },
-  { id: 'autres',       name: 'Autres / Non localisé',  icon: '⚪', color: 'bg-gray-600',    borderColor: 'border-gray-500',   textColor: 'text-gray-400' },
-];
-
-export const getMarketplaceInfo = (id: MarketplaceId): MarketplaceInfo =>
-  MARKETPLACES.find(m => m.id === id) || MARKETPLACES[4];
-
-// --- VILLES & MARCHÉS (Multi-pays extensible) ---
-export const CITIES: CityInfo[] = [
-  { id: 'bujumbura', name: 'Bujumbura',  countryId: 'bi', flag: '🇧🇮', marketplaces: ['bata', 'kamenge', 'centre-ville', 'kinama', 'autres'] },
-  { id: 'gitega',    name: 'Gitega',     countryId: 'bi', flag: '🇧🇮', marketplaces: [] },
-  { id: 'kinshasa',  name: 'Kinshasa',   countryId: 'cd', flag: '🇨🇩', marketplaces: [] },
-  { id: 'lubumbashi',name: 'Lubumbashi', countryId: 'cd', flag: '🇨🇩', marketplaces: [] },
-  { id: 'kigali',    name: 'Kigali',     countryId: 'rw', flag: '🇷🇼', marketplaces: [] },
-  { id: 'kampala',   name: 'Kampala',     countryId: 'ug', flag: '🇺🇬', marketplaces: [] },
-  { id: 'daressalaam', name: 'Dar es Salaam', countryId: 'tz', flag: '🇹🇿', marketplaces: [] },
-  { id: 'dodoma',   name: 'Dodoma',     countryId: 'tz', flag: '🇹🇿', marketplaces: [] },
-  { id: 'nairobi',  name: 'Nairobi',    countryId: 'ke', flag: '🇰🇪', marketplaces: [] },
-  { id: 'mombasa',  name: 'Mombasa',    countryId: 'ke', flag: '🇰🇪', marketplaces: [] },
-  { id: 'kisumu',   name: 'Kisumu',     countryId: 'ke', flag: '🇰🇪', marketplaces: [] },
-];
-
-export const getMarketplacesForCity = (cityId: string): MarketplaceInfo[] => {
-  const city = CITIES.find(c => c.id === cityId);
-  if (!city) return [];
-  return city.marketplaces.map(mpId => getMarketplaceInfo(mpId));
-};
 
 export const PROVINCES_BURUNDI = [
   'Bubanza', 'Bujumbura Mairie', 'Bujumbura Rural', 'Bururi', 'Cankuzo',

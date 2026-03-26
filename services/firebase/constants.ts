@@ -64,19 +64,19 @@ export const COLLECTIONS = {
   CATEGORIES:         'categories',
   SUBSCRIPTION_TIERS: 'subscriptionTiers',
   COUNTRIES:          'countries',
-  CONVERSATIONS:      'conversations',
+  // CONVERSATIONS removed — chat feature deprecated
   MESSAGES:           'messages',
   LIKES:              'likes',
   REPORTS:            'reports',
   AUDIT_LOGS:         'auditLogs',
   BANNERS:            'banners',
-  MARKETPLACES:       'marketplaces',
   NOTIFICATIONS:      'notifications',
   REVIEWS:            'reviews',
   USER_ACTIVITY:      'userActivity',
   CURRENCIES:         'currencies',
   SUBSCRIPTION_REQUESTS: 'subscriptionRequests',
   SUBSCRIPTION_PRICING:  'subscriptionPricing',
+  APP_SETTINGS:          'appSettings',
 } as const;
 
 /** Converts a Firestore document to User type */
@@ -125,7 +125,6 @@ export function docToProduct(docData: any, id: string): Product {
     },
     currency:    docData.currency || undefined,
     countryId:   docData.countryId || undefined,
-    marketplace: docData.marketplace || undefined,
     isPromoted:  docData.isPromoted || false,
     status:      docData.status,
     rejectionReason: docData.rejectionReason || '',
@@ -139,5 +138,18 @@ export function docToProduct(docData: any, id: string): Product {
     discountPrice:   docData.discountPrice ?? undefined,
     promotionStart:  docData.promotionStart?.toMillis?.() || docData.promotionStart || undefined,
     promotionEnd:    docData.promotionEnd?.toMillis?.() || docData.promotionEnd || undefined,
+    // B2B Wholesale
+    isWholesale:       docData.isWholesale || false,
+    minOrderQuantity:  docData.minOrderQuantity ?? undefined,
+    wholesalePrice:    docData.wholesalePrice ?? undefined,
+    // Auction
+    isAuction:         docData.isAuction || false,
+    auctionEndTime:    docData.auctionEndTime?.toMillis?.() || docData.auctionEndTime || undefined,
+    startingBid:       docData.startingBid ?? undefined,
+    currentBid:        docData.currentBid ?? undefined,
+    currentBidderId:   docData.currentBidderId || undefined,
+    bidCount:          docData.bidCount || 0,
+    // Progressive image (LQIP)
+    blurhash:          docData.blurhash || undefined,
   } as Product;
 }

@@ -3,7 +3,7 @@
  */
 
 import {
-  Product, ProductStatus, SearchFilters, MarketplaceId,
+  Product, ProductStatus, SearchFilters,
 } from '../../types';
 import { generateUniqueSlug } from '../../utils/slug';
 import {
@@ -24,8 +24,9 @@ export const getProducts = async (
   category: string = 'all',
   lastDoc?: QueryDocumentSnapshot,
   pageSize: number = PRODUCTS_PAGE_SIZE,
-  marketplace?: MarketplaceId,
-  countryId?: string
+  _marketplace?: string, // deprecated — kept for backward compat, ignored
+  countryId?: string,
+  wholesaleOnly?: boolean
 ): Promise<{ products: Product[]; lastDoc: QueryDocumentSnapshot | null }> => {
   if (!db) return { products: [], lastDoc: null };
 
@@ -36,8 +37,8 @@ export const getProducts = async (
     limit(pageSize),
   ];
 
+  if (wholesaleOnly) constraints.splice(1, 0, where('isWholesale', '==', true));
   if (countryId) constraints.splice(1, 0, where('countryId', '==', countryId));
-  if (marketplace) constraints.splice(1, 0, where('marketplace', '==', marketplace));
   if (category !== 'all') constraints.splice(1, 0, where('category', '==', category));
   if (lastDoc) constraints.push(startAfter(lastDoc));
 
@@ -204,6 +205,7 @@ export const searchProducts = async (
     .filter(d => !isHiddenProduct(d.data()))
     .map(d => docToProduct(d.data(), d.id));
 
+  if (filters?.countryId) results = results.filter(p => !p.countryId || p.countryId === filters.countryId);
   if (filters?.minPrice !== undefined) results = results.filter(p => p.price >= filters.minPrice!);
   if (filters?.maxPrice !== undefined) results = results.filter(p => p.price <= filters.maxPrice!);
   if (filters?.category) results = results.filter(p => p.category === filters.category);
@@ -274,7 +276,16 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     sellerIsVerified: userData.isVerified || false,
     sellerWhatsapp:  userData.whatsapp || null,
     countryId:       userData.sellerDetails?.countryId || null,
-    marketplace:     userData.sellerDetails?.marketplace || null,
+    isWholesale:     productData.isWholesale || false,
+    minOrderQuantity: productData.minOrderQuantity || null,
+    wholesalePrice:  productData.wholesalePrice || null,
+    isAuction:       productData.isAuction || false,
+    auctionEndTime:  productData.auctionEndTime || null,
+    startingBid:     productData.startingBid || null,
+    currentBid:      productData.startingBid || null,
+    currentBidderId: null,
+    bidCount:        0,
+    blurhash:        productData.blurhash || null,
     createdAt:       serverTimestamp(),
   };
 

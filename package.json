@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@sentry/react": "^10.44.0",
+    "blurhash": "^2.0.5",
     "firebase": "^12.9.0",
     "i18next": "^25.8.20",
     "i18next-browser-languagedetector": "^8.2.1",

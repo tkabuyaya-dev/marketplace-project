@@ -17,6 +17,22 @@ declare global {
   }
 }
 
+/** Load reCAPTCHA v3 script dynamically (avoids hardcoding key in index.html) */
+let recaptchaLoaded = false;
+function loadRecaptchaScript(): void {
+  if (recaptchaLoaded || !SITE_KEY || typeof document === 'undefined') return;
+  recaptchaLoaded = true;
+
+  const script = document.createElement('script');
+  script.src = `https://www.google.com/recaptcha/api.js?render=${SITE_KEY}`;
+  script.async = true;
+  script.defer = true;
+  document.head.appendChild(script);
+}
+
+// Auto-load on import
+loadRecaptchaScript();
+
 /**
  * Execute reCAPTCHA v3 and verify the token server-side.
  * Returns true if the user passes, false otherwise.

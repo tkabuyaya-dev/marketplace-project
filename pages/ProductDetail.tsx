@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Product, User } from '../types';
 import { Button } from '../components/Button';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { ShareSheet } from '../components/ShareSheet';
 import { Badge } from '../components/Badge';
 import { CURRENCY, THEME, TC } from '../constants';
-import { toggleLikeProduct, reportProduct, checkIsLiked, incrementProductViews, getProductBySlugOrId } from '../services/firebase';
+import { toggleLikeProduct, reportProduct, checkIsLiked, incrementProductViews, getProductBySlugOrId, placeBid } from '../services/firebase';
 import { getOptimizedUrl } from '../services/cloudinary';
+import { ProgressiveImage } from '../components/ProgressiveImage';
 import { useAppContext } from '../contexts/AppContext';
 import { updateMetaTags } from '../utils/meta';
 import { useToast } from '../components/Toast';
@@ -22,6 +26,7 @@ const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, handleContactSeller } = useAppContext();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { categories } = useCategories();
 
   const getCategoryName = (catId: string) => {
@@ -37,6 +42,11 @@ const ProductDetail: React.FC = () => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [activeImage, setActiveImage] = useState(0);
+
+  // Auction state
+  const [bidAmount, setBidAmount] = useState('');
+  const [bidding, setBidding] = useState(false);
+  const [auctionTimeLeft, setAuctionTimeLeft] = useState('');
 
   // Recommendation sections
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
@@ -113,8 +123,8 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
         <div className="text-6xl">😕</div>
-        <h1 className="text-xl font-bold text-white">Produit introuvable</h1>
-        <Button onClick={() => navigate('/')}>Retour à l'accueil</Button>
+        <h1 className="text-xl font-bold text-white">{t('productDetail.notFound')}</h1>
+        <Button onClick={() => navigate('/')}>{t('productDetail.backToHome')}</Button>
       </div>
     );
   }
@@ -129,19 +139,57 @@ const ProductDetail: React.FC = () => {
     && (!product.promotionStart || product.promotionStart <= now);
   const displayPrice = isOnPromotion ? product.discountPrice! : product.price;
 
+  // Auction countdown
+  useEffect(() => {
+    if (!product?.isAuction || !product.auctionEndTime) return;
+    const tick = () => {
+      const diff = product.auctionEndTime! - Date.now();
+      if (diff <= 0) { setAuctionTimeLeft(t('product.auctionEnded')); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setAuctionTimeLeft(d > 0 ? `${d}j ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [product?.auctionEndTime]);
+
+  const handlePlaceBid = async () => {
+    if (!product || !currentUser || bidding) return;
+    const amount = Number(bidAmount);
+    const minBid = (product.currentBid || product.startingBid || 0) + 1;
+    if (!amount || amount < minBid) {
+      toast(t('product.bidTooLow', { min: minBid.toLocaleString('fr-FR') }), 'error');
+      return;
+    }
+    setBidding(true);
+    try {
+      await placeBid(product.id, amount);
+      setProduct({ ...product, currentBid: amount, currentBidderId: currentUser.id, bidCount: (product.bidCount || 0) + 1 });
+      setBidAmount('');
+      toast(t('product.bidPlaced'), 'success');
+    } catch (err: any) {
+      toast(err.message || t('product.bidError'), 'error');
+    } finally {
+      setBidding(false);
+    }
+  };
+
   const handleWhatsApp = () => {
     if (product.seller.whatsapp) {
       const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
-      const message = `Bonjour, je suis intéressé par votre produit: *${product.title}* sur AuraBuja.\n\n${productUrl}`;
+      const message = t('productDetail.whatsappMessage', { title: product.title, url: productUrl });
       const url = `https://wa.me/${product.seller.whatsapp}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     } else {
-      toast("Le vendeur n'a pas renseigné de numéro WhatsApp.", 'info');
+      toast(t('productDetail.noWhatsapp'), 'info');
     }
   };
 
   const handleLike = async () => {
-    if (!currentUser) return toast("Connectez-vous pour aimer ce produit.", 'info');
+    if (!currentUser) return toast(t('productDetail.loginToLike'), 'info');
     const newLiked = !liked;
     setLiked(newLiked);
     setLikeCount(c => newLiked ? c + 1 : c - 1);
@@ -154,9 +202,9 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleReport = () => {
-    if (window.confirm("Signaler ce produit comme inapproprié ?")) {
+    if (window.confirm(t('productDetail.confirmReport'))) {
       reportProduct(product.id, 'inappropriate');
-      toast("Signalement envoyé à l'administration.", 'success');
+      toast(t('productDetail.reportSent'), 'success');
     }
   };
 
@@ -166,14 +214,14 @@ const ProductDetail: React.FC = () => {
       try {
         await navigator.share({
           title: product.title,
-          text: `Regarde ça sur AuraBuja : ${product.title}`,
+          text: t('productDetail.shareText', { title: product.title }),
           url: shareUrl,
         });
-      } catch (error) { console.log('Erreur partage', error); }
+      } catch (error) { console.log('Share error', error); }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        toast("Lien copié dans le presse-papier !", 'success');
+        toast(t('productDetail.linkCopied'), 'success');
       } catch {
         const textArea = document.createElement('textarea');
         textArea.value = shareUrl;
@@ -183,7 +231,7 @@ const ProductDetail: React.FC = () => {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        toast("Lien copié dans le presse-papier !", 'success');
+        toast(t('productDetail.linkCopied'), 'success');
       }
     }
   };
@@ -209,8 +257,9 @@ const ProductDetail: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex gap-2">
-          <button onClick={handleShare} className="p-3 bg-gray-800 rounded-full text-white hover:bg-gray-700">🔗</button>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher compact />
+          <ShareSheet url={window.location.href} title={product?.title || 'AuraBuja'} text={product ? t('productDetail.shareText', { title: product.title }) : ''} />
           <button onClick={handleLike} className={`p-3 rounded-full transition-colors ${liked ? 'bg-red-500/20 text-red-500' : 'bg-gray-800 text-white hover:bg-gray-700'}`}>❤️</button>
         </div>
       </div>
@@ -231,11 +280,13 @@ const ProductDetail: React.FC = () => {
           }
         }}
       >
-        <img
+        <ProgressiveImage
           src={getOptimizedUrl(product.images[activeImage] || product.images[0], 800)}
           alt={product.title}
+          blurhash={product.blurhash}
+          originalUrl={product.images[activeImage] || product.images[0]}
+          className="w-full aspect-square"
           loading="eager"
-          className="w-full aspect-square object-cover mx-auto"
         />
 
         {product.images.length > 1 && (
@@ -276,7 +327,7 @@ const ProductDetail: React.FC = () => {
                 i === activeImage ? 'border-blue-500 scale-105' : 'border-gray-700 opacity-60 hover:opacity-100'
               }`}
             >
-              <img src={getOptimizedUrl(img, 80)} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={getOptimizedUrl(img, 80)} alt={t('productDetail.photo', { number: i + 1 })} className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -324,7 +375,7 @@ const ProductDetail: React.FC = () => {
             <span className="flex items-center gap-1">👁 {product.views}</span>
             <span className="flex items-center gap-1">❤️ {likeCount}</span>
             {product.reviews > 0 && (
-              <span className="flex items-center gap-1">💬 {product.reviews} avis</span>
+              <span className="flex items-center gap-1">💬 {product.reviews} {t('product.reviews')}</span>
             )}
           </div>
 
@@ -332,17 +383,17 @@ const ProductDetail: React.FC = () => {
           <div className="flex flex-wrap gap-2 mt-3">
             {product.views > 10 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold-400/10 text-gold-400 text-xs font-bold rounded-full">
-                👀 {Math.max(2, Math.floor(product.views / 50) + Math.floor(Math.random() * 3))} personnes regardent
+                👀 {Math.max(2, Math.floor(product.views / 50) + Math.floor(Math.random() * 3))} {t('productDetail.peopleViewing')}
               </span>
             )}
             {product.seller.isVerified && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
-                🛡️ Vendeur vérifié · depuis {new Date(product.seller.joinDate || Date.now()).getFullYear()}
+                🛡️ {t('productDetail.verifiedSeller', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}
               </span>
             )}
             {product.views > 50 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 text-orange-400 text-xs font-bold rounded-full">
-                🔥 Tendance
+                🔥 {t('product.trending')}
               </span>
             )}
           </div>
@@ -361,11 +412,79 @@ const ProductDetail: React.FC = () => {
         {/* Stock urgency */}
         <StockUrgency stockQuantity={product.stockQuantity} />
 
+        {/* B2B Wholesale info */}
+        {product.isWholesale && (
+          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full">B2B</span>
+              <span className="text-indigo-300 font-semibold text-sm">{t('product.wholesaleAvailable')}</span>
+            </div>
+            {product.minOrderQuantity && (
+              <p className="text-gray-400 text-sm">{t('product.minOrder', { count: product.minOrderQuantity })}</p>
+            )}
+            {product.wholesalePrice && (
+              <p className="text-indigo-400 font-bold text-lg">
+                {product.wholesalePrice.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-400">{product.currency || CURRENCY}</span>
+                <span className="text-xs text-gray-500 ml-2">/ {t('product.perUnit')}</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Auction section */}
+        {product.isAuction && product.auctionEndTime && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🔨</span>
+                <span className="text-red-400 font-bold text-sm">{t('product.auctionLabel')}</span>
+              </div>
+              <div className="text-right">
+                <p className="text-white font-mono font-bold text-lg">{auctionTimeLeft}</p>
+                <p className="text-gray-500 text-[10px]">{t('product.timeRemaining')}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-black/20 rounded-xl p-3">
+              <div>
+                <p className="text-gray-500 text-xs">{t('product.currentBid')}</p>
+                <p className="text-white font-bold text-xl">
+                  {(product.currentBid || product.startingBid || 0).toLocaleString('fr-FR')} <span className="text-sm text-gray-400">{product.currency || CURRENCY}</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-500 text-xs">{t('product.bidders')}</p>
+                <p className="text-white font-bold">{product.bidCount || 0}</p>
+              </div>
+            </div>
+            {product.auctionEndTime > Date.now() && currentUser && currentUser.id !== product.seller.id && (
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={bidAmount}
+                  onChange={e => setBidAmount(e.target.value)}
+                  placeholder={`${((product.currentBid || product.startingBid || 0) + 1).toLocaleString('fr-FR')}+`}
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded-xl p-3 text-white font-mono focus:ring-1 focus:ring-red-500 outline-none"
+                />
+                <Button
+                  variant="primary"
+                  className="bg-red-600 hover:bg-red-500 border-transparent"
+                  onClick={handlePlaceBid}
+                  isLoading={bidding}
+                >
+                  {t('product.placeBid')}
+                </Button>
+              </div>
+            )}
+            {product.auctionEndTime <= Date.now() && (
+              <p className="text-center text-gray-500 text-sm font-medium">{t('product.auctionEnded')}</p>
+            )}
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
-            <Button variant="primary" className="flex-1" onClick={() => handleContactSeller(product.seller, product.id)} icon={<span>💬</span>}>Chat</Button>
-            <Button variant="secondary" className="flex-1 bg-green-600 hover:bg-green-500 border-transparent text-white" onClick={handleWhatsApp} icon={<span className="text-lg">📱</span>}>WhatsApp</Button>
+            <Button variant="primary" className="flex-1 bg-green-600 hover:bg-green-500 border-transparent text-white" onClick={() => handleContactSeller(product.seller, product.id)} icon={<span className="text-lg">📱</span>}>WhatsApp</Button>
           </div>
         </div>
 
@@ -380,16 +499,16 @@ const ProductDetail: React.FC = () => {
               <h4 className="text-white font-medium group-hover:text-gold-400 transition-colors">{product.seller.name}</h4>
               {product.seller.isVerified && <span className={tc.text500}>✓</span>}
             </div>
-            <p className="text-xs text-gray-400">Membre depuis {new Date(product.seller.joinDate || Date.now()).getFullYear()}</p>
+            <p className="text-xs text-gray-400">{t('productDetail.memberSince', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}</p>
           </div>
           <div className="text-xs font-bold text-gray-400 group-hover:text-white flex items-center gap-1 bg-gray-800 px-3 py-1.5 rounded-full">
-            Boutique <span>→</span>
+            {t('productDetail.shopButton')} <span>→</span>
           </div>
         </div>
 
         {/* Description */}
         <div className="space-y-3 pb-4">
-          <h3 className="text-lg font-bold text-white">Description</h3>
+          <h3 className="text-lg font-bold text-white">{t('product.description')}</h3>
           <p className="text-gray-300 leading-relaxed text-sm">{product.description}</p>
         </div>
 
@@ -403,7 +522,7 @@ const ProductDetail: React.FC = () => {
 
         {/* Similar Products */}
         <ProductSection
-          title="Produits similaires"
+          title={t('product.similar')}
           icon="🏷️"
           products={similarProducts}
           currentUserId={currentUser?.id}
@@ -412,7 +531,7 @@ const ProductDetail: React.FC = () => {
 
         {/* Customers Also Viewed */}
         <ProductSection
-          title="Les clients ont aussi vu"
+          title={t('productDetail.customersAlsoViewed')}
           icon="👀"
           products={alsoViewed}
           currentUserId={currentUser?.id}
@@ -420,7 +539,7 @@ const ProductDetail: React.FC = () => {
         />
 
         <button onClick={handleReport} className="text-xs text-gray-500 hover:text-red-400 underline text-center w-full pb-2">
-          Signaler une annonce frauduleuse
+          {t('productDetail.reportFraudulent')}
         </button>
       </div>
     </div>

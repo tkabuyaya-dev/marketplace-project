@@ -1,5 +1,8 @@
 /**
  * AURABUJA — Authentication Service
+ *
+ * Performance strategy: Cache user in localStorage for instant app shell.
+ * Firebase Auth verifies in background; if result differs, update silently.
  */
 
 import {
@@ -15,6 +18,32 @@ import {
   onSnapshot, COLLECTIONS, docToUser,
 } from './constants';
 import type { Unsubscribe } from './constants';
+
+// ── Cached User (instant app shell on 2G/3G) ──
+const USER_CACHE_KEY = 'aurabuja_cached_user';
+
+export const getCachedUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem(USER_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const cacheUser = (user: User | null) => {
+  try {
+    if (user) {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(USER_CACHE_KEY);
+    }
+  } catch { /* quota exceeded — non-critical */ }
+};
+
+export const clearCachedUser = () => {
+  try { localStorage.removeItem(USER_CACHE_KEY); } catch {}
+};
 
 export const signInWithGoogle = async (): Promise<User> => {
   if (!auth || !db) throw new Error('Firebase non initialisé');
@@ -41,11 +70,14 @@ export const signInWithGoogle = async (): Promise<User> => {
     return { id: firebaseUser.uid, ...newUser };
   }
 
-  return docToUser(userSnap.data(), firebaseUser.uid);
+  const user = docToUser(userSnap.data(), firebaseUser.uid);
+  cacheUser(user);
+  return user;
 };
 
 export const signOut = async (): Promise<void> => {
   if (!auth) return;
+  clearCachedUser();
   await firebaseSignOut(auth);
 };
 
@@ -65,18 +97,28 @@ export const subscribeToAuth = (callback: (user: User | null) => void): Unsubscr
 
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (!firebaseUser || !db) {
+      cacheUser(null);
       callback(null);
       return;
     }
     try {
       const userSnap = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
       if (userSnap.exists()) {
-        callback(docToUser(userSnap.data(), firebaseUser.uid));
+        const user = docToUser(userSnap.data(), firebaseUser.uid);
+        cacheUser(user);
+        callback(user);
       } else {
+        cacheUser(null);
         callback(null);
       }
     } catch {
-      callback(null);
+      // Network error — use cached user if available (offline/slow network)
+      const cached = getCachedUser();
+      if (cached && cached.id === firebaseUser.uid) {
+        callback(cached);
+      } else {
+        callback(null);
+      }
     }
   });
 };

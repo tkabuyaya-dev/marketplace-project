@@ -26,8 +26,6 @@ export const NotificationBell: React.FC = () => {
       navigate(notif.data.link);
     } else if (notif.data?.productSlug) {
       navigate(`/product/${notif.data.productSlug}`);
-    } else if (notif.data?.conversationId) {
-      navigate(`/messenger/${notif.data.conversationId}`);
     }
   };
 

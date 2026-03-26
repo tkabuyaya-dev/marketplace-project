@@ -96,7 +96,6 @@ function hitToProduct(hit: AlgoliaHit): Product {
     tags: hit.tags || [],
     rating: hit.rating || 0,
     reviews: hit.reviews || 0,
-    marketplace: hit.marketplace || undefined,
     seller: {
       id: hit.sellerId,
       name: hit.sellerName || "Vendeur",
@@ -114,6 +113,8 @@ function hitToProduct(hit: AlgoliaHit): Product {
     createdAt: hit.createdAt || Date.now(),
     stockQuantity: hit.stockQuantity ?? undefined,
     discountPrice: hit.discountPrice ?? undefined,
+    countryId: hit.countryId || undefined,
+    currency: hit.currency || undefined,
   } as Product;
 }
 
@@ -130,7 +131,6 @@ function hitToSeller(hit: AlgoliaHit): User {
     productCount: hit.productCount || 0,
     bio: hit.bio,
     sellerDetails: {
-      marketplace: hit.marketplace,
       categories: hit.categories || [],
     } as any,
   } as User;
@@ -166,6 +166,9 @@ export async function algoliaSearchProducts(
     }
     if (filters?.sellerId) {
       facetFilters.push([`sellerId:${filters.sellerId}`]);
+    }
+    if (filters?.countryId) {
+      facetFilters.push([`countryId:${filters.countryId}`]);
     }
 
     // Build base filter string

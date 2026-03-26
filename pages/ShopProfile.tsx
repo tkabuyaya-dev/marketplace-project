@@ -1,12 +1,14 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { User, Product } from '../types';
 import { getSellerProducts, getUserBySlugOrId, subscribeToUserProfile } from '../services/firebase';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { ShareSheet } from '../components/ShareSheet';
 import { ProductCard } from '../components/ProductCard';
 import { Button } from '../components/Button';
 import { useAppContext } from '../contexts/AppContext';
 import { updateMetaTags } from '../utils/meta';
-import { getMarketplaceInfo } from '../constants';
 
 const ShopMap = lazy(() => import('../components/ShopMap'));
 const ShopSearch = lazy(() => import('../components/ShopSearch'));
@@ -16,6 +18,7 @@ const ShopProfile: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { handleContactSeller } = useAppContext();
+  const { t } = useTranslation();
 
   const [seller, setSeller] = useState<User | null>(location.state?.seller || null);
   const [loading, setLoading] = useState(!seller);
@@ -51,7 +54,7 @@ const ShopProfile: React.FC = () => {
     if (!seller) return;
     updateMetaTags({
       title: seller.sellerDetails?.shopName || seller.name,
-      description: seller.bio || `Boutique sur AuraBuja`,
+      description: seller.bio || t('shopProfile.shopOnAuraBuja'),
       image: seller.avatar,
       url: window.location.href,
     });
@@ -66,12 +69,11 @@ const ShopProfile: React.FC = () => {
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
-    const shopName = seller?.sellerDetails?.shopName || seller?.name || 'Boutique';
     if (navigator.share) {
       try {
         await navigator.share({
           title: shopName,
-          text: `Découvre ${shopName} sur AuraBuja`,
+          text: t('shopProfile.shareText', { name: shopName }),
           url: shareUrl,
         });
         return;
@@ -91,6 +93,8 @@ const ShopProfile: React.FC = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const shopName = seller?.sellerDetails?.shopName || seller?.name || '';
 
   const handleBack = () => {
     if (window.history.length <= 1) {
@@ -112,8 +116,8 @@ const ShopProfile: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
         <div className="text-6xl">😕</div>
-        <h1 className="text-xl font-bold text-white">Boutique introuvable</h1>
-        <Button onClick={() => navigate('/')}>Retour à l'accueil</Button>
+        <h1 className="text-xl font-bold text-white">{t('shopProfile.notFound')}</h1>
+        <Button onClick={() => navigate('/')}>{t('shopProfile.backToHome')}</Button>
       </div>
     );
   }
@@ -128,6 +132,9 @@ const ShopProfile: React.FC = () => {
     <div className="min-h-screen bg-gray-950 pb-20 font-sans animate-fade-in">
       {/* HERO / BANNER */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSwitcher compact />
+        </div>
         <button
           onClick={handleBack}
           className="absolute top-4 left-4 z-20 bg-black/40 hover:bg-black/60 backdrop-blur-md p-2 rounded-full text-white transition-all border border-white/10"
@@ -144,7 +151,7 @@ const ShopProfile: React.FC = () => {
           <div className="relative -mt-16 md:-mt-20 shrink-0">
             <img src={seller.avatar} className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-950 object-cover shadow-2xl" alt={seller.name} />
             {seller.isVerified && (
-              <div className="absolute bottom-2 right-2 bg-blue-600 text-white p-1.5 rounded-full border-4 border-gray-900" title="Vérifié">
+              <div className="absolute bottom-2 right-2 bg-blue-600 text-white p-1.5 rounded-full border-4 border-gray-900" title={t('shop.verified')}>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
               </div>
             )}
@@ -152,36 +159,21 @@ const ShopProfile: React.FC = () => {
 
           <div className="flex-1 space-y-2">
             <h1 className="text-3xl font-black text-white tracking-tight">{seller.sellerDetails?.shopName || seller.name}</h1>
-            {seller.sellerDetails?.marketplace && (() => {
-              const mp = getMarketplaceInfo(seller.sellerDetails.marketplace);
-              return (
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${mp.color} text-white`}>
-                  {mp.icon} {mp.name}
-                </span>
-              );
-            })()}
             <p className="text-gray-400 text-sm max-w-lg mx-auto md:mx-0">
-              {seller.bio || "Boutique officielle sur AuraBuja. Retrouvez tous nos produits Tech et Lifestyle au meilleur prix."}
+              {seller.bio || t('shopProfile.defaultBio')}
             </p>
             <div className="flex items-center justify-center md:justify-start gap-4 text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">
-              <span>★ 4.9 Note Vendeur</span>
+              <span>★ 4.9 {t('shopProfile.sellerRating')}</span>
               <span>•</span>
-              <span>{products.length} Produits</span>
+              <span>{products.length} {t('shop.products')}</span>
               <span>•</span>
-              <span>Depuis {new Date(seller.joinDate || Date.now()).getFullYear()}</span>
+              <span>{t('shopProfile.since', { year: new Date(seller.joinDate || Date.now()).getFullYear() })}</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 w-full md:w-auto min-w-[180px]">
-            <Button onClick={() => handleContactSeller(seller)} icon={<span>💬</span>}>Contacter</Button>
-            <div className="flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={handleShare}>
-                {copied ? 'Lien copié !' : 'Partager'}
-              </Button>
-              {seller.whatsapp && (
-                <a href={`https://wa.me/${seller.whatsapp}`} target="_blank" className="bg-green-600/20 hover:bg-green-600/30 text-green-500 border border-green-600/50 p-3 rounded-xl flex items-center justify-center transition-colors">📱</a>
-              )}
-            </div>
+            <Button className="bg-green-600 hover:bg-green-500 border-transparent text-white" onClick={() => handleContactSeller(seller)} icon={<span>📱</span>}>WhatsApp</Button>
+            <ShareSheet url={window.location.href} title={shopName} text={t('shopProfile.shareText', { name: shopName })} />
           </div>
         </div>
       </div>
@@ -223,7 +215,7 @@ const ShopProfile: React.FC = () => {
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20 text-gray-500">
-            Cette boutique n'a pas encore de produits en ligne.
+            {t('shopProfile.noProductsYet')}
           </div>
         ) : (
           <>
@@ -234,7 +226,7 @@ const ShopProfile: React.FC = () => {
               return (
                 <div>
                   <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold text-white">Populaires</h2>
+                    <h2 className="text-xl font-bold text-white">{t('shopProfile.popular')}</h2>
                     <div className="h-px bg-gray-800 flex-1"></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -252,7 +244,7 @@ const ShopProfile: React.FC = () => {
               return (
                 <div>
                   <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold text-white">Nouveautés</h2>
+                    <h2 className="text-xl font-bold text-white">{t('shopProfile.newArrivals')}</h2>
                     <div className="h-px bg-gray-800 flex-1"></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -265,7 +257,7 @@ const ShopProfile: React.FC = () => {
             {/* Tous les produits */}
             <div>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-xl font-bold text-white">Tous les produits</h2>
+                <h2 className="text-xl font-bold text-white">{t('shop.allProducts')}</h2>
                 <span className="text-sm text-gray-500">({products.length})</span>
                 <div className="h-px bg-gray-800 flex-1"></div>
               </div>
@@ -277,13 +269,13 @@ const ShopProfile: React.FC = () => {
             {/* Avis clients */}
             <div>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-xl font-bold text-white">Avis clients</h2>
+                <h2 className="text-xl font-bold text-white">{t('shopProfile.customerReviews')}</h2>
                 <div className="h-px bg-gray-800 flex-1"></div>
               </div>
               <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8 text-center">
                 <p className="text-3xl mb-3">💬</p>
-                <p className="text-gray-400 text-sm">Aucun avis pour le moment.</p>
-                <p className="text-gray-500 text-xs mt-1">Les avis clients seront bientot disponibles.</p>
+                <p className="text-gray-400 text-sm">{t('shopProfile.noReviews')}</p>
+                <p className="text-gray-500 text-xs mt-1">{t('shopProfile.reviewsComingSoon')}</p>
               </div>
             </div>
           </>

@@ -58,8 +58,12 @@ if (isConfigured) {
   auth = getAuth(app);
 
   // App Check: Protects Firebase services against bot abuse
+  // Only initialize if explicitly enabled AND key is configured
+  // To enable: set VITE_ENABLE_APP_CHECK=true in .env.local after configuring
+  // a valid reCAPTCHA v3 key for your domain in Google Cloud Console
   const appCheckKey = env.VITE_RECAPTCHA_V3_SITE_KEY;
-  if (appCheckKey) {
+  const appCheckEnabled = env.VITE_ENABLE_APP_CHECK === 'true';
+  if (appCheckKey && appCheckEnabled) {
     try {
       initializeAppCheck(app, {
         provider: new ReCaptchaV3Provider(appCheckKey),
@@ -68,9 +72,8 @@ if (isConfigured) {
     } catch {
       // Already initialized (HMR) — safe to ignore
     }
-  } else if (env.VITE_APP_ENV === 'development') {
+  } else if (env.VITE_APP_ENV === 'development' && appCheckEnabled) {
     // Debug mode: set FIREBASE_APPCHECK_DEBUG_TOKEN=true in browser console
-    // to bypass App Check during local development
     (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     try {
       initializeAppCheck(app, {
