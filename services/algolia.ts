@@ -25,20 +25,29 @@ interface AlgoliaSearchParams {
   filters?: string;
   facetFilters?: string[][];
   numericFilters?: string[];
+  optionalFilters?: string[];
   page?: number;
+  attributesToHighlight?: string[];
+  highlightPreTag?: string;
+  highlightPostTag?: string;
+  analytics?: boolean;
+  clickAnalytics?: boolean;
+  userToken?: string;
 }
 
 interface AlgoliaHit {
   objectID: string;
+  _highlightResult?: Record<string, { value: string; matchLevel: string }>;
   [key: string]: any;
 }
 
-interface AlgoliaResponse {
+export interface AlgoliaResponse {
   hits: AlgoliaHit[];
   nbHits: number;
   page: number;
   nbPages: number;
   processingTimeMS: number;
+  queryID?: string;
 }
 
 /**
@@ -58,6 +67,13 @@ async function algoliaSearch(
   if (params.filters) body.filters = params.filters;
   if (params.facetFilters) body.facetFilters = params.facetFilters;
   if (params.numericFilters) body.numericFilters = params.numericFilters;
+  if (params.optionalFilters) body.optionalFilters = params.optionalFilters;
+  if (params.attributesToHighlight) body.attributesToHighlight = params.attributesToHighlight;
+  if (params.highlightPreTag) body.highlightPreTag = params.highlightPreTag;
+  if (params.highlightPostTag) body.highlightPostTag = params.highlightPostTag;
+  if (params.analytics) body.analytics = params.analytics;
+  if (params.clickAnalytics) body.clickAnalytics = params.clickAnalytics;
+  if (params.userToken) body.userToken = params.userToken;
 
   const response = await fetch(
     `${ALGOLIA_BASE}/1/indexes/${indexName}/query`,
@@ -105,7 +121,8 @@ function hitToProduct(hit: AlgoliaHit): Product {
       role: "seller",
       joinDate: 0,
     },
-    isPromoted: false,
+    isPromoted: hit.isSponsored || false,
+    isSponsored: hit.isSponsored || false,
     status: "approved",
     views: hit.views || 0,
     likesCount: hit.likesCount || 0,
@@ -136,6 +153,15 @@ function hitToSeller(hit: AlgoliaHit): User {
   } as User;
 }
 
+/** Extended search filters for the search page */
+export interface ExtendedSearchFilters extends SearchFilters {
+  isNew?: boolean;
+  /** User's country — used for soft boost (optionalFilters), not hard filter */
+  userCountry?: string;
+  /** Unique user token for personalization & analytics */
+  userToken?: string;
+}
+
 /**
  * Search products using Algolia.
  * Returns null if Algolia is not configured (caller should fallback).
@@ -149,58 +175,101 @@ export async function algoliaSearchProducts(
   if (queryText.trim().length < 1) return [];
 
   try {
-    const numericFilters: string[] = [];
-    if (filters?.minPrice !== undefined) {
-      numericFilters.push(`price >= ${filters.minPrice}`);
-    }
-    if (filters?.maxPrice !== undefined) {
-      numericFilters.push(`price <= ${filters.maxPrice}`);
-    }
-    if (filters?.minRating !== undefined && filters.minRating > 0) {
-      numericFilters.push(`rating >= ${filters.minRating}`);
-    }
-
-    const facetFilters: string[][] = [];
-    if (filters?.category) {
-      facetFilters.push([`category:${filters.category}`]);
-    }
-    if (filters?.sellerId) {
-      facetFilters.push([`sellerId:${filters.sellerId}`]);
-    }
-    if (filters?.countryId) {
-      facetFilters.push([`countryId:${filters.countryId}`]);
-    }
-
-    // Build base filter string
-    let baseFilters = "status:approved";
-    if (filters?.inStock) {
-      numericFilters.push("stockQuantity > 0");
-    }
-
-    const result = await algoliaSearch(PRODUCTS_INDEX, {
-      query: queryText,
-      hitsPerPage: maxResults,
-      filters: baseFilters,
-      numericFilters: numericFilters.length > 0 ? numericFilters : undefined,
-      facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
-    });
-
-    let products = result.hits.map(hitToProduct);
-
-    // Client-side sorting (Algolia returns by relevance by default)
-    if (filters?.sort === "price_asc") {
-      products.sort((a, b) => a.price - b.price);
-    } else if (filters?.sort === "price_desc") {
-      products.sort((a, b) => b.price - a.price);
-    } else if (filters?.sort === "newest") {
-      products.sort((a, b) => b.createdAt - a.createdAt);
-    }
-
-    return products;
+    const result = await algoliaSearchProductsFull(queryText, filters, 0, maxResults);
+    return result.products;
   } catch (err) {
     console.warn("[Algolia] Search failed, will fallback:", err);
-    return null; // Signal fallback to Firestore
+    return null;
   }
+}
+
+/**
+ * Full Algolia search with pagination, highlight, and analytics.
+ * Used by the search page for complete control.
+ */
+export async function algoliaSearchProductsFull(
+  queryText: string,
+  filters?: ExtendedSearchFilters,
+  page: number = 0,
+  hitsPerPage: number = 20,
+): Promise<{
+  products: Product[];
+  totalHits: number;
+  totalPages: number;
+  page: number;
+  queryID?: string;
+  highlightResults: Map<string, Record<string, string>>;
+}> {
+  if (!isConfigured) {
+    return { products: [], totalHits: 0, totalPages: 0, page: 0, highlightResults: new Map() };
+  }
+
+  const numericFilters: string[] = [];
+  if (filters?.minPrice !== undefined) numericFilters.push(`price >= ${filters.minPrice}`);
+  if (filters?.maxPrice !== undefined) numericFilters.push(`price <= ${filters.maxPrice}`);
+  if (filters?.minRating !== undefined && filters.minRating > 0) numericFilters.push(`rating >= ${filters.minRating}`);
+  if (filters?.inStock) numericFilters.push("stockQuantity > 0");
+
+  const facetFilters: string[][] = [];
+  if (filters?.category) facetFilters.push([`category:${filters.category}`]);
+  if (filters?.sellerId) facetFilters.push([`sellerId:${filters.sellerId}`]);
+  if (filters?.countryId) facetFilters.push([`countryId:${filters.countryId}`]);
+  if (filters?.isNew) facetFilters.push([`isNew:true`]);
+
+  // Country-aware personalization: boost user's country products without hiding others
+  const optionalFilters: string[] = [];
+  const boostCountry = filters?.userCountry || filters?.countryId;
+  if (boostCountry && !filters?.countryId) {
+    // Only use optionalFilters when NOT hard-filtering by country
+    // This makes user's country products rank higher while still showing all results
+    optionalFilters.push(`countryId:${boostCountry}<score=3>`);
+  }
+
+  const result = await algoliaSearch(PRODUCTS_INDEX, {
+    query: queryText,
+    hitsPerPage,
+    page,
+    filters: "status:approved",
+    numericFilters: numericFilters.length > 0 ? numericFilters : undefined,
+    facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
+    optionalFilters: optionalFilters.length > 0 ? optionalFilters : undefined,
+    attributesToHighlight: ["title", "description", "category"],
+    highlightPreTag: "<mark>",
+    highlightPostTag: "</mark>",
+    analytics: true,
+    clickAnalytics: true,
+    userToken: filters?.userToken,
+  });
+
+  let products = result.hits.map(hitToProduct);
+
+  // Client-side sorting (Algolia returns by relevance by default)
+  if (filters?.sort === "price_asc") products.sort((a, b) => a.price - b.price);
+  else if (filters?.sort === "price_desc") products.sort((a, b) => b.price - a.price);
+  else if (filters?.sort === "newest") products.sort((a, b) => b.createdAt - a.createdAt);
+
+  // Extract highlight results
+  const highlightResults = new Map<string, Record<string, string>>();
+  for (const hit of result.hits) {
+    if (hit._highlightResult) {
+      const highlights: Record<string, string> = {};
+      for (const [key, val] of Object.entries(hit._highlightResult)) {
+        if (val && typeof val === 'object' && 'value' in val) {
+          highlights[key] = (val as any).value;
+        }
+      }
+      highlightResults.set(hit.objectID, highlights);
+    }
+  }
+
+  return {
+    products,
+    totalHits: result.nbHits,
+    totalPages: result.nbPages,
+    page: result.page,
+    queryID: result.queryID,
+    highlightResults,
+  };
 }
 
 /**

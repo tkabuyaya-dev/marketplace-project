@@ -129,7 +129,20 @@
     "priceLabel": "Bei (FBu)",
     "min": "Chini",
     "max": "Juu",
-    "reset": "Weka upya"
+    "reset": "Weka upya",
+    "countryLabel": "Nchi",
+    "allCountries": "Nchi zote",
+    "newOnly": "Vipya tu",
+    "searching": "Inatafuta...",
+    "forQuery": "kwa",
+    "recentProducts": "Bidhaa za hivi karibuni",
+    "tryDifferent": "Jaribu maneno tofauti au badilisha vichujio.",
+    "clearAllFilters": "Futa vichujio vyote",
+    "loadMore": "Pakia zaidi",
+    "resetFilters": "Weka upya vichujio",
+    "applyFilters": "Tekeleza vichujio",
+    "retry": "Jaribu tena",
+    "sponsored": "Imedhaminiwa"
   },
   "auth": {
     "loginTitle": "Ingia",

@@ -15,7 +15,22 @@ import {
   REDIS_URL,
 } from "./config.js";
 
+// Country ID → display name mapping (avoid extra Firestore read)
+const COUNTRY_NAMES: Record<string, string> = {
+  bi: "Burundi", cd: "RDC", rw: "Rwanda",
+  ug: "Ouganda", tz: "Tanzanie", ke: "Kenya",
+};
+const COUNTRY_CODES: Record<string, string> = {
+  bi: "BI", cd: "CD", rw: "RW", ug: "UG", tz: "TZ", ke: "KE",
+};
+
 function productToAlgoliaRecord(id: string, data: any) {
+  const createdAt = data.createdAt?._seconds
+    ? data.createdAt._seconds * 1000
+    : data.createdAt?.toMillis?.() || Date.now();
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const countryId = data.countryId || "";
+
   return {
     objectID: id,
     title: data.title || "",
@@ -24,6 +39,7 @@ function productToAlgoliaRecord(id: string, data: any) {
     price: data.price || 0,
     originalPrice: data.originalPrice || null,
     discountPrice: data.discountPrice || null,
+    currency: data.currency || "",
     category: data.category || "",
     subCategory: data.subCategory || "",
     tags: data.tags || [],
@@ -39,9 +55,14 @@ function productToAlgoliaRecord(id: string, data: any) {
     stockQuantity: data.stockQuantity ?? null,
     slug: data.slug || "",
     status: data.status || "pending",
-    createdAt: data.createdAt?._seconds
-      ? data.createdAt._seconds * 1000
-      : data.createdAt?.toMillis?.() || Date.now(),
+    createdAt,
+    // ── NEW: Country & novelty fields for faceted search ──
+    countryId,
+    country: COUNTRY_NAMES[countryId] || "",
+    countryCode: COUNTRY_CODES[countryId] || "",
+    isNew: createdAt > thirtyDaysAgo,
+    isSponsored: data.isSponsored || false,
+    sales: data.sales || 0,
     _geoloc: data.sellerGps
       ? { lat: data.sellerGps.lat, lng: data.sellerGps.lng }
       : undefined,

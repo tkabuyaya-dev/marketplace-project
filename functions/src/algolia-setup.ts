@@ -71,10 +71,11 @@ export const setupAlgoliaIndexes = onRequest(
         indexSettings: {
           searchableAttributes: [
             "title",
-            "description",
+            "titleLower",
             "tags",
             "category",
             "subCategory",
+            "description",
             "sellerName",
           ],
           attributesForFaceting: [
@@ -84,11 +85,17 @@ export const setupAlgoliaIndexes = onRequest(
             "searchable(marketplace)",
             "filterOnly(sellerId)",
             "searchable(tags)",
+            "searchable(countryId)",
+            "searchable(country)",
+            "filterOnly(isNew)",
+            "filterOnly(isSponsored)",
           ],
           customRanking: [
+            "desc(isSponsored)",
+            "desc(sales)",
+            "desc(rating)",
             "desc(views)",
             "desc(likesCount)",
-            "desc(rating)",
             "desc(createdAt)",
           ],
           attributesToRetrieve: [
@@ -98,6 +105,7 @@ export const setupAlgoliaIndexes = onRequest(
             "price",
             "originalPrice",
             "discountPrice",
+            "currency",
             "images",
             "category",
             "subCategory",
@@ -110,14 +118,23 @@ export const setupAlgoliaIndexes = onRequest(
             "reviews",
             "views",
             "likesCount",
+            "sales",
             "stockQuantity",
             "createdAt",
+            "countryId",
+            "country",
+            "countryCode",
+            "isNew",
+            "isSponsored",
           ],
           hitsPerPage: 20,
           maxValuesPerFacet: 50,
           typoTolerance: true,
+          minWordSizefor1Typo: 3,
+          minWordSizefor2Typos: 7,
           ignorePlurals: ["fr", "en"],
-          queryLanguages: ["fr", "en"],
+          removeStopWords: ["fr", "en"],
+          queryLanguages: ["fr", "en", "sw"],
         },
       });
 
@@ -168,8 +185,19 @@ export const setupAlgoliaIndexes = onRequest(
         const snap = await q.get();
         if (snap.empty) break;
 
+        const COUNTRY_NAMES: Record<string, string> = {
+          bi: "Burundi", cd: "RDC", rw: "Rwanda",
+          ug: "Ouganda", tz: "Tanzanie", ke: "Kenya",
+        };
+        const COUNTRY_CODES: Record<string, string> = {
+          bi: "BI", cd: "CD", rw: "RW", ug: "UG", tz: "TZ", ke: "KE",
+        };
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
         const records = snap.docs.map((d) => {
           const data = d.data();
+          const createdAt = data.createdAt?.toMillis?.() || Date.now();
+          const countryId = data.countryId || "";
           return {
             objectID: d.id,
             title: data.title || "",
@@ -178,6 +206,7 @@ export const setupAlgoliaIndexes = onRequest(
             price: data.price || 0,
             originalPrice: data.originalPrice || null,
             discountPrice: data.discountPrice || null,
+            currency: data.currency || "",
             category: data.category || "",
             subCategory: data.subCategory || "",
             tags: data.tags || [],
@@ -193,7 +222,13 @@ export const setupAlgoliaIndexes = onRequest(
             stockQuantity: data.stockQuantity ?? null,
             slug: data.slug || "",
             status: data.status,
-            createdAt: data.createdAt?.toMillis?.() || Date.now(),
+            createdAt,
+            countryId,
+            country: COUNTRY_NAMES[countryId] || "",
+            countryCode: COUNTRY_CODES[countryId] || "",
+            isNew: createdAt > thirtyDaysAgo,
+            isSponsored: data.isSponsored || false,
+            sales: data.sales || 0,
           };
         });
 

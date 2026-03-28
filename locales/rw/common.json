@@ -129,7 +129,20 @@
     "priceLabel": "Igiciro (FBu)",
     "min": "Munsi",
     "max": "Hejuru",
-    "reset": "Subiramo"
+    "reset": "Subiramo",
+    "countryLabel": "Igihugu",
+    "allCountries": "Ibihugu byose",
+    "newOnly": "Ibishya gusa",
+    "searching": "Birimo gushakisha...",
+    "forQuery": "kuri",
+    "recentProducts": "Ibicuruzwa bya vuba",
+    "tryDifferent": "Gerageza amagambo atandukanye cyangwa uhindure ihitamo.",
+    "clearAllFilters": "Siba ihitamo ryose",
+    "loadMore": "Reba ibindi",
+    "resetFilters": "Subiza ihitamo",
+    "applyFilters": "Shyira mu bikorwa ihitamo",
+    "retry": "Ongera ugerageze",
+    "sponsored": "Ifashijwe"
   },
   "auth": {
     "loginTitle": "Kwinjira",

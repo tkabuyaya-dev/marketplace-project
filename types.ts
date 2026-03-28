@@ -89,6 +89,7 @@ export interface Product {
   countryId?: string;
   seller: User;
   isPromoted?: boolean;
+  isSponsored?: boolean;
   status: ProductStatus;
   rejectionReason?: string;
   resubmittedAt?: number;

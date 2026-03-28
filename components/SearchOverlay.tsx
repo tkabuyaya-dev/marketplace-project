@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Product, SearchFilters, User } from '../types';
 import { searchProducts, searchSellers } from '../services/firebase';
-import { algoliaSearchProducts, algoliaSearchSellers } from '../services/algolia';
+import { algoliaSearchProducts, algoliaSearchSellers, algoliaSearchProductsFull } from '../services/algolia';
 import { getCachedProducts, setCachedProducts, getCachedSellers, setCachedSellers } from '../services/search-cache';
 import { getLocalSuggestions, addToSearchHistory, getSearchHistory, removeFromSearchHistory, getPopularSearches } from '../services/popular-searches';
 import { THEME, INITIAL_COUNTRIES } from '../constants';
@@ -34,6 +35,7 @@ function getCurrencyForCountry(countryId?: string): string {
 
 export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, onProductClick, onShopClick }) => {
   const { t } = useTranslation();
+  const nav = useNavigate();
   const { activeCountry, setActiveCountry } = useAppContext();
   const { countries } = useActiveCountries();
   const adaptiveDebounceMs = useAdaptiveDebounce();
@@ -47,10 +49,9 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState(-1);
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-
+  const [autoProducts, setAutoProducts] = useState<Product[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteAbort = useRef(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,17 +64,44 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
-  // --- Layer 1: Local autocomplete suggestions ---
+  // --- Autocomplete: local suggestions + Algolia product suggestions ---
   useEffect(() => {
-    if (query.length >= 1 && query.length <= 3) {
-      const local = getLocalSuggestions(query);
-      setSuggestions(local);
-      setShowSuggestions(local.length > 0);
-    } else {
+    const requestId = ++autocompleteAbort.current;
+
+    if (query.length < 1) {
       setSuggestions([]);
+      setAutoProducts([]);
       setShowSuggestions(false);
+      return;
     }
-  }, [query]);
+
+    // Layer 1: Instant local suggestions
+    const local = getLocalSuggestions(query);
+    setSuggestions(local);
+    setShowSuggestions(local.length > 0);
+
+    // Layer 2: Algolia-powered product suggestions (after 2+ chars, debounced)
+    if (query.length >= 2) {
+      const timer = setTimeout(async () => {
+        try {
+          const result = await algoliaSearchProductsFull(query, {
+            sort: 'relevance',
+            userCountry: activeCountry || undefined,
+          }, 0, 5);
+          if (autocompleteAbort.current !== requestId) return;
+          setAutoProducts(result.products);
+          if (result.products.length > 0 || local.length > 0) {
+            setShowSuggestions(true);
+          }
+        } catch {
+          // Silent fail — local suggestions still shown
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    } else {
+      setAutoProducts([]);
+    }
+  }, [query, activeCountry]);
 
   // --- Main Search Pipeline: Browser Cache → Backend Proxy → Algolia Direct → Firestore ---
   useEffect(() => {
@@ -162,15 +190,27 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
     setQuery(term);
     setShowSuggestions(false);
     addToSearchHistory(term);
-  }, []);
+    // Navigate to full search page
+    const params = new URLSearchParams();
+    params.set('q', term);
+    if (activeCountry) params.set('country', activeCountry);
+    onClose();
+    nav(`/search?${params.toString()}`);
+  }, [activeCountry, onClose, nav]);
 
   const handleSubmitSearch = useCallback(() => {
-    if (query.trim().length >= 2) {
+    if (query.trim().length >= 1) {
       addToSearchHistory(query.trim());
       setShowSuggestions(false);
       setRecentSearches(getSearchHistory().slice(0, 5));
+      // Navigate to full search page with query and country
+      const params = new URLSearchParams();
+      params.set('q', query.trim());
+      if (activeCountry) params.set('country', activeCountry);
+      onClose();
+      nav(`/search?${params.toString()}`);
     }
-  }, [query]);
+  }, [query, activeCountry, onClose, nav]);
 
   const handleRemoveRecent = useCallback((term: string) => {
     removeFromSearchHistory(term);
@@ -204,36 +244,6 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
       else { onClose(); }
     }
   }, [showSuggestions, suggestions, selectedSuggestionIdx, handleSelectSuggestion, handleSubmitSearch, onClose]);
-
-  // Voice search (Web Speech API)
-  const startVoiceSearch = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = document.documentElement.lang || 'fr-FR';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setQuery(transcript);
-      setIsListening(false);
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, []);
-
-  const stopVoiceSearch = useCallback(() => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
-  }, []);
-
-  const hasVoiceSupport = typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   // Highlight matching text in suggestions
   const highlightMatch = useCallback((text: string, matchQuery: string) => {
@@ -299,23 +309,15 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                      </button>
                    )}
-                   {hasVoiceSupport && !query && (
-                     <button
-                       onClick={isListening ? stopVoiceSearch : startVoiceSearch}
-                       className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ${isListening ? 'text-red-400 bg-red-400/10 animate-pulse' : 'text-gray-500 hover:text-white hover:bg-gray-700'}`}
-                       title={t('search.voiceSearch')}
-                     >
-                       <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" /></svg>
-                     </button>
-                   )}
                  </div>
 
-                 {/* --- SUGGESTIONS DROPDOWN --- */}
-                 {showSuggestions && suggestions.length > 0 && (
-                   <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-30" role="listbox">
+                 {/* --- SUGGESTIONS DROPDOWN (Amazon-style) --- */}
+                 {showSuggestions && (suggestions.length > 0 || autoProducts.length > 0) && (
+                   <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-30 max-h-[70vh] overflow-y-auto" role="listbox">
+                     {/* Text suggestions */}
                      {suggestions.map((s, i) => (
                        <button
-                         key={i}
+                         key={`s-${i}`}
                          onClick={() => handleSelectSuggestion(s)}
                          className={`w-full text-left px-4 min-h-[44px] py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white flex items-center gap-3 transition-colors ${selectedSuggestionIdx === i ? 'bg-gray-800 text-white' : ''}`}
                          role="option"
@@ -325,6 +327,46 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                          <span>{highlightMatch(s, query)}</span>
                        </button>
                      ))}
+
+                     {/* Algolia product suggestions with thumbnails */}
+                     {autoProducts.length > 0 && (
+                       <>
+                         {suggestions.length > 0 && <div className="border-t border-gray-800 my-1" />}
+                         <div className="px-3 py-1.5 text-[10px] font-bold text-gray-600 uppercase tracking-wider">{t('search.productsCount', { count: autoProducts.length })}</div>
+                         {autoProducts.map((p) => {
+                           const flag = INITIAL_COUNTRIES.find(c => c.id === p.countryId)?.flag || '';
+                           const currency = p.currency || INITIAL_COUNTRIES.find(c => c.id === p.countryId)?.currency || '';
+                           return (
+                             <button
+                               key={`p-${p.id}`}
+                               onClick={() => {
+                                 addToSearchHistory(query.trim());
+                                 onProductClick(p);
+                                 onClose();
+                               }}
+                               className="w-full text-left px-3 py-2 hover:bg-gray-800 flex items-center gap-3 transition-colors"
+                             >
+                               <img
+                                 src={getOptimizedUrl(p.images?.[0], 48)}
+                                 alt=""
+                                 className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-800"
+                                 loading="lazy"
+                               />
+                               <div className="flex-1 min-w-0">
+                                 <p className="text-sm text-white truncate">{p.title}</p>
+                                 <p className="text-xs text-gray-500 truncate">{p.seller?.name} {flag}</p>
+                               </div>
+                               <span className="text-sm font-bold text-white whitespace-nowrap">
+                                 {p.price?.toLocaleString()} <span className="text-[10px] text-gray-500">{currency}</span>
+                               </span>
+                               {p.isSponsored && (
+                                 <span className="text-[9px] text-gold-400/70 font-bold ml-1">AD</span>
+                               )}
+                             </button>
+                           );
+                         })}
+                       </>
+                     )}
                    </div>
                  )}
                </div>
@@ -566,7 +608,8 @@ async function tryBackendProxy(
         role: 'seller' as const,
         joinDate: 0,
       },
-      isPromoted: false,
+      isPromoted: p.isSponsored || false,
+      isSponsored: p.isSponsored || false,
       status: 'approved' as const,
       views: p.views || 0,
       likesCount: p.likesCount || 0,
