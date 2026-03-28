@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <!-- Golden background -->
     <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FDDA4A"/>
       <stop offset="50%" stop-color="#E8B817"/>
@@ -10,102 +9,72 @@
       <stop offset="0%" stop-color="#FEE88A" stop-opacity="0.6"/>
       <stop offset="100%" stop-color="#E8B817" stop-opacity="0"/>
     </radialGradient>
-    <!-- 3D dark face -->
     <linearGradient id="darkFace" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#2d2d2d"/>
       <stop offset="100%" stop-color="#111"/>
     </linearGradient>
-    <!-- 3D lit face -->
     <linearGradient id="litFace" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#444"/>
       <stop offset="60%" stop-color="#222"/>
       <stop offset="100%" stop-color="#111"/>
-    </linearGradient>
-    <!-- Side extrusion -->
-    <linearGradient id="extrude" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1a1a1a"/>
-      <stop offset="100%" stop-color="#000"/>
     </linearGradient>
     <filter id="drop" x="-8%" y="-5%" width="120%" height="125%">
       <feDropShadow dx="4" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.45"/>
     </filter>
   </defs>
 
-  <!-- Rounded golden background -->
+  <!-- Golden rounded background -->
   <rect width="512" height="512" rx="100" fill="url(#bg)"/>
   <rect width="512" height="512" rx="100" fill="url(#bgShine)"/>
 
   <g filter="url(#drop)">
-    <!-- ====== CART HANDLE (curved hook top-left) ====== -->
-    <!-- Handle back (3D depth) -->
-    <path d="M148,95 C110,95 92,125 92,158 L92,215"
+    <!-- Cart handle (curved hook top-left) -->
+    <path d="M138,85 C100,85 82,115 82,148 L82,200"
           stroke="#000" stroke-width="30" fill="none" stroke-linecap="round"/>
-    <!-- Handle front -->
-    <path d="M148,90 C112,90 96,118 96,152 L96,210"
+    <path d="M138,80 C102,80 86,108 86,142 L86,195"
           stroke="#333" stroke-width="24" fill="none" stroke-linecap="round"/>
-    <!-- Handle highlight -->
-    <path d="M148,86 C116,86 100,112 100,145 L100,195"
+    <path d="M138,76 C106,76 90,102 90,135 L90,185"
           stroke="#4a4a4a" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.6"/>
 
-    <!-- ====== LETTER A — 3D EXTRUSION (back face, offset down-right) ====== -->
+    <!-- Letter N — 3D extrusion (back shadow) -->
     <g opacity="0.85">
-      <!-- Back left leg -->
-      <polygon points="152,108 110,130 232,395 272,395" fill="#000"/>
-      <!-- Back right leg -->
-      <polygon points="210,108 395,385 355,395 175,108" fill="#000"/>
-      <!-- Back crossbar area -->
-      <polygon points="185,255 210,325 325,325 295,255" fill="#000"/>
+      <polygon points="130,105 130,380 180,380 180,200 320,380 370,380 370,105 320,105 320,290 180,105" fill="#000" transform="translate(5,8)"/>
     </g>
 
-    <!-- ====== LETTER A — FRONT FACE ====== -->
-    <!-- Left leg of A -->
-    <polygon points="145,100 100,122 225,390 268,390" fill="url(#litFace)"/>
-    <!-- Right leg of A -->
-    <polygon points="200,100 385,378 342,390 165,100" fill="url(#darkFace)"/>
+    <!-- Letter N — front face left vertical -->
+    <polygon points="130,100 130,375 178,375 178,100" fill="url(#litFace)"/>
 
-    <!-- Top peak connector -->
-    <polygon points="145,100 165,100 200,100 172,88 140,100" fill="#3d3d3d"/>
+    <!-- Letter N — diagonal -->
+    <polygon points="130,100 178,100 370,340 370,375 322,375 130,135" fill="url(#darkFace)"/>
 
-    <!-- A crossbar cutout (golden triangle hole) -->
-    <polygon points="192,248 215,318 318,318 288,248" fill="#C08008" opacity="0.85"/>
-    <!-- Crossbar cutout inner highlight -->
-    <polygon points="196,252 218,314 314,314 286,252" fill="url(#bg)" opacity="0.4"/>
+    <!-- Letter N — front face right vertical -->
+    <polygon points="322,100 370,100 370,375 322,375" fill="url(#litFace)"/>
 
-    <!-- ====== CART BODY (extends from A) ====== -->
-    <!-- Right cart wall (extends from right leg of A) -->
-    <polygon points="385,378 415,255 400,195 358,195 342,390 355,390" fill="url(#extrude)"/>
-    <!-- Right wall highlight edge -->
-    <line x1="415" y1="255" x2="400" y2="195" stroke="#444" stroke-width="2" opacity="0.35"/>
+    <!-- Top highlight edges -->
+    <line x1="130" y1="100" x2="178" y2="100" stroke="#555" stroke-width="2.5" opacity="0.4"/>
+    <line x1="322" y1="100" x2="370" y2="100" stroke="#555" stroke-width="2.5" opacity="0.4"/>
+    <!-- Left edge highlight -->
+    <line x1="130" y1="100" x2="130" y2="375" stroke="#555" stroke-width="2" opacity="0.3"/>
 
-    <!-- Cart bottom platform -->
-    <path d="M210,388 L365,388 L372,405 L202,405 Z" fill="#1a1a1a"/>
-    <!-- Platform front edge highlight -->
-    <line x1="210" y1="388" x2="365" y2="388" stroke="#3a3a3a" stroke-width="1.5" opacity="0.5"/>
+    <!-- Cart body — bottom platform -->
+    <path d="M115,373 L385,373 L395,395 L108,395 Z" fill="#1a1a1a"/>
+    <line x1="115" y1="373" x2="385" y2="373" stroke="#3a3a3a" stroke-width="1.5" opacity="0.5"/>
 
-    <!-- ====== SURFACE HIGHLIGHTS (metallic 3D effect) ====== -->
-    <!-- Left leg edge highlight -->
-    <line x1="145" y1="100" x2="100" y2="122" stroke="#555" stroke-width="2.5" opacity="0.4"/>
-    <line x1="145" y1="100" x2="268" y2="390" stroke="#444" stroke-width="1.5" opacity="0.25"/>
-    <!-- Right leg subtle edge -->
-    <line x1="200" y1="100" x2="385" y2="378" stroke="#3a3a3a" stroke-width="1.5" opacity="0.2"/>
-    <!-- A peak top highlight -->
-    <line x1="140" y1="100" x2="200" y2="100" stroke="#555" stroke-width="2" opacity="0.35"/>
+    <!-- Cart right wall -->
+    <polygon points="370,100 405,100 415,240 395,395 385,373 370,375" fill="#1a1a1a" opacity="0.7"/>
+    <line x1="405" y1="100" x2="415" y2="240" stroke="#444" stroke-width="2" opacity="0.35"/>
   </g>
 
-  <!-- ====== WHEELS ====== -->
-  <!-- Left wheel -->
-  <circle cx="240" cy="438" r="28" fill="#111"/>
-  <circle cx="240" cy="438" r="23" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
-  <circle cx="240" cy="438" r="10" fill="#C08008"/>
-  <circle cx="240" cy="438" r="4.5" fill="#1a1a1a"/>
-  <!-- Left wheel highlight -->
-  <path d="M225,425 A18,18 0 0,1 255,425" fill="none" stroke="#444" stroke-width="1.5" opacity="0.3"/>
+  <!-- Wheels -->
+  <circle cx="195" cy="430" r="28" fill="#111"/>
+  <circle cx="195" cy="430" r="23" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
+  <circle cx="195" cy="430" r="10" fill="#C08008"/>
+  <circle cx="195" cy="430" r="4.5" fill="#1a1a1a"/>
+  <path d="M180,417 A18,18 0 0,1 210,417" fill="none" stroke="#444" stroke-width="1.5" opacity="0.3"/>
 
-  <!-- Right wheel -->
-  <circle cx="362" cy="438" r="28" fill="#111"/>
-  <circle cx="362" cy="438" r="23" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
-  <circle cx="362" cy="438" r="10" fill="#C08008"/>
-  <circle cx="362" cy="438" r="4.5" fill="#1a1a1a"/>
-  <!-- Right wheel highlight -->
-  <path d="M347,425 A18,18 0 0,1 377,425" fill="none" stroke="#444" stroke-width="1.5" opacity="0.3"/>
+  <circle cx="340" cy="430" r="28" fill="#111"/>
+  <circle cx="340" cy="430" r="23" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
+  <circle cx="340" cy="430" r="10" fill="#C08008"/>
+  <circle cx="340" cy="430" r="4.5" fill="#1a1a1a"/>
+  <path d="M325,417 A18,18 0 0,1 355,417" fill="none" stroke="#444" stroke-width="1.5" opacity="0.3"/>
 </svg>
