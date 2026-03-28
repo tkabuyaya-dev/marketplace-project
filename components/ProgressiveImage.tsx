@@ -1,5 +1,5 @@
 /**
- * AURABUJA — ProgressiveImage
+ * NUNULIA — ProgressiveImage
  *
  * Facebook/WhatsApp-grade progressive image loading:
  *

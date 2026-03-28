@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
       {/* Desktop/Tablet Top Nav */}
       <nav className="hidden md:flex fixed top-0 w-full z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 px-6 py-4 justify-between items-center transition-all duration-500">
         <button onClick={() => navigate('/')} className={`text-2xl font-black bg-gradient-to-r ${THEME.gradient} text-transparent bg-clip-text transition-all duration-500`}>
-          AURABUJA
+          NUNULIA
         </button>
 
         <div className="flex items-center gap-4">
@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
       {/* Mobile Top Bar */}
       <div className="md:hidden fixed top-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 px-4 py-3 flex justify-between items-center shadow-lg transition-colors duration-500">
          <button onClick={() => navigate('/')} className={`font-black text-lg bg-gradient-to-r ${THEME.gradient} text-transparent bg-clip-text tracking-tighter`}>
-           AURABUJA
+           NUNULIA
          </button>
 
          <div className="flex gap-2">

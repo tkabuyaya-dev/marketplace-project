@@ -1,12 +1,12 @@
 /**
- * AURABUJA — Offline Queue Hook
+ * NUNULIA — Offline Queue Hook
  * Queues product drafts when offline, syncs when back online.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 
-const STORAGE_KEY = 'aurabuja_offline_queue';
+const STORAGE_KEY = 'nunulia_offline_queue';
 
 export interface OfflineDraft {
   id: string;

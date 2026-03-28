@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Delete Account Confirmation Modal
+ * NUNULIA — Delete Account Confirmation Modal
  *
  * Re-authenticates via Google popup, then calls the
  * deleteUserAccount Cloud Function.

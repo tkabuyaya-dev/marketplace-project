@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Users Service
+ * NUNULIA — Users Service
  */
 
 import { User, SellerDetails } from '../../types';

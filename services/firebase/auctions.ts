@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Auction Service
+ * NUNULIA — Auction Service
  */
 
 import { Product } from '../../types';

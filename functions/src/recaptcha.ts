@@ -1,5 +1,5 @@
 /**
- * AURABUJA — reCAPTCHA v3 Verification
+ * NUNULIA — reCAPTCHA v3 Verification
  *
  * Verifies reCAPTCHA v3 tokens server-side before allowing
  * sensitive actions (login, seller registration).

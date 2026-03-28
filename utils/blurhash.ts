@@ -1,5 +1,5 @@
 /**
- * AURABUJA — BlurHash Utilities
+ * NUNULIA — BlurHash Utilities
  *
  * Encode: generates a ~20-30 char hash from an image (at upload time)
  * Decode: renders hash to a tiny canvas for instant placeholder (at display time)

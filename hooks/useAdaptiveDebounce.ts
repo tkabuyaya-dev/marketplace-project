@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Adaptive Debounce Hook
+ * NUNULIA — Adaptive Debounce Hook
  *
  * Adjusts debounce delay based on network quality using the Network Information API.
  *   WiFi/4G → 150ms

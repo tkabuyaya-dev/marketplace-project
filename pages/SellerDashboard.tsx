@@ -569,7 +569,7 @@ export const SellerDashboard: React.FC = () => {
 
   const contactAdmin = () => {
     const supportNum = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
-    window.open(`https://wa.me/${supportNum.replace('+', '')}?text=${encodeURIComponent('Bonjour, je suis vendeur sur AuraBuja et j\'ai besoin d\'aide.')}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${supportNum.replace('+', '')}?text=${encodeURIComponent('Bonjour, je suis vendeur sur Nunulia et j\'ai besoin d\'aide.')}`, '_blank', 'noopener,noreferrer');
   };
 
   // Sync offline queue when online
@@ -702,7 +702,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-xs text-gray-400 mt-1">{t('dashboard.expiredLimitMessage')}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
           </div>
@@ -719,7 +719,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-xs text-gray-400 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => navigate('/plans')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>{t('dashboard.renewNow')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement AuraBuja. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
           </div>
@@ -734,7 +734,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-xs text-gray-400 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.viewPlans')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan AuraBuja.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
           </div>

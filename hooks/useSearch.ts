@@ -1,5 +1,5 @@
 /**
- * AURABUJA — useSearch Hook (Search Page Brain)
+ * NUNULIA — useSearch Hook (Search Page Brain)
  *
  * Manages search state, Algolia queries with debounce, pagination,
  * URL sync, caching, and filter composition.

@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Recommendation Engine (Upgraded)
+ * NUNULIA — Recommendation Engine (Upgraded)
  *
  * Strategy:
  * 1. Try Cloud Functions API (Redis-cached, fast) for trending/popular/recommendations
@@ -115,7 +115,7 @@ async function fetchCachedApi<T>(
 // LOCAL STORAGE — Anonymous user tracking
 // ---------------------------------------------------------------------------
 
-const RECENTLY_VIEWED_KEY = 'aurabuja_recently_viewed';
+const RECENTLY_VIEWED_KEY = 'nunulia_recently_viewed';
 const MAX_LOCAL_HISTORY = 30;
 
 interface LocalViewEntry {

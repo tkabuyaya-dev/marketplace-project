@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Subscription Utilities (shared between client components)
+ * NUNULIA — Subscription Utilities (shared between client components)
  *
  * Pure functions for subscription status computation.
  * No Firebase calls — these work with data already loaded in context.

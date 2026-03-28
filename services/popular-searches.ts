@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Popular Searches & Local Suggestions
+ * NUNULIA — Popular Searches & Local Suggestions
  *
  * Stores popular/recent search terms in localStorage to provide
  * instant autocomplete suggestions without hitting Algolia.
@@ -7,8 +7,8 @@
  * Architecture layer: User → [THIS] → Browser cache → Backend cache → Algolia
  */
 
-const STORAGE_KEY = 'aurabuja_search_history';
-const POPULAR_KEY = 'aurabuja_popular_searches';
+const STORAGE_KEY = 'nunulia_search_history';
+const POPULAR_KEY = 'nunulia_popular_searches';
 const MAX_HISTORY = 20;
 const MAX_POPULAR = 30;
 const POPULAR_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours

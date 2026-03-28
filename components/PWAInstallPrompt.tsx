@@ -7,7 +7,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const DISMISS_KEY = 'aurabuja_pwa_dismissed';
+const DISMISS_KEY = 'nunulia_pwa_dismissed';
 const DISMISS_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
 export const PWAInstallPrompt: React.FC = () => {

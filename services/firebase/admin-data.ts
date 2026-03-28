@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Admin Data Services (Categories, Tiers, Countries, Banners, Seeder)
+ * NUNULIA — Admin Data Services (Categories, Tiers, Countries, Banners, Seeder)
  */
 
 import {

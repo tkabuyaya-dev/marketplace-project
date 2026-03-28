@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Firebase Service Constants & Helpers
+ * NUNULIA — Firebase Service Constants & Helpers
  *
  * Shared constants, collection names, and Firestore document converters.
  */

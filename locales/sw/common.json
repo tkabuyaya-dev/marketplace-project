@@ -239,12 +239,12 @@
     "deleteAccountProfile": "Wasifu wako na taarifa za kibinafsi",
     "deleteAccountProducts": "Bidhaa zako zilizoorodheshwa",
     "deleteAccountNotifications": "Arifa zako",
-    "deleteAccountAccess": "Ufikiaji wako wa AuraBuja",
+    "deleteAccountAccess": "Ufikiaji wako wa Nunulia",
     "deleteAccountSubWarning": "Una usajili wa {{tier}} unaoendelea hadi {{date}}. Kufuta kutasitisha usajili wako bila kurudishiwa pesa.",
     "deleteAccountConfirmHint": "Ili kuthibitisha, bonyeza kitufe hapo chini. Dirisha la Google litafunguliwa kuthibitisha utambulisho wako.",
     "deleteAccountConfirmBtn": "Thibitisha na Google na ufute akaunti yangu",
     "deleteAccountDeleting": "Inafutwa...",
-    "deleteAccountSuccess": "Akaunti yako imefutwa. Tutaonana kwenye AuraBuja.",
+    "deleteAccountSuccess": "Akaunti yako imefutwa. Tutaonana kwenye Nunulia.",
     "deleteAccountCancelled": "Uthibitisho umeghairiwa",
     "deleteAccountAuthError": "Uthibitisho wa Google umeshindikana",
     "deleteAccountError": "Kosa limetokea. Jaribu tena au wasiliana na msaada."
@@ -280,7 +280,7 @@
     "noProducts": "Duka hili bado halina bidhaa"
   },
   "pwa": {
-    "installTitle": "Sakinisha AuraBuja",
+    "installTitle": "Sakinisha Nunulia",
     "installSubtitle": "Fikia soko moja kwa moja kutoka skrini yako kuu. Haraka zaidi, inafanya kazi bila mtandao, hakuna hifadhi inayohitajika.",
     "benefit1": "Kupakia haraka",
     "benefit2": "Inafanya kazi bila mtandao",
@@ -359,27 +359,27 @@
     "similarProducts": "Bidhaa zinazofanana",
     "customersAlsoViewed": "Wateja pia walitazama",
     "reportFraudulent": "Ripoti tangazo la udanganyifu",
-    "whatsappMessage": "Habari, ninapendezwa na bidhaa yako: *{{title}}* kwenye AuraBuja.\n\n{{url}}",
+    "whatsappMessage": "Habari, ninapendezwa na bidhaa yako: *{{title}}* kwenye Nunulia.\n\n{{url}}",
     "noWhatsapp": "Muuzaji hajaweka nambari ya WhatsApp.",
     "loginToContact": "Ingia ili kuwasiliana na muuzaji.",
     "loginToLike": "Ingia ili kupenda bidhaa hii.",
     "confirmReport": "Ripoti bidhaa hii kama isiyofaa?",
     "reportSent": "Ripoti imetumwa kwa utawala.",
-    "shareText": "Angalia hii kwenye AuraBuja: {{title}}",
+    "shareText": "Angalia hii kwenye Nunulia: {{title}}",
     "linkCopied": "Kiungo kimenakiliwa!",
     "photo": "Picha {{number}}"
   },
   "shopProfile": {
     "notFound": "Duka halipatikani",
     "backToHome": "Rudi nyumbani",
-    "defaultBio": "Duka rasmi kwenye AuraBuja. Pata bidhaa zetu zote za Teknolojia na Mtindo kwa bei nzuri.",
+    "defaultBio": "Duka rasmi kwenye Nunulia. Pata bidhaa zetu zote za Teknolojia na Mtindo kwa bei nzuri.",
     "sellerRating": "Ukadiriaji wa Muuzaji",
     "products": "Bidhaa",
     "since": "Tangu {{year}}",
     "contact": "Wasiliana",
     "linkCopied": "Kiungo kimenakiliwa!",
     "share": "Shiriki",
-    "shareText": "Gundua {{name}} kwenye AuraBuja",
+    "shareText": "Gundua {{name}} kwenye Nunulia",
     "popular": "Maarufu",
     "newArrivals": "Vipya",
     "allProducts": "Bidhaa zote",
@@ -387,7 +387,7 @@
     "noReviews": "Hakuna tathmini kwa sasa.",
     "reviewsComingSoon": "Tathmini za wateja zitapatikana hivi karibuni.",
     "noProductsYet": "Duka hili bado halina bidhaa mtandaoni.",
-    "shopOnAuraBuja": "Duka kwenye AuraBuja"
+    "shopOnNunulia": "Duka kwenye Nunulia"
   },
   "messenger": {
     "title": "Ujumbe",
@@ -837,7 +837,7 @@
   },
   "registration": {
     "title": "Kuwa Muuzaji",
-    "subtitle": "Fungua duka lako la kitaalamu kwenye AuraBuja.",
+    "subtitle": "Fungua duka lako la kitaalamu kwenye Nunulia.",
     "step1Title": "Taarifa Binafsi",
     "fullName": "Jina kamili",
     "fullNamePlaceholder": "Jina lako kamili",
@@ -880,7 +880,7 @@
     "step4Title": "Nyaraka za Uthibitisho",
     "cniPhotoLabel": "Picha ya CNI/Passport (Mbele/Nyuma)",
     "nifPhotoLabel": "Picha ya hati ya NIF",
-    "termsAccept": "Ninathibitisha usahihi wa taarifa. AuraBuja ina haki ya kusimamisha akaunti yoyote ya udanganyifu.",
+    "termsAccept": "Ninathibitisha usahihi wa taarifa. Nunulia ina haki ya kusimamisha akaunti yoyote ya udanganyifu.",
     "createShop": "Fungua duka langu",
     "cancel": "Ghairi",
     "successToast": "Usajili wa muuzaji umefanikiwa!",
@@ -958,8 +958,8 @@
     "notificationHint": "Utapokea arifa mara usajili wako utakapoamilishwa.",
     "backToDashboardBtn": "Rudi kwenye dashboard",
     "contactViaWhatsapp": "Wasiliana kupitia WhatsApp",
-    "whatsappSubscribe": "Habari, nataka kujisajili kwa mpango {{plan}} kwenye AuraBuja.\nNchi: {{country}}\nKiasi: {{amount}}\nJina: {{name}}",
-    "whatsappGeneric": "Habari, nataka kujisajili kwa mpango wa AuraBuja."
+    "whatsappSubscribe": "Habari, nataka kujisajili kwa mpango {{plan}} kwenye Nunulia.\nNchi: {{country}}\nKiasi: {{amount}}\nJina: {{name}}",
+    "whatsappGeneric": "Habari, nataka kujisajili kwa mpango wa Nunulia."
   },
   "share": {
     "share": "Shiriki",

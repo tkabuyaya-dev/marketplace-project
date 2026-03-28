@@ -17,10 +17,10 @@ export function updateMetaTags(options: {
   const safeTitle = options.title ? escapeMetaContent(options.title) : '';
   const safeDesc = options.description ? escapeMetaContent(options.description) : '';
 
-  document.title = safeTitle ? `${safeTitle} | AuraBuja` : 'AuraBuja — Marketplace';
+  document.title = safeTitle ? `${safeTitle} | Nunulia` : 'Nunulia — Marketplace';
 
   const updates: Record<string, string> = {
-    'og:title': safeTitle || 'AuraBuja — Marketplace',
+    'og:title': safeTitle || 'Nunulia — Marketplace',
     'og:description': safeDesc || 'Le marketplace Tech & Beauté de Bujumbura.',
     'og:image': options.image || '/icons/icon-512.png',
     'og:url': options.url || window.location.href,
@@ -35,5 +35,5 @@ export function updateMetaTags(options: {
 }
 
 export function resetMetaTags() {
-  document.title = 'AuraBuja — Marketplace';
+  document.title = 'Nunulia — Marketplace';
 }

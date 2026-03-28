@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Firebase Cloud Functions
+ * NUNULIA — Firebase Cloud Functions
  *
  * Exports:
  * - Algolia sync triggers (onProductWrite, onSellerWrite)

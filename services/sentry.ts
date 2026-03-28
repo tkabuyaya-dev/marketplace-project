@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Sentry Error Monitoring
+ * NUNULIA — Sentry Error Monitoring
  *
  * Initializes Sentry for production error tracking.
  * Only active when VITE_SENTRY_DSN is configured.
@@ -27,7 +27,7 @@ export function initSentry(): void {
     Sentry.init({
       dsn: SENTRY_DSN,
       environment: IS_PRODUCTION ? 'production' : 'development',
-      release: `aurabuja@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+      release: `nunulia@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
 
       // Performance: sample 20% of transactions in production
       tracesSampleRate: IS_PRODUCTION ? 0.2 : 1.0,

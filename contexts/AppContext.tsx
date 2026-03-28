@@ -61,7 +61,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Restore saved country from localStorage, fallback handled by useActiveCountries
   const [activeCountry, setActiveCountry] = useState<string>(() => {
     try {
-      return localStorage.getItem('aurabuja_active_country') || '';
+      return localStorage.getItem('nunulia_active_country') || '';
     } catch { return ''; }
   });
   const [loginLoading, setLoginLoading] = useState(false);
@@ -185,7 +185,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Persist selected country to localStorage
   useEffect(() => {
     if (activeCountry) {
-      try { localStorage.setItem('aurabuja_active_country', activeCountry); } catch { /* ignore */ }
+      try { localStorage.setItem('nunulia_active_country', activeCountry); } catch { /* ignore */ }
     }
   }, [activeCountry]);
 

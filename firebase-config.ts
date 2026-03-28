@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Firebase Configuration (Production-Grade)
+ * NUNULIA — Firebase Configuration (Production-Grade)
  *
  * Architecture:
  * - Firestore v9 modular API avec persistance IndexedDB (offline support)

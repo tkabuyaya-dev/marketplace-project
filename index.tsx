@@ -5,6 +5,10 @@ import './i18n'; // Initialize i18next before React renders
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { initSentry } from './services/sentry';
+import { migrateLocalStorage } from './utils/migrate-storage';
+
+// Migrate localStorage keys from AuraBuja → Nunulia (one-time, for existing users)
+migrateLocalStorage();
 
 // Initialize Sentry before React renders (captures early errors)
 initSentry();

@@ -1,4 +1,4 @@
-# AURABUJA — Deploy Cloud Functions (PowerShell)
+# NUNULIA — Deploy Cloud Functions (PowerShell)
 # Usage: .\deploy-functions.ps1
 
 $ErrorActionPreference = "Stop"

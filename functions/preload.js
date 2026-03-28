@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Module preload for Firebase CLI deployment
+ * NUNULIA — Module preload for Firebase CLI deployment
  *
  * Loaded via NODE_OPTIONS="--require ./preload.js" BEFORE the Firebase CLI
  * discovery subprocess starts. Patches Module._load to defer loading of

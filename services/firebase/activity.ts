@@ -1,5 +1,5 @@
 /**
- * AURABUJA — User Activity Tracking Service
+ * NUNULIA — User Activity Tracking Service
  */
 
 import { ActivityAction } from '../../types';

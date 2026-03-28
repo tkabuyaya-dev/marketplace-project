@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Authentication Service
+ * NUNULIA — Authentication Service
  *
  * Performance strategy: Cache user in localStorage for instant app shell.
  * Firebase Auth verifies in background; if result differs, update silently.
@@ -21,7 +21,7 @@ import {
 import type { Unsubscribe } from './constants';
 
 // ── Cached User (instant app shell on 2G/3G) ──
-const USER_CACHE_KEY = 'aurabuja_cached_user';
+const USER_CACHE_KEY = 'nunulia_cached_user';
 
 export const getCachedUser = (): User | null => {
   try {

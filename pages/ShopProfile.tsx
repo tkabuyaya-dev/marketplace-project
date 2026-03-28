@@ -54,7 +54,7 @@ const ShopProfile: React.FC = () => {
     if (!seller) return;
     updateMetaTags({
       title: seller.sellerDetails?.shopName || seller.name,
-      description: seller.bio || t('shopProfile.shopOnAuraBuja'),
+      description: seller.bio || t('shopProfile.shopOnNunulia'),
       image: seller.avatar,
       url: window.location.href,
     });

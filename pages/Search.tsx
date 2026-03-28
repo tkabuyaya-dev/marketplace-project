@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Search Page
+ * NUNULIA — Search Page
  *
  * Full-featured search with Algolia: filters sidebar, responsive grid,
  * URL-synced state, infinite scroll, skeleton loading.

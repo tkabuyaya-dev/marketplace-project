@@ -168,8 +168,8 @@ export const DEFAULT_SUBSCRIPTION_PRICING: Record<string, SubscriptionPricing> =
 // --- USERS MOCK ---
 export const MOCK_ADMIN: User = {
   id: 'admin1',
-  name: 'Admin AuraBuja',
-  email: 'admin@aurabuja.bi',
+  name: 'Admin Nunulia',
+  email: 'admin@nunulia.com',
   avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
   isVerified: true,
   role: 'admin',

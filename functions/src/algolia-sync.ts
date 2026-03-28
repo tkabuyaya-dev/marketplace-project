@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Algolia Sync Triggers
+ * NUNULIA — Algolia Sync Triggers
  *
  * Automatically syncs Firestore products and sellers to Algolia indexes.
  * Uses dynamic imports to avoid deployment timeout.

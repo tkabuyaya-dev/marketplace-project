@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Notifications Service
+ * NUNULIA — Notifications Service
  */
 
 import { AppNotification } from '../../types';

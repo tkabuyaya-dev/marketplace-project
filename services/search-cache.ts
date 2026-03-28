@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Browser-Side Search Cache (LRU + TTL)
+ * NUNULIA — Browser-Side Search Cache (LRU + TTL)
  *
  * Caches Algolia search results in memory to avoid redundant API calls.
  * Identical queries within the TTL window return instantly from cache.

@@ -25,8 +25,8 @@ export default defineConfig({
       injectRegister: 'auto',
       filename: 'sw.js',
       manifest: {
-        name: 'AuraBuja — Marketplace',
-        short_name: 'AuraBuja',
+        name: 'Nunulia — Marketplace',
+        short_name: 'Nunulia',
         description: 'Le marketplace Tech & Beauté de Bujumbura',
         theme_color: '#0b0f19',
         background_color: '#0b0f19',

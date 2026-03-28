@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Products Service (Read + Write)
+ * NUNULIA — Products Service (Read + Write)
  */
 
 import {

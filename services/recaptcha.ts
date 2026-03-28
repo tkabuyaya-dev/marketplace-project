@@ -1,5 +1,5 @@
 /**
- * AURABUJA — reCAPTCHA v3 Client Service
+ * NUNULIA — reCAPTCHA v3 Client Service
  *
  * Executes reCAPTCHA v3 invisibly on sensitive actions (login, seller registration)
  * and verifies the token server-side via the verifyRecaptcha Cloud Function.

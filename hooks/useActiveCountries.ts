@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Hook useActiveCountries
+ * NUNULIA — Hook useActiveCountries
  *
  * Fournit la liste des pays actifs avec cache multi-couches :
  *   Couche 1 : Mémoire (Map JS, TTL 5 min)
@@ -19,7 +19,7 @@ const MEM_TTL = 5 * 60 * 1000; // 5 min
 let memCache: { data: Country[]; ts: number } | null = null;
 
 // ── Couche 2 : localStorage ──
-const LS_KEY = 'aurabuja_active_countries';
+const LS_KEY = 'nunulia_active_countries';
 const LS_TTL = 10 * 60 * 1000; // 10 min
 
 function readLocalStorage(): Country[] | null {

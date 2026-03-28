@@ -1,7 +1,7 @@
 import { build } from "esbuild";
 
 /**
- * AURABUJA — Cloud Functions Build Script
+ * NUNULIA — Cloud Functions Build Script
  *
  * Bundles firebase-functions INTO the output (not external) to avoid
  * Node 24's slow module resolution for large packages.

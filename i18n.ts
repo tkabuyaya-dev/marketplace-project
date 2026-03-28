@@ -36,7 +36,7 @@ i18n
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
-      lookupLocalStorage: 'aurabuja_lang',
+      lookupLocalStorage: 'nunulia_lang',
     },
   });
 

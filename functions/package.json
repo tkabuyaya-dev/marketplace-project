@@ -1,5 +1,5 @@
 {
-  "name": "aurabuja-functions",
+  "name": "nunulia-functions",
   "scripts": {
     "lint": "eslint --ext .js,.ts src/",
     "build": "node build.mjs",

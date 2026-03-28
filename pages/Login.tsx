@@ -41,7 +41,7 @@ const Login: React.FC = () => {
       </div>
       <div className="w-full max-w-sm text-center space-y-8">
         <div>
-          <h1 className="text-4xl font-black bg-gradient-to-r from-gold-400 to-gold-600 text-transparent bg-clip-text mb-2">AuraBuja</h1>
+          <h1 className="text-4xl font-black bg-gradient-to-r from-gold-400 to-gold-600 text-transparent bg-clip-text mb-2">Nunulia</h1>
           <p className="text-gray-400">{t('auth.loginSubtitle')}</p>
         </div>
 

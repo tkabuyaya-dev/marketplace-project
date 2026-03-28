@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Algolia Insights (Click & Conversion Analytics)
+ * NUNULIA — Algolia Insights (Click & Conversion Analytics)
  *
  * Sends clickedObjectIDsAfterSearch and convertedObjectIDsAfterSearch
  * events to Algolia Insights API for relevance learning.
@@ -17,7 +17,7 @@ const isConfigured = !!(ALGOLIA_APP_ID && ALGOLIA_SEARCH_KEY);
 
 /** Get or create a persistent anonymous user token for Algolia */
 function getUserToken(): string {
-  const key = 'aurabuja_algolia_token';
+  const key = 'nunulia_algolia_token';
   let token = localStorage.getItem(key);
   if (!token) {
     token = `anon-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

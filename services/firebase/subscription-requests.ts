@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Subscription Requests Service
+ * NUNULIA — Subscription Requests Service
  *
  * CRUD for subscription upgrade requests.
  * Sellers create requests → Admin approves/rejects → Auto-activate on approval.

@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Admin Dashboard shared types
+ * NUNULIA — Admin Dashboard shared types
  */
 import { Product, User, SubscriptionTier, Category, Country, Currency, SubscriptionRequest } from '../../types';
 import type { BannerData, BannerActionType } from '../../services/firebase';

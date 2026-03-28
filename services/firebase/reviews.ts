@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Reviews Service
+ * NUNULIA — Reviews Service
  */
 
 import { Review } from '../../types';

@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Algolia Search Service (Frontend)
+ * NUNULIA — Algolia Search Service (Frontend)
  *
  * Uses the search-only API key (safe for client-side).
  * Falls back to Firestore prefix search when Algolia is unavailable.

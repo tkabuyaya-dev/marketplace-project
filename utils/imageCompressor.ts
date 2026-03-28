@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Client-side Image Compression (Canvas API)
+ * NUNULIA — Client-side Image Compression (Canvas API)
  *
  * Zero dependencies. Compresses images BEFORE upload to save bandwidth.
  * Critical for African mobile users on slow connections.

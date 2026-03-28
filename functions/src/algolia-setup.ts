@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Algolia Index Setup & Full Reindex
+ * NUNULIA — Algolia Index Setup & Full Reindex
  *
  * Admin-only callable function. Uses dynamic import for algoliasearch.
  * Protected by Firebase Auth token verification + admin role check.

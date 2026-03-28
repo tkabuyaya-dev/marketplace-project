@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Admin Dashboard (orchestrator)
+ * NUNULIA — Admin Dashboard (orchestrator)
  * Each tab is a lazy-loaded sub-component.
  * Countries et Languages gérés directement via Firebase Console
  */

@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Subscription Expiration Cron (Scheduled Cloud Function)
+ * NUNULIA — Subscription Expiration Cron (Scheduled Cloud Function)
  *
  * Runs daily at 02:00 UTC (04:00 Bujumbura time).
  * - Auto-downgrades expired paid subscriptions to free tier

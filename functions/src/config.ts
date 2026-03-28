@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Cloud Functions Configuration
+ * NUNULIA — Cloud Functions Configuration
  *
  * All sensitive keys are stored in Firebase Functions environment config.
  * Set them via:

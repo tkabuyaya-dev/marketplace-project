@@ -239,12 +239,12 @@
     "deleteAccountProfile": "Umwirondoro wawe n'amakuru yawe bwite",
     "deleteAccountProducts": "Ibicuruzwa wasize",
     "deleteAccountNotifications": "Amakuru yawe",
-    "deleteAccountAccess": "Uburenganzira bwawe bwo gukoresha AuraBuja",
+    "deleteAccountAccess": "Uburenganzira bwawe bwo gukoresha Nunulia",
     "deleteAccountSubWarning": "Ufise ubwishingizi {{tier}} bukorera gushika {{date}}. Gukuraho bizokurira ubwishingizi bwawe ata nisubizo.",
     "deleteAccountConfirmHint": "Kugira ngo wemeze, fyonda buto iri hasi. Idirishya rya Google rizokwuguruka.",
     "deleteAccountConfirmBtn": "Kwemeza na Google no gukuraho konti yanje",
     "deleteAccountDeleting": "Biriko biraqurwa...",
-    "deleteAccountSuccess": "Konti yawe yakuwe. Tuzobonana kuri AuraBuja.",
+    "deleteAccountSuccess": "Konti yawe yakuwe. Tuzobonana kuri Nunulia.",
     "deleteAccountCancelled": "Kwemeza bihagaritswe",
     "deleteAccountAuthError": "Igenzura rya Google ntiryakunze",
     "deleteAccountError": "Habaye ikosa. Gerageza ukundi canke uvugishe ubufasha."
@@ -280,7 +280,7 @@
     "noProducts": "Iri duka ntirifise ibicuruzwa"
   },
   "pwa": {
-    "installTitle": "Shira AuraBuja",
+    "installTitle": "Shira Nunulia",
     "installSubtitle": "Koresha isoko biciye ku gikoresho cawe. Binyaruka, bikora ata internet, nta mwanya ukenewe.",
     "benefit1": "Kwinjira vuba",
     "benefit2": "Bikora ata internet",
@@ -359,27 +359,27 @@
     "similarProducts": "Ibicuruzwa bisa",
     "customersAlsoViewed": "Abakiriya baraba kandi",
     "reportFraudulent": "Menyesha itangazo ry'ubuhemu",
-    "whatsappMessage": "Mwaramutse, ndashimishijwe n'igicuruzwa canyu: *{{title}}* kuri AuraBuja.\n\n{{url}}",
+    "whatsappMessage": "Mwaramutse, ndashimishijwe n'igicuruzwa canyu: *{{title}}* kuri Nunulia.\n\n{{url}}",
     "noWhatsapp": "Umugurisha ntiyanditse inomero ya WhatsApp.",
     "loginToContact": "Injira kugira uvugane n'umugurisha.",
     "loginToLike": "Injira kugira ukunde iki gicuruzwa.",
     "confirmReport": "Menyesha iki gicuruzwa nk'ikitabereye?",
     "reportSent": "Ubumenyesho bwarungitswe ku buyobozi.",
-    "shareText": "Raba iki kuri AuraBuja : {{title}}",
+    "shareText": "Raba iki kuri Nunulia : {{title}}",
     "linkCopied": "Umuyoboro wakopiyewe!",
     "photo": "Ifoto {{number}}"
   },
   "shopProfile": {
     "notFound": "Iduka ntiryabonetse",
     "backToHome": "Subira ahabanza",
-    "defaultBio": "Iduka ryemewe kuri AuraBuja. Raba ibicuruzwa vyacu vy'ikoranabuhanga n'imibereho ku giciro ciza.",
+    "defaultBio": "Iduka ryemewe kuri Nunulia. Raba ibicuruzwa vyacu vy'ikoranabuhanga n'imibereho ku giciro ciza.",
     "sellerRating": "Amanota y'umugurisha",
     "products": "Ibicuruzwa",
     "since": "Kuva {{year}}",
     "contact": "Vugana",
     "linkCopied": "Umuyoboro wakopiyewe!",
     "share": "Sangira",
-    "shareText": "Menya {{name}} kuri AuraBuja",
+    "shareText": "Menya {{name}} kuri Nunulia",
     "popular": "Ibizwi",
     "newArrivals": "Ibishasha",
     "allProducts": "Ibicuruzwa vyose",
@@ -387,7 +387,7 @@
     "noReviews": "Nta vyiyumviro muri iki gihe.",
     "reviewsComingSoon": "Ivyiyumviro vy'abakiriya bizogera vuba.",
     "noProductsYet": "Iri duka ntirifise ibicuruzwa kuri internet.",
-    "shopOnAuraBuja": "Iduka kuri AuraBuja"
+    "shopOnNunulia": "Iduka kuri Nunulia"
   },
   "messenger": {
     "title": "Ubutumwa",
@@ -837,7 +837,7 @@
   },
   "registration": {
     "title": "Cika Umugurisha",
-    "subtitle": "Fungura iduka ryawe rya profesiyoneli kuri AuraBuja.",
+    "subtitle": "Fungura iduka ryawe rya profesiyoneli kuri Nunulia.",
     "step1Title": "Amakuru y'Umuntu",
     "fullName": "Izina ryuzuye",
     "fullNamePlaceholder": "Izina ryawe ryuzuye",
@@ -880,7 +880,7 @@
     "step4Title": "Inyandiko z'Ikigendajuru",
     "cniPhotoLabel": "Ifoto ya CNI/Passport (Imbere/Inyuma)",
     "nifPhotoLabel": "Ifoto y'inyandiko ya NIF",
-    "termsAccept": "Ndemeza ko amakuru ari ukuri. AuraBuja ifise uburenganzira bwo guhagarika konti y'ubuhemu.",
+    "termsAccept": "Ndemeza ko amakuru ari ukuri. Nunulia ifise uburenganzira bwo guhagarika konti y'ubuhemu.",
     "createShop": "Fungura iduka ryanje",
     "cancel": "Hagarika",
     "successToast": "Kwiyandikisha kw'umugurisha kwakunze!",
@@ -958,8 +958,8 @@
     "notificationHint": "Uzoheza ubone ubumenyesho kwiyandikisha kwawe kumara gushirwa.",
     "backToDashboardBtn": "Subira ku kibaho",
     "contactViaWhatsapp": "Vugana kuri WhatsApp",
-    "whatsappSubscribe": "Mwaramutse, ndashaka kwiyandikisha ku mugambi {{plan}} kuri AuraBuja.\nIgihugu: {{country}}\nIngano: {{amount}}\nIzina: {{name}}",
-    "whatsappGeneric": "Mwaramutse, ndashaka kwiyandikisha ku mugambi kuri AuraBuja."
+    "whatsappSubscribe": "Mwaramutse, ndashaka kwiyandikisha ku mugambi {{plan}} kuri Nunulia.\nIgihugu: {{country}}\nIngano: {{amount}}\nIzina: {{name}}",
+    "whatsappGeneric": "Mwaramutse, ndashaka kwiyandikisha ku mugambi kuri Nunulia."
   },
   "share": {
     "share": "Sangiza",

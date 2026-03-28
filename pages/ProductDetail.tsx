@@ -259,7 +259,7 @@ const ProductDetail: React.FC = () => {
         </button>
         <div className="flex items-center gap-2">
           <LanguageSwitcher compact />
-          <ShareSheet url={window.location.href} title={product?.title || 'AuraBuja'} text={product ? t('productDetail.shareText', { title: product.title }) : ''} />
+          <ShareSheet url={window.location.href} title={product?.title || 'Nunulia'} text={product ? t('productDetail.shareText', { title: product.title }) : ''} />
           <button onClick={handleLike} className={`p-3 rounded-full transition-colors ${liked ? 'bg-red-500/20 text-red-500' : 'bg-gray-800 text-white hover:bg-gray-700'}`}>❤️</button>
         </div>
       </div>

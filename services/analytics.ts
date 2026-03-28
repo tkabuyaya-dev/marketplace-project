@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Analytics Service (GA4 + Custom Tracking)
+ * NUNULIA — Analytics Service (GA4 + Custom Tracking)
  *
  * Centralized analytics with Google Analytics 4 integration.
  * Tracks: page views, product interactions, conversions, search events.

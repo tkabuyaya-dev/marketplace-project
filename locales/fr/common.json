@@ -240,12 +240,12 @@
     "deleteAccountProfile": "Ton profil et informations personnelles",
     "deleteAccountProducts": "Tes produits mis en ligne",
     "deleteAccountNotifications": "Tes notifications",
-    "deleteAccountAccess": "Ton accès à AuraBuja",
+    "deleteAccountAccess": "Ton accès à Nunulia",
     "deleteAccountSubWarning": "Tu as un abonnement {{tier}} actif jusqu'au {{date}}. La suppression annulera ton abonnement sans remboursement pour la période restante.",
     "deleteAccountConfirmHint": "Pour confirmer, clique sur le bouton ci-dessous. Une fenêtre Google s'ouvrira pour vérifier ton identité.",
     "deleteAccountConfirmBtn": "Confirmer avec Google et supprimer mon compte",
     "deleteAccountDeleting": "Suppression en cours...",
-    "deleteAccountSuccess": "Ton compte a été supprimé. À bientôt sur AuraBuja.",
+    "deleteAccountSuccess": "Ton compte a été supprimé. À bientôt sur Nunulia.",
     "deleteAccountCancelled": "Confirmation annulée",
     "deleteAccountAuthError": "Échec de la vérification Google",
     "deleteAccountError": "Une erreur est survenue. Réessaie dans quelques instants ou contacte le support."
@@ -281,7 +281,7 @@
     "noProducts": "Cette boutique n'a pas encore de produits"
   },
   "pwa": {
-    "installTitle": "Installez AuraBuja",
+    "installTitle": "Installez Nunulia",
     "installSubtitle": "Accédez au marketplace directement depuis votre écran d'accueil. Plus rapide, fonctionne hors-ligne, zéro espace de stockage.",
     "benefit1": "Chargement instantané",
     "benefit2": "Fonctionne sans internet",
@@ -360,27 +360,27 @@
     "similarProducts": "Produits similaires",
     "customersAlsoViewed": "Les clients ont aussi vu",
     "reportFraudulent": "Signaler une annonce frauduleuse",
-    "whatsappMessage": "Bonjour, je suis intéressé par votre produit: *{{title}}* sur AuraBuja.\n\n{{url}}",
+    "whatsappMessage": "Bonjour, je suis intéressé par votre produit: *{{title}}* sur Nunulia.\n\n{{url}}",
     "noWhatsapp": "Le vendeur n'a pas renseigné de numéro WhatsApp.",
     "loginToContact": "Connectez-vous pour contacter le vendeur.",
     "loginToLike": "Connectez-vous pour aimer ce produit.",
     "confirmReport": "Signaler ce produit comme inapproprié ?",
     "reportSent": "Signalement envoyé à l'administration.",
-    "shareText": "Regarde ça sur AuraBuja : {{title}}",
+    "shareText": "Regarde ça sur Nunulia : {{title}}",
     "linkCopied": "Lien copié dans le presse-papier !",
     "photo": "Photo {{number}}"
   },
   "shopProfile": {
     "notFound": "Boutique introuvable",
     "backToHome": "Retour à l'accueil",
-    "defaultBio": "Boutique officielle sur AuraBuja. Retrouvez tous nos produits Tech et Lifestyle au meilleur prix.",
+    "defaultBio": "Boutique officielle sur Nunulia. Retrouvez tous nos produits Tech et Lifestyle au meilleur prix.",
     "sellerRating": "Note Vendeur",
     "products": "Produits",
     "since": "Depuis {{year}}",
     "contact": "Contacter",
     "linkCopied": "Lien copié !",
     "share": "Partager",
-    "shareText": "Découvre {{name}} sur AuraBuja",
+    "shareText": "Découvre {{name}} sur Nunulia",
     "popular": "Populaires",
     "newArrivals": "Nouveautés",
     "allProducts": "Tous les produits",
@@ -388,7 +388,7 @@
     "noReviews": "Aucun avis pour le moment.",
     "reviewsComingSoon": "Les avis clients seront bientot disponibles.",
     "noProductsYet": "Cette boutique n'a pas encore de produits en ligne.",
-    "shopOnAuraBuja": "Boutique sur AuraBuja"
+    "shopOnNunulia": "Boutique sur Nunulia"
   },
   "messenger": {
     "title": "Messages",
@@ -854,7 +854,7 @@
   },
   "registration": {
     "title": "Devenir Vendeur",
-    "subtitle": "Créez votre boutique professionnelle sur AuraBuja.",
+    "subtitle": "Créez votre boutique professionnelle sur Nunulia.",
     "step1Title": "Informations Personnelles",
     "fullName": "Nom complet",
     "fullNamePlaceholder": "Votre nom complet",
@@ -897,7 +897,7 @@
     "step4Title": "Justificatifs",
     "cniPhotoLabel": "Photo CNI/Passeport (Recto/Verso)",
     "nifPhotoLabel": "Photo du document NIF",
-    "termsAccept": "Je certifie l'exactitude des informations. AuraBuja se réserve le droit de suspendre tout compte frauduleux.",
+    "termsAccept": "Je certifie l'exactitude des informations. Nunulia se réserve le droit de suspendre tout compte frauduleux.",
     "createShop": "Créer ma boutique",
     "cancel": "Annuler",
     "successToast": "Inscription vendeur réussie !",
@@ -975,8 +975,8 @@
     "notificationHint": "Vous recevrez une notification une fois votre abonnement activé.",
     "backToDashboardBtn": "Retour au dashboard",
     "contactViaWhatsapp": "Contacter via WhatsApp",
-    "whatsappSubscribe": "Bonjour, je souhaite souscrire au plan {{plan}} sur AuraBuja.\nPays: {{country}}\nMontant: {{amount}}\nNom: {{name}}",
-    "whatsappGeneric": "Bonjour, je souhaite souscrire à un plan AuraBuja."
+    "whatsappSubscribe": "Bonjour, je souhaite souscrire au plan {{plan}} sur Nunulia.\nPays: {{country}}\nMontant: {{amount}}\nNom: {{name}}",
+    "whatsappGeneric": "Bonjour, je souhaite souscrire à un plan Nunulia."
   },
   "share": {
     "share": "Partager",

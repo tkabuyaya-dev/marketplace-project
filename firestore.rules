@@ -1,5 +1,5 @@
 // ============================================================
-// AURABUJA — Firestore Security Rules (Niveau Fintech)
+// NUNULIA — Firestore Security Rules (Niveau Fintech)
 // Version: 2.0
 // Déploiement: firebase deploy --only firestore:rules
 // ============================================================

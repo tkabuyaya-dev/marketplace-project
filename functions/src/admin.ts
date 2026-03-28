@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Lazy Firebase Admin Initialization
+ * NUNULIA — Lazy Firebase Admin Initialization
  *
  * Defers loading firebase-admin until first function invocation.
  * This avoids the 9+ second module load time during Firebase CLI

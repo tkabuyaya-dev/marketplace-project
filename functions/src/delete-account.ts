@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Delete User Account (Callable Cloud Function)
+ * NUNULIA — Delete User Account (Callable Cloud Function)
  *
  * Anonymises user data, deletes products/likes/notifications,
  * cancels active subscription, and removes Firebase Auth account.

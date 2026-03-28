@@ -1,13 +1,13 @@
 #!/bin/bash
 # ============================================================
-# AURABUJA — Deploy Cloud Functions (Bash)
+# NUNULIA — Deploy Cloud Functions (Bash)
 # ============================================================
 # Usage: bash deploy-functions.sh
 # ============================================================
 
 set -e
 
-echo "=== AuraBuja Cloud Functions Deployment ==="
+echo "=== Nunulia Cloud Functions Deployment ==="
 
 # Step 1: Install
 echo -e "\n[1/3] Installing dependencies..."

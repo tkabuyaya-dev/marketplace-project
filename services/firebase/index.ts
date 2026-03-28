@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Firebase Service Layer (Barrel Export)
+ * NUNULIA — Firebase Service Layer (Barrel Export)
  *
  * Re-exports all modules for backward compatibility.
  * Import from 'services/firebase' works exactly as before.

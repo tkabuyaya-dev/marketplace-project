@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Service Cloudinary (Production-Grade)
+ * NUNULIA — Service Cloudinary (Production-Grade)
  *
  * Sécurité:
  * - Upload preset "unsigned" acceptable pour images produits publics

@@ -1,5 +1,5 @@
 /**
- * AURABUJA — Search Proxy with Redis Caching
+ * NUNULIA — Search Proxy with Redis Caching
  *
  * Sits between the frontend and Algolia to cache search results.
  * Identical queries within the TTL window are served from Redis.
