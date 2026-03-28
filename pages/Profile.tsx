@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { Button } from '../components/Button';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { updateUserProfile } from '../services/firebase';
+import { useNotificationConsent } from '../hooks/useNotificationConsent';
+import { useToast } from '../components/Toast';
 
 const Profile: React.FC = () => {
   const { currentUser, handleLogout, handleSellerAccess } = useAppContext();
@@ -16,6 +18,8 @@ const Profile: React.FC = () => {
   const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { permission, requestPermission } = useNotificationConsent();
+  const { toast } = useToast();
 
   if (!currentUser) return <Navigate to="/login" replace />;
 
@@ -121,8 +125,44 @@ const Profile: React.FC = () => {
           <Button className="w-full border-red-900/50 text-red-400 hover:bg-red-900/20" variant="outline" onClick={handleLogout}>{t('profile.logout')}</Button>
         </div>
 
+        {/* Notification consent */}
+        <div className="border-t border-gray-700/50 mt-6 pt-4">
+          {permission === 'granted' && (
+            <p className="text-xs text-green-400/70 text-center">🔔 Notifications activées</p>
+          )}
+          {permission === 'denied' && (
+            <p className="text-xs text-gray-500 text-center">🔕 Notifications désactivées dans le navigateur</p>
+          )}
+          {permission === 'default' && (
+            <button
+              onClick={async () => {
+                const result = await requestPermission();
+                if (result === 'granted') toast(t('profile.notifsEnabled'), 'success');
+                else toast(t('profile.notifsBlocked'), 'error');
+              }}
+              className="w-full py-2.5 border border-amber-500/30 text-amber-400 text-sm font-medium rounded-xl hover:bg-amber-500/10 transition-colors"
+            >
+              🔔 {t('profile.enableNotifs')}
+            </button>
+          )}
+        </div>
+
+        {/* Legal links */}
+        <div className="border-t border-gray-700/50 mt-6 pt-4 pb-2 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+            <Link to="/cgu" className="hover:text-amber-400 hover:underline transition-colors">
+              {t('profile.terms')}
+            </Link>
+            <span className="text-gray-600">&middot;</span>
+            <Link to="/politique-confidentialite" className="hover:text-amber-400 hover:underline transition-colors">
+              {t('profile.privacy')}
+            </Link>
+          </div>
+          <p className="text-[10px] text-gray-600 mt-1.5">&copy; 2026 NUNULIA. Tous droits réservés.</p>
+        </div>
+
         {/* Danger zone */}
-        <div className="border-t border-gray-700 mt-6 pt-5">
+        <div className="border-t border-gray-700 mt-4 pt-5">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{t('profile.dangerZone')}</p>
           <p className="text-xs text-gray-600 mb-3">{t('profile.dangerZoneHint')}</p>
           <button

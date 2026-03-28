@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { THEME, TC } from '../constants';
 import { Product } from '../types';
@@ -486,6 +486,19 @@ export const Home: React.FC = () => {
         likedMap={likedMap}
         onProductClick={onProductClick}
       />
+      {/* Footer legal */}
+      <div className="text-center py-8 mt-4 border-t border-gray-800/50">
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+          <Link to="/cgu" className="hover:text-amber-400 hover:underline transition-colors">
+            Conditions d'utilisation
+          </Link>
+          <span className="text-gray-700">&middot;</span>
+          <Link to="/politique-confidentialite" className="hover:text-amber-400 hover:underline transition-colors">
+            Politique de confidentialité
+          </Link>
+        </div>
+        <p className="text-[10px] text-gray-700 mt-1.5">&copy; 2026 NUNULIA</p>
+      </div>
     </div>
   );
 };

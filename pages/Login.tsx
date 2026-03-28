@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
@@ -60,6 +60,16 @@ const Login: React.FC = () => {
               </>
             )}
           </button>
+          <p className="text-xs text-gray-400 text-center">
+            En continuant, vous acceptez nos{' '}
+            <Link to="/cgu" className="underline text-amber-400 hover:text-amber-300">
+              Conditions d'utilisation
+            </Link>
+            {' '}et notre{' '}
+            <Link to="/politique-confidentialite" className="underline text-amber-400 hover:text-amber-300">
+              Politique de confidentialité
+            </Link>
+          </p>
           <Button
             className="w-full text-gray-500" variant="ghost"
             onClick={() => navigate('/')}

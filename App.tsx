@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { SearchOverlay } from './components/SearchOverlay';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { ConsentBanner } from './components/ConsentBanner';
 import { BackgroundLoader } from './components/BackgroundLoader';
 import { useAppContext } from './contexts/AppContext';
 import { Product, User } from './types';
@@ -19,7 +20,7 @@ const App: React.FC = () => {
   const navigate = useNavigate();
 
   // Pages without the main Navbar (dashboard/admin have their own nav)
-  const hideNavbar = ['/login', '/register-seller', '/dashboard', '/admin'].includes(location.pathname)
+  const hideNavbar = ['/login', '/register-seller', '/dashboard', '/admin', '/cgu', '/politique-confidentialite'].includes(location.pathname)
     || location.pathname.startsWith('/product/')
     || location.pathname.startsWith('/shop/');
 
@@ -70,6 +71,9 @@ const App: React.FC = () => {
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
+
+      {/* Consent Banner */}
+      <ConsentBanner />
     </div>
   );
 };
