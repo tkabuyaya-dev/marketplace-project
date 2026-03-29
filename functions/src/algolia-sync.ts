@@ -24,7 +24,7 @@ const COUNTRY_CODES: Record<string, string> = {
   bi: "BI", cd: "CD", rw: "RW", ug: "UG", tz: "TZ", ke: "KE",
 };
 
-function productToAlgoliaRecord(id: string, data: any) {
+function productToAlgoliaRecord(id: string, data: any, sellerDetails?: any) {
   const createdAt = data.createdAt?._seconds
     ? data.createdAt._seconds * 1000
     : data.createdAt?.toMillis?.() || Date.now();
@@ -56,13 +56,16 @@ function productToAlgoliaRecord(id: string, data: any) {
     slug: data.slug || "",
     status: data.status || "pending",
     createdAt,
-    // ── NEW: Country & novelty fields for faceted search ──
+    // ── Country & novelty fields for faceted search ──
     countryId,
     country: COUNTRY_NAMES[countryId] || "",
     countryCode: COUNTRY_CODES[countryId] || "",
     isNew: createdAt > thirtyDaysAgo,
     isSponsored: data.isSponsored || false,
     sales: data.sales || 0,
+    // ── Location fields from seller (province/commune for filtering) ──
+    sellerProvince: sellerDetails?.province || data.sellerProvince || "",
+    sellerCommune: sellerDetails?.commune || data.sellerCommune || "",
     _geoloc: data.sellerGps
       ? { lat: data.sellerGps.lat, lng: data.sellerGps.lng }
       : undefined,
@@ -116,7 +119,20 @@ export const onProductWrite = onDocumentWritten(
           if (err.status !== 404) throw err;
         }
       } else {
-        const record = productToAlgoliaRecord(productId, afterData);
+        // Lookup seller to get province/commune for location filtering
+        let sellerDetails: any = undefined;
+        if (afterData.sellerId) {
+          try {
+            const { getDb, ensureInitialized } = await import("./admin.js");
+            await ensureInitialized();
+            const db = await getDb();
+            const sellerDoc = await db.collection("users").doc(afterData.sellerId).get();
+            sellerDetails = sellerDoc.exists ? sellerDoc.data()?.sellerDetails : undefined;
+          } catch (err: any) {
+            logger.warn(`[Algolia] Could not fetch seller ${afterData.sellerId}:`, err.message);
+          }
+        }
+        const record = productToAlgoliaRecord(productId, afterData, sellerDetails);
         await client.saveObject({
           indexName: ALGOLIA_PRODUCTS_INDEX,
           body: record,

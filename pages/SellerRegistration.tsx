@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import { User, SellerDetails } from '../types';
 import { PROVINCES_BY_COUNTRY } from '../constants';
+import { COMMUNES_BY_PROVINCE } from '../data/locations';
 import { registerSeller, updateUserProfile } from '../services/firebase';
 import { uploadImage } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
@@ -270,7 +271,10 @@ export const SellerRegistration: React.FC = () => {
             {hasProvinceList ? (
                 <select
                     value={formData.province}
-                    onChange={e => handleChange('province', e.target.value)}
+                    onChange={e => {
+                      handleChange('province', e.target.value);
+                      handleChange('commune', '');
+                    }}
                     className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
                 >
                     {provinces.map(p => <option key={p} value={p}>{p}</option>)}
@@ -290,12 +294,29 @@ export const SellerRegistration: React.FC = () => {
                 <label className="block text-xs font-bold text-gray-400 mb-1">
                   {formData.countryId === 'bi' ? t('registration.communeLabel') : t('registration.communeCityLabel')} *
                 </label>
-                <input
-                    value={formData.commune}
-                    onChange={e => handleChange('commune', e.target.value)}
-                    placeholder={formData.countryId === 'cd' ? t('registration.communePlaceholder') : ''}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                />
+                {(() => {
+                  const communeList = COMMUNES_BY_PROVINCE[formData.countryId]?.[formData.province];
+                  if (communeList && communeList.length > 0) {
+                    return (
+                      <select
+                        value={formData.commune}
+                        onChange={e => handleChange('commune', e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+                      >
+                        <option value="">{t('registration.selectCommune')}</option>
+                        {communeList.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    );
+                  }
+                  return (
+                    <input
+                      value={formData.commune}
+                      onChange={e => handleChange('commune', e.target.value)}
+                      placeholder={formData.countryId === 'cd' ? t('registration.communePlaceholder') : ''}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+                    />
+                  );
+                })()}
             </div>
             <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1">

@@ -87,6 +87,8 @@ export const setupAlgoliaIndexes = onRequest(
             "searchable(tags)",
             "searchable(countryId)",
             "searchable(country)",
+            "searchable(sellerProvince)",
+            "searchable(sellerCommune)",
             "filterOnly(isNew)",
             "filterOnly(isSponsored)",
           ],
@@ -124,6 +126,8 @@ export const setupAlgoliaIndexes = onRequest(
             "countryId",
             "country",
             "countryCode",
+            "sellerProvince",
+            "sellerCommune",
             "isNew",
             "isSponsored",
           ],
@@ -194,10 +198,25 @@ export const setupAlgoliaIndexes = onRequest(
         };
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
+        // Batch-fetch seller details for province/commune
+        const sellerIds = [...new Set(snap.docs.map(d => d.data().sellerId).filter(Boolean))];
+        const sellerMap: Record<string, any> = {};
+        if (sellerIds.length > 0) {
+          // Firestore getAll supports up to 100 refs at a time
+          for (let i = 0; i < sellerIds.length; i += 100) {
+            const batch = sellerIds.slice(i, i + 100).map(id => db.collection("users").doc(id));
+            const sellerDocs = await db.getAll(...batch);
+            for (const sd of sellerDocs) {
+              if (sd.exists) sellerMap[sd.id] = sd.data()?.sellerDetails;
+            }
+          }
+        }
+
         const records = snap.docs.map((d) => {
           const data = d.data();
           const createdAt = data.createdAt?.toMillis?.() || Date.now();
           const countryId = data.countryId || "";
+          const sd = sellerMap[data.sellerId] || {};
           return {
             objectID: d.id,
             title: data.title || "",
@@ -226,6 +245,8 @@ export const setupAlgoliaIndexes = onRequest(
             countryId,
             country: COUNTRY_NAMES[countryId] || "",
             countryCode: COUNTRY_CODES[countryId] || "",
+            sellerProvince: sd.province || "",
+            sellerCommune: sd.commune || "",
             isNew: createdAt > thirtyDaysAgo,
             isSponsored: data.isSponsored || false,
             sales: data.sales || 0,

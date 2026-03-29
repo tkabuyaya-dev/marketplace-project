@@ -156,6 +156,10 @@ function hitToSeller(hit: AlgoliaHit): User {
 /** Extended search filters for the search page */
 export interface ExtendedSearchFilters extends SearchFilters {
   isNew?: boolean;
+  /** Seller's province — for location-based filtering */
+  sellerProvince?: string;
+  /** Seller's commune/city — for location-based filtering */
+  sellerCommune?: string;
   /** User's country — used for soft boost (optionalFilters), not hard filter */
   userCountry?: string;
   /** Unique user token for personalization & analytics */
@@ -214,6 +218,8 @@ export async function algoliaSearchProductsFull(
   if (filters?.category) facetFilters.push([`category:${filters.category}`]);
   if (filters?.sellerId) facetFilters.push([`sellerId:${filters.sellerId}`]);
   if (filters?.countryId) facetFilters.push([`countryId:${filters.countryId}`]);
+  if (filters?.sellerProvince) facetFilters.push([`sellerProvince:${filters.sellerProvince}`]);
+  if (filters?.sellerCommune) facetFilters.push([`sellerCommune:${filters.sellerCommune}`]);
   if (filters?.isNew) facetFilters.push([`isNew:true`]);
 
   // Country-aware personalization: boost user's country products without hiding others

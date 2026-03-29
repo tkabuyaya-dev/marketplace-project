@@ -8,12 +8,11 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface NavbarProps {
   currentUser: User | null;
-  onSearchClick: () => void;
   onSellerAccess: () => void;
   isOnline?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSellerAccess, isOnline = true }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isOnline = true }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -67,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
         <div className="flex items-center gap-4">
           {/* Search Trigger Desktop */}
           <button
-            onClick={onSearchClick}
+            onClick={() => navigate('/search')}
             className="group flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-full border border-gray-700 transition-all text-gray-400 hover:text-white"
           >
              <span className="text-lg group-hover:scale-110 transition-transform">🔍</span>
@@ -112,7 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSearchClick, onSe
 
            {/* Search Button Mobile */}
            <button
-             onClick={onSearchClick}
+             onClick={() => navigate('/search')}
              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-800 border border-gray-700 text-white"
            >
              🔍

@@ -18,6 +18,8 @@ import { useAppContext } from '../contexts/AppContext';
 
 export interface SearchFiltersState {
   country: string | null;
+  province: string | null;
+  commune: string | null;
   isNew: boolean;
   category: string | null;
   sortBy: 'relevance' | 'newest' | 'price_asc' | 'price_desc';
@@ -40,6 +42,8 @@ export interface SearchState {
 
 const DEFAULT_FILTERS: SearchFiltersState = {
   country: null,
+  province: null,
+  commune: null,
   isNew: false,
   category: null,
   sortBy: 'relevance',
@@ -67,6 +71,8 @@ export function useSearch() {
   const initialQuery = searchParams.get('q') || '';
   const initialFilters: SearchFiltersState = {
     country: searchParams.get('country') || null,
+    province: searchParams.get('province') || null,
+    commune: searchParams.get('commune') || null,
     isNew: searchParams.get('new') === 'true',
     category: searchParams.get('category') || null,
     sortBy: (searchParams.get('sort') as SearchFiltersState['sortBy']) || 'relevance',
@@ -95,6 +101,8 @@ export function useSearch() {
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
     if (filters.country) params.set('country', filters.country);
+    if (filters.province) params.set('province', filters.province);
+    if (filters.commune) params.set('commune', filters.commune);
     if (filters.isNew) params.set('new', 'true');
     if (filters.category) params.set('category', filters.category);
     if (filters.sortBy !== 'relevance') params.set('sort', filters.sortBy);
@@ -135,6 +143,8 @@ export function useSearch() {
               filters.sortBy === 'newest' ? 'newest' :
               filters.sortBy === 'price_asc' ? 'price_asc' : 'price_desc',
         countryId: filters.country || undefined,
+        sellerProvince: filters.province || undefined,
+        sellerCommune: filters.commune || undefined,
         category: filters.category || undefined,
         isNew: filters.isNew || undefined,
         minPrice: filters.minPrice ?? undefined,
