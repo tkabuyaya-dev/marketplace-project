@@ -1062,6 +1062,7 @@
       "errorProvince": "Veuillez sélectionner une province.",
       "errorCity": "Veuillez entrer votre ville.",
       "errorRateLimit": "Vous avez atteint la limite de 3 demandes par jour. Réessayez demain.",
+      "errorCaptcha": "Vérification de sécurité échouée. Réessayez.",
       "errorGeneric": "Une erreur est survenue. Réessayez."
     },
     "success": {

@@ -33,7 +33,8 @@ const RequestCard: React.FC<{
   const { t } = useTranslation();
   const timeAgo = formatTimeAgo(request.createdAt);
   const country = INITIAL_COUNTRIES.find(c => c.id === request.countryId);
-  const maskedPhone = request.whatsapp.replace(/(\+?\d{3})\d+(\d{2})/, '$1 ██ ██ ██ $2');
+  const normalizedPhone = request.whatsapp.replace(/[^\d+]/g, '').replace(/^\+?/, '+');
+  const maskedPhone = normalizedPhone.replace(/(\+\d{3})\d+(\d{2})$/, '$1 ██ ██ ██ $2');
   const daysLeft = Math.ceil((request.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
 
   return (

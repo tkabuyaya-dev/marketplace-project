@@ -2,7 +2,7 @@
  * NUNULIA — Approve Seller Renewal (HTTP Cloud Function)
  *
  * POST /approveRenewal
- * Authorization: Bearer NUNULIA_SECRET_TOKEN
+ * Authorization: Bearer <Firebase ID Token> (admin role required)
  * Body (JSON): { vendorId: string }
  *
  * - Sets seller: status → "active", subscriptionExpiry → now + 30 days
@@ -11,12 +11,12 @@
  * Returns: { success: boolean, message: string, count: number }
  *
  * Called by the admin dashboard when an admin approves a manual payment.
+ * Auth: Firebase ID token (verified server-side, admin role checked in Firestore)
  */
 
 import { onRequest } from "firebase-functions/v2/https";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
-import { getDb } from "./admin.js";
-import { NUNULIA_SECRET_TOKEN } from "./config.js";
+import { getDb, getAuth } from "./admin.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 450;
@@ -24,15 +24,29 @@ const BATCH_LIMIT = 450;
 export const approveRenewal = onRequest(
   {
     maxInstances: 5,
-    secrets: [NUNULIA_SECRET_TOKEN],
     region: "europe-west1",
   },
   async (req, res) => {
-    // ── Auth check ──
+    // ── Auth check: verify Firebase ID token + admin role ──
     const authHeader = req.headers["authorization"] ?? "";
-    if (authHeader !== `Bearer ${NUNULIA_SECRET_TOKEN.value().trim()}`) {
-      console.warn("[approveRenewal] Unauthorized request");
-      res.status(401).json({ success: false, message: "Unauthorized", count: 0 });
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!idToken) {
+      res.status(401).json({ success: false, message: "Missing authorization token", count: 0 });
+      return;
+    }
+    try {
+      const adminAuth = await getAuth();
+      const decoded = await adminAuth.verifyIdToken(idToken);
+      const db = await getDb();
+      const callerSnap = await db.collection("users").doc(decoded.uid).get();
+      if (!callerSnap.exists || callerSnap.data()?.role !== "admin") {
+        console.warn("[approveRenewal] Caller is not admin:", decoded.uid);
+        res.status(403).json({ success: false, message: "Forbidden: admin role required", count: 0 });
+        return;
+      }
+    } catch (authErr: any) {
+      console.warn("[approveRenewal] Token verification failed:", authErr?.message);
+      res.status(401).json({ success: false, message: "Invalid or expired token", count: 0 });
       return;
     }
 
@@ -54,7 +68,7 @@ export const approveRenewal = onRequest(
     }
 
     try {
-    const db = await getDb();
+    const db = await getDb();  // already initialized above, returns cached instance
 
     // ── Verify seller exists ──
     const sellerRef = db.collection("users").doc(vendorId);

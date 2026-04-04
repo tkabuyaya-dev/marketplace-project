@@ -1045,6 +1045,7 @@
       "errorProvince": "Hitamo intara.",
       "errorCity": "Injiza umujyi wawe.",
       "errorRateLimit": "Ugeze ku mipaka y'ibyifuzo 3 ku munsi. Gerageza ejo.",
+      "errorCaptcha": "Isuzuma ry'umutekano ryanze. Gerageza.",
       "errorGeneric": "Ikosa ryabaye. Gerageza."
     },
     "success": {

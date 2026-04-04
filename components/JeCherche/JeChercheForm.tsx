@@ -19,6 +19,7 @@ import {
   getRecentRequestCountByWhatsApp,
 } from '../../services/firebase/buyer-requests';
 import { uploadImage } from '../../services/cloudinary';
+import { verifyRecaptcha } from '../../services/recaptcha';
 import { INITIAL_COUNTRIES, PROVINCES_BY_COUNTRY } from '../../constants';
 import { COMMUNES_BY_PROVINCE } from '../../data/locations';
 
@@ -168,6 +169,13 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         return;
       }
     } catch { /* continue — better UX than blocking */ }
+
+    // reCAPTCHA v3 verification (bot protection)
+    const captchaOk = await verifyRecaptcha('je_cherche_submit');
+    if (!captchaOk) {
+      setError(t('jeCherche.form.errorCaptcha'));
+      return;
+    }
 
     setLoading(true);
     try {

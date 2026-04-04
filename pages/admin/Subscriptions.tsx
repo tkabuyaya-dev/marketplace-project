@@ -6,6 +6,7 @@ import {
   getAllSubscriptionRequests, approveSubscriptionRequest, rejectSubscriptionRequest,
 } from '../../services/firebase';
 import { INITIAL_COUNTRIES } from '../../constants';
+import { auth } from '../../firebase-config';
 import type { SubscriptionsProps } from './types';
 
 export const Subscriptions: React.FC<SubscriptionsProps> = ({
@@ -44,14 +45,15 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
       // 2. Call approveRenewal Cloud Function to reactivate inactive products
       //    and sync subscriptionExpiry (used by expireSellers cron)
-      const token = import.meta.env.VITE_NUNULIA_ADMIN_TOKEN as string;
+      const idToken = await auth?.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Not authenticated');
       const res = await fetch(
         'https://europe-west1-aurburundi-e2fe2.cloudfunctions.net/approveRenewal',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${idToken}`,
           },
           body: JSON.stringify({ vendorId }),
         }

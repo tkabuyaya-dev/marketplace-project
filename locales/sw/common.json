@@ -1045,6 +1045,7 @@
       "errorProvince": "Tafadhali chagua mkoa.",
       "errorCity": "Tafadhali ingiza mji wako.",
       "errorRateLimit": "Umefika kikomo cha maombi 3 kwa siku. Jaribu kesho.",
+      "errorCaptcha": "Ukaguzi wa usalama umeshindwa. Jaribu tena.",
       "errorGeneric": "Kosa limetokea. Tafadhali jaribu tena."
     },
     "success": {

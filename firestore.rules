@@ -409,17 +409,35 @@ service cloud.firestore {
     // buyerRequests: acheteurs postent leurs besoins
     // buyerRequestContacts: tracking des clics WhatsApp vendeurs
     // ─────────────────────────────────────────────────────────
+
+    // Valide le format WhatsApp : chiffres uniquement après le + optionnel, 7-15 chiffres
+    function validWhatsapp(phone) {
+      return phone is string
+        && phone.size() >= 7
+        && phone.size() <= 20
+        && (phone.matches('^\\+[0-9]{7,15}$') || phone.matches('^[0-9]{7,15}$'));
+    }
+
     match /buyerRequests/{requestId} {
       // Lecture: publique (vérif rate-limit acheteur anonyme + navigation vendeurs)
       allow read: if true;
 
       // Création: tout le monde (acheteurs anonymes supportés), champs validés
+      // Protection: timestamps vérifiés côté serveur, format WhatsApp validé
       allow create: if validString(request.resource.data.title, 200)
-        && validString(request.resource.data.whatsapp, 30)
+        && validWhatsapp(request.resource.data.whatsapp)
         && validString(request.resource.data.buyerName, 100)
         && request.resource.data.status == 'active'
         && request.resource.data.viewCount == 0
         && request.resource.data.contactCount == 0
+        // createdAt doit être dans les 60 secondes autour du temps serveur (stocké en ms)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt >= request.time.toMillis() - 60000
+        && request.resource.data.createdAt <= request.time.toMillis() + 60000
+        // expiresAt doit être entre 1 et 8 jours après createdAt
+        && request.resource.data.expiresAt is int
+        && request.resource.data.expiresAt > request.resource.data.createdAt
+        && request.resource.data.expiresAt <= request.resource.data.createdAt + 691200000
         && request.resource.data.keys().hasAll([
             'title', 'whatsapp', 'buyerName', 'countryId', 'province', 'city',
             'status', 'createdAt', 'expiresAt', 'viewCount', 'contactCount'

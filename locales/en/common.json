@@ -1062,6 +1062,7 @@
       "errorProvince": "Please select a province.",
       "errorCity": "Please enter your city.",
       "errorRateLimit": "You have reached the limit of 3 requests per day. Try again tomorrow.",
+      "errorCaptcha": "Security check failed. Please try again.",
       "errorGeneric": "An error occurred. Please try again."
     },
     "success": {

@@ -28,8 +28,12 @@ export const SmartImageUpload: React.FC<Props> = ({
 
   const remaining = maxImages - previews.length;
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
   const processFiles = useCallback((files: FileList | File[]) => {
-    const fileArray = Array.from(files).slice(0, remaining);
+    const fileArray = Array.from(files)
+      .filter(f => ALLOWED_TYPES.includes(f.type))
+      .slice(0, remaining);
     if (fileArray.length === 0) return;
 
     // Generate previews

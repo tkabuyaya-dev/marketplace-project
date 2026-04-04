@@ -7,9 +7,11 @@
  */
 
 import type { Firestore } from "firebase-admin/firestore";
+import type { Auth } from "firebase-admin/auth";
 
 let initialized = false;
 let _db: Firestore;
+let _auth: Auth;
 
 export async function ensureInitialized(): Promise<void> {
   if (initialized) return;
@@ -25,4 +27,13 @@ export async function getDb(): Promise<Firestore> {
     _db = getFirestore();
   }
   return _db;
+}
+
+export async function getAuth(): Promise<Auth> {
+  await ensureInitialized();
+  if (!_auth) {
+    const { getAuth: _getAuth } = await import("firebase-admin/auth");
+    _auth = _getAuth();
+  }
+  return _auth;
 }

@@ -264,6 +264,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     analyticsContactSeller(seller.id, seller.name, productId);
     const num = whatsapp.replace(/[^0-9+]/g, '');
+    // Validate: must be digits and optional leading '+', min 7 digits
+    if (!/^\+?\d{7,15}$/.test(num)) {
+      toast(i18n.t('toast.noWhatsapp'), 'error');
+      return;
+    }
     window.open(`https://wa.me/${num}`, '_blank', 'noopener,noreferrer');
   };
 

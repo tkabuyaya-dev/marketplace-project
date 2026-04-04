@@ -14,7 +14,28 @@
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
       "Bash(node -e \"console.log\\(process.version\\)\")",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(firebase deploy:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://europe-west1-aurburundi-e2fe2.cloudfunctions.net/cachedSearch?q=test\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://europe-west1-aurburundi-e2fe2.cloudfunctions.net/getAlsoViewed?productId=test123\")",
+      "Bash(curl -s -w \"\\\\nHTTP_CODE:%{http_code}\" \"https://europe-west1-aurburundi-e2fe2.cloudfunctions.net/getTrending?limit=2\")",
+      "Bash(firebase functions:list)",
+      "Bash(find /c/projets/aurabuja/services -type f -name *.ts)",
+      "Bash(find /c/projets/aurabuja/contexts -type f -name *.ts)",
+      "Bash(find /c/projets/aurabuja/hooks -type f -name *.ts -o -name *.tsx)",
+      "Bash(find /c/projets/aurabuja/functions -type f -name *.ts)",
+      "Bash(wc -l /c/projets/aurabuja/components/*.tsx /c/projets/aurabuja/pages/*.tsx)",
+      "Bash(node -e \":*)",
+      "Bash(git commit:*)",
+      "Bash(npm list:*)",
+      "Bash(npx sharp-cli:*)",
+      "Bash(magick --version)",
+      "Bash(convert --version)",
+      "Bash(du -h /c/projets/aurabuja/public/icons/* /c/projets/aurabuja/public/favicon*)",
+      "Bash(du -sh /c/projets/aurabuja/public/icons/ /c/projets/aurabuja/public/favicon*)",
+      "Bash(npx firebase:*)",
+      "Bash(find /c/Projets/aurabuja -type f \\\\\\(-name *subscription* -o -name *pricing* -o -name *tier* -o -name *plan* -o -name *upgrade* \\\\\\))",
+      "Bash(npx vitest:*)"
     ]
   }
 }
