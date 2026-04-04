@@ -108,11 +108,11 @@ export const TC = {
 // Starter: 6-15 — payant, 30 jours renouvelable
 // Pro+: payant, 30 jours renouvelable, NIF requis
 export const INITIAL_SUBSCRIPTION_TIERS: SubscriptionTier[] = [
-  { id: 'free', min: 0, max: 5, price: 0, label: 'Découverte (Gratuit)', requiresNif: false },
-  { id: 'starter', min: 6, max: 15, price: 15000, label: 'Starter', requiresNif: false },
-  { id: 'pro', min: 16, max: 30, price: 45000, label: 'Business Pro', requiresNif: true },
-  { id: 'elite', min: 31, max: 50, price: 100000, label: 'Élite', requiresNif: true },
-  { id: 'unlimited', min: 51, max: null, price: 250000, label: 'Grossiste Illimité', requiresNif: true },
+  { id: 'free', min: 0, max: 5, label: 'Découverte (Gratuit)', requiresNif: false },
+  { id: 'starter', min: 6, max: 15, label: 'Starter', requiresNif: false },
+  { id: 'pro', min: 16, max: 30, label: 'Business Pro', requiresNif: true },
+  { id: 'elite', min: 31, max: 50, label: 'Élite', requiresNif: true },
+  { id: 'unlimited', min: 51, max: null, label: 'Grossiste Illimité', requiresNif: true },
 ];
 export const FREE_TIER_WARNING_AT = 3; // Show upgrade warning when reaching this count on free plan
 

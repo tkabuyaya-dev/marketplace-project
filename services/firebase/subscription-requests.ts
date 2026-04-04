@@ -13,8 +13,9 @@ import {
 } from '../../constants';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc,
-  query, where, orderBy, limit, serverTimestamp,
+  query, where, orderBy, limit, serverTimestamp, onSnapshot,
   COLLECTIONS,
+  Unsubscribe,
 } from './constants';
 import { createNotification } from './notifications';
 import { updateUserSubscription } from './users';
@@ -172,18 +173,65 @@ export const rejectSubscriptionRequest = async (
 // ── Get Subscription Pricing for a country ──
 
 export const getSubscriptionPricing = async (countryId: string): Promise<SubscriptionPricing> => {
-  if (!db) return DEFAULT_SUBSCRIPTION_PRICING[countryId] || DEFAULT_SUBSCRIPTION_PRICING['bi'];
+  const fallback = DEFAULT_SUBSCRIPTION_PRICING[countryId] || DEFAULT_SUBSCRIPTION_PRICING['bi'];
+  if (!db) return fallback;
 
   try {
     const docSnap = await getDoc(doc(db, COLLECTIONS.SUBSCRIPTION_PRICING, countryId));
     if (docSnap.exists()) {
       return docSnap.data() as SubscriptionPricing;
     }
+    // Seed Firestore with defaults so admin edits persist
+    await setDoc(doc(db, COLLECTIONS.SUBSCRIPTION_PRICING, countryId), fallback);
   } catch {
     // Fallback to defaults
   }
 
-  return DEFAULT_SUBSCRIPTION_PRICING[countryId] || DEFAULT_SUBSCRIPTION_PRICING['bi'];
+  return fallback;
+};
+
+/** Real-time listener for subscription pricing — bypasses persistentLocalCache staleness */
+export const subscribeToSubscriptionPricing = (
+  countryId: string,
+  callback: (pricing: SubscriptionPricing) => void,
+): Unsubscribe => {
+  const fallback = DEFAULT_SUBSCRIPTION_PRICING[countryId] || DEFAULT_SUBSCRIPTION_PRICING['bi'];
+  if (!db) {
+    callback(fallback);
+    return () => {};
+  }
+  return onSnapshot(doc(db, COLLECTIONS.SUBSCRIPTION_PRICING, countryId), (snap) => {
+    if (snap.exists()) {
+      callback(snap.data() as SubscriptionPricing);
+    } else {
+      callback(fallback);
+    }
+  }, () => {
+    callback(fallback);
+  });
+};
+
+// ── Subscribe to Seller's Requests (real-time) ──
+
+export const subscribeToMyRequests = (
+  userId: string,
+  callback: (requests: SubscriptionRequest[]) => void,
+): Unsubscribe => {
+  if (!db) { callback([]); return () => {}; }
+
+  const q = query(
+    collection(db, COLLECTIONS.SUBSCRIPTION_REQUESTS),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(20)
+  );
+
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...(d.data() as object) } as SubscriptionRequest)));
+  }, (err) => {
+    console.error('[Subscriptions] subscribeToMyRequests error:', err.message);
+    callback([]);
+  });
 };
 
 // ── Count pending requests (Admin badge) ──

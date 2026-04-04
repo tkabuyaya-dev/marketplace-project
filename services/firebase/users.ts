@@ -143,7 +143,7 @@ export const registerSeller = async (userId: string, data: SellerDetails): Promi
   await updateDoc(userRef, {
     role:          'seller',
     slug:          sellerSlug,
-    sellerDetails: cleanData,
+    sellerDetails: { ...cleanData, maxProducts: 5, tierLabel: 'Découverte (Gratuit)' },
     whatsapp:      data.phone,
     isVerified:    false,
     productCount:  0,

@@ -8,10 +8,10 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/Button';
 import { LanguageSwitcher } from '../../components/LanguageSwitcher';
-import { Product, User, SubscriptionTier, Category, Country, Currency } from '../../types';
+import { Product, User, Category, Country, Currency } from '../../types';
 import {
   getAllProductsForAdmin, getAllUsers,
-  getCategories, getSubscriptionTiers, getCountries,
+  getCategories, getCountries,
   getBanners, BannerData, getCurrencies,
 } from '../../services/firebase';
 import { useAppContext } from '../../contexts/AppContext';
@@ -25,6 +25,7 @@ const Subscriptions = lazy(() => import('./Subscriptions').then(m => ({ default:
 const Users = lazy(() => import('./Users').then(m => ({ default: m.Users })));
 const Categories = lazy(() => import('./Categories').then(m => ({ default: m.Categories })));
 const Currencies = lazy(() => import('./Currencies').then(m => ({ default: m.Currencies })));
+const BuyerRequestsAdmin = lazy(() => import('./BuyerRequestsAdmin').then(m => ({ default: m.BuyerRequestsAdmin })));
 
 const TabLoader = () => (
   <div className="flex items-center justify-center py-20">
@@ -46,7 +47,6 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // Shared data
-  const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,7 +66,6 @@ export const AdminDashboard: React.FC = () => {
   const refreshData = async () => {
     setLoading(true);
     const results = await Promise.allSettled([
-      getSubscriptionTiers(),
       getAllUsers(),
       getAllProductsForAdmin(),
       getCountries(),
@@ -78,16 +77,15 @@ export const AdminDashboard: React.FC = () => {
     const val = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
       r.status === 'fulfilled' ? r.value : (console.error('Admin load error:', (r as PromiseRejectedResult).reason), fallback);
 
-    setTiers(val(results[0], []));
-    const usersResult = val(results[1], { users: [], lastDoc: null });
+    const usersResult = val(results[0], { users: [], lastDoc: null });
     setUsers(Array.isArray(usersResult) ? usersResult : (usersResult as any).users ?? []);
-    const productsResult = val(results[2], { products: [], lastDoc: null });
+    const productsResult = val(results[1], { products: [], lastDoc: null });
     const allProds = Array.isArray(productsResult) ? productsResult : (productsResult as any).products ?? [];
     setAllProducts(allProds);
-    setCountries(val(results[3], []));
-    setCategories(val(results[4], []));
-    setBanners(val(results[5], []));
-    setCurrencies(val(results[6], []));
+    setCountries(val(results[2], []));
+    setCategories(val(results[3], []));
+    setBanners(val(results[4], []));
+    setCurrencies(val(results[5], []));
     setLoading(false);
   };
 
@@ -122,6 +120,7 @@ export const AdminDashboard: React.FC = () => {
   const tabs: { id: AdminTab; label: string; badge?: number }[] = [
     { id: 'overview', label: t('admin.tabOverview') },
     { id: 'products', label: t('admin.tabProducts'), badge: pendingCount },
+    { id: 'requests', label: t('admin.tabRequests') },
     { id: 'banners', label: t('admin.tabBanners') },
     { id: 'subs', label: t('admin.tabSubscriptions') },
     { id: 'users', label: t('admin.tabUsers') },
@@ -189,7 +188,7 @@ export const AdminDashboard: React.FC = () => {
             <Banners {...sharedProps} banners={banners} categories={categories} setBanners={setBanners} />
           )}
           {activeTab === 'subs' && (
-            <Subscriptions {...sharedProps} tiers={tiers} setTiers={setTiers} />
+            <Subscriptions {...sharedProps} />
           )}
           {activeTab === 'users' && (
             <Users {...sharedProps} users={users} countries={countries} setUsers={setUsers} onContactUser={onContactUser} />
@@ -199,6 +198,9 @@ export const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'categories' && (
             <Categories {...sharedProps} categories={categories} />
+          )}
+          {activeTab === 'requests' && (
+            <BuyerRequestsAdmin {...sharedProps} />
           )}
         </Suspense>
       </div>

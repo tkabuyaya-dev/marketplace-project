@@ -28,9 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
 
   const navItems = [
     { path: '/', icon: '🏠', label: t('nav.home'), useSellerAccess: false },
-    ...(currentUser
-      ? [{ path: '/favorites', icon: '❤️', label: t('nav.favorites'), useSellerAccess: false }]
-      : []),
+    { path: '/favorites', icon: '❤️', label: t('nav.favorites'), useSellerAccess: false },
     actionItem,
     { path: '/profile', icon: '⚙️', label: t('nav.account'), useSellerAccess: false },
   ];
@@ -52,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
     <>
       {/* Offline Banner */}
       {!isOnline && (
-        <div className="fixed top-0 left-0 w-full z-[60] bg-yellow-600 text-yellow-950 text-center text-xs font-bold py-1.5 px-4">
+        <div className="fixed top-0 left-0 w-full z-[60] bg-yellow-600 text-yellow-950 text-center text-xs font-bold py-1.5 pt-safe px-4">
           {t('offline.banner')}
         </div>
       )}
@@ -97,7 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
       </nav>
 
       {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 px-4 py-3 flex justify-between items-center shadow-lg transition-colors duration-500">
+      <div className="md:hidden fixed top-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 px-4 pb-3 pt-safe-nav flex justify-between items-center shadow-lg transition-colors duration-500">
          <button onClick={() => navigate('/')} className={`font-black text-lg bg-gradient-to-r ${THEME.gradient} text-transparent bg-clip-text tracking-tighter`}>
            NUNULIA
          </button>

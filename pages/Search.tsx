@@ -19,6 +19,8 @@ import { addToSearchHistory, getSearchHistory, getPopularSearches, removeFromSea
 import { algoliaSearchProductsFull } from '../services/algolia';
 import { trackSearchClick } from '../services/algolia-insights';
 import { useAppContext } from '../contexts/AppContext';
+import { JeChercheBlock } from '../components/JeCherche/JeChercheBlock';
+import { JeChercheForm } from '../components/JeCherche/JeChercheForm';
 
 // ── Skeleton Card ──
 const SkeletonCard = () => (
@@ -140,6 +142,7 @@ const SearchPage: React.FC = () => {
   const { categories } = useCategories();
   const { activeCountry } = useAppContext();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showJeChercheForm, setShowJeChercheForm] = useState(false);
 
   const {
     query, filters, results, isLoading, hasMore,
@@ -417,7 +420,7 @@ const SearchPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 pt-20 md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
+    <div className="min-h-screen bg-gray-950 pt-safe-header-lg md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
       {/* Search Bar */}
       <form onSubmit={handleSearch} className="max-w-3xl mx-auto mb-6">
         <div className="relative" ref={suggestionsRef}>
@@ -511,24 +514,52 @@ const SearchPage: React.FC = () => {
         </div>
       </form>
 
-      {/* Results count + mobile filter/sort buttons */}
-      <div className="max-w-7xl mx-auto mb-4 flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm text-gray-400">
-          {isLoading && results.length === 0
-            ? t('search.searching')
-            : totalCount > 0
-            ? `${totalCount.toLocaleString()} ${t('search.results')}${query.trim() ? ` ${t('search.forQuery')} "${query.trim()}"` : ''}`
-            : query.trim()
-            ? `${t('search.noResults')} "${query.trim()}"`
-            : t('search.recentProducts')
-          }
-        </p>
+      {/* Toolbar: results count + sort + actions */}
+      <div className="max-w-7xl mx-auto mb-4 space-y-2">
+        {/* Row 1: count (left) + Je Cherche desktop + sort (right) */}
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-gray-400 flex-1 min-w-0 truncate">
+            {isLoading && results.length === 0
+              ? t('search.searching')
+              : totalCount > 0
+              ? `${totalCount.toLocaleString()} ${t('search.results')}${query.trim() ? ` ${t('search.forQuery')} "${query.trim()}"` : ''}`
+              : query.trim()
+              ? `${t('search.noResults')} "${query.trim()}"`
+              : t('search.recentProducts')
+            }
+          </p>
 
-        <div className="flex gap-2">
-          {/* Mobile Filters Button */}
+          {/* Je Cherche — desktop only in this row */}
+          <button
+            onClick={() => setShowJeChercheForm(true)}
+            className="hidden md:relative md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 bg-gradient-to-r from-gold-400 to-amber-400 shadow-lg shadow-gold-400/30 hover:shadow-gold-400/50 hover:brightness-110 hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 shrink-0"
+          >
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            </span>
+            <span className="text-base leading-none">📣</span>
+            <span>Je Cherche</span>
+          </button>
+
+          {/* Sort Dropdown */}
+          <select
+            value={filters.sortBy}
+            onChange={e => setFilter('sortBy', e.target.value as SearchFiltersState['sortBy'])}
+            className="shrink-0 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 outline-none cursor-pointer"
+          >
+            <option value="relevance">{t('search.sortRelevance')}</option>
+            <option value="newest">{t('search.sortNewest')}</option>
+            <option value="price_asc">{t('search.sortPriceAsc')}</option>
+            <option value="price_desc">{t('search.sortPriceDesc')}</option>
+          </select>
+        </div>
+
+        {/* Row 2: mobile only — Filtres (flex-1) + Je Cherche */}
+        <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={() => setShowMobileFilters(true)}
-            className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300"
           >
             <span>&#9776;</span> {t('search.filters')}
             {activeFilterCount > 0 && (
@@ -538,17 +569,17 @@ const SearchPage: React.FC = () => {
             )}
           </button>
 
-          {/* Sort Dropdown */}
-          <select
-            value={filters.sortBy}
-            onChange={e => setFilter('sortBy', e.target.value as SearchFiltersState['sortBy'])}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 outline-none cursor-pointer"
+          <button
+            onClick={() => setShowJeChercheForm(true)}
+            className="relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 bg-gradient-to-r from-gold-400 to-amber-400 shadow-lg shadow-gold-400/30 hover:shadow-gold-400/50 hover:brightness-110 hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 shrink-0"
           >
-            <option value="relevance">{t('search.sortRelevance')}</option>
-            <option value="newest">{t('search.sortNewest')}</option>
-            <option value="price_asc">{t('search.sortPriceAsc')}</option>
-            <option value="price_desc">{t('search.sortPriceDesc')}</option>
-          </select>
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            </span>
+            <span className="text-base leading-none">📣</span>
+            <span>Je Cherche</span>
+          </button>
         </div>
       </div>
 
@@ -660,6 +691,24 @@ const SearchPage: React.FC = () => {
             </div>
           )}
 
+          {/* Je Cherche — 0 results */}
+          {!isLoading && results.length === 0 && !error && query.trim() && (
+            <JeChercheBlock
+              query={query.trim()}
+              mode="no_results"
+              onOpen={() => setShowJeChercheForm(true)}
+            />
+          )}
+
+          {/* Je Cherche — few results (1–3) */}
+          {!isLoading && results.length > 0 && results.length < 4 && query.trim() && (
+            <JeChercheBlock
+              query={query.trim()}
+              mode="few_results"
+              onOpen={() => setShowJeChercheForm(true)}
+            />
+          )}
+
           {/* Load More / Infinite scroll sentinel */}
           {hasMore && (
             <div ref={loadMoreRef} className="flex justify-center py-8">
@@ -677,6 +726,13 @@ const SearchPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Je Cherche Form */}
+      <JeChercheForm
+        isOpen={showJeChercheForm}
+        onClose={() => setShowJeChercheForm(false)}
+        initialQuery={query.trim()}
+      />
 
       {/* Mobile Filter Bottom Sheet */}
       {showMobileFilters && (

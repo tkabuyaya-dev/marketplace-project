@@ -100,6 +100,23 @@ const ProductDetail: React.FC = () => {
   // Reset image index when product changes
   useEffect(() => { setActiveImage(0); }, [product?.id]);
 
+  // Auction countdown (must be before any early returns to respect hook rules)
+  useEffect(() => {
+    if (!product?.isAuction || !product.auctionEndTime) return;
+    const tick = () => {
+      const diff = product.auctionEndTime! - Date.now();
+      if (diff <= 0) { setAuctionTimeLeft(t('product.auctionEnded')); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setAuctionTimeLeft(d > 0 ? `${d}j ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [product?.auctionEndTime, t]);
+
   const onProductClick = (p: Product) => {
     navigate(`/product/${p.slug || p.id}`, { state: { product: p } });
     // Reset state for new product
@@ -138,23 +155,6 @@ const ProductDetail: React.FC = () => {
     && product.promotionEnd > now
     && (!product.promotionStart || product.promotionStart <= now);
   const displayPrice = isOnPromotion ? product.discountPrice! : product.price;
-
-  // Auction countdown
-  useEffect(() => {
-    if (!product?.isAuction || !product.auctionEndTime) return;
-    const tick = () => {
-      const diff = product.auctionEndTime! - Date.now();
-      if (diff <= 0) { setAuctionTimeLeft(t('product.auctionEnded')); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setAuctionTimeLeft(d > 0 ? `${d}j ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [product?.auctionEndTime]);
 
   const handlePlaceBid = async () => {
     if (!product || !currentUser || bidding) return;

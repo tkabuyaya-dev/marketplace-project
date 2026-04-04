@@ -75,7 +75,7 @@ export const Favorites: React.FC = () => {
   // Not logged in
   if (!currentUser) {
     return (
-      <div className="pb-24 pt-[68px] md:pt-24 px-4 max-w-7xl mx-auto">
+      <div className="pb-24 pt-safe-header md:pt-24 px-4 max-w-7xl mx-auto">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
           <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center mb-6">
             <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +98,7 @@ export const Favorites: React.FC = () => {
   }
 
   return (
-    <div className="pb-24 pt-[68px] md:pt-24 px-4 max-w-7xl mx-auto">
+    <div className="pb-24 pt-safe-header md:pt-24 px-4 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <div className={`w-10 h-10 rounded-xl ${tc.bg500_10} flex items-center justify-center`}>

@@ -92,6 +92,7 @@ function sellerToAlgoliaRecord(id: string, data: any) {
 export const onProductWrite = onDocumentWritten(
   {
     document: "products/{productId}",
+    region: "europe-west1",
     secrets: [ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY, REDIS_URL],
   },
   async (event) => {
@@ -162,6 +163,7 @@ export const onProductWrite = onDocumentWritten(
 export const onSellerWrite = onDocumentWritten(
   {
     document: "users/{userId}",
+    region: "europe-west1",
     secrets: [ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY],
   },
   async (event) => {

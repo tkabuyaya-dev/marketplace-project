@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
-import { verifyRecaptcha } from '../services/recaptcha';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 const Login: React.FC = () => {
@@ -12,25 +11,12 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [recaptchaLoading, setRecaptchaLoading] = useState(false);
+  const [recaptchaLoading] = useState(false);
 
-  const handleLoginWithRecaptcha = async () => {
-    setRecaptchaLoading(true);
-    try {
-      const passed = await verifyRecaptcha('login');
-      if (!passed) {
-        toast(t('toast.recaptchaFailed'), 'error');
-        return;
-      }
-      await handleLogin();
-    } catch (err) {
-      console.error('[Login] reCAPTCHA error:', err);
-      // On error, still allow login (don't block legitimate users)
-      await handleLogin();
-    } finally {
-      setRecaptchaLoading(false);
-    }
-  };
+  // Appel direct sans reCAPTCHA : signInWithPopup (Google OAuth) a sa propre
+  // protection anti-bot. Ajouter verifyRecaptcha ici introduit un délai réseau
+  // (500ms-3s) qui invalide le "user gesture context" sur mobile → popup bloqué.
+  const handleLoginWithRecaptcha = handleLogin;
 
   const isLoading = loginLoading || recaptchaLoading;
 

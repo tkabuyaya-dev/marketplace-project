@@ -21,7 +21,7 @@ const DEFAULT_BANNERS: Banner[] = [
     id: 'default-1',
     imageUrl: 'https://images.unsplash.com/photo-1616075193899-760777555365?auto=format&fit=crop&w=1200&q=60',
     title: 'Bienvenue sur Nunulia',
-    subtitle: 'Le marketplace de Bujumbura — Électronique, Mode, Beauté, Services et plus',
+    subtitle: 'Le marketplace — Électronique, Mode, Beauté, Services et plus',
     ctaText: 'Explorer',
     ctaActionType: 'none',
     isActive: true,

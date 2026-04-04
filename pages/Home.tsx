@@ -261,7 +261,7 @@ export const Home: React.FC = () => {
   }, [products, nearbyMode, position]);
 
   return (
-    <div className="pb-24 pt-[68px] md:pt-24 px-4 max-w-7xl mx-auto space-y-8">
+    <div className="pb-24 pt-safe-header md:pt-24 px-4 max-w-7xl mx-auto space-y-8">
       {/* Country context banner — compact, links to search country filter */}
       {activeCountryInfo && (
         <div className="flex items-center justify-between bg-gray-800/40 border border-gray-700/40 rounded-xl px-4 py-2.5">

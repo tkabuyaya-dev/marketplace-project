@@ -17,10 +17,10 @@ describe('Constants', () => {
     expect(PROVINCES_BURUNDI).toContain('Gitega');
   });
 
-  it('has 4 initial countries', () => {
-    expect(INITIAL_COUNTRIES).toHaveLength(4);
+  it('has 6 initial countries', () => {
+    expect(INITIAL_COUNTRIES).toHaveLength(6);
     const codes = INITIAL_COUNTRIES.map(c => c.code);
-    expect(codes).toEqual(['BI', 'CD', 'RW', 'UG']);
+    expect(codes).toEqual(['BI', 'CD', 'RW', 'UG', 'TZ', 'KE']);
   });
 
   it('subscription tiers are ordered by min', () => {
@@ -31,9 +31,8 @@ describe('Constants', () => {
     }
   });
 
-  it('free tier has price 0 and no NIF required', () => {
+  it('free tier has no NIF required', () => {
     const free = INITIAL_SUBSCRIPTION_TIERS.find(t => t.id === 'free');
-    expect(free?.price).toBe(0);
     expect(free?.requiresNif).toBe(false);
   });
 });

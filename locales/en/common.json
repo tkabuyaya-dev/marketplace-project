@@ -299,7 +299,11 @@
     "installBtn": "Install the app",
     "installing": "Installing...",
     "continueWeb": "Continue on the web",
-    "iosInstructions": "To install: Share → Add to Home Screen → Confirm"
+    "iosTitle": "How to install on iPhone",
+    "iosStep1": "Tap the Share button",
+    "iosStep2": "Scroll down and tap \"Add to Home Screen\"",
+    "iosStep3": "Tap \"Add\" to confirm",
+    "iosGotIt": "Got it!"
   },
   "common": {
     "loading": "Loading...",
@@ -338,7 +342,9 @@
     "profileUpdated": "Profile updated",
     "connectionRestored": "Connection restored",
     "recaptchaFailed": "Security verification failed. Please try again.",
-    "errorGeneric": "An error occurred. Please try again."
+    "errorGeneric": "An error occurred. Please try again.",
+    "loginError": "Login failed. Please try again.",
+    "networkError": "No internet connection. Check your network."
   },
   "categories": {
     "tech": "Tech & Electronics",
@@ -382,7 +388,7 @@
   "shopProfile": {
     "notFound": "Shop not found",
     "backToHome": "Back to home",
-    "defaultBio": "Official shop on Nunulia. Find all our Tech and Lifestyle products at the best price.",
+    "defaultBio": "Official shop on Nunulia. Find all our products at the best price.",
     "sellerRating": "Seller Rating",
     "products": "Products",
     "since": "Since {{year}}",
@@ -472,6 +478,7 @@
     "subValidating": "Verifying",
     "subPending": "Pending",
     "subLastRejection": "Last rejection reason",
+    "resubmitRequest": "Resubmit a request",
     "subscriptionExpiredToast": "Your subscription has expired. Go to the Plans page to renew.",
     "limitReachedTitle": "Limit Reached",
     "noNifLimit": "As a seller without a Tax ID, you are limited to 1 product only.",
@@ -594,6 +601,7 @@
     "mobileHome": "Home",
     "mobileProducts": "Products",
     "mobileAdd": "Add",
+    "mobileRequests": "Requests",
     "mobileShop": "Shop",
     "verification": "Verification",
     "verifyStatusVerified": "Verified",
@@ -613,7 +621,12 @@
     "verifyUploadHint": "Make sure your documents (ID, NIF) are uploaded in your shop settings.",
     "verifyUploadFirst": "Please upload your ID in your shop settings first.",
     "verifyRequestSent": "Verification request sent!",
-    "verifyRequestError": "Error sending the request."
+    "verifyRequestError": "Error sending the request.",
+    "buyerRequests": "Buyer Requests",
+    "buyerRequestsDesc": "Browse buyer needs and contact them directly.",
+    "viewAllRequests": "View all requests",
+    "buyerRequestsPromo": "Buyers are looking for your products!",
+    "buyerRequestsPromoDesc": "Browse buyer requests and contact them on WhatsApp to offer your products."
   },
   "admin": {
     "console": "Admin Console",
@@ -625,6 +638,7 @@
     "tabUsers": "Users",
     "tabCurrencies": "Currencies",
     "tabCategories": "Categories",
+    "tabRequests": "Requests",
     "tabCountries": "Countries",
     "tabLanguages": "Languages",
     "languagesTitle": "Language Management",
@@ -730,16 +744,22 @@
     "rejectRequestTitle": "Rejection reason",
     "rejectRequestPlaceholder": "E.g.: Invalid payment reference...",
     "confirmRejectRequest": "Confirm rejection",
-    "tierConfigTitle": "Tier Configuration",
+    "tierStructureTitle": "Tier Structure",
+    "tierStructureDesc": "Names and product limits — applies to all countries",
+    "tierPricesTitle": "Prices per Country",
+    "tierPricesDesc": "Select a country to edit its prices",
     "tierSave": "Save",
     "tierLabel": "Label",
-    "tierMin": "Min",
-    "tierMax": "Max",
-    "tierPrice": "Price (FBu)",
-    "tierNifRequired": "NIF?",
+    "tierMin": "Min products",
+    "tierMax": "Max products",
+    "tierPrice": "Price",
+    "tierProducts": "Products",
     "tierAction": "Action",
     "addTier": "+ Add a tier",
-    "tiersUpdated": "Subscriptions updated!",
+    "tierMaxHint": "Max empty or 0 = unlimited (∞)",
+    "tiersUpdated": "Tier structure updated!",
+    "priceSaved": "Prices updated successfully!",
+    "priceSaveError": "Error saving prices",
     "usersTitle": "Users ({{count}})",
     "sellerStats": "Sellers",
     "activeCount": "Active",
@@ -997,5 +1017,85 @@
   "errors": {
     "pageError": "An error occurred",
     "reloadPage": "Reload the page"
+  },
+  "jeCherche": {
+    "block": {
+      "title": "Can't find what you're looking for?",
+      "subtitle": "Describe your need in a few seconds. Our sellers will contact you on WhatsApp.",
+      "cta": "Post my request",
+      "compactTitle": "Not exactly what you need?",
+      "compactSubtitle": "Post your need, our sellers will reach out.",
+      "todayCount": "requests today",
+      "fulfilledCount": "fulfilled"
+    },
+    "form": {
+      "title": "I'm looking for...",
+      "subtitle": "Describe your need in under 10 seconds",
+      "close": "Close",
+      "labelTitle": "Product or service needed",
+      "placeholderTitle": "E.g. iPhone 15 Pro Max 256GB, AC repair...",
+      "labelWhatsapp": "Your WhatsApp number",
+      "labelCountry": "Country",
+      "labelProvince": "Province / Region",
+      "selectProvince": "Select a province",
+      "labelCity": "City / Commune",
+      "selectCity": "Select a city",
+      "placeholderCity": "Enter your city",
+      "whatsappHint": "The {{prefix}} code is added automatically based on your country",
+      "optionalDetails": "Add details (optional)",
+      "labelCategory": "Category (optional)",
+      "selectCategory": "All categories",
+      "labelImage": "Photo of the product you're looking for (optional)",
+      "imageUploadHint": "Tap to add a photo",
+      "imageUploading": "Uploading...",
+      "imageReady": "Photo ready",
+      "imageRemove": "Remove photo",
+      "imageErrorType": "Unsupported format. Use JPG, PNG or WebP.",
+      "imageErrorSize": "Image exceeds 5 MB. Please choose a smaller one.",
+      "imageErrorUpload": "Upload failed. Check your connection.",
+      "labelBudget": "Maximum budget",
+      "submit": "Post my request",
+      "privacyNote": "Your WhatsApp number will be shared with interested sellers only.",
+      "anonymousBuyer": "Anonymous buyer",
+      "errorTitle": "Please describe what you are looking for.",
+      "errorWhatsapp": "Please enter your WhatsApp number.",
+      "errorProvince": "Please select a province.",
+      "errorCity": "Please enter your city.",
+      "errorRateLimit": "You have reached the limit of 3 requests per day. Try again tomorrow.",
+      "errorGeneric": "An error occurred. Please try again."
+    },
+    "success": {
+      "title": "Request posted!",
+      "subtitle": "Sellers will contact you on WhatsApp as soon as they see your need.",
+      "close": "Close"
+    }
+  },
+  "requests": {
+    "pageTitle": "Buyer Requests",
+    "pageSubtitle": "All buyers looking for a product or service.",
+    "unlockContact": "Unlock contact",
+    "loadMore": "Load more",
+    "whatsappMessage": "Hello! I'm a seller on Nunulia and I have your product: *{{title}}*. I'm based in {{city}}. Are you still looking?",
+    "card": {
+      "seeking": "Looking for",
+      "contactWhatsApp": "Contact on WhatsApp",
+      "upgradeToPro": "Upgrade to Business Pro",
+      "expiresIn": "Expires in {{days}}d"
+    },
+    "planGate": {
+      "title": "Available for Business Pro sellers and above",
+      "subtitle": "Upgrade to Business Pro to access WhatsApp numbers and contact buyers.",
+      "cta": "Upgrade"
+    },
+    "filters": {
+      "allCountries": "All countries",
+      "allProvinces": "All provinces",
+      "allCities": "All cities",
+      "allCategories": "All categories"
+    },
+    "empty": {
+      "title": "No requests yet",
+      "subtitle": "Buyer requests will appear here."
+    }
   }
 }

@@ -1,12 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { auth } from '../../firebase-config';
 import type { OverviewProps } from './types';
+
+const FUNCTIONS_BASE = import.meta.env.VITE_FUNCTIONS_BASE_URL || '';
 
 export const Overview: React.FC<OverviewProps> = ({
   users, products, banners, pendingCount, sellerCount, approvedCount,
   expiringSoonSellers, setActiveTab, setProductFilter, setSellerStatusFilter,
 }) => {
   const { t } = useTranslation();
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexResult, setReindexResult] = useState<string | null>(null);
+
+  const handleReindex = async () => {
+    if (!auth?.currentUser || reindexing) return;
+    setReindexing(true);
+    setReindexResult(null);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`${FUNCTIONS_BASE}/setupAlgoliaIndexes`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReindexResult(data.message);
+      } else {
+        setReindexResult(`Erreur: ${data.error || 'Échec'}`);
+      }
+    } catch (err: any) {
+      setReindexResult(`Erreur: ${err.message}`);
+    } finally {
+      setReindexing(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -44,6 +72,24 @@ export const Overview: React.FC<OverviewProps> = ({
           {t('admin.sellersExpiring', { count: expiringSoonSellers.length })}
         </button>
       )}
+
+      {/* Algolia Reindex */}
+      <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">
+        <h3 className="text-gray-500 text-xs font-bold uppercase mb-2">{t('admin.algoliaTitle')}</h3>
+        <p className="text-xs text-gray-500 mb-3">{t('admin.algoliaHint')}</p>
+        <button
+          onClick={handleReindex}
+          disabled={reindexing}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors"
+        >
+          {reindexing ? t('admin.algoliaReindexing') : t('admin.algoliaReindex')}
+        </button>
+        {reindexResult && (
+          <p className={`text-xs mt-2 ${reindexResult.startsWith('Erreur') ? 'text-red-400' : 'text-green-400'}`}>
+            {reindexResult}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

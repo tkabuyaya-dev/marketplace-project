@@ -122,7 +122,7 @@ const ShopProfile: React.FC = () => {
     );
   }
 
-  const bannerUrl = seller.banner || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1600&q=80';
+  const bannerUrl = seller.banner || seller.sellerDetails?.shopImage || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1600&q=80';
 
   const onProductClick = (product: Product) => {
     navigate(`/product/${product.slug || product.id}`, { state: { product } });

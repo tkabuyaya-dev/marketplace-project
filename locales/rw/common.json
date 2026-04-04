@@ -298,7 +298,11 @@
     "installBtn": "Shyiraho porogaramu",
     "installing": "Birashyirwaho...",
     "continueWeb": "Komeza kuri web",
-    "iosInstructions": "Kugira ngo ushyireho: Sangira → Ku gikoresho → Emeza"
+    "iosTitle": "Uko ushyiraho kuri iPhone",
+    "iosStep1": "Kanda buto ya Sangira",
+    "iosStep2": "Manuka ukande « Ku gikoresho »",
+    "iosStep3": "Kanda « Ongeraho » kugira wemeze",
+    "iosGotIt": "Narabyumvise!"
   },
   "common": {
     "loading": "Birapakurwa...",
@@ -337,7 +341,9 @@
     "profileUpdated": "Umwirondoro wahinduwe",
     "connectionRestored": "Umuyoboro wagaruwe",
     "recaptchaFailed": "Igenzura ry'umutekano ryashibwe. Ongera ugerageze.",
-    "errorGeneric": "Ikosa ryabaye. Ongera ugerageze."
+    "errorGeneric": "Ikosa ryabaye. Ongera ugerageze.",
+    "loginError": "Kwinjira ntibyakunze. Ongera ugerageze.",
+    "networkError": "Nta internet. Suzuma umuyunguko wawe."
   },
   "categories": {
     "tech": "Ikoranabuhanga & Ibikoresho by'amashanyarazi",
@@ -471,6 +477,7 @@
     "subValidating": "Birasuzumwa",
     "subPending": "Bitegereje",
     "subLastRejection": "Impamvu y'ukwanga",
+    "resubmitRequest": "Ongera usabe",
     "subscriptionExpiredToast": "Kwiyandikisha kwawe kwarangiye. Genda ku rupapuro rw'imigambi kugira ngo wongere.",
     "limitReachedTitle": "Urugero Rwagezweho",
     "noNifLimit": "Nk'umucuruzi nta NIF, ugabanyirijwe ku gicuruzwa 1 gusa.",
@@ -593,6 +600,7 @@
     "mobileHome": "Ahabanza",
     "mobileProducts": "Ibicuruzwa",
     "mobileAdd": "Ongeraho",
+    "mobileRequests": "Ibyifuzo",
     "mobileShop": "Iduka",
     "verification": "Kwemeza",
     "verifyStatusVerified": "Byemejwe",
@@ -612,7 +620,12 @@
     "verifyUploadHint": "Menya neza ko inyandiko zawe (indangamuntu, NIF) zoherejwe mu igenamiterere ry'iduka ryawe.",
     "verifyUploadFirst": "Banza wohereze indangamuntu yawe mu igenamiterere ry'iduka.",
     "verifyRequestSent": "Icyifuzo cyo kwemeza cyoherejwe!",
-    "verifyRequestError": "Ikosa mu kohereza icyifuzo."
+    "verifyRequestError": "Ikosa mu kohereza icyifuzo.",
+    "buyerRequests": "Ibyifuzo by'abaguzi",
+    "buyerRequestsDesc": "Reba ibyo abaguzi basaba maze ubabwire kuri WhatsApp.",
+    "viewAllRequests": "Reba ibyifuzo byose",
+    "buyerRequestsPromo": "Abaguzi basaka ibicuruzwa byanyu!",
+    "buyerRequestsPromoDesc": "Reba ibyifuzo by'abaguzi maze ubabwire kuri WhatsApp."
   },
   "admin": {
     "console": "Admin Console",
@@ -624,6 +637,7 @@
     "tabUsers": "Abakoresha",
     "tabCurrencies": "Amafaranga",
     "tabCategories": "Amoko",
+    "tabRequests": "Ibyifuzo",
     "tabCountries": "Ibihugu",
     "tabLanguages": "Indimi",
     "languagesTitle": "Gucunga indimi",
@@ -725,16 +739,22 @@
     "rejectRequestTitle": "Impamvu y'ukwanga",
     "rejectRequestPlaceholder": "Urugero: Referanse y'ubwishyu ntikwiye...",
     "confirmRejectRequest": "Emeza ukwanga",
-    "tierConfigTitle": "Igenamiterere ry'Inzego",
+    "tierStructureTitle": "Imiterere y'inzego",
+    "tierStructureDesc": "Amazina n'ingano z'ibicuruzwa — bihindura mu bihugu byose",
+    "tierPricesTitle": "Ibiciro mu gihugu",
+    "tierPricesDesc": "Hitamo igihugu kugira ngo uhindure ibiciro",
     "tierSave": "Bika",
     "tierLabel": "Izina",
     "tierMin": "Munsi",
     "tierMax": "Hejuru",
-    "tierPrice": "Igiciro (FBu)",
-    "tierNifRequired": "NIF?",
+    "tierPrice": "Igiciro",
+    "tierProducts": "Ibicuruzwa",
     "tierAction": "Igikorwa",
     "addTier": "+ Ongeraho urwego",
-    "tiersUpdated": "Kwiyandikisha kwahinduwe!",
+    "tierMaxHint": "Max ubusa cyangwa 0 = nta rugero (∞)",
+    "tiersUpdated": "Imiterere yahinduwe!",
+    "priceSaved": "Ibiciro byahinduwe neza!",
+    "priceSaveError": "Ikosa mu kubika ibiciro",
     "usersTitle": "Abakoresha ({{count}})",
     "sellerStats": "Abacuruzi",
     "activeCount": "Bakora",
@@ -980,5 +1000,85 @@
   "errors": {
     "pageError": "Ikosa ryabaye",
     "reloadPage": "Ongera ufungure urupapuro"
+  },
+  "jeCherche": {
+    "block": {
+      "title": "Nubona ivyo ushaka?",
+      "subtitle": "Sobanura ibyo ukeneye. Abavendesheje bazakubwira kuri WhatsApp.",
+      "cta": "Ohereza icyifuzo",
+      "compactTitle": "Ntibivuguruye ibyo ushaka?",
+      "compactSubtitle": "Ohereza ibyo ukeneye, abavendesheje bazakubwira.",
+      "todayCount": "ibyifuzo uyu munsi",
+      "fulfilledCount": "byaronkejwe"
+    },
+    "form": {
+      "title": "Nshaka...",
+      "subtitle": "Sobanura ibyo ukeneye munsi ya amasegonda 10",
+      "close": "Funga",
+      "labelTitle": "Igicuruzwa cyangwa serivisi ushaka",
+      "placeholderTitle": "Urugero: iPhone 15, Gukora AC...",
+      "labelWhatsapp": "Numero yawe ya WhatsApp",
+      "labelCountry": "Igihugu",
+      "labelProvince": "Intara",
+      "selectProvince": "Hitamo intara",
+      "labelCity": "Umujyi",
+      "selectCity": "Hitamo umujyi",
+      "placeholderCity": "Injiza umujyi wawe",
+      "whatsappHint": "Indangakode {{prefix}} yongerwa bwite hasigaye igihugu wahisemo",
+      "optionalDetails": "Ongeraho ibindi (si ngombwa)",
+      "labelCategory": "Icyiciro (si ngombwa)",
+      "selectCategory": "Ibyiciro byose",
+      "labelImage": "Ifoto y'igicuruzwa ushaka (si ngombwa)",
+      "imageUploadHint": "Kanda hano wongerere ifoto",
+      "imageUploading": "Kohereza...",
+      "imageReady": "Ifoto iri maso",
+      "imageRemove": "Siba ifoto",
+      "imageErrorType": "Ubwoko butemewe. Koresha JPG, PNG cyangwa WebP.",
+      "imageErrorSize": "Ifoto iruta 5 Mo. Hitamo indi nto.",
+      "imageErrorUpload": "Kohereza ntibyakunze. Reba iyunganira ryawe.",
+      "labelBudget": "Ingengo y'imari",
+      "submit": "Ohereza icyifuzo",
+      "privacyNote": "Numero yawe ya WhatsApp izoherekezwa gusa abavendesheje bashakiye.",
+      "anonymousBuyer": "Umuguzi utazwi",
+      "errorTitle": "Sobanura ibyo ushaka.",
+      "errorWhatsapp": "Injiza numero yawe ya WhatsApp.",
+      "errorProvince": "Hitamo intara.",
+      "errorCity": "Injiza umujyi wawe.",
+      "errorRateLimit": "Ugeze ku mipaka y'ibyifuzo 3 ku munsi. Gerageza ejo.",
+      "errorGeneric": "Ikosa ryabaye. Gerageza."
+    },
+    "success": {
+      "title": "Icyifuzo cyoherejwe!",
+      "subtitle": "Abavendesheje bazakubwira kuri WhatsApp.",
+      "close": "Funga"
+    }
+  },
+  "requests": {
+    "pageTitle": "Ibyifuzo by'abaguzi",
+    "pageSubtitle": "Abaguzi bose bashaka igicuruzwa cyangwa serivisi.",
+    "unlockContact": "Fungura kuvugana",
+    "loadMore": "Reba ibindi",
+    "whatsappMessage": "Muraho! Ndi umuvendesheje kuri Nunulia kandi nfite ibyo mushaka: *{{title}}*. Ndi i {{city}}. Muracabishaka?",
+    "card": {
+      "seeking": "Ashaka",
+      "contactWhatsApp": "Vugana kuri WhatsApp",
+      "upgradeToPro": "Injira kuri Business Pro",
+      "expiresIn": "Irarangira mu {{days}}j"
+    },
+    "planGate": {
+      "title": "Birebwa gusa abavendesheje ba Business Pro",
+      "subtitle": "Injira kuri Business Pro kugira uvugane n'abaguzi kuri WhatsApp.",
+      "cta": "Upgrade"
+    },
+    "filters": {
+      "allCountries": "Ibihugu byose",
+      "allProvinces": "Intara zose",
+      "allCities": "Imijyi yose",
+      "allCategories": "Amoko yose"
+    },
+    "empty": {
+      "title": "Nta byifuzo bihari",
+      "subtitle": "Ibyifuzo by'abaguzi bizagaragara hano."
+    }
   }
 }

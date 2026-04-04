@@ -405,6 +405,64 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
+    // BUYER REQUESTS — Fonctionnalité "Je Cherche"
+    // buyerRequests: acheteurs postent leurs besoins
+    // buyerRequestContacts: tracking des clics WhatsApp vendeurs
+    // ─────────────────────────────────────────────────────────
+    match /buyerRequests/{requestId} {
+      // Lecture: publique (vérif rate-limit acheteur anonyme + navigation vendeurs)
+      allow read: if true;
+
+      // Création: tout le monde (acheteurs anonymes supportés), champs validés
+      allow create: if validString(request.resource.data.title, 200)
+        && validString(request.resource.data.whatsapp, 30)
+        && validString(request.resource.data.buyerName, 100)
+        && request.resource.data.status == 'active'
+        && request.resource.data.viewCount == 0
+        && request.resource.data.contactCount == 0
+        && request.resource.data.keys().hasAll([
+            'title', 'whatsapp', 'buyerName', 'countryId', 'province', 'city',
+            'status', 'createdAt', 'expiresAt', 'viewCount', 'contactCount'
+          ]);
+
+      // Mise à jour:
+      //   - Admin : tout
+      //   - Propriétaire connecté : peut marquer 'fulfilled' ou 'deleted'
+      //   - Vendeur connecté : peut incrémenter viewCount / contactCount de 1
+      allow update: if isAdmin()
+        || (isAuth()
+            && resource.data.buyerId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status in ['fulfilled', 'deleted'])
+        || (isAuth()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['viewCount', 'contactCount'])
+            && (request.resource.data.viewCount == resource.data.viewCount
+                || request.resource.data.viewCount == resource.data.viewCount + 1)
+            && (request.resource.data.contactCount == resource.data.contactCount
+                || request.resource.data.contactCount == resource.data.contactCount + 1));
+
+      // Suppression physique: admin uniquement (soft-delete via update)
+      allow delete: if isAdmin();
+    }
+
+    match /buyerRequestContacts/{contactId} {
+      // Lecture: admin ou le vendeur lui-même
+      allow read: if isAdmin()
+        || (isAuth() && resource.data.sellerId == request.auth.uid);
+
+      // Création: vendeur connecté, non suspendu, tracking de son propre clic WA
+      allow create: if isAuth()
+        && isNotSuspended()
+        && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+            'requestId', 'sellerId', 'sellerTierId', 'timestamp'
+          ]);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
     // DENY ALL — Toute collection non listée est bloquée par défaut
     // ─────────────────────────────────────────────────────────
     match /{document=**} {

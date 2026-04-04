@@ -12,8 +12,9 @@ import {
   SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod,
 } from '../types';
 import {
-  createSubscriptionRequest, confirmPayment, getMySubscriptionRequests,
-  getSubscriptionPricing, getSubscriptionTiers,
+  createSubscriptionRequest, confirmPayment,
+  subscribeToSubscriptionPricing, subscribeToSubscriptionTiers,
+  subscribeToMyRequests,
 } from '../services/firebase';
 
 type Step = 'plans' | 'payment' | 'confirmation' | 'done';
@@ -43,23 +44,22 @@ export const PlansPage: React.FC = () => {
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
 
   useEffect(() => {
-    if (!authReady) return; // Wait for auth to resolve
+    if (!authReady) return;
     if (!currentUser || currentUser.role === 'buyer') {
       navigate('/');
       return;
     }
 
-    const load = async () => {
-      const [fetchedTiers, fetchedPricing, requests] = await Promise.all([
-        getSubscriptionTiers(),
-        getSubscriptionPricing(sellerCountryId),
-        getMySubscriptionRequests(currentUser.id),
-      ]);
-      setTiers(fetchedTiers);
-      setPricing(fetchedPricing);
-      setMyRequests(requests);
+    // Real-time listeners — always get fresh data, bypass persistentLocalCache
+    const unsubTiers = subscribeToSubscriptionTiers(setTiers);
+    const unsubPricing = subscribeToSubscriptionPricing(sellerCountryId, setPricing);
+    const unsubRequests = subscribeToMyRequests(currentUser.id, setMyRequests);
+
+    return () => {
+      unsubTiers();
+      unsubPricing();
+      unsubRequests();
     };
-    load();
   }, [authReady, currentUser, sellerCountryId]);
 
   const getPrice = (tierId: string): number => {

@@ -17,6 +17,7 @@ const MIN_SCORE = 0.5;
 
 export const verifyRecaptcha = onRequest(
   {
+    region: "europe-west1",
     secrets: [RECAPTCHA_SECRET_KEY],
     maxInstances: 10,
     cors: ALLOWED_ORIGINS,

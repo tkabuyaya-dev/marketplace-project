@@ -19,7 +19,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { trackPageView, setUserProperties, trackLogin, trackContactSeller as analyticsContactSeller } from '../services/analytics';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
-import i18n from '../i18n';
+import i18n, { loadLanguage } from '../i18n';
 
 interface AppContextType {
   currentUser: User | null;
@@ -125,6 +125,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // NOTE: No handleRedirectResult() needed here.
+  // onAuthStateChanged (in subscribeToAuth) handles ALL auth results:
+  // popup success, redirect return, and existing sessions.
+  // getRedirectResult was removed because it causes "missing initial state"
+  // errors on iOS standalone PWA and storage-partitioned browsers.
+
   // Real-time user profile + notifications listener
   useEffect(() => {
     // Cleanup previous subscriptions
@@ -161,7 +167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDefaultLanguage(settings.defaultLanguage);
       // Si la langue active est désactivée, basculer vers la langue par défaut
       if (!settings.enabledLanguages.includes(i18n.language)) {
-        i18n.changeLanguage(settings.defaultLanguage);
+        loadLanguage(settings.defaultLanguage).then(() => i18n.changeLanguage(settings.defaultLanguage));
       }
     });
     return () => unsub();
@@ -211,16 +217,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoginLoading(true);
     try {
       const user = await signInWithGoogle();
-      setCurrentUser(user);
-      // GA4: Track login (first-time users tracked as sign_up by auth service)
-      trackLogin('google');
-      if (user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/');
+      // user is null when: popup was cancelled, or redirect was triggered
+      // In redirect case, onAuthStateChanged will handle login after page reload
+      if (user) {
+        setCurrentUser(user);
+        trackLogin('google');
+        if (user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       }
-    } catch (err) {
-      console.error('Erreur connexion:', err);
+    } catch (err: any) {
+      console.error('[Auth] Login error code:', err?.code, '| message:', err?.message, err);
+      if (err?.code === 'auth/network-request-failed') {
+        toast(i18n.t('toast.networkError'), 'error');
+      } else if (err?.code === 'auth/needs-browser-open') {
+        toast('Ouvrez l\'application dans Safari pour vous connecter.', 'error');
+      } else if (err?.code === 'auth/popup-blocked-manual') {
+        toast('Popups bloqués — autorisez-les pour ce site dans les paramètres du navigateur.', 'error');
+      } else {
+        toast(i18n.t('toast.loginError'), 'error');
+      }
     } finally {
       setLoginLoading(false);
     }

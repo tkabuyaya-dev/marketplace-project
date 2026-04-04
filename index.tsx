@@ -21,4 +21,12 @@ ReactDOM.createRoot(rootElement).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
-// Note: Le Service Worker est enregistré automatiquement par VitePWA (vite.config.ts)
+// Service Worker: auto-reload when a new version is deployed
+// Ensures users always get the latest JS after firebase deploy
+import { registerSW } from 'virtual:pwa-register';
+registerSW({
+  onNeedRefresh() {
+    // New SW available — reload immediately to get latest code
+    window.location.reload();
+  },
+});

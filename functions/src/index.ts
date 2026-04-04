@@ -14,7 +14,7 @@ import { setGlobalOptions } from "firebase-functions/v2/options";
 // Instead, each function lazily initializes via ./admin.ts on first invocation.
 
 // Global options: limit concurrency for cost control
-setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
+setGlobalOptions({ maxInstances: 15, region: "europe-west1" });
 
 // Algolia sync triggers
 export { onProductWrite, onSellerWrite } from "./algolia-sync.js";
@@ -41,3 +41,11 @@ export { checkSubscriptions } from "./subscription-cron.js";
 
 // Account deletion (callable)
 export { deleteUserAccount } from "./delete-account.js";
+
+// Buyer requests expiration cron (daily at 03:00 UTC)
+export { expireBuyerRequests } from "./expire-buyer-requests.js";
+
+// Subscription management with Cloudinary cleanup
+export { expireSellers } from "./expire-sellers.js";
+export { deleteProducts } from "./delete-products.js";
+export { approveRenewal } from "./approve-renewal.js";

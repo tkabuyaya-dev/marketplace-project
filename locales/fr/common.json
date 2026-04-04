@@ -299,7 +299,11 @@
     "installBtn": "Installer l'application",
     "installing": "Installation...",
     "continueWeb": "Continuer sur le web",
-    "iosInstructions": "Pour installer : Partager → Sur l'écran d'accueil → Confirmer"
+    "iosTitle": "Comment installer sur iPhone",
+    "iosStep1": "Appuyez sur le bouton Partager",
+    "iosStep2": "Faites défiler et appuyez sur « Sur l'écran d'accueil »",
+    "iosStep3": "Appuyez sur « Ajouter » pour confirmer",
+    "iosGotIt": "J'ai compris !"
   },
   "common": {
     "loading": "Chargement...",
@@ -338,7 +342,9 @@
     "profileUpdated": "Profil mis à jour",
     "connectionRestored": "Connexion rétablie",
     "recaptchaFailed": "Vérification de sécurité échouée. Réessayez.",
-    "errorGeneric": "Une erreur est survenue. Réessayez."
+    "errorGeneric": "Une erreur est survenue. Réessayez.",
+    "loginError": "Connexion échouée. Réessayez.",
+    "networkError": "Pas de connexion internet. Vérifiez votre réseau."
   },
   "categories": {
     "tech": "Tech & Électronique",
@@ -382,7 +388,7 @@
   "shopProfile": {
     "notFound": "Boutique introuvable",
     "backToHome": "Retour à l'accueil",
-    "defaultBio": "Boutique officielle sur Nunulia. Retrouvez tous nos produits Tech et Lifestyle au meilleur prix.",
+    "defaultBio": "Boutique officielle sur Nunulia. Retrouvez tous nos produits au meilleur prix.",
     "sellerRating": "Note Vendeur",
     "products": "Produits",
     "since": "Depuis {{year}}",
@@ -472,6 +478,7 @@
     "subValidating": "Vérification",
     "subPending": "En attente",
     "subLastRejection": "Motif du dernier refus",
+    "resubmitRequest": "Resoumettre une demande",
     "subscriptionExpiredToast": "Votre abonnement a expiré. Rendez-vous sur la page Plans pour renouveler.",
     "limitReachedTitle": "Limite Atteinte",
     "noNifLimit": "En tant que vendeur sans NIF, vous êtes limité à 1 seul produit.",
@@ -594,6 +601,7 @@
     "mobileHome": "Accueil",
     "mobileProducts": "Produits",
     "mobileAdd": "Ajouter",
+    "mobileRequests": "Demandes",
     "mobileShop": "Boutique",
     "verification": "Vérification",
     "verifyStatusVerified": "Vérifié",
@@ -613,7 +621,12 @@
     "verifyUploadHint": "Assurez-vous que vos documents (CNI, NIF) sont bien téléversés dans votre profil boutique.",
     "verifyUploadFirst": "Veuillez d'abord téléverser votre CNI dans les paramètres boutique.",
     "verifyRequestSent": "Demande de vérification envoyée !",
-    "verifyRequestError": "Erreur lors de l'envoi de la demande."
+    "verifyRequestError": "Erreur lors de l'envoi de la demande.",
+    "buyerRequests": "Demandes clients",
+    "buyerRequestsDesc": "Consultez les besoins des acheteurs et contactez-les directement.",
+    "viewAllRequests": "Voir toutes les demandes",
+    "buyerRequestsPromo": "Les acheteurs cherchent vos produits !",
+    "buyerRequestsPromoDesc": "Consultez les demandes clients et contactez-les directement sur WhatsApp pour proposer vos produits."
   },
   "admin": {
     "console": "Admin Console",
@@ -625,6 +638,7 @@
     "tabUsers": "Utilisateurs",
     "tabCurrencies": "Devises",
     "tabCategories": "Catégories",
+    "tabRequests": "Demandes",
     "tabCountries": "Pays",
     "tabLanguages": "Langues",
     "languagesTitle": "Gestion des langues",
@@ -730,16 +744,22 @@
     "rejectRequestTitle": "Raison du rejet",
     "rejectRequestPlaceholder": "Ex: Référence de paiement invalide...",
     "confirmRejectRequest": "Confirmer le rejet",
-    "tierConfigTitle": "Configuration des Paliers",
+    "tierStructureTitle": "Structure des paliers",
+    "tierStructureDesc": "Noms et limites de produits — s'applique à tous les pays",
+    "tierPricesTitle": "Prix par pays",
+    "tierPricesDesc": "Sélectionnez un pays pour modifier ses prix",
     "tierSave": "Sauvegarder",
     "tierLabel": "Label",
-    "tierMin": "Min",
-    "tierMax": "Max",
-    "tierPrice": "Prix (FBu)",
-    "tierNifRequired": "NIF ?",
+    "tierMin": "Min produits",
+    "tierMax": "Max produits",
+    "tierPrice": "Prix",
+    "tierProducts": "Produits",
     "tierAction": "Action",
     "addTier": "+ Ajouter un palier",
-    "tiersUpdated": "Abonnements mis à jour !",
+    "tierMaxHint": "Max vide ou 0 = illimité (∞)",
+    "tiersUpdated": "Structure des paliers mise à jour !",
+    "priceSaved": "Prix mis à jour avec succès !",
+    "priceSaveError": "Erreur lors de la sauvegarde des prix",
     "usersTitle": "Utilisateurs ({{count}})",
     "sellerStats": "Vendeurs",
     "activeCount": "Actifs",
@@ -997,5 +1017,85 @@
   "errors": {
     "pageError": "Une erreur est survenue",
     "reloadPage": "Recharger la page"
+  },
+  "jeCherche": {
+    "block": {
+      "title": "Vous ne trouvez pas ce que vous cherchez ?",
+      "subtitle": "Décrivez votre besoin en quelques secondes. Nos vendeurs vous contacteront sur WhatsApp.",
+      "cta": "Publier ma demande",
+      "compactTitle": "Pas exactement ce que vous cherchez ?",
+      "compactSubtitle": "Publiez votre besoin, nos vendeurs vous contacteront.",
+      "todayCount": "demandes aujourd'hui",
+      "fulfilledCount": "satisfaites"
+    },
+    "form": {
+      "title": "Je cherche...",
+      "subtitle": "Décrivez votre besoin en moins de 10 secondes",
+      "close": "Fermer",
+      "labelTitle": "Produit ou service recherché",
+      "placeholderTitle": "Ex: iPhone 15 Pro Max 256Go, Réparation climatiseur...",
+      "labelWhatsapp": "Votre numéro WhatsApp",
+      "labelCountry": "Pays",
+      "labelProvince": "Province / Région",
+      "selectProvince": "Sélectionner une province",
+      "labelCity": "Commune / Ville",
+      "selectCity": "Sélectionner une commune",
+      "placeholderCity": "Entrez votre ville",
+      "whatsappHint": "L'indicatif {{prefix}} est ajouté automatiquement selon votre pays",
+      "optionalDetails": "Ajouter des détails (optionnel)",
+      "labelCategory": "Catégorie (optionnel)",
+      "selectCategory": "Toutes catégories",
+      "labelImage": "Photo du produit recherché (optionnel)",
+      "imageUploadHint": "Touchez pour ajouter une photo",
+      "imageUploading": "Envoi en cours...",
+      "imageReady": "Photo prête",
+      "imageRemove": "Supprimer la photo",
+      "imageErrorType": "Format non supporté. Utilisez JPG, PNG ou WebP.",
+      "imageErrorSize": "L'image dépasse 5 Mo. Veuillez en choisir une plus petite.",
+      "imageErrorUpload": "Échec de l'envoi. Vérifiez votre connexion.",
+      "labelBudget": "Budget maximum",
+      "submit": "Publier ma demande",
+      "privacyNote": "Votre numéro WhatsApp sera partagé avec les vendeurs intéressés uniquement.",
+      "anonymousBuyer": "Acheteur anonyme",
+      "errorTitle": "Veuillez décrire ce que vous cherchez.",
+      "errorWhatsapp": "Veuillez entrer votre numéro WhatsApp.",
+      "errorProvince": "Veuillez sélectionner une province.",
+      "errorCity": "Veuillez entrer votre ville.",
+      "errorRateLimit": "Vous avez atteint la limite de 3 demandes par jour. Réessayez demain.",
+      "errorGeneric": "Une erreur est survenue. Réessayez."
+    },
+    "success": {
+      "title": "Demande publiée !",
+      "subtitle": "Les vendeurs vont vous contacter sur WhatsApp dès qu'ils verront votre besoin.",
+      "close": "Fermer"
+    }
+  },
+  "requests": {
+    "pageTitle": "Demandes clients",
+    "pageSubtitle": "Tous les acheteurs qui cherchent un produit ou service.",
+    "unlockContact": "Débloquer le contact",
+    "loadMore": "Charger plus",
+    "whatsappMessage": "Bonjour ! Je suis vendeur sur Nunulia et j'ai votre produit : *{{title}}*. Je suis basé à {{city}}. Pouvez-vous me dire si vous êtes toujours à la recherche ?",
+    "card": {
+      "seeking": "Cherche",
+      "contactWhatsApp": "Contacter sur WhatsApp",
+      "upgradeToPro": "Passer au plan Business Pro",
+      "expiresIn": "Expire dans {{days}}j"
+    },
+    "planGate": {
+      "title": "Réservé aux vendeurs Business Pro et plus",
+      "subtitle": "Passez au plan Business Pro pour accéder aux numéros WhatsApp et contacter les acheteurs.",
+      "cta": "Upgrade"
+    },
+    "filters": {
+      "allCountries": "Tous les pays",
+      "allProvinces": "Toutes les provinces",
+      "allCities": "Toutes les villes",
+      "allCategories": "Toutes les catégories"
+    },
+    "empty": {
+      "title": "Aucune demande pour le moment",
+      "subtitle": "Les demandes d'acheteurs apparaîtront ici."
+    }
   }
 }

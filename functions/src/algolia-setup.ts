@@ -18,6 +18,7 @@ import { ALLOWED_ORIGINS } from "./config.js";
 
 export const setupAlgoliaIndexes = onRequest(
   {
+    region: "europe-west1",
     secrets: [ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY],
     maxInstances: 1,
     timeoutSeconds: 540,

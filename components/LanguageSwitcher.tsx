@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SUPPORTED_LANGUAGES } from '../i18n';
+import { SUPPORTED_LANGUAGES, loadLanguage } from '../i18n';
 import { TC } from '../constants';
 import { trackLanguageChange } from '../services/analytics';
 import { useAppContext } from '../contexts/AppContext';
@@ -27,8 +27,9 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const switchLang = (code: string) => {
+  const switchLang = async (code: string) => {
     const prev = i18n.language;
+    await loadLanguage(code);
     i18n.changeLanguage(code);
     trackLanguageChange(prev, code, '');
     setOpen(false);

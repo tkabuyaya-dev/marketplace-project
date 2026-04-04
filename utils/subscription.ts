@@ -52,7 +52,6 @@ export function getSubscriptionStatus(input: SubscriptionInput): SubscriptionSta
       label: tierLabel,
       min: 0,
       max: maxProducts >= 99999 ? null : maxProducts,
-      price: 0,
       requiresNif: true,
     };
   } else if (!hasNif) {

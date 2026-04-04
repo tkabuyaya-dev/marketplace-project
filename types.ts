@@ -67,9 +67,8 @@ export interface SubscriptionTier {
   id: string;
   min: number;
   max: number | null; // null = illimité
-  price: number;
   label: string;
-  requiresNif: boolean; 
+  requiresNif: boolean;
 }
 
 export interface Product {
@@ -246,6 +245,38 @@ export interface PaymentMethod {
   name: string;
   number: string;
   icon: string;
+}
+
+// ─── Buyer Requests ("Je Cherche") ───
+export type BuyerRequestStatus = 'active' | 'fulfilled' | 'expired' | 'deleted';
+
+export interface BuyerRequest {
+  id: string;
+  title: string;           // Produit/service recherché
+  description?: string;    // Détails optionnels
+  countryId: string;       // Pays
+  province: string;        // Province / Région
+  city: string;            // Commune / Ville
+  category?: string;       // Catégorie (optionnel)
+  budget?: number;         // Budget (optionnel)
+  budgetCurrency?: string; // Devise du budget
+  imageUrl?: string;       // Photo (optionnel, Cloudinary)
+  whatsapp: string;        // Numéro WhatsApp acheteur
+  buyerId?: string;        // UID Firebase (null si anonyme)
+  buyerName: string;       // Prénom ou "Acheteur anonyme"
+  status: BuyerRequestStatus;
+  createdAt: number;
+  expiresAt: number;       // createdAt + 7 jours
+  viewCount: number;
+  contactCount: number;    // Clics WhatsApp
+}
+
+export interface BuyerRequestContact {
+  id: string;
+  requestId: string;
+  sellerId: string;
+  sellerTierId: string;
+  timestamp: number;
 }
 
 export interface SubscriptionPricing {

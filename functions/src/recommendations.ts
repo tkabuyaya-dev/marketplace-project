@@ -19,6 +19,7 @@ const CACHE_HEADERS = {
  */
 export const getTrending = onRequest(
   {
+    region: "europe-west1",
     secrets: [REDIS_URL],
     maxInstances: 5,
     cors: ALLOWED_ORIGINS,
@@ -104,6 +105,7 @@ export const getTrending = onRequest(
  */
 export const getPopular = onRequest(
   {
+    region: "europe-west1",
     secrets: [REDIS_URL],
     maxInstances: 5,
     cors: ALLOWED_ORIGINS,
@@ -182,6 +184,7 @@ export const getPopular = onRequest(
  */
 export const getRecommendations = onRequest(
   {
+    region: "europe-west1",
     secrets: [REDIS_URL],
     maxInstances: 5,
     cors: ALLOWED_ORIGINS,
@@ -293,6 +296,7 @@ export const getRecommendations = onRequest(
  */
 export const getAlsoViewed = onRequest(
   {
+    region: "europe-west1",
     secrets: [REDIS_URL],
     maxInstances: 5,
     cors: ALLOWED_ORIGINS,

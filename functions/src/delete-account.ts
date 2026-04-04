@@ -28,6 +28,7 @@ const BATCH_LIMIT = 450;
 
 export const deleteUserAccount = onCall(
   {
+    region: "europe-west1",
     maxInstances: 5,
     cors: ALLOWED_ORIGINS,
   },

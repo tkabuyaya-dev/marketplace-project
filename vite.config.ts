@@ -64,37 +64,9 @@ export default defineConfig({
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
             }
           },
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firestore-cache',
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
-              cacheableResponse: { statuses: [0, 200] },
-            }
-          },
-          {
-            // Firebase Auth SDK — critical for login speed on 2G/3G
-            urlPattern: /^https:\/\/(identitytoolkit|securetoken)\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firebase-auth',
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 },
-              cacheableResponse: { statuses: [0, 200] },
-            }
-          },
-          {
-            // Google Sign-In APIs
-            urlPattern: /^https:\/\/(apis\.google\.com|accounts\.google\.com)\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'google-auth-apis',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 },
-              cacheableResponse: { statuses: [0, 200] },
-            }
-          },
+          // Firebase Auth & Google OAuth: NOT cached by Service Worker
+          // Firebase SDK handles its own token caching via IndexedDB
+          // Caching these causes stale tokens → silent auth failures on mobile
           {
             urlPattern: /^https:\/\/maps\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
@@ -106,7 +78,7 @@ export default defineConfig({
           },
         ],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        navigateFallbackDenylist: [/^\/__\//, /^\/_/, /\/[^/?]+\.[^/]+$/],
       }
     })
   ],

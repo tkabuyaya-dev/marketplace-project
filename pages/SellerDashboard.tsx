@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest } from '../types';
-import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, getMySubscriptionRequests } from '../services/firebase';
+import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, subscribeToMyRequests } from '../services/firebase';
 import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
 import { generateBlurhash } from '../utils/blurhash';
 import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
@@ -21,7 +21,7 @@ import { ProductQualityScore } from '../components/ProductQualityScore';
 import { ProductPreview } from '../components/ProductPreview';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 
-type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification';
+type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests';
 
 export const SellerDashboard: React.FC = () => {
   const { currentUser } = useAppContext();
@@ -136,11 +136,15 @@ export const SellerDashboard: React.FC = () => {
       setCategoriesList(cats);
       // Sync productCount with real active products
       syncProductCount(currentUser.id);
-      // Fetch subscription request history
-      getMySubscriptionRequests(currentUser.id).then(setSubRequests).catch(() => {});
     };
     load();
   }, [currentUser.id, activeTab]);
+
+  // Real-time listener for subscription requests
+  useEffect(() => {
+    const unsub = subscribeToMyRequests(currentUser.id, setSubRequests);
+    return () => unsub();
+  }, [currentUser.id]);
 
   const hasNif = !!currentUser.sellerDetails?.nif;
   // Count only active products (approved + pending), not rejected/deleted
@@ -865,10 +869,16 @@ export const SellerDashboard: React.FC = () => {
                 ))}
               </div>
               {subRequests.some(r => r.status === 'rejected' && r.rejectionReason) && (
-                <div className="mt-2 bg-red-900/10 border border-red-800/20 rounded-lg p-2.5">
+                <div className="mt-2 bg-red-900/10 border border-red-800/20 rounded-lg p-2.5 space-y-2">
                   <p className="text-xs text-red-400">
                     {t('dashboard.subLastRejection')}: {subRequests.find(r => r.status === 'rejected')?.rejectionReason}
                   </p>
+                  <button
+                    onClick={() => navigate('/plans')}
+                    className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition-colors"
+                  >
+                    {t('dashboard.resubmitRequest')}
+                  </button>
                 </div>
               )}
             </div>
@@ -1577,6 +1587,7 @@ export const SellerDashboard: React.FC = () => {
            <div className="space-y-2 flex-1">
                <SidebarItem id="overview" icon="📊" label={t('dashboard.overview')} />
                <SidebarItem id="products" icon="📦" label={t('dashboard.inventory')} count={myProducts.length} />
+               <SidebarItem id="requests" icon="🔍" label={t('dashboard.buyerRequests')} />
                <SidebarItem id="shop" icon="🎨" label={t('dashboard.myShop')} />
                <SidebarItem id="verification" icon="✅" label={t('dashboard.verification')} />
            </div>
@@ -1737,6 +1748,33 @@ export const SellerDashboard: React.FC = () => {
            {activeTab === 'add_product' && renderAddProduct()}
            {activeTab === 'shop' && renderShopSettings()}
            {activeTab === 'verification' && renderVerification()}
+           {activeTab === 'requests' && (
+             <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <h2 className="text-xl font-bold text-white">{t('dashboard.buyerRequests')}</h2>
+                   <p className="text-sm text-gray-500 mt-1">{t('dashboard.buyerRequestsDesc')}</p>
+                 </div>
+                 <button
+                   onClick={() => navigate('/demandes')}
+                   className="px-4 py-2 bg-gold-400 hover:bg-gold-300 text-gray-900 font-bold rounded-xl text-sm transition-all hover:scale-105 active:scale-95"
+                 >
+                   🔍 {t('dashboard.viewAllRequests')}
+                 </button>
+               </div>
+               <div className="bg-gray-800/50 border border-gold-400/20 rounded-2xl p-6 text-center">
+                 <div className="text-4xl mb-3">🛒</div>
+                 <p className="text-base font-bold text-white mb-2">{t('dashboard.buyerRequestsPromo')}</p>
+                 <p className="text-sm text-gray-400 mb-4">{t('dashboard.buyerRequestsPromoDesc')}</p>
+                 <button
+                   onClick={() => navigate('/demandes')}
+                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-400 hover:bg-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-105 active:scale-95"
+                 >
+                   🔍 {t('dashboard.viewAllRequests')}
+                 </button>
+               </div>
+             </div>
+           )}
        </main>
 
        {/* Mobile Bottom Nav — All tabs visible with labels */}
@@ -1746,6 +1784,7 @@ export const SellerDashboard: React.FC = () => {
              { id: 'overview' as Tab, icon: '📊', label: t('dashboard.mobileHome') },
              { id: 'products' as Tab, icon: '📦', label: t('dashboard.mobileProducts') },
              { id: 'add_product' as Tab, icon: '➕', label: t('dashboard.mobileAdd') },
+             { id: 'requests' as Tab, icon: '🔍', label: t('dashboard.mobileRequests') },
              { id: 'shop' as Tab, icon: '🎨', label: t('dashboard.mobileShop') },
            ]).map(item => (
              <button

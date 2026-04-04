@@ -21,6 +21,12 @@ export const ALGOLIA_ADMIN_KEY = defineSecret("ALGOLIA_ADMIN_KEY");
 export const REDIS_URL = defineSecret("REDIS_URL");
 export const RECAPTCHA_SECRET_KEY = defineSecret("RECAPTCHA_SECRET_KEY");
 
+// Subscription management & Cloudinary cleanup
+export const NUNULIA_SECRET_TOKEN = defineSecret("NUNULIA_SECRET_TOKEN");
+export const CLOUDINARY_CLOUD_NAME = defineSecret("CLOUDINARY_CLOUD_NAME");
+export const CLOUDINARY_API_KEY = defineSecret("CLOUDINARY_API_KEY");
+export const CLOUDINARY_API_SECRET = defineSecret("CLOUDINARY_API_SECRET");
+
 // Index names
 export const ALGOLIA_PRODUCTS_INDEX = "products";
 export const ALGOLIA_SELLERS_INDEX = "sellers";
@@ -30,11 +36,13 @@ export const CACHE_TTL = {
   TRENDING: 5 * 60,         // 5 minutes
   RECOMMENDATIONS: 15 * 60, // 15 minutes
   POPULAR: 10 * 60,         // 10 minutes
-  SEARCH_RESULTS: 2 * 60,   // 2 minutes
+  SEARCH_RESULTS: 5 * 60,   // 5 minutes
 } as const;
 
 // CORS: restrict to known origins (Firebase Hosting + local dev)
 export const ALLOWED_ORIGINS = [
+  "https://nunulia.com",
+  "https://www.nunulia.com",
   "https://aurburundi-e2fe2.web.app",
   "https://aurburundi-e2fe2.firebaseapp.com",
   "http://localhost:3000",

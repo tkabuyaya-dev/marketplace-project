@@ -298,7 +298,11 @@
     "installBtn": "Sakinisha programu",
     "installing": "Inasakinisha...",
     "continueWeb": "Endelea kwenye wavuti",
-    "iosInstructions": "Ili kusakinisha: Shiriki → Kwenye skrini kuu → Thibitisha"
+    "iosTitle": "Jinsi ya kusakinisha kwenye iPhone",
+    "iosStep1": "Bonyeza kitufe cha Shiriki",
+    "iosStep2": "Sogeza chini na ubonyeze \"Ongeza kwenye skrini kuu\"",
+    "iosStep3": "Bonyeza \"Ongeza\" kuthibitisha",
+    "iosGotIt": "Nimeelewa!"
   },
   "common": {
     "loading": "Inapakia...",
@@ -337,7 +341,9 @@
     "profileUpdated": "Wasifu umesasishwa",
     "connectionRestored": "Muunganisho umerejeshwa",
     "recaptchaFailed": "Uthibitisho wa usalama umeshindwa. Jaribu tena.",
-    "errorGeneric": "Kosa limetokea. Jaribu tena."
+    "errorGeneric": "Kosa limetokea. Jaribu tena.",
+    "loginError": "Kuingia kumeshindikana. Jaribu tena.",
+    "networkError": "Hakuna mtandao. Angalia muunganisho wako."
   },
   "categories": {
     "tech": "Teknolojia & Elektroniki",
@@ -471,6 +477,7 @@
     "subValidating": "Inathibitishwa",
     "subPending": "Inasubiri",
     "subLastRejection": "Sababu ya kukataliwa",
+    "resubmitRequest": "Wasilisha ombi tena",
     "subscriptionExpiredToast": "Usajili wako umeisha. Nenda kwenye ukurasa wa Mipango kufanya upya.",
     "limitReachedTitle": "Kikomo Kimefikiwa",
     "noNifLimit": "Kama muuzaji bila NIF, umepunguzwa hadi bidhaa 1 tu.",
@@ -593,6 +600,7 @@
     "mobileHome": "Nyumbani",
     "mobileProducts": "Bidhaa",
     "mobileAdd": "Ongeza",
+    "mobileRequests": "Maombi",
     "mobileShop": "Duka",
     "verification": "Uthibitisho",
     "verifyStatusVerified": "Imethibitishwa",
@@ -612,7 +620,12 @@
     "verifyUploadHint": "Hakikisha nyaraka zako (kitambulisho, NIF) zimepakiwa katika mipangilio ya duka lako.",
     "verifyUploadFirst": "Tafadhali pakia kitambulisho chako kwenye mipangilio ya duka kwanza.",
     "verifyRequestSent": "Ombi la uthibitisho limetumwa!",
-    "verifyRequestError": "Kosa la kutuma ombi."
+    "verifyRequestError": "Kosa la kutuma ombi.",
+    "buyerRequests": "Maombi ya wateja",
+    "buyerRequestsDesc": "Angalia mahitaji ya wanunuzi na wasiliana nao moja kwa moja.",
+    "viewAllRequests": "Ona maombi yote",
+    "buyerRequestsPromo": "Wanunuzi wanakutafuta!",
+    "buyerRequestsPromoDesc": "Angalia maombi ya wanunuzi na wasiliana nao kupitia WhatsApp."
   },
   "admin": {
     "console": "Admin Console",
@@ -624,6 +637,7 @@
     "tabUsers": "Watumiaji",
     "tabCurrencies": "Sarafu",
     "tabCategories": "Makundi",
+    "tabRequests": "Maombi",
     "tabCountries": "Nchi",
     "tabLanguages": "Lugha",
     "languagesTitle": "Usimamizi wa lugha",
@@ -725,16 +739,22 @@
     "rejectRequestTitle": "Sababu ya kukataa",
     "rejectRequestPlaceholder": "Mfano: Rejeleo ya malipo si sahihi...",
     "confirmRejectRequest": "Thibitisha kukataa",
-    "tierConfigTitle": "Mipangilio ya Ngazi",
+    "tierStructureTitle": "Muundo wa ngazi",
+    "tierStructureDesc": "Majina na vikomo vya bidhaa — inatumika kwa nchi zote",
+    "tierPricesTitle": "Bei kwa nchi",
+    "tierPricesDesc": "Chagua nchi kubadilisha bei zake",
     "tierSave": "Hifadhi",
     "tierLabel": "Jina",
     "tierMin": "Chini",
     "tierMax": "Juu",
-    "tierPrice": "Bei (FBu)",
-    "tierNifRequired": "NIF?",
+    "tierPrice": "Bei",
+    "tierProducts": "Bidhaa",
     "tierAction": "Kitendo",
     "addTier": "+ Ongeza ngazi",
-    "tiersUpdated": "Usajili umesasishwa!",
+    "tierMaxHint": "Max tupu au 0 = bila kikomo (∞)",
+    "tiersUpdated": "Muundo umesasishwa!",
+    "priceSaved": "Bei zimesasishwa kwa mafanikio!",
+    "priceSaveError": "Hitilafu katika kuhifadhi bei",
     "usersTitle": "Watumiaji ({{count}})",
     "sellerStats": "Wauzaji",
     "activeCount": "Hai",
@@ -980,5 +1000,85 @@
   "errors": {
     "pageError": "Kosa limetokea",
     "reloadPage": "Pakia upya ukurasa"
+  },
+  "jeCherche": {
+    "block": {
+      "title": "Hupati unachotafuta?",
+      "subtitle": "Elezea haja yako kwa sekunde chache. Wauzaji wetu watakuwasiliana nao WhatsApp.",
+      "cta": "Tuma ombi langu",
+      "compactTitle": "Si hasa unachohitaji?",
+      "compactSubtitle": "Tuma haja yako, wauzaji watawasiliana nawe.",
+      "todayCount": "maombi leo",
+      "fulfilledCount": "yaliyotimizwa"
+    },
+    "form": {
+      "title": "Natafuta...",
+      "subtitle": "Elezea haja yako kwa chini ya sekunde 10",
+      "close": "Funga",
+      "labelTitle": "Bidhaa au huduma unayohitaji",
+      "placeholderTitle": "Mfano: iPhone 15, Ukarabati wa AC...",
+      "labelWhatsapp": "Nambari yako ya WhatsApp",
+      "labelCountry": "Nchi",
+      "labelProvince": "Mkoa",
+      "selectProvince": "Chagua mkoa",
+      "labelCity": "Mji",
+      "selectCity": "Chagua mji",
+      "placeholderCity": "Ingiza mji wako",
+      "whatsappHint": "Nambari ya nchi {{prefix}} inaongezwa kiotomatiki kulingana na nchi uliyochagua",
+      "optionalDetails": "Ongeza maelezo (hiari)",
+      "labelCategory": "Kategoria (hiari)",
+      "selectCategory": "Kategoria zote",
+      "labelImage": "Picha ya bidhaa unayotafuta (hiari)",
+      "imageUploadHint": "Gusa hapa kuongeza picha",
+      "imageUploading": "Inapakiwa...",
+      "imageReady": "Picha iko tayari",
+      "imageRemove": "Ondoa picha",
+      "imageErrorType": "Muundo hauungwi mkono. Tumia JPG, PNG au WebP.",
+      "imageErrorSize": "Picha inazidi 5 MB. Tafadhali chagua ndogo zaidi.",
+      "imageErrorUpload": "Upakiaji umeshindwa. Angalia muunganisho wako.",
+      "labelBudget": "Bajeti ya juu",
+      "submit": "Tuma ombi langu",
+      "privacyNote": "Nambari yako ya WhatsApp itashirikiwa na wauzaji wanaovutiwa tu.",
+      "anonymousBuyer": "Mnunuzi asiyejulikana",
+      "errorTitle": "Tafadhali elezea unachotafuta.",
+      "errorWhatsapp": "Tafadhali ingiza nambari yako ya WhatsApp.",
+      "errorProvince": "Tafadhali chagua mkoa.",
+      "errorCity": "Tafadhali ingiza mji wako.",
+      "errorRateLimit": "Umefika kikomo cha maombi 3 kwa siku. Jaribu kesho.",
+      "errorGeneric": "Kosa limetokea. Tafadhali jaribu tena."
+    },
+    "success": {
+      "title": "Ombi limetumwa!",
+      "subtitle": "Wauzaji watakuwasiliana kwenye WhatsApp mara tu watakapona ombi lako.",
+      "close": "Funga"
+    }
+  },
+  "requests": {
+    "pageTitle": "Maombi ya wanunuzi",
+    "pageSubtitle": "Wanunuzi wote wanaotafuta bidhaa au huduma.",
+    "unlockContact": "Fungua mawasiliano",
+    "loadMore": "Pakia zaidi",
+    "whatsappMessage": "Habari! Mimi ni muuzaji kwenye Nunulia na nina bidhaa yako: *{{title}}*. Niko {{city}}. Je, bado unatafuta?",
+    "card": {
+      "seeking": "Anatafuta",
+      "contactWhatsApp": "Wasiliana kwenye WhatsApp",
+      "upgradeToPro": "Panda kwenye Business Pro",
+      "expiresIn": "Inaisha kwa {{days}}d"
+    },
+    "planGate": {
+      "title": "Inapatikana kwa wauzaji wa Business Pro na zaidi",
+      "subtitle": "Panda kwenye Business Pro kupata nambari za WhatsApp na kuwasiliana na wanunuzi.",
+      "cta": "Upgrade"
+    },
+    "filters": {
+      "allCountries": "Nchi zote",
+      "allProvinces": "Mikoa yote",
+      "allCities": "Miji yote",
+      "allCategories": "Makundi yote"
+    },
+    "empty": {
+      "title": "Hakuna maombi bado",
+      "subtitle": "Maombi ya wanunuzi yataonekana hapa."
+    }
   }
 }

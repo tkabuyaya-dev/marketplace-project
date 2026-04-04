@@ -46,22 +46,41 @@ export const getSubscriptionTiers = async (): Promise<SubscriptionTier[]> => {
   if (!db) return INITIAL_SUBSCRIPTION_TIERS;
 
   const snap = await getDocs(collection(db, COLLECTIONS.SUBSCRIPTION_TIERS));
-  if (snap.empty) return INITIAL_SUBSCRIPTION_TIERS;
+  if (snap.empty) {
+    // Seed Firestore with initial tiers so admin & PlansPage stay in sync
+    const batch = writeBatch(db);
+    INITIAL_SUBSCRIPTION_TIERS.forEach(tier => {
+      batch.set(doc(db, COLLECTIONS.SUBSCRIPTION_TIERS, tier.id), tier);
+    });
+    await batch.commit();
+    return INITIAL_SUBSCRIPTION_TIERS;
+  }
 
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() } as SubscriptionTier))
     .sort((a, b) => a.min - b.min);
 };
 
-export const updateSubscriptionTiers = async (tiers: SubscriptionTier[]): Promise<void> => {
-  if (!db) return;
-
-  const batch = writeBatch(db);
-  tiers.forEach(tier => {
-    const ref = doc(db, COLLECTIONS.SUBSCRIPTION_TIERS, tier.id);
-    batch.set(ref, tier, { merge: true });
+/** Real-time listener for subscription tiers — bypasses persistentLocalCache staleness */
+export const subscribeToSubscriptionTiers = (
+  callback: (tiers: SubscriptionTier[]) => void,
+): (() => void) => {
+  if (!db) {
+    callback(INITIAL_SUBSCRIPTION_TIERS);
+    return () => {};
+  }
+  return onSnapshot(collection(db, COLLECTIONS.SUBSCRIPTION_TIERS), (snap) => {
+    if (snap.empty) {
+      callback(INITIAL_SUBSCRIPTION_TIERS);
+      return;
+    }
+    const tiers = snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as SubscriptionTier))
+      .sort((a, b) => a.min - b.min);
+    callback(tiers);
+  }, () => {
+    callback(INITIAL_SUBSCRIPTION_TIERS);
   });
-  await batch.commit();
 };
 
 // ── Countries ──

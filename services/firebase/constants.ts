@@ -77,6 +77,8 @@ export const COLLECTIONS = {
   SUBSCRIPTION_REQUESTS: 'subscriptionRequests',
   SUBSCRIPTION_PRICING:  'subscriptionPricing',
   APP_SETTINGS:          'appSettings',
+  BUYER_REQUESTS:        'buyerRequests',
+  BUYER_REQUEST_CONTACTS: 'buyerRequestContacts',
 } as const;
 
 /** Converts a Firestore document to User type */

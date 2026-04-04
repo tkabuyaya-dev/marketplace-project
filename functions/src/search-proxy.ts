@@ -36,8 +36,9 @@ const CACHE_HEADERS = {
  */
 export const cachedSearch = onRequest(
   {
+    region: "europe-west1",
     secrets: [ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY, REDIS_URL],
-    maxInstances: 10,
+    maxInstances: 20,
     cors: ALLOWED_ORIGINS,
   },
   async (req, res) => {

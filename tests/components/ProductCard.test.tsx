@@ -80,12 +80,14 @@ describe('ProductCard', () => {
       stockQuantity: 3,
     };
     render(<ProductCard product={lowStockProduct} onClick={() => {}} />);
-    expect(screen.getByText(/Plus que 3/)).toBeInTheDocument();
+    // t('product.onlyLeft') returns the key when i18next is not initialized
+    expect(screen.getByText(/product\.onlyLeft/)).toBeInTheDocument();
   });
 
   it('has accessible like button', () => {
     render(<ProductCard product={mockProduct} onClick={() => {}} />);
-    const likeBtn = screen.getByRole('button', { name: /favoris/i });
+    // t('product.addToFavorites') returns the key when i18next is not initialized
+    const likeBtn = screen.getByRole('button', { name: /product\.(add|remove)ToFavorites/i });
     expect(likeBtn).toBeInTheDocument();
   });
 });

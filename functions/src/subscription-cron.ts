@@ -23,6 +23,7 @@ const COLLECTIONS = {
  */
 export const checkSubscriptions = onSchedule(
   {
+    region: "europe-west1",
     schedule: "0 2 * * *", // 02:00 UTC daily
     timeZone: "UTC",
     retryCount: 1,

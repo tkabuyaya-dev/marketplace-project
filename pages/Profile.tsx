@@ -50,7 +50,7 @@ const Profile: React.FC = () => {
   const roleLabel = currentUser.role === 'admin' ? t('profile.roleAdmin') : currentUser.role === 'seller' ? t('profile.roleSeller') : t('profile.roleBuyer');
 
   return (
-    <div className="pt-20 md:pt-24 px-4 pb-24">
+    <div className="pt-safe-header-lg md:pt-24 px-4 pb-24">
       <div className="bg-gray-800 rounded-3xl p-6 text-center border border-gray-700 max-w-md mx-auto">
         {currentUser.avatar ? (
           <img src={currentUser.avatar} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-gray-900 object-cover" alt="Profile" />
