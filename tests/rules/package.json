@@ -1,0 +1,16 @@
+{
+  "name": "nunulia-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "emulator:start": "firebase emulators:start --only firestore --import=./emulator-data --export-on-exit=./emulator-data"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.9.0",
+    "vitest": "^3.2.4"
+  }
+}

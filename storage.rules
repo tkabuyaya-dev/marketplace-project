@@ -1,0 +1,25 @@
+// ============================================================
+// NUNULIA — Firebase Storage Rules
+// Déploiement : firebase deploy --only storage
+// ============================================================
+//
+// Contexte : toutes les images utilisateurs passent par Cloudinary.
+// L'app N'UTILISE PAS Firebase Storage pour les uploads (grep 'firebase/storage'
+// dans le repo = 0 résultat).
+// Le bucket `storageBucket` est néanmoins provisionné par défaut à l'init
+// Firebase — on le ferme explicitement pour éviter tout vecteur d'upload.
+//
+// Si un jour on ajoute un usage Storage (ex: exports CSV admin, PDFs),
+// créer un path dédié (`admin/exports/`) et ouvrir uniquement ce chemin
+// au rôle concerné.
+// ============================================================
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Deny all par défaut — explicite et versionné.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -9,6 +9,10 @@ import { ProductCard } from '../components/ProductCard';
 import { Button } from '../components/Button';
 import { useAppContext } from '../contexts/AppContext';
 import { updateMetaTags } from '../utils/meta';
+import { getOptimizedUrl } from '../services/cloudinary';
+import { VerifiedBadge } from '../components/VerifiedBadge';
+import { TrustScore } from '../components/TrustScore';
+import { UnverifiedSellerNotice } from '../components/UnverifiedSellerNotice';
 
 const ShopMap = lazy(() => import('../components/ShopMap'));
 const ShopSearch = lazy(() => import('../components/ShopSearch'));
@@ -142,17 +146,23 @@ const ShopProfile: React.FC = () => {
           <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         </button>
         <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent z-10"></div>
-        <img src={bannerUrl} className="w-full h-full object-cover" alt="Shop Banner" />
+        <img src={getOptimizedUrl(bannerUrl, 1200)} className="w-full h-full object-cover" alt="Shop Banner" />
       </div>
 
       {/* SHOP INFO HEADER */}
       <div className="max-w-7xl mx-auto px-4 -mt-16 relative z-20 mb-10">
         <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 shadow-2xl flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
           <div className="relative -mt-16 md:-mt-20 shrink-0">
-            <img src={seller.avatar} className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-950 object-cover shadow-2xl" alt={seller.name} />
+            <TrustScore user={seller} productCount={products.length}>
+              <img src={getOptimizedUrl(seller.avatar, 160)} className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-950 object-cover shadow-2xl" alt={seller.name} />
+            </TrustScore>
             {seller.isVerified && (
-              <div className="absolute bottom-2 right-2 bg-blue-600 text-white p-1.5 rounded-full border-4 border-gray-900" title={t('shop.verified')}>
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
+              <div className={`absolute bottom-2 right-2 p-1.5 rounded-full border-4 border-gray-900 shadow-lg ${
+                seller.verificationTier === 'shop'
+                  ? 'bg-gradient-to-br from-amber-400 to-yellow-600 shadow-amber-500/40'
+                  : 'bg-blue-600 shadow-blue-500/30'
+              }`} title={t('shop.verified')}>
+                <svg className={`w-4 h-4 ${seller.verificationTier === 'shop' ? 'text-gray-900' : 'text-white'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
               </div>
             )}
           </div>
@@ -169,6 +179,7 @@ const ShopProfile: React.FC = () => {
               <span>•</span>
               <span>{t('shopProfile.since', { year: new Date(seller.joinDate || Date.now()).getFullYear() })}</span>
             </div>
+            <UnverifiedSellerNotice tier={seller.verificationTier} variant="banner" className="mt-3" />
           </div>
 
           <div className="flex flex-col gap-3 w-full md:w-auto min-w-[180px]">

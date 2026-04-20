@@ -5,7 +5,7 @@
  * Stats, list, delete, status management.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BuyerRequest, BuyerRequestStatus } from '../../types';
 import {
@@ -39,6 +39,25 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
   const [stats, setStats] = useState<{ todayCount: number; fulfilledCount: number } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [spamPanelOpen, setSpamPanelOpen] = useState(true);
+
+  // Spam detection: same WhatsApp > 5 requests in the last 24h across all loaded requests
+  const spamAlerts = useMemo(() => {
+    const now = Date.now();
+    const window24h = 24 * 60 * 60 * 1000;
+    const counts: Record<string, { count: number; requests: typeof requests }> = {};
+    requests.forEach(r => {
+      if (!r.whatsapp) return;
+      if (now - r.createdAt > window24h) return;
+      if (!counts[r.whatsapp]) counts[r.whatsapp] = { count: 0, requests: [] };
+      counts[r.whatsapp].count++;
+      counts[r.whatsapp].requests.push(r);
+    });
+    return Object.entries(counts)
+      .filter(([, v]) => v.count > 5)
+      .map(([whatsapp, v]) => ({ whatsapp, count: v.count, requests: v.requests }))
+      .sort((a, b) => b.count - a.count);
+  }, [requests]);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -115,6 +134,61 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span>🔥 <span className="text-gold-400 font-bold">{stats.todayCount}</span> demandes aujourd'hui</span>
           <span>✔️ <span className="text-green-400 font-bold">{stats.fulfilledCount}</span> satisfaites au total</span>
+        </div>
+      )}
+
+      {/* Spam alerts */}
+      {spamAlerts.length > 0 && (
+        <div className="bg-red-950/40 border border-red-700/40 rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setSpamPanelOpen(o => !o)}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-900/20 transition-colors"
+          >
+            <span className="text-lg">🚨</span>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-red-400">
+                {t('admin.spamAlertTitle', { count: spamAlerts.length })}
+              </p>
+              <p className="text-xs text-red-500/70">{t('admin.spamAlertSubtitle')}</p>
+            </div>
+            <span className="text-red-500 text-xs">{spamPanelOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {spamPanelOpen && (
+            <div className="border-t border-red-800/30 divide-y divide-red-900/30">
+              {spamAlerts.map(alert => (
+                <div key={alert.whatsapp} className="px-4 py-3 flex items-start gap-3">
+                  <span className="text-xl flex-shrink-0">⚠️</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm text-red-300 font-bold">{alert.whatsapp}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-600/30 text-red-400 border border-red-600/40">
+                        {t('admin.spamCount', { count: alert.count })}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {alert.requests.slice(0, 5).map(r => (
+                        <span key={r.id} className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-md truncate max-w-[160px]">
+                          {r.title}
+                        </span>
+                      ))}
+                      {alert.requests.length > 5 && (
+                        <span className="text-[10px] text-gray-600">+{alert.requests.length - 5}</span>
+                      )}
+                    </div>
+                  </div>
+                  <a
+                    href={`https://wa.me/${alert.whatsapp.replace(/[^0-9+]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-shrink-0 text-[10px] text-green-400 border border-green-600/30 px-2 py-1 rounded-lg hover:bg-green-600/10 transition-colors"
+                  >
+                    WhatsApp
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

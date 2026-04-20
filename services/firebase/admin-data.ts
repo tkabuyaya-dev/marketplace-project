@@ -40,6 +40,36 @@ export const deleteCategory = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, COLLECTIONS.CATEGORIES, id));
 };
 
+/**
+ * Écrase toutes les catégories Firestore avec INITIAL_CATEGORIES.
+ * Supprime également les catégories Firestore absentes de INITIAL_CATEGORIES
+ * (ex: catégories ajoutées manuellement via l'admin qui ne font plus partie des defaults).
+ * Source de vérité unique : constants.ts → INITIAL_CATEGORIES.
+ */
+export const syncCategoriesToFirestore = async (): Promise<number> => {
+  if (!db) throw new Error('Firebase non initialisé');
+
+  const snap = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
+  const existingIds = new Set(snap.docs.map(d => d.id));
+  const newIds = new Set(INITIAL_CATEGORIES.map(c => c.id));
+  const toDelete = [...existingIds].filter(id => !newIds.has(id));
+
+  const batch = writeBatch(db);
+
+  // Overwrite — set() remplace le document entier
+  INITIAL_CATEGORIES.forEach(cat => {
+    batch.set(doc(db, COLLECTIONS.CATEGORIES, cat.id), { ...cat });
+  });
+
+  // Nettoyage des catégories obsolètes
+  toDelete.forEach(id => {
+    batch.delete(doc(db, COLLECTIONS.CATEGORIES, id));
+  });
+
+  await batch.commit();
+  return INITIAL_CATEGORIES.length;
+};
+
 // ── Subscription Tiers ──
 
 export const getSubscriptionTiers = async (): Promise<SubscriptionTier[]> => {
@@ -247,6 +277,67 @@ export const getCountryAuditLogs = async (limitCount: number = 10): Promise<any[
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  adminId: string;
+  adminEmail: string;
+  previousValue: unknown;
+  newValue: unknown;
+  timestamp: number; // ms, converted from Firestore Timestamp
+};
+
+/**
+ * Récupérer les N dernières entrées d'audit log, tous types confondus.
+ * Filtre optionnel par entityType et/ou action.
+ */
+export const getAuditLogs = async (
+  options: { entityType?: string; action?: string; limitCount?: number } = {}
+): Promise<AuditLogEntry[]> => {
+  if (!db) return [];
+  const { entityType, action, limitCount = 50 } = options;
+
+  let q = query(
+    collection(db, COLLECTIONS.AUDIT_LOGS),
+    orderBy('timestamp', 'desc'),
+    limit(limitCount),
+  );
+  // Firestore only allows one equality filter for composite index safety;
+  // entityType is the most selective — additional filters applied client-side.
+  if (entityType) {
+    q = query(
+      collection(db, COLLECTIONS.AUDIT_LOGS),
+      where('entityType', '==', entityType),
+      orderBy('timestamp', 'desc'),
+      limit(limitCount),
+    );
+  }
+
+  const snap = await getDocs(q);
+  let entries: AuditLogEntry[] = snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      action: data.action ?? '',
+      entityType: data.entityType ?? '',
+      entityId: data.entityId ?? '',
+      adminId: data.adminId ?? '',
+      adminEmail: data.adminEmail ?? '',
+      previousValue: data.previousValue ?? null,
+      newValue: data.newValue ?? null,
+      timestamp: data.timestamp?.toMillis?.() ?? 0,
+    };
+  });
+
+  if (action) {
+    entries = entries.filter(e => e.action === action);
+  }
+
+  return entries;
 };
 
 /** Listener temps réel pour les pays actifs uniquement */

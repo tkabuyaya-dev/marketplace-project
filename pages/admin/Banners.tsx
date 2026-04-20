@@ -210,7 +210,7 @@ export const Banners: React.FC<BannersProps> = ({
           banners.map(banner => (
             <div key={banner.id} className={`bg-gray-900 border rounded-xl overflow-hidden flex flex-col sm:flex-row ${banner.isActive ? 'border-green-600/30' : 'border-gray-800 opacity-60'}`}>
               <div className="w-full sm:w-48 h-28 flex-shrink-0 bg-gray-800 relative">
-                <img src={getOptimizedUrl(banner.imageUrl, 300)} alt={banner.title} className="w-full h-full object-cover" />
+                <img src={getOptimizedUrl(banner.imageUrl, 300)} alt={banner.title} loading="lazy" className="w-full h-full object-cover" />
                 {!banner.isActive && (
                   <div className="absolute inset-0 bg-gray-950/60 flex items-center justify-center">
                     <span className="text-xs font-bold text-red-400 bg-gray-900 px-2 py-1 rounded">{t('admin.bannerDisabled')}</span>

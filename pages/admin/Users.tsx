@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../components/Toast';
-import { User, Country } from '../../types';
+import { User, Country, VerificationTier, VerificationMethod } from '../../types';
 import {
   deleteUser, updateUserStatus, updateUserSubscription, updateUserProfile,
   createNotification, renewSubscription,
@@ -91,13 +91,38 @@ export const Users: React.FC<UsersProps> = ({
     }
   };
 
-  const handleVerifyUser = async (userId: string) => {
+  // Approuve un vendeur à un niveau donné. 'identity' = review document à distance,
+  // 'shop' = visite terrain (niveau supérieur). 'isVerified' reste vrai dans les deux cas
+  // pour compat Algolia/queries existantes.
+  const handleVerifyUser = async (userId: string, tier: VerificationTier) => {
+    if (tier !== 'identity' && tier !== 'shop') return;
+    const method: VerificationMethod = tier === 'shop' ? 'field_visit' : 'document_review';
     try {
       await updateUserProfile(userId, {
         isVerified: true,
+        verificationTier: tier,
+        verifiedAt: Date.now(),
+        verificationMethod: method,
         'sellerDetails.verificationStatus': 'verified',
+        'sellerDetails.verifiedAt': Date.now(),
+        'sellerDetails.verificationMethod': method,
       });
-      toast(t('admin.verifyApproved'), 'success');
+      toast(t(tier === 'shop' ? 'admin.verifyApprovedShop' : 'admin.verifyApprovedIdentity'), 'success');
+      refreshData();
+    } catch { toast(t('admin.verifyError'), 'error'); }
+  };
+
+  // Révoque la vérification (remet à 'none' et repasse isVerified à false)
+  const handleUnverifyUser = async (userId: string) => {
+    if (!window.confirm(t('admin.verifyRevokeConfirm'))) return;
+    try {
+      await updateUserProfile(userId, {
+        isVerified: false,
+        verificationTier: 'none',
+        verifiedAt: null,
+        verificationMethod: null,
+      });
+      toast(t('admin.verifyRevoked'), 'success');
       refreshData();
     } catch { toast(t('admin.verifyError'), 'error'); }
   };
@@ -157,27 +182,51 @@ export const Users: React.FC<UsersProps> = ({
             <span>🪪</span> {t('admin.verifyPending')} ({pendingVerifications.length})
           </h3>
           {pendingVerifications.map(user => (
-            <div key={user.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-900/80 rounded-xl p-3 border border-gray-800">
-              <div className="flex items-center gap-3">
-                <img src={user.avatar || '/default-avatar.png'} className="w-10 h-10 rounded-full object-cover" alt="" />
-                <div>
-                  <p className="text-white font-semibold text-sm">{user.name}</p>
-                  <p className="text-gray-500 text-xs">{user.sellerDetails?.shopName} — {user.sellerDetails?.province}</p>
+            <div key={user.id} className="bg-gray-900/80 rounded-xl p-4 border border-gray-800 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <img src={getOptimizedUrl(user.avatar || '', 40) || '/default-avatar.png'} className="w-10 h-10 rounded-full object-cover flex-shrink-0" alt="" loading="lazy" />
+                  <div className="min-w-0">
+                    <p className="text-white font-semibold text-sm">{user.name}</p>
+                    <p className="text-gray-500 text-xs">{user.sellerDetails?.shopName} — {user.sellerDetails?.province}</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[11px]">
+                      <span className="text-gray-500">{t('admin.phoneLabel')}: <span className="text-white">{user.sellerDetails?.phone || user.whatsapp || '—'}</span></span>
+                      <span className="text-gray-500">NIF: <span className={user.sellerDetails?.nif ? 'text-green-400' : 'text-gray-600'}>{user.sellerDetails?.nif || '—'}</span></span>
+                      <span className="text-gray-500">{t('admin.registryLabel')}: <span className={user.sellerDetails?.registryNumber ? 'text-green-400' : 'text-gray-600'}>{user.sellerDetails?.registryNumber || '—'}</span></span>
+                      <span className="text-gray-500">{t('admin.sellingType')}: <span className="text-white">{user.sellerDetails?.sellerType || '—'}</span></span>
+                    </div>
+                    {(user.sellerDetails?.documents?.cniUrl || user.sellerDetails?.documents?.nifUrl || user.sellerDetails?.documents?.registryUrl) && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {user.sellerDetails?.documents?.cniUrl && (
+                          <a href={user.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10">🪪 CNI</a>
+                        )}
+                        {user.sellerDetails?.documents?.nifUrl && (
+                          <a href={user.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10">📄 NIF</a>
+                        )}
+                        {user.sellerDetails?.documents?.registryUrl && (
+                          <a href={user.sellerDetails.documents.registryUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10">📄 RC</a>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {user.sellerDetails?.documents?.cniUrl && (
-                  <a href={user.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-blue-400 border border-blue-500/30 px-2 py-1 rounded-lg hover:bg-blue-500/10">
-                    🪪 CNI
-                  </a>
-                )}
-                <button onClick={() => handleVerifyUser(user.id)}
-                  className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-500">
-                  {t('admin.approve')}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-800">
+                <button onClick={() => handleVerifyUser(user.id, 'identity')}
+                  title={t('admin.verifyIdentityHint')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-500">
+                  <span>✓</span> {t('admin.approveIdentity')}
+                </button>
+                <button onClick={() => handleVerifyUser(user.id, 'shop')}
+                  title={t('admin.verifyShopHint')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-500">
+                  <span>★</span> {t('admin.approveShop')}
                 </button>
                 <button onClick={() => handleRejectVerification(user.id)}
-                  className="px-3 py-1.5 bg-red-600/20 text-red-400 border border-red-600/30 text-xs font-bold rounded-lg hover:bg-red-600 hover:text-white">
+                  className="px-3 py-1.5 bg-red-600/20 text-red-400 border border-red-600/30 text-xs font-bold rounded-lg hover:bg-red-600 hover:text-white ml-auto">
                   {t('admin.reject')}
                 </button>
               </div>
@@ -253,7 +302,7 @@ export const Users: React.FC<UsersProps> = ({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div className="flex items-center gap-4 min-w-0">
                 {u.avatar ? (
-                  <img src={getOptimizedUrl(u.avatar, 40)} className="w-10 h-10 rounded-full flex-shrink-0 object-cover" alt="" />
+                  <img src={getOptimizedUrl(u.avatar, 40)} className="w-10 h-10 rounded-full flex-shrink-0 object-cover" alt="" loading="lazy" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center text-gray-400 font-bold">{u.name?.charAt(0)}</div>
                 )}
@@ -284,13 +333,13 @@ export const Users: React.FC<UsersProps> = ({
                           <div className="flex items-center gap-2 mt-1">
                             <div className="h-1.5 flex-1 max-w-[120px] bg-gray-700 rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  days <= 0 ? 'bg-red-500 w-full' :
+                                className={`h-full rounded-full origin-left transition-transform duration-500 ${
+                                  days <= 0 ? 'bg-red-500' :
                                   days <= 3 ? 'bg-red-500' :
                                   days <= 7 ? 'bg-yellow-500' :
                                   'bg-green-500'
                                 }`}
-                                style={{ width: days <= 0 ? '100%' : `${pct}%` }}
+                                style={{ transform: `scaleX(${days <= 0 ? 1 : pct / 100})` }}
                               />
                             </div>
                             <span className={`text-[10px] font-bold ${
@@ -337,15 +386,30 @@ export const Users: React.FC<UsersProps> = ({
                     <option value="admin">{t('admin.adminRole')}</option>
                   </select>
                 )}
-                <button
-                  onClick={async () => {
-                    await updateUserProfile(u.id, { isVerified: !u.isVerified });
-                    setUsers(prev => prev.map(usr => usr.id === u.id ? { ...usr, isVerified: !usr.isVerified } : usr));
-                  }}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${u.isVerified ? 'bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600 hover:text-white' : 'bg-gray-700/50 text-gray-400 border border-gray-600/30 hover:bg-blue-600 hover:text-white'}`}
-                >
-                  {u.isVerified ? t('admin.verified') : t('admin.verify')}
-                </button>
+                {(() => {
+                  const tier: VerificationTier = u.verificationTier || (u.isVerified ? 'identity' : 'none');
+                  const pillClass =
+                    tier === 'shop' ? 'bg-amber-600/20 text-amber-300 border-amber-600/30' :
+                    tier === 'identity' ? 'bg-blue-600/20 text-blue-300 border-blue-600/30' :
+                    'bg-gray-700/50 text-gray-400 border-gray-600/30';
+                  return (
+                    <select
+                      value={tier}
+                      onChange={(e) => {
+                        const next = e.target.value as VerificationTier;
+                        if (next === tier) return;
+                        if (next === 'none') { handleUnverifyUser(u.id); return; }
+                        if (next === 'identity' || next === 'shop') { handleVerifyUser(u.id, next); }
+                      }}
+                      title={t('admin.tierSelectTitle')}
+                      className={`px-2 py-1.5 text-xs font-bold rounded-lg border outline-none transition-colors ${pillClass}`}
+                    >
+                      <option value="none">{t('admin.tierNoneBadge')}</option>
+                      <option value="identity">{t('admin.tierIdentityBadge')}</option>
+                      <option value="shop">{t('admin.tierShopBadge')}</option>
+                    </select>
+                  );
+                })()}
                 <button onClick={() => toggleSuspend(u)}
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${u.isSuspended ? 'bg-green-600 text-white' : 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 hover:bg-yellow-600 hover:text-white'}`}>
                   {u.isSuspended ? t('admin.reactivate') : t('admin.suspend')}
@@ -381,6 +445,52 @@ export const Users: React.FC<UsersProps> = ({
             {/* Seller Details Panel */}
             {expandedUserId === u.id && u.role === 'seller' && u.sellerDetails && (
               <div className="mt-3 pt-3 border-t border-gray-800 animate-fade-in space-y-4">
+                {/* Verification summary */}
+                {(() => {
+                  const tier: VerificationTier = u.verificationTier || (u.isVerified ? 'identity' : 'none');
+                  const verifiedAt = u.verifiedAt || u.sellerDetails?.verifiedAt;
+                  const method = u.verificationMethod || u.sellerDetails?.verificationMethod;
+                  return (
+                    <div>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">{t('admin.verificationSection')}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-gray-800/50 p-2.5 rounded-lg">
+                          <p className="text-[10px] text-gray-500 uppercase">{t('admin.verificationLevel')}</p>
+                          <p className={`text-sm font-bold ${
+                            tier === 'shop' ? 'text-amber-300' :
+                            tier === 'identity' ? 'text-blue-300' : 'text-gray-400'
+                          }`}>
+                            {tier === 'shop' ? t('admin.tierShopBadge') :
+                             tier === 'identity' ? t('admin.tierIdentityBadge') :
+                             t('admin.tierNoneBadge')}
+                          </p>
+                        </div>
+                        <div className="bg-gray-800/50 p-2.5 rounded-lg">
+                          <p className="text-[10px] text-gray-500 uppercase">{t('admin.verifiedAtLabel')}</p>
+                          <p className="text-sm text-white font-medium">
+                            {verifiedAt ? new Date(verifiedAt).toLocaleDateString() : '—'}
+                          </p>
+                        </div>
+                        <div className="bg-gray-800/50 p-2.5 rounded-lg">
+                          <p className="text-[10px] text-gray-500 uppercase">{t('admin.methodLabel')}</p>
+                          <p className="text-sm text-white font-medium">
+                            {method === 'field_visit' ? t('admin.methodFieldVisit') :
+                             method === 'document_review' ? t('admin.methodDocumentReview') :
+                             method === 'phone_otp' ? t('admin.methodPhoneOtp') : '—'}
+                          </p>
+                        </div>
+                        <div className="bg-gray-800/50 p-2.5 rounded-lg flex items-center justify-center">
+                          {tier !== 'none' && (
+                            <button onClick={() => handleUnverifyUser(u.id)}
+                              className="text-xs text-red-400 hover:text-red-300 underline">
+                              {t('admin.verifyRevoke')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div>
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">{t('admin.personalInfo')}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -431,7 +541,7 @@ export const Users: React.FC<UsersProps> = ({
                     {u.sellerDetails.shopImage && (
                       <div className="bg-gray-800/50 p-2.5 rounded-lg">
                         <p className="text-[10px] text-gray-500 uppercase mb-1">{t('admin.shopPhoto')}</p>
-                        <img src={getOptimizedUrl(u.sellerDetails.shopImage, 120)} alt="Boutique" className="w-20 h-14 rounded-lg object-cover" />
+                        <img src={getOptimizedUrl(u.sellerDetails.shopImage, 120)} alt="Boutique" loading="lazy" className="w-20 h-14 rounded-lg object-cover" />
                       </div>
                     )}
                     {u.sellerDetails.gps?.lat && (

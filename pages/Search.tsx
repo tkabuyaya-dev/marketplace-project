@@ -12,27 +12,55 @@ import { useSearch, SearchFiltersState } from '../hooks/useSearch';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 import { useCategories } from '../hooks/useCategories';
 import { getOptimizedUrl } from '../services/cloudinary';
-import { INITIAL_COUNTRIES, PROVINCES_BY_COUNTRY } from '../constants';
-import { COMMUNES_BY_PROVINCE } from '../data/locations';
+import { INITIAL_COUNTRIES } from '../constants';
+import { CITIES_BY_COUNTRY } from '../data/locations';
 import { Product } from '../types';
 import { addToSearchHistory, getSearchHistory, getPopularSearches, removeFromSearchHistory, getLocalSuggestions } from '../services/popular-searches';
-import { algoliaSearchProductsFull } from '../services/algolia';
+import { algoliaSearchProductsFull, algoliaAutocompleteProducts } from '../services/algolia';
 import { trackSearchClick } from '../services/algolia-insights';
 import { useAppContext } from '../contexts/AppContext';
 import { JeChercheBlock } from '../components/JeCherche/JeChercheBlock';
-import { JeChercheForm } from '../components/JeCherche/JeChercheForm';
 
-// ── Skeleton Card ──
+// ── Skeleton Card — matches AliExpress two-zone layout ──
 const SkeletonCard = () => (
-  <div className="bg-gray-800/50 rounded-2xl overflow-hidden animate-pulse">
-    <div className="aspect-square bg-gray-700/50" />
-    <div className="p-3 space-y-2">
-      <div className="h-4 bg-gray-700/50 rounded w-3/4" />
-      <div className="h-3 bg-gray-700/50 rounded w-1/2" />
-      <div className="h-4 bg-gray-700/50 rounded w-1/3" />
+  <div className="rounded-xl overflow-hidden bg-gray-900 border border-gray-800/60 animate-pulse">
+    {/* Image zone */}
+    <div className="aspect-square bg-gray-800 relative overflow-hidden">
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.04) 50%, transparent 75%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.8s infinite linear',
+      }} />
+    </div>
+    {/* Info zone */}
+    <div className="p-2.5 space-y-2">
+      <div className="h-3 bg-gray-800 rounded-full w-full" />
+      <div className="h-3 bg-gray-800 rounded-full w-3/5" />
+      <div className="h-3 bg-gray-700/60 rounded-full w-2/5 mt-1" />
+      <div className="h-2 bg-gray-800/60 rounded-full w-1/2" />
     </div>
   </div>
 );
+
+// ── Safe Algolia highlight renderer ──
+// Algolia wraps matched segments in <em>...</em>; everything else is HTML-entity-
+// escaped. We split on <em> tags and render each segment as text (React escapes
+// it automatically), promoting matches to <mark>. No dangerouslySetInnerHTML.
+const HTML_ENTITIES: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#x27;': "'",
+};
+const decodeEntities = (s: string) =>
+  s.replace(/&(amp|lt|gt|quot|#39|#x27);/g, m => HTML_ENTITIES[m] ?? m);
+
+function renderHighlight(html: string): React.ReactNode {
+  const parts = html.split(/(<em>[\s\S]*?<\/em>)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('<em>') && part.endsWith('</em>')) {
+      return <mark key={i}>{decodeEntities(part.slice(4, -5))}</mark>;
+    }
+    return <React.Fragment key={i}>{decodeEntities(part)}</React.Fragment>;
+  });
+}
 
 // ── Country flag helper ──
 function getCountryFlag(countryId?: string): string {
@@ -45,90 +73,119 @@ function getCountryCurrency(countryId?: string): string {
   return INITIAL_COUNTRIES.find(c => c.id === countryId)?.currency || '';
 }
 
-// ── Product Card ──
+// ── Product Card — AliExpress-style marketplace card ──
 const ProductCard: React.FC<{
   product: Product;
   highlight?: Record<string, string>;
   onClick: () => void;
-}> = ({ product, highlight, onClick }) => {
+  index?: number;
+}> = ({ product, highlight, onClick, index = 0 }) => {
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const isNew = product.createdAt > thirtyDaysAgo;
   const currency = product.currency || getCountryCurrency(product.countryId);
   const flag = getCountryFlag(product.countryId);
+  const discount = product.originalPrice && product.originalPrice > product.price
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    : null;
+  const animDelay = Math.min((index % 20) * 45, 450);
+  const stars = Math.min(5, Math.max(0, Math.round(product.rating || 0)));
+  const reviewCount = product.reviews || 0;
 
   return (
     <button
       onClick={onClick}
-      className={`bg-gray-800/50 hover:bg-gray-800 border rounded-2xl overflow-hidden transition-all duration-200 text-left group w-full ${
-        product.isSponsored ? 'border-gold-400/30 hover:border-gold-400/50' : 'border-gray-700/50 hover:border-gray-600'
-      }`}
+      style={{ animationDelay: `${animDelay}ms` }}
+      className={[
+        'group w-full text-left overflow-hidden rounded-xl',
+        'animate-card-in bg-gray-900 border border-gray-800/60',
+        'hover:border-gray-600/80 hover:shadow-xl hover:-translate-y-px',
+        'transition-[border-color,box-shadow,transform] duration-300 ease-out',
+        product.isSponsored ? 'ring-1 ring-amber-400/20 hover:ring-amber-400/40' : '',
+      ].filter(Boolean).join(' ')}
     >
-      {/* Image */}
-      <div className="aspect-square relative overflow-hidden bg-gray-900">
+      {/* ── Image zone ── */}
+      <div className="relative aspect-square overflow-hidden bg-gray-800">
         {product.images?.[0] ? (
           <img
-            src={getOptimizedUrl(product.images[0], 300)}
+            src={getOptimizedUrl(product.images[0], 320)}
             alt={product.title}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading={index < 6 ? 'eager' : 'lazy'}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-600 text-4xl">📦</div>
+          <div className="absolute inset-0 flex items-center justify-center text-gray-700 text-4xl">📦</div>
         )}
-        {/* Top-left badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.isSponsored && (
-            <span className="bg-gold-400/90 text-gray-900 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-              SPONSORED
-            </span>
-          )}
-          {isNew && (
-            <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              NEW
-            </span>
-          )}
-        </div>
-        {/* Country flag badge */}
-        {flag && (
-          <span className="absolute bottom-2 left-2 text-lg drop-shadow-lg" title={product.countryId}>
-            {flag}
+
+        {/* Discount badge — top-left */}
+        {discount && (
+          <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-black px-1.5 py-[3px] rounded-sm leading-tight z-10 shadow-sm">
+            -{discount}%
           </span>
         )}
-        {product.originalPrice && product.originalPrice > product.price && (
-          <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-            -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+
+        {/* Sponsored — top-right */}
+        {product.isSponsored && (
+          <span className="absolute top-1.5 right-1.5 bg-amber-400/90 backdrop-blur-sm text-gray-900 text-[8px] font-black px-1.5 py-[3px] rounded-sm leading-tight z-10 tracking-widest">
+            AD
+          </span>
+        )}
+
+        {/* New badge — top-right (when not sponsored) */}
+        {isNew && !product.isSponsored && (
+          <span className="absolute top-1.5 right-1.5 bg-emerald-500/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-[3px] rounded-sm leading-tight z-10">
+            NEW
           </span>
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-3 space-y-1.5">
-        {/* Title with highlight */}
+      {/* ── Info zone ── */}
+      <div className="p-2.5 space-y-1">
+        {/* Title */}
         {highlight?.title ? (
-          <p
-            className="text-sm text-white font-medium line-clamp-2 [&>mark]:bg-gold-400/30 [&>mark]:text-gold-400 [&>mark]:rounded"
-            dangerouslySetInnerHTML={{ __html: highlight.title }}
-          />
+          <p className="text-[12px] text-gray-200 leading-snug line-clamp-2 [&>mark]:bg-amber-400/30 [&>mark]:text-amber-200 [&>mark]:rounded-sm">
+            {renderHighlight(highlight.title)}
+          </p>
         ) : (
-          <p className="text-sm text-white font-medium line-clamp-2">{product.title}</p>
+          <p className="text-[12px] text-gray-200 leading-snug line-clamp-2">{product.title}</p>
         )}
 
-        {/* Seller + country */}
-        <p className="text-xs text-gray-500 truncate">
-          {product.seller?.name || 'Vendeur'} {flag && <span className="ml-0.5">{flag}</span>}
-        </p>
+        {/* Stars + review count */}
+        {reviewCount > 0 && (
+          <div className="flex items-center gap-1">
+            <div className="flex items-center gap-px">
+              {[1, 2, 3, 4, 5].map(n => (
+                <svg key={n} width="9" height="9" viewBox="0 0 24 24"
+                  fill={n <= stars ? '#f59e0b' : 'none'}
+                  stroke={n <= stars ? '#f59e0b' : '#4b5563'}
+                  strokeWidth="2"
+                >
+                  <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                </svg>
+              ))}
+            </div>
+            <span className="text-[10px] text-gray-500 leading-none">
+              {reviewCount >= 1000 ? `${(reviewCount / 1000).toFixed(1)}K` : reviewCount}
+            </span>
+          </div>
+        )}
 
-        {/* Price */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-white">
-            {product.price?.toLocaleString()} {currency}
+        {/* Price row */}
+        <div className="flex items-baseline gap-1 flex-wrap">
+          <span className="text-[14px] font-bold text-white leading-none">
+            {product.price?.toLocaleString()}
           </span>
+          <span className="text-[10px] text-gray-500 font-medium">{currency}</span>
           {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-xs text-gray-500 line-through">
+            <span className="text-[10px] text-gray-600 line-through ml-auto">
               {product.originalPrice.toLocaleString()}
             </span>
           )}
         </div>
+
+        {/* Seller + flag */}
+        <p className="text-[10px] text-gray-600 truncate leading-none">
+          {product.seller?.name || '—'}{flag && <span className="ml-1">{flag}</span>}
+        </p>
       </div>
     </button>
   );
@@ -142,13 +199,18 @@ const SearchPage: React.FC = () => {
   const { categories } = useCategories();
   const { activeCountry } = useAppContext();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [showJeChercheForm, setShowJeChercheForm] = useState(false);
+  const [gridDensity, setGridDensity] = useState<'comfortable' | 'compact'>('comfortable');
+  const openJeChercheForm = () => window.dispatchEvent(new CustomEvent('open-je-cherche'));
 
   const {
     query, filters, results, isLoading, hasMore,
     totalCount, error, highlightResults, queryID,
     setQuery, setFilter, resetFilters, loadMore,
   } = useSearch();
+
+  // Local input state — decoupled from useSearch to prevent per-keystroke Algolia calls.
+  // Algolia only fires when user presses Enter or selects a suggestion.
+  const [inputValue, setInputValue] = useState(query);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -160,7 +222,10 @@ const SearchPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState(-1);
   const autocompleteAbort = useRef(0);
+  const activeCountryRef = useRef(activeCountry);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { activeCountryRef.current = activeCountry; }, [activeCountry]);
 
   // Focus input on mount
   useEffect(() => {
@@ -178,41 +243,39 @@ const SearchPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Autocomplete: local suggestions + Algolia product previews ──
+  // ── Autocomplete: local suggestions only (lightweight, no Algolia per-keystroke) ──
   useEffect(() => {
     const requestId = ++autocompleteAbort.current;
-    if (query.length < 1) {
+    if (inputValue.length < 1) {
       setSuggestions([]);
       setAutoProducts([]);
       setShowSuggestions(false);
       return;
     }
-    // Layer 1: Instant local suggestions
-    const local = getLocalSuggestions(query);
+    // Layer 1: Instant local suggestions (free — no Algolia call)
+    const local = getLocalSuggestions(inputValue);
     setSuggestions(local);
     setShowSuggestions(local.length > 0);
     setSelectedSuggestionIdx(-1);
 
-    // Layer 2: Algolia product previews (2+ chars, debounced)
-    if (query.length >= 2) {
+    // Layer 2: Lightweight Algolia autocomplete (2+ chars, 800ms debounce for slow typists)
+    if (inputValue.length >= 2) {
       const timer = setTimeout(async () => {
         try {
-          const result = await algoliaSearchProductsFull(query, {
-            sort: 'relevance',
-            userCountry: activeCountry || undefined,
-          }, 0, 5);
+          const products = await algoliaAutocompleteProducts(inputValue, activeCountryRef.current || undefined);
           if (autocompleteAbort.current !== requestId) return;
-          setAutoProducts(result.products);
-          if (result.products.length > 0 || local.length > 0) setShowSuggestions(true);
+          setAutoProducts(products);
+          if (products.length > 0 || local.length > 0) setShowSuggestions(true);
         } catch { /* silent */ }
-      }, 200);
+      }, 800);
       return () => clearTimeout(timer);
     } else {
       setAutoProducts([]);
     }
-  }, [query, activeCountry]);
+  }, [inputValue]);
 
   const handleSelectSuggestion = useCallback((term: string) => {
+    setInputValue(term);
     setQuery(term);
     setShowSuggestions(false);
     addToSearchHistory(term);
@@ -258,17 +321,18 @@ const SearchPage: React.FC = () => {
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      addToSearchHistory(query.trim());
+    const term = inputValue.trim();
+    if (term) {
+      addToSearchHistory(term);
       setRecentSearches(getSearchHistory().slice(0, 5));
+      setQuery(term);
     }
     setShowSuggestions(false);
-  }, [query]);
+  }, [inputValue, setQuery]);
 
   const activeFilterCount = [
     filters.country,
     filters.province,
-    filters.commune,
     filters.isNew,
     filters.category,
     filters.minPrice !== null,
@@ -278,64 +342,37 @@ const SearchPage: React.FC = () => {
   // ── Filter Sidebar Content (shared desktop/mobile) ──
   const renderFilters = () => (
     <div className="space-y-6">
-      {/* Country */}
+      {/* Pays — dropdown, défaut = Tous */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('search.countryLabel')}</h4>
-        <div className="space-y-1">
-          <button
-            onClick={() => { setFilter('country', null); setFilter('province', null); setFilter('commune', null); }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-              !filters.country ? 'bg-gold-400/10 text-gold-400 font-bold' : 'text-gray-400 hover:bg-gray-800'
-            }`}
-          >
-            {t('search.allCountries')}
-          </button>
+        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('search.countryLabel')}</h4>
+        <select
+          value={filters.country ?? ''}
+          onChange={e => {
+            const val = e.target.value || null;
+            setFilter('country', val);
+            setFilter('province', null); // reset city when country changes
+          }}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer focus:border-gold-400/50"
+        >
+          <option value="">{t('search.allCountries')}</option>
           {countries.map(c => (
-            <button
-              key={c.id}
-              onClick={() => { setFilter('country', filters.country === c.id ? null : c.id); setFilter('province', null); setFilter('commune', null); }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                filters.country === c.id ? 'bg-gold-400/10 text-gold-400 font-bold' : 'text-gray-400 hover:bg-gray-800'
-              }`}
-            >
-              <span>{c.flag}</span> {c.name}
-            </button>
+            <option key={c.id} value={c.id}>{c.flag} {c.name}</option>
           ))}
-        </div>
+        </select>
       </div>
 
-      {/* Province/Region — visible when a country is selected */}
-      {filters.country && PROVINCES_BY_COUNTRY[filters.country] && (
+      {/* Ville — dropdown cascadant, visible uniquement quand un pays est sélectionné */}
+      {filters.country && CITIES_BY_COUNTRY[filters.country] && (
         <div>
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('search.provinceLabel')}</h4>
+          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ville</h4>
           <select
-            value={filters.province || ''}
-            onChange={e => {
-              setFilter('province', e.target.value || null);
-              setFilter('commune', null);
-            }}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer"
+            value={filters.province ?? ''}
+            onChange={e => setFilter('province', e.target.value || null)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer focus:border-gold-400/50"
           >
-            <option value="">{t('search.allProvinces')}</option>
-            {PROVINCES_BY_COUNTRY[filters.country].map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Commune/City — visible when a province is selected and communes data exists */}
-      {filters.country && filters.province && COMMUNES_BY_PROVINCE[filters.country]?.[filters.province] && (
-        <div>
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('search.communeLabel')}</h4>
-          <select
-            value={filters.commune || ''}
-            onChange={e => setFilter('commune', e.target.value || null)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer"
-          >
-            <option value="">{t('search.allCommunes')}</option>
-            {COMMUNES_BY_PROVINCE[filters.country][filters.province].map(c => (
-              <option key={c} value={c}>{c}</option>
+            <option value="">Toutes les villes</option>
+            {CITIES_BY_COUNTRY[filters.country].map(city => (
+              <option key={city} value={city}>{city}</option>
             ))}
           </select>
         </div>
@@ -420,100 +457,7 @@ const SearchPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 pt-safe-header-lg md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="max-w-3xl mx-auto mb-6">
-        <div className="relative" ref={suggestionsRef}>
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">&#128269;</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={e => { setQuery(e.target.value); setShowSuggestions(true); }}
-            onFocus={() => { if (query.length >= 1 && (suggestions.length > 0 || autoProducts.length > 0)) setShowSuggestions(true); }}
-            onKeyDown={e => {
-              if (e.key === 'ArrowDown' && showSuggestions) {
-                e.preventDefault();
-                setSelectedSuggestionIdx(prev => Math.min(prev + 1, suggestions.length - 1));
-              } else if (e.key === 'ArrowUp' && showSuggestions) {
-                e.preventDefault();
-                setSelectedSuggestionIdx(prev => Math.max(prev - 1, -1));
-              } else if (e.key === 'Enter' && selectedSuggestionIdx >= 0 && suggestions[selectedSuggestionIdx]) {
-                e.preventDefault();
-                handleSelectSuggestion(suggestions[selectedSuggestionIdx]);
-              } else if (e.key === 'Escape') {
-                setShowSuggestions(false);
-              }
-            }}
-            placeholder={t('search.searchPlaceholder')}
-            className="w-full bg-gray-800/80 border border-gray-700 rounded-2xl pl-12 pr-4 py-3.5 text-white placeholder-gray-500 focus:border-gold-400/50 focus:ring-1 focus:ring-gold-400/20 outline-none text-sm"
-            role="combobox"
-            aria-expanded={showSuggestions}
-            aria-autocomplete="list"
-            aria-label={t('search.searchPlaceholder')}
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => { setQuery(''); setShowSuggestions(false); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-sm"
-            >
-              &#10005;
-            </button>
-          )}
-
-          {/* Suggestions Dropdown */}
-          {showSuggestions && (suggestions.length > 0 || autoProducts.length > 0) && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-30 max-h-[60vh] overflow-y-auto" role="listbox">
-              {/* Text suggestions */}
-              {suggestions.map((s, i) => (
-                <button
-                  key={`s-${i}`}
-                  onClick={() => handleSelectSuggestion(s)}
-                  className={`w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white flex items-center gap-3 transition-colors ${selectedSuggestionIdx === i ? 'bg-gray-800 text-white' : ''}`}
-                  role="option"
-                  aria-selected={selectedSuggestionIdx === i}
-                >
-                  <span className="text-gray-600">&#128269;</span>
-                  <span>{highlightMatch(s, query)}</span>
-                </button>
-              ))}
-              {/* Algolia product previews */}
-              {autoProducts.length > 0 && (
-                <>
-                  {suggestions.length > 0 && <div className="border-t border-gray-800 my-1" />}
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-gray-600 uppercase tracking-wider">{t('search.productsCount', { count: autoProducts.length })}</div>
-                  {autoProducts.map((p) => {
-                    const flag = INITIAL_COUNTRIES.find(c => c.id === p.countryId)?.flag || '';
-                    const currency = p.currency || INITIAL_COUNTRIES.find(c => c.id === p.countryId)?.currency || '';
-                    return (
-                      <button
-                        key={`p-${p.id}`}
-                        onClick={() => {
-                          addToSearchHistory(query.trim());
-                          setShowSuggestions(false);
-                          navigate(`/product/${p.slug || p.id}`, { state: { product: p } });
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-800 flex items-center gap-3 transition-colors"
-                      >
-                        <img src={getOptimizedUrl(p.images?.[0], 48)} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-800" loading="lazy" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate">{p.title}</p>
-                          <p className="text-xs text-gray-500 truncate">{p.seller?.name} {flag}</p>
-                        </div>
-                        <span className="text-sm font-bold text-white whitespace-nowrap">
-                          {p.price?.toLocaleString()} <span className="text-[10px] text-gray-500">{currency}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </form>
-
+    <div className="min-h-screen bg-gray-950 pt-safe-header md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
       {/* Toolbar: results count + sort + actions */}
       <div className="max-w-7xl mx-auto mb-4 space-y-2">
         {/* Row 1: count (left) + Je Cherche desktop + sort (right) */}
@@ -529,19 +473,6 @@ const SearchPage: React.FC = () => {
             }
           </p>
 
-          {/* Je Cherche — desktop only in this row */}
-          <button
-            onClick={() => setShowJeChercheForm(true)}
-            className="hidden md:relative md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 bg-gradient-to-r from-gold-400 to-amber-400 shadow-lg shadow-gold-400/30 hover:shadow-gold-400/50 hover:brightness-110 hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 shrink-0"
-          >
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-            </span>
-            <span className="text-base leading-none">📣</span>
-            <span>Je Cherche</span>
-          </button>
-
           {/* Sort Dropdown */}
           <select
             value={filters.sortBy}
@@ -553,13 +484,48 @@ const SearchPage: React.FC = () => {
             <option value="price_asc">{t('search.sortPriceAsc')}</option>
             <option value="price_desc">{t('search.sortPriceDesc')}</option>
           </select>
+
+          {/* Grid density toggle — desktop only */}
+          <div className="hidden md:flex items-center bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shrink-0">
+            <button
+              onClick={() => setGridDensity('comfortable')}
+              title="Vue confortable"
+              className={`p-2 transition-colors ${gridDensity === 'comfortable' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              {/* 2×2 grid icon */}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="0.5" y="0.5" width="6.5" height="6.5" rx="1.5"/>
+                <rect x="9" y="0.5" width="6.5" height="6.5" rx="1.5"/>
+                <rect x="0.5" y="9" width="6.5" height="6.5" rx="1.5"/>
+                <rect x="9" y="9" width="6.5" height="6.5" rx="1.5"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => setGridDensity('compact')}
+              title="Vue compacte"
+              className={`p-2 transition-colors ${gridDensity === 'compact' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              {/* 3×3 grid icon */}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="0" y="0" width="4.2" height="4.2" rx="1"/>
+                <rect x="5.9" y="0" width="4.2" height="4.2" rx="1"/>
+                <rect x="11.8" y="0" width="4.2" height="4.2" rx="1"/>
+                <rect x="0" y="5.9" width="4.2" height="4.2" rx="1"/>
+                <rect x="5.9" y="5.9" width="4.2" height="4.2" rx="1"/>
+                <rect x="11.8" y="5.9" width="4.2" height="4.2" rx="1"/>
+                <rect x="0" y="11.8" width="4.2" height="4.2" rx="1"/>
+                <rect x="5.9" y="11.8" width="4.2" height="4.2" rx="1"/>
+                <rect x="11.8" y="11.8" width="4.2" height="4.2" rx="1"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Row 2: mobile only — Filtres (flex-1) + Je Cherche */}
+        {/* Row 2: mobile only — Filtres */}
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={() => setShowMobileFilters(true)}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300"
           >
             <span>&#9776;</span> {t('search.filters')}
             {activeFilterCount > 0 && (
@@ -567,18 +533,6 @@ const SearchPage: React.FC = () => {
                 {activeFilterCount}
               </span>
             )}
-          </button>
-
-          <button
-            onClick={() => setShowJeChercheForm(true)}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 bg-gradient-to-r from-gold-400 to-amber-400 shadow-lg shadow-gold-400/30 hover:shadow-gold-400/50 hover:brightness-110 hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 shrink-0"
-          >
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-            </span>
-            <span className="text-base leading-none">📣</span>
-            <span>Je Cherche</span>
           </button>
         </div>
       </div>
@@ -610,20 +564,31 @@ const SearchPage: React.FC = () => {
 
           {/* Loading Skeletons */}
           {isLoading && results.length === 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            <div className={`grid gap-2 ${
+              gridDensity === 'comfortable'
+                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+                : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+            }`}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
           )}
 
           {/* Results */}
           {results.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className={`grid gap-2 ${
+              gridDensity === 'comfortable'
+                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+                : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+            }`}>
               {results.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
                   highlight={highlightResults.get(product.id)}
                   onClick={() => handleProductClick(product, index)}
+                  index={index}
                 />
               ))}
             </div>
@@ -637,7 +602,7 @@ const SearchPage: React.FC = () => {
                   <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.recentSearches')}</h3>
                   <div className="flex flex-wrap gap-2">
                     {recentSearches.map((term, i) => (
-                      <div key={i} className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/50 rounded-full">
+                      <div key={i} className="flex items-center min-h-[44px] gap-1 bg-gray-800/60 border border-gray-700/50 rounded-full">
                         <button
                           onClick={() => handleSelectSuggestion(term)}
                           className="pl-3 pr-1 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
@@ -696,7 +661,7 @@ const SearchPage: React.FC = () => {
             <JeChercheBlock
               query={query.trim()}
               mode="no_results"
-              onOpen={() => setShowJeChercheForm(true)}
+              onOpen={openJeChercheForm}
             />
           )}
 
@@ -705,7 +670,7 @@ const SearchPage: React.FC = () => {
             <JeChercheBlock
               query={query.trim()}
               mode="few_results"
-              onOpen={() => setShowJeChercheForm(true)}
+              onOpen={openJeChercheForm}
             />
           )}
 
@@ -726,13 +691,6 @@ const SearchPage: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Je Cherche Form */}
-      <JeChercheForm
-        isOpen={showJeChercheForm}
-        onClose={() => setShowJeChercheForm(false)}
-        initialQuery={query.trim()}
-      />
 
       {/* Mobile Filter Bottom Sheet */}
       {showMobileFilters && (

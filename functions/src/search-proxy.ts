@@ -9,6 +9,8 @@
 
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import { FieldValue } from "firebase-admin/firestore";
+import { getDb } from "./admin.js";
 import {
   ALGOLIA_APP_ID,
   ALGOLIA_ADMIN_KEY,
@@ -52,6 +54,13 @@ export const cachedSearch = onRequest(
       res.status(400).json({ error: "Query must be at least 2 characters" });
       return;
     }
+
+    // Fire-and-forget monthly search counter
+    const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+    getDb()
+      .then(db => db.collection("_stats").doc(`searches_${month}`)
+        .set({ count: FieldValue.increment(1) }, { merge: true }))
+      .catch(() => {}); // never block the search response
 
     // Sanitize params
     const limit = Math.min(Math.abs(parseInt(req.query.limit as string) || 20), 30);
@@ -220,6 +229,8 @@ async function searchAlgolia(query: string, params: SearchParams): Promise<Searc
     slug: hit.slug,
     avatar: hit.avatar || "",
     isVerified: hit.isVerified || false,
+    verificationTier: hit.verificationTier || (hit.isVerified ? "identity" : "none"),
+    trustScore: typeof hit.trustScore === "number" ? hit.trustScore : 0,
     productCount: hit.productCount || 0,
     marketplace: hit.marketplace || null,
   }));

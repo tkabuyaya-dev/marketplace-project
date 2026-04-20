@@ -42,12 +42,16 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-sm ${
+        className={`flex items-center gap-1 ${compact ? 'px-1.5 py-1 rounded-lg' : 'px-2.5 py-1.5 min-h-[44px] rounded-lg'} border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-sm ${
           open ? TC.border400 : ''
         }`}
       >
-        <span className="text-base">{current?.flag}</span>
-        {!compact && <span className="text-gray-300 text-xs">{current?.code.toUpperCase()}</span>}
+        {/* Globe icon instead of flag */}
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} className="text-gray-400 flex-shrink-0">
+          <circle cx="12" cy="12" r="10" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+        <span className="text-gray-300 text-xs font-medium">{current?.code.toUpperCase()}</span>
         <span className="text-gray-500 text-[10px]">▼</span>
       </button>
 

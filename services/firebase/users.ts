@@ -5,7 +5,7 @@
 import { User, SellerDetails } from '../../types';
 import { slugify, generateUniqueSlug } from '../../utils/slug';
 import {
-  db, collection, doc, getDoc, getDocs, updateDoc, deleteDoc,
+  db, auth, collection, doc, getDoc, getDocs, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, writeBatch, COLLECTIONS, docToUser,
 } from './constants';
 import type { QueryDocumentSnapshot } from './constants';
@@ -65,21 +65,9 @@ export const getAllUsers = async (lastDoc?: QueryDocumentSnapshot): Promise<{ us
 
 export const updateUserStatus = async (userId: string, isSuspended: boolean): Promise<void> => {
   if (!db) return;
+  // Only update the user doc — the Cloud Function onSellerStatusChange handles
+  // the bulk product update server-side (avoids client-side timeout for large catalogs).
   await updateDoc(doc(db, COLLECTIONS.USERS, userId), { isSuspended });
-
-  // Batch-update all seller's products: mark/unmark as sellerSuspended
-  const productsQuery = query(
-    collection(db, COLLECTIONS.PRODUCTS),
-    where('sellerId', '==', userId)
-  );
-  const snap = await getDocs(productsQuery);
-  if (snap.empty) return;
-
-  const batch = writeBatch(db);
-  snap.docs.forEach(d => {
-    batch.update(d.ref, { sellerSuspended: isSuspended });
-  });
-  await batch.commit();
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
@@ -146,9 +134,15 @@ export const registerSeller = async (userId: string, data: SellerDetails): Promi
     sellerDetails: { ...cleanData, maxProducts: 5, tierLabel: 'Découverte (Gratuit)' },
     whatsapp:      data.phone,
     isVerified:    false,
+    verificationTier: 'none',
     productCount:  0,
     nameLower:     shopName.toLowerCase(),
   });
+
+  // Force JWT refresh — the CF onUserRoleWrite sets role:'seller' in claims.
+  // Best-effort: if the CF hasn't fired yet, subscribeToUserProfile will
+  // catch claimsUpdatedAt and retry, plus withClaimsRetry handles permission-denied.
+  try { await auth?.currentUser?.getIdToken(true); } catch { /* non-critical */ }
 
   const updatedSnap = await getDoc(userRef);
   return docToUser(updatedSnap.data()!, userId);

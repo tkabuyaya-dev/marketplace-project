@@ -14,6 +14,11 @@ import { RECAPTCHA_SECRET_KEY, ALLOWED_ORIGINS } from "./config.js";
 
 /** Minimum score to pass (0.0 = bot, 1.0 = human) */
 const MIN_SCORE = 0.5;
+/** Seuil durci pour l'inscription vendeur (surface d'abus la plus attractive). */
+const MIN_SCORE_SELLER_REGISTRATION = 0.7;
+
+const getMinScore = (action?: string): number =>
+  action === "seller_registration" ? MIN_SCORE_SELLER_REGISTRATION : MIN_SCORE;
 
 export const verifyRecaptcha = onRequest(
   {
@@ -60,9 +65,10 @@ export const verifyRecaptcha = onRequest(
         return;
       }
 
-      // Check score
-      if (data.score < MIN_SCORE) {
-        logger.warn("[verifyRecaptcha] Low score:", { score: data.score, action: data.action });
+      // Check score (per-action threshold)
+      const minScore = getMinScore(data.action);
+      if (data.score < minScore) {
+        logger.warn("[verifyRecaptcha] Low score:", { score: data.score, action: data.action, threshold: minScore });
         res.status(403).json({ success: false, error: "Score too low", score: data.score });
         return;
       }

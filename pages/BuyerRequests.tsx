@@ -18,8 +18,8 @@ import {
   PAGE_SIZE,
 } from '../services/firebase/buyer-requests';
 import { BuyerRequest } from '../types';
-import { INITIAL_COUNTRIES, PROVINCES_BY_COUNTRY, INITIAL_CATEGORIES } from '../constants';
-import { COMMUNES_BY_PROVINCE } from '../data/locations';
+import { INITIAL_COUNTRIES, INITIAL_CATEGORIES } from '../constants';
+import { CITIES_BY_COUNTRY } from '../data/locations';
 
 // ─── Request Card ─────────────────────────────────────────────────────────────
 
@@ -132,7 +132,6 @@ export const BuyerRequestsPage: React.FC = () => {
 
   // Filters
   const [filterCountry, setFilterCountry] = useState('');
-  const [filterProvince, setFilterProvince] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
 
@@ -142,15 +141,13 @@ export const BuyerRequestsPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const lastDocRef = useRef<any>(null);
 
-  const provinces = filterCountry ? (PROVINCES_BY_COUNTRY[filterCountry] || []) : [];
-  const communes: string[] = (filterCountry && filterProvince && COMMUNES_BY_PROVINCE[filterCountry]?.[filterProvince]) ? COMMUNES_BY_PROVINCE[filterCountry][filterProvince] : [];
+  const cities = filterCountry ? (CITIES_BY_COUNTRY[filterCountry] || []) : [];
 
   const load = useCallback(async (reset = false) => {
     setLoading(true);
     try {
       const filters: BuyerRequestFilters = { status: 'active' };
       if (filterCountry)  filters.countryId = filterCountry;
-      if (filterProvince) filters.province = filterProvince;
       if (filterCity)     filters.city = filterCity;
       if (filterCategory) filters.category = filterCategory;
 
@@ -165,13 +162,13 @@ export const BuyerRequestsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterCountry, filterProvince, filterCity, filterCategory]);
+  }, [filterCountry, filterCity, filterCategory]);
 
   // Reset on filter change
   useEffect(() => {
     lastDocRef.current = null;
     load(true);
-  }, [filterCountry, filterProvince, filterCity, filterCategory]);
+  }, [filterCountry, filterCity, filterCategory]);
 
   const handleContact = async (request: BuyerRequest) => {
     await trackWhatsAppContact(request.id, currentUser.id, sellerTierId);
@@ -220,12 +217,12 @@ export const BuyerRequestsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {/* Filters — Pays → Ville → Catégorie (même logique que Search et JeChercheForm) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           <select
             value={filterCountry}
-            onChange={e => { setFilterCountry(e.target.value); setFilterProvince(''); setFilterCity(''); }}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer col-span-2 md:col-span-1"
+            onChange={e => { setFilterCountry(e.target.value); setFilterCity(''); }}
+            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer"
           >
             <option value="">{t('requests.filters.allCountries')}</option>
             {INITIAL_COUNTRIES.filter(c => c.isActive).map(c => (
@@ -234,23 +231,13 @@ export const BuyerRequestsPage: React.FC = () => {
           </select>
 
           <select
-            value={filterProvince}
-            onChange={e => { setFilterProvince(e.target.value); setFilterCity(''); }}
+            value={filterCity}
+            onChange={e => setFilterCity(e.target.value)}
             disabled={!filterCountry}
             className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer disabled:opacity-40"
           >
-            <option value="">{t('requests.filters.allProvinces')}</option>
-            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-
-          <select
-            value={filterCity}
-            onChange={e => setFilterCity(e.target.value)}
-            disabled={!filterProvince}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer disabled:opacity-40"
-          >
             <option value="">{t('requests.filters.allCities')}</option>
-            {communes.map(c => <option key={c} value={c}>{c}</option>)}
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
 
           <select
@@ -278,16 +265,18 @@ export const BuyerRequestsPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {requests.map(r => (
-              <RequestCard
-                key={r.id}
-                request={r}
-                canContact={eligible}
-                sellerTierId={sellerTierId}
-                onContact={handleContact}
-                onUpgrade={handleUpgrade}
-              />
-            ))}
+            {requests
+              .filter(r => r.expiresAt > Date.now())
+              .map(r => (
+                <RequestCard
+                  key={r.id}
+                  request={r}
+                  canContact={eligible}
+                  sellerTierId={sellerTierId}
+                  onContact={handleContact}
+                  onUpgrade={handleUpgrade}
+                />
+              ))}
           </div>
         )}
 

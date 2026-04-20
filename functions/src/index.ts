@@ -45,7 +45,33 @@ export { deleteUserAccount } from "./delete-account.js";
 // Buyer requests expiration cron (daily at 03:00 UTC)
 export { expireBuyerRequests } from "./expire-buyer-requests.js";
 
+// Buyer request submission — callable, contourne les rules iOS
+export { submitBuyerRequest } from "./submit-buyer-request.js";
+
+// User activity purge cron (daily at 04:00 UTC — deletes docs older than 90 days)
+export { purgeUserActivity } from "./purge-activity.js";
+
+// Seller suspension propagation (Firestore trigger — updates all products server-side)
+export { onSellerStatusChange } from "./suspend-seller.js";
+
+// A2 — Sync user role/suspension into Firebase Auth custom claims.
+// onUserRoleWrite: Firestore trigger keeping claims fresh on every users/{uid} write.
+// backfillUserClaims: HTTP admin endpoint, run once after deploy to seed existing users.
+export { onUserRoleWrite, backfillUserClaims } from "./sync-user-claims.js";
+
+// Boost expiration cron (daily at 05:00 UTC)
+export { expireBoosts } from "./expire-boosts.js";
+
+// Cloudinary cleanup on product deletion (Firestore trigger)
+export { onProductDelete } from "./on-product-delete.js";
+
+// Monitoring: Algolia usage check, daily stats report, Firestore backup
+export { getAlgoliaUsage, getDailyStats, triggerFirestoreBackup } from "./monitoring.js";
+
 // Subscription management with Cloudinary cleanup
 export { expireSellers } from "./expire-sellers.js";
 export { deleteProducts } from "./delete-products.js";
 export { approveRenewal } from "./approve-renewal.js";
+
+// One-shot backfill: verificationTier migration for existing users
+export { backfillVerificationTier } from "./backfill-verification-tier.js";

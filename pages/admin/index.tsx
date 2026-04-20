@@ -13,6 +13,7 @@ import {
   getAllProductsForAdmin, getAllUsers,
   getCategories, getCountries,
   getBanners, BannerData, getCurrencies,
+  countPendingBoostRequests,
 } from '../../services/firebase';
 import { useAppContext } from '../../contexts/AppContext';
 import type { AdminTab } from './types';
@@ -26,6 +27,8 @@ const Users = lazy(() => import('./Users').then(m => ({ default: m.Users })));
 const Categories = lazy(() => import('./Categories').then(m => ({ default: m.Categories })));
 const Currencies = lazy(() => import('./Currencies').then(m => ({ default: m.Currencies })));
 const BuyerRequestsAdmin = lazy(() => import('./BuyerRequestsAdmin').then(m => ({ default: m.BuyerRequestsAdmin })));
+const AuditLogs = lazy(() => import('./AuditLogs').then(m => ({ default: m.AuditLogs })));
+const BoostRequestsAdmin = lazy(() => import('./BoostRequestsAdmin').then(m => ({ default: m.BoostRequestsAdmin })));
 
 const TabLoader = () => (
   <div className="flex items-center justify-center py-20">
@@ -40,7 +43,11 @@ export const AdminDashboard: React.FC = () => {
 
   if (!currentUser || currentUser.role !== 'admin') {
     navigate('/');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-[3px] border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
+      </div>
+    );
   }
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -57,7 +64,12 @@ export const AdminDashboard: React.FC = () => {
 
   // Product filter (client-side)
   const [productFilter, setProductFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [productSellerSearch, setProductSellerSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productDateSort, setProductDateSort] = useState<'newest' | 'oldest'>('newest');
+  const [productResubmittedOnly, setProductResubmittedOnly] = useState(false);
   const [sellerStatusFilter, setSellerStatusFilter] = useState<'all' | 'active' | 'suspended' | 'expiring'>('all');
+  const [pendingBoostCount, setPendingBoostCount] = useState(0);
 
   // Reject modal state (for Products tab)
   const [rejectingProductId, setRejectingProductId] = useState<string | null>(null);
@@ -72,6 +84,7 @@ export const AdminDashboard: React.FC = () => {
       getCategories(),
       getBanners(),
       getCurrencies(),
+      countPendingBoostRequests(),
     ]);
 
     const val = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
@@ -86,17 +99,33 @@ export const AdminDashboard: React.FC = () => {
     setCategories(val(results[3], []));
     setBanners(val(results[4], []));
     setCurrencies(val(results[5], []));
+    setPendingBoostCount(val(results[6] as PromiseSettledResult<number>, 0));
     setLoading(false);
   };
 
-  // Client-side product filtering
+  // Client-side product filtering (status + seller + category + date + resubmitted)
   useEffect(() => {
-    if (productFilter === 'all') {
-      setProducts(allProducts);
-    } else {
-      setProducts(allProducts.filter(p => p.status === productFilter));
+    let filtered = productFilter === 'all'
+      ? allProducts
+      : allProducts.filter(p => p.status === productFilter);
+
+    if (productSellerSearch.trim()) {
+      const q = productSellerSearch.toLowerCase();
+      filtered = filtered.filter(p => p.seller?.name?.toLowerCase().includes(q));
     }
-  }, [productFilter, allProducts]);
+    if (productCategoryFilter !== 'all') {
+      filtered = filtered.filter(p => p.category === productCategoryFilter);
+    }
+    if (productResubmittedOnly) {
+      filtered = filtered.filter(p => !!p.resubmittedAt);
+    }
+    filtered = [...filtered].sort((a, b) =>
+      productDateSort === 'newest'
+        ? (b.createdAt || 0) - (a.createdAt || 0)
+        : (a.createdAt || 0) - (b.createdAt || 0)
+    );
+    setProducts(filtered);
+  }, [productFilter, allProducts, productSellerSearch, productCategoryFilter, productDateSort, productResubmittedOnly]);
 
   useEffect(() => {
     refreshData();
@@ -126,6 +155,8 @@ export const AdminDashboard: React.FC = () => {
     { id: 'users', label: t('admin.tabUsers') },
     { id: 'currencies', label: t('admin.tabCurrencies') },
     { id: 'categories', label: t('admin.tabCategories') },
+    { id: 'audit', label: t('admin.tabAudit') },
+    { id: 'boosts', label: t('admin.tabBoosts'), badge: pendingBoostCount },
   ];
 
   const sharedProps = { currentUser, refreshData, loading };
@@ -179,6 +210,10 @@ export const AdminDashboard: React.FC = () => {
               {...sharedProps}
               products={products} allProducts={allProducts} categories={categories}
               pendingCount={pendingCount} productFilter={productFilter} setProductFilter={setProductFilter}
+              productSellerSearch={productSellerSearch} setProductSellerSearch={setProductSellerSearch}
+              productCategoryFilter={productCategoryFilter} setProductCategoryFilter={setProductCategoryFilter}
+              productDateSort={productDateSort} setProductDateSort={setProductDateSort}
+              productResubmittedOnly={productResubmittedOnly} setProductResubmittedOnly={setProductResubmittedOnly}
               setProducts={setProducts} setAllProducts={setAllProducts}
               rejectingProductId={rejectingProductId} setRejectingProductId={setRejectingProductId}
               rejectReason={rejectReason} setRejectReason={setRejectReason}
@@ -201,6 +236,12 @@ export const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'requests' && (
             <BuyerRequestsAdmin {...sharedProps} />
+          )}
+          {activeTab === 'audit' && (
+            <AuditLogs {...sharedProps} />
+          )}
+          {activeTab === 'boosts' && (
+            <BoostRequestsAdmin {...sharedProps} />
           )}
         </Suspense>
       </div>

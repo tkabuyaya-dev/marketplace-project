@@ -12,17 +12,12 @@
 
 const GA_MEASUREMENT_ID = import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '';
 
-/** Load Google Analytics dynamically (avoids hardcoding ID in index.html) */
-let gaLoaded = false;
-function loadGA(): void {
-  if (gaLoaded || !GA_MEASUREMENT_ID || typeof document === 'undefined') return;
-  gaLoaded = true;
-
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-  document.head.appendChild(script);
-
+/**
+ * Phase 1 (synchronous, 0ms cost): initialize dataLayer + gtag() stub.
+ * Events pushed before the script loads are queued in dataLayer and processed
+ * when gtag.js finally loads — no events are lost.
+ */
+if (typeof window !== 'undefined' && GA_MEASUREMENT_ID) {
   (window as any).dataLayer = (window as any).dataLayer || [];
   (window as any).gtag = function (...args: any[]) {
     (window as any).dataLayer.push(args);
@@ -31,8 +26,29 @@ function loadGA(): void {
   (window as any).gtag('config', GA_MEASUREMENT_ID, { send_page_view: false });
 }
 
-// Auto-load on import
-loadGA();
+/**
+ * Phase 2 (deferred): load the actual GTM network script after LCP.
+ * The 139 KiB gtag.js file only downloads after the page is interactive,
+ * removing it from the critical path. dataLayer events are replayed on load.
+ */
+let gaScriptLoaded = false;
+function loadGA(): void {
+  if (gaScriptLoaded || !GA_MEASUREMENT_ID || typeof document === 'undefined') return;
+  gaScriptLoaded = true;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+}
+
+// Load GTM only when browser is idle (after LCP/FID) — fallback 4s
+if (typeof window !== 'undefined') {
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(() => loadGA(), { timeout: 4000 });
+  } else {
+    setTimeout(loadGA, 4000);
+  }
+}
 
 /** Safe gtag wrapper — no-op if GA not loaded */
 function gtag(...args: any[]): void {

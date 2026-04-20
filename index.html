@@ -15,11 +15,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nunulia" />
     <meta name="msapplication-TileColor" content="#111318" />
+    <!-- DNS + TCP pre-connections pour les ressources critiques -->
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" /></noscript>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+    <link rel="preconnect" href="https://accounts.google.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <!-- Police: chargée sans bloquer le rendu (media="print" → all) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" /></noscript>
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Nunulia" />
     <meta property="og:title" content="Nunulia — Le marketplace d'Afrique de l'Est" />
@@ -39,7 +46,7 @@
         margin: 0;
         background-color: #111318;
         color: #f3f4f6;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
         -webkit-font-smoothing: antialiased;
@@ -111,11 +118,13 @@
     </div>
     <div id="root"></div>
     <script>
-      // Safety net: hide loader after 3s max even if JS bundle is slow
+      // Safety net: hide loader after 1.5s max — assez pour charger le JS,
+      // pas assez pour bloquer le LCP vu par Lighthouse.
+      // AuthContext.hideLoader() le cache encore plus tôt si Firebase répond vite.
       setTimeout(function() {
         var l = document.getElementById('app-loader');
-        if (l) { l.classList.add('hidden'); setTimeout(function() { l.remove(); }, 300); }
-      }, 3000);
+        if (l) { l.classList.add('hidden'); setTimeout(function() { if (l.parentNode) l.parentNode.removeChild(l); }, 300); }
+      }, 1500);
     </script>
     <script type="module" src="/index.tsx"></script>
   </body>

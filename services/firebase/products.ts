@@ -6,12 +6,14 @@ import {
   Product, ProductStatus, SearchFilters,
 } from '../../types';
 import { generateUniqueSlug } from '../../utils/slug';
+import { Timestamp } from 'firebase/firestore';
 import {
-  db, auth, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
+  db, auth, collection, doc, addDoc, getDoc, getDocs, getDocsFromCache, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, increment,
   runTransaction, writeBatch, COLLECTIONS, PRODUCTS_PAGE_SIZE, MAX_SEARCH_RESULTS,
   docToProduct,
 } from './constants';
+import { withClaimsRetry } from './auth';
 import type { QueryDocumentSnapshot } from './constants';
 
 /** Returns true if this product doc should be hidden from public views */
@@ -51,6 +53,41 @@ export const getProducts = async (
   const newLastDoc = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1] : null;
 
   return { products, lastDoc: newLastDoc };
+};
+
+/**
+ * Returns products from Firestore's local IndexedDB cache IMMEDIATELY,
+ * without touching the network — even when the device is online.
+ *
+ * Use as Phase 1 in the cache-then-network pattern:
+ *   1. getProductsFromCache() → render instantly (< 10ms)
+ *   2. getProducts() in background → silent refresh
+ *
+ * Throws FirebaseError(unavailable) if cache is empty — catch it and fall
+ * through to the network path.
+ */
+export const getProductsFromCache = async (
+  category: string = 'all',
+  countryId?: string,
+  wholesaleOnly?: boolean,
+  pageSize: number = PRODUCTS_PAGE_SIZE
+): Promise<Product[]> => {
+  if (!db) return [];
+
+  const productsRef = collection(db, COLLECTIONS.PRODUCTS);
+  const constraints: any[] = [
+    where('status', '==', 'approved'),
+    orderBy('createdAt', 'desc'),
+    limit(pageSize),
+  ];
+  if (wholesaleOnly) constraints.splice(1, 0, where('isWholesale', '==', true));
+  if (countryId) constraints.splice(1, 0, where('countryId', '==', countryId));
+  if (category !== 'all') constraints.splice(1, 0, where('category', '==', category));
+
+  const snap = await getDocsFromCache(query(productsRef, ...constraints));
+  return snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id));
 };
 
 export const getProductBySlugOrId = async (slugOrId: string): Promise<Product | null> => {
@@ -125,46 +162,39 @@ export const getProductsByCategory = async (
     .slice(0, maxResults);
 };
 
-export const getTrendingProducts = async (maxResults: number = 12): Promise<Product[]> => {
-  if (!db) return [];
-
-  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-  const q = query(
-    collection(db, COLLECTIONS.PRODUCTS),
-    where('status', '==', 'approved'),
-    where('createdAt', '>=', new Date(twoWeeksAgo)),
-    orderBy('createdAt', 'desc'),
-    limit(50)
-  );
-  const snap = await getDocs(q);
-  const products = snap.docs
-    .filter(d => !isHiddenProduct(d.data()))
-    .map(d => docToProduct(d.data(), d.id));
-
-  const now = Date.now();
-  const scored = products.map(p => {
-    const hoursOld = (now - p.createdAt) / (1000 * 60 * 60);
-    const recencyBonus = Math.max(0, 100 - hoursOld);
-    const score = (p.views || 0) * 1 + (p.likesCount || 0) * 3 + recencyBonus;
-    return { product: p, score };
-  });
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, maxResults).map(s => s.product);
-};
-
-export const getPopularProducts = async (maxResults: number = 12): Promise<Product[]> => {
+// P4 — Lecture minimale : 12 docs ordonnés par `views desc`, pas de scoring
+// côté client ni de fenêtre temporelle. Filtre `countryId` appliqué en mémoire
+// sur les 12 docs (coût négligeable) pour éviter un index composite supplémentaire.
+export const getTrendingProducts = async (maxResults: number = 12, countryId?: string): Promise<Product[]> => {
   if (!db) return [];
   const q = query(
     collection(db, COLLECTIONS.PRODUCTS),
     where('status', '==', 'approved'),
     orderBy('views', 'desc'),
-    limit(maxResults)
+    limit(12)
   );
   const snap = await getDocs(q);
   return snap.docs
     .filter(d => !isHiddenProduct(d.data()))
-    .map(d => docToProduct(d.data(), d.id));
+    .map(d => docToProduct(d.data(), d.id))
+    .filter(p => !countryId || p.countryId === countryId)
+    .slice(0, maxResults);
+};
+
+export const getPopularProducts = async (maxResults: number = 12, countryId?: string): Promise<Product[]> => {
+  if (!db) return [];
+  const q = query(
+    collection(db, COLLECTIONS.PRODUCTS),
+    where('status', '==', 'approved'),
+    orderBy('views', 'desc'),
+    limit(12)
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id))
+    .filter(p => !countryId || p.countryId === countryId)
+    .slice(0, maxResults);
 };
 
 export const getAllProductsForAdmin = async (
@@ -260,6 +290,20 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     );
   }
 
+  // ── Burst protection: max 3 creations per 60 seconds (anti-spam) ──
+  // Uses composite index (sellerId ASC, createdAt ASC) — inequality on createdAt forces ASC order.
+  const windowStart = Timestamp.fromMillis(Date.now() - 60_000);
+  const burstSnap = await getDocs(
+    query(
+      collection(db, COLLECTIONS.PRODUCTS),
+      where('sellerId', '==', auth.currentUser.uid),
+      where('createdAt', '>=', windowStart)
+    )
+  );
+  if (burstSnap.size >= 3) {
+    throw new Error('Trop de publications en peu de temps. Attendez quelques secondes avant de réessayer.');
+  }
+
   const title = (productData.title || '').trim();
   const slug = generateUniqueSlug(title);
 
@@ -286,25 +330,23 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     sellerEmail:     userData.email || '',
     sellerAvatar:    userData.avatar || '',
     sellerIsVerified: userData.isVerified || false,
+    sellerVerificationTier: userData.verificationTier || (userData.isVerified ? 'identity' : 'none'),
     sellerWhatsapp:  userData.whatsapp || null,
     countryId:       userData.sellerDetails?.countryId || null,
     isWholesale:     productData.isWholesale || false,
     minOrderQuantity: productData.minOrderQuantity || null,
     wholesalePrice:  productData.wholesalePrice || null,
-    isAuction:       productData.isAuction || false,
-    auctionEndTime:  productData.auctionEndTime || null,
-    startingBid:     productData.startingBid || null,
-    currentBid:      productData.startingBid || null,
-    currentBidderId: null,
-    bidCount:        0,
     blurhash:        productData.blurhash || null,
     createdAt:       serverTimestamp(),
   };
 
   try {
-    const docRef = await addDoc(collection(db, COLLECTIONS.PRODUCTS), newProduct);
+    const docRef = await withClaimsRetry(() =>
+      addDoc(collection(db!, COLLECTIONS.PRODUCTS), newProduct)
+    );
     await updateDoc(doc(db, COLLECTIONS.USERS, auth.currentUser.uid), {
       productCount: increment(1),
+      lastProductCreatedAt: Date.now(),
     });
     return docToProduct(newProduct, docRef.id);
   } catch (err: any) {
@@ -341,22 +383,61 @@ export const updateProductStatus = async (
   await updateDoc(doc(db, COLLECTIONS.PRODUCTS, productId), data);
 };
 
+export const MAX_RESUBMIT_ATTEMPTS = 3;
+
 export const resubmitProduct = async (productId: string): Promise<void> => {
   if (!db) return;
-  await updateDoc(doc(db, COLLECTIONS.PRODUCTS, productId), {
-    status: 'pending',
-    resubmittedAt: Date.now(),
-  });
+  const snap = await getDoc(doc(db, COLLECTIONS.PRODUCTS, productId));
+  if (!snap.exists()) return;
+  const current = snap.data().resubmitCount ?? 0;
+  if (current >= MAX_RESUBMIT_ATTEMPTS) {
+    throw new Error('RESUBMIT_LIMIT_REACHED');
+  }
+  await withClaimsRetry(() =>
+    updateDoc(doc(db!, COLLECTIONS.PRODUCTS, productId), {
+      status: 'pending',
+      resubmittedAt: Date.now(),
+      resubmitCount: current + 1,
+    })
+  );
 };
 
 export const updateProduct = async (
   productId: string,
-  data: Partial<Pick<Product, 'title' | 'description' | 'price' | 'originalPrice' | 'category' | 'subCategory' | 'images'>>
+  data: Partial<Pick<Product, 'title' | 'description' | 'price' | 'originalPrice' | 'category' | 'subCategory' | 'images' | 'blurhash'>>
 ): Promise<void> => {
   if (!db) return;
   const updateData: Record<string, any> = { ...data };
   if (data.title) updateData.titleLower = data.title.toLowerCase();
-  await updateDoc(doc(db, COLLECTIONS.PRODUCTS, productId), updateData);
+  await withClaimsRetry(() =>
+    updateDoc(doc(db!, COLLECTIONS.PRODUCTS, productId), updateData)
+  );
+};
+
+// Edit content AND re-submit a rejected product atomically (1 Firestore write).
+// Replaces the legacy updateProduct() + resubmitProduct() sequence that left the
+// product in an inconsistent state if the second write failed.
+export const editAndResubmitProduct = async (
+  productId: string,
+  data: Partial<Pick<Product, 'title' | 'description' | 'price' | 'originalPrice' | 'category' | 'subCategory' | 'images' | 'blurhash'>>
+): Promise<void> => {
+  if (!db) return;
+  const snap = await getDoc(doc(db, COLLECTIONS.PRODUCTS, productId));
+  if (!snap.exists()) return;
+  const current = snap.data().resubmitCount ?? 0;
+  if (current >= MAX_RESUBMIT_ATTEMPTS) {
+    throw new Error('RESUBMIT_LIMIT_REACHED');
+  }
+  const updateData: Record<string, any> = {
+    ...data,
+    status: 'pending',
+    resubmittedAt: Date.now(),
+    resubmitCount: current + 1,
+  };
+  if (data.title) updateData.titleLower = data.title.toLowerCase();
+  await withClaimsRetry(() =>
+    updateDoc(doc(db!, COLLECTIONS.PRODUCTS, productId), updateData)
+  );
 };
 
 export const incrementProductViews = async (productId: string): Promise<void> => {

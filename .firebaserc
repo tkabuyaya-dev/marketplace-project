@@ -1,5 +1,19 @@
 {
   "projects": {
-    "default": "aurburundi-e2fe2"
+    "default": "aurburundi-e2fe2",
+    "production": "aurburundi-e2fe2",
+    "staging": "nunulia-staging"
+  },
+  "targets": {
+    "aurburundi-e2fe2": {
+      "hosting": {
+        "production": ["aurburundi-e2fe2"]
+      }
+    },
+    "nunulia-staging": {
+      "hosting": {
+        "staging": ["nunulia-staging"]
+      }
+    }
   }
 }

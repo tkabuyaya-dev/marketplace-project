@@ -63,9 +63,93 @@ interface UploadResult {
   bytes: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPRESSION — réduit la taille avant upload pour les réseaux 2G/3G
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COMPRESS_THRESHOLD_BYTES = 1.5 * 1024 * 1024; // 1.5 MB
+const COMPRESS_MAX_DIMENSION   = 1600;               // px — côté le plus long
+const COMPRESS_QUALITY         = 0.82;               // JPEG quality
+
 /**
- * Upload une image vers Cloudinary avec validation et transformation.
- * Retourne un objet avec l'URL optimisée et les métadonnées.
+ * Compresse une image via Canvas si elle dépasse le seuil.
+ * Retourne le File original si déjà sous le seuil ou si Canvas non disponible.
+ */
+async function compressIfNeeded(file: File): Promise<File> {
+  if (file.size <= COMPRESS_THRESHOLD_BYTES) return file;
+  if (typeof OffscreenCanvas === 'undefined' && typeof document === 'undefined') return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { width, height } = bitmap;
+    const ratio = Math.min(COMPRESS_MAX_DIMENSION / width, COMPRESS_MAX_DIMENSION / height, 1);
+    const targetW = Math.round(width * ratio);
+    const targetH = Math.round(height * ratio);
+
+    // Prefer OffscreenCanvas (no DOM, works in workers), fall back to <canvas>
+    let canvas: OffscreenCanvas | HTMLCanvasElement;
+    let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
+
+    if (typeof OffscreenCanvas !== 'undefined') {
+      canvas = new OffscreenCanvas(targetW, targetH);
+      ctx = (canvas as OffscreenCanvas).getContext('2d');
+    } else {
+      canvas = document.createElement('canvas');
+      (canvas as HTMLCanvasElement).width  = targetW;
+      (canvas as HTMLCanvasElement).height = targetH;
+      ctx = (canvas as HTMLCanvasElement).getContext('2d');
+    }
+
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+    bitmap.close();
+
+    let blob: Blob | null = null;
+    if (canvas instanceof OffscreenCanvas) {
+      blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: COMPRESS_QUALITY });
+    } else {
+      blob = await new Promise<Blob | null>(resolve =>
+        (canvas as HTMLCanvasElement).toBlob(resolve, 'image/jpeg', COMPRESS_QUALITY)
+      );
+    }
+
+    if (!blob) return file;
+
+    // Only use compressed version if it's actually smaller
+    if (blob.size >= file.size) return file;
+
+    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+  } catch {
+    // Canvas error — use original
+    return file;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UPLOAD — avec timeout, retry et compression automatique
+// ─────────────────────────────────────────────────────────────────────────────
+
+const UPLOAD_TIMEOUT_MS = 60_000; // 60s — suffisant même en 2G lent
+const MAX_RETRIES       = 3;
+const RETRY_DELAYS_MS   = [2_000, 4_000, 8_000]; // backoff exponentiel
+
+function isNetworkError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network request failed') ||
+    msg.includes('load failed') ||
+    msg.includes('the internet connection appears to be offline')
+  );
+}
+
+/**
+ * Upload une image vers Cloudinary avec :
+ * - Compression automatique si >1.5 MB (canvas resize, sans perte de qualité visible)
+ * - Timeout 60s via AbortController (évite le blocage indéfini sur 2G/3G)
+ * - Retry x3 avec backoff exponentiel (2s → 4s → 8s) pour les erreurs réseau
  */
 export const uploadImage = async (
   file: File,
@@ -78,44 +162,85 @@ export const uploadImage = async (
 
   validateFile(file);
 
+  // Compression automatique — réduit drastiquement les échecs 2G/3G
+  const compressed = await compressIfNeeded(file);
+
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', compressed);
   formData.append('upload_preset', UPLOAD_PRESET);
   formData.append('folder', options.folder || FOLDER);
-  // Note: avec un preset "unsigned", seuls upload_preset, folder, public_id
-  // sont autorisés. Les transformations se font via URL (getOptimizedUrl).
 
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: 'POST', body: formData }
-  );
+  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new UploadError(error.error?.message || `Échec upload (${response.status})`);
+  let lastError: Error = new UploadError('Upload échoué');
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    // Wait before retrying (not before first attempt)
+    if (attempt > 0) {
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt - 1]));
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        // Server-side error (4xx/5xx) — no point retrying
+        throw new UploadError(error.error?.message || `Échec upload (${response.status})`);
+      }
+
+      const data: UploadResult & { secure_url: string } = await response.json();
+      return data.secure_url;
+
+    } catch (err: any) {
+      clearTimeout(timer);
+
+      if (err.name === 'AbortError') {
+        lastError = new UploadError(
+          `Connexion trop lente (timeout après 60s). Vérifiez votre réseau et réessayez.`
+        );
+      } else if (err instanceof UploadError) {
+        // Server error — propagate immediately, no retry
+        throw err;
+      } else if (isNetworkError(err)) {
+        lastError = new UploadError(
+          `Réseau indisponible. Vérifiez votre connexion internet.`
+        );
+      } else {
+        lastError = new UploadError(err.message || 'Erreur inattendue lors de l\'upload.');
+        throw lastError; // Unknown error — don't retry
+      }
+
+      // Last attempt failed — give up
+      if (attempt === MAX_RETRIES - 1) throw lastError;
+      // Otherwise loop → retry
+    }
   }
 
-  const data: UploadResult & { secure_url: string } = await response.json();
-  return data.secure_url;
+  throw lastError;
 };
 
 /**
- * Upload multiple images en parallèle avec limite de concurrence.
- * Evite de saturer la connexion mobile (max 2 uploads simultanés).
+ * Upload multiple images séquentiellement (1 à la fois sur mobile 2G/3G).
+ * Le mode séquentiel évite de saturer la bande passante et réduit les timeouts.
  */
 export const uploadImages = async (
   files: File[],
   options: UploadOptions = {}
 ): Promise<string[]> => {
-  const CONCURRENCY = 2; // Max 2 uploads simultanés (économise la bande passante)
   const results: string[] = [];
-
-  for (let i = 0; i < files.length; i += CONCURRENCY) {
-    const batch = files.slice(i, i + CONCURRENCY);
-    const batchResults = await Promise.all(batch.map(f => uploadImage(f, options)));
-    results.push(...batchResults);
+  for (const file of files) {
+    const url = await uploadImage(file, options);
+    results.push(url);
   }
-
   return results;
 };
 
@@ -136,7 +261,11 @@ export const getOptimizedUrl = (
   url: string,
   width: number = 800,
   quality: number | 'auto' = 'auto',
-  format: string = 'auto'
+  format: string = 'auto',
+  /** Set true only for single images without srcset (product thumbnails).
+   *  For srcset usage, the browser already selects the right density — dpr_auto
+   *  would double-count and serve 2x images to every retina device. */
+  useDpr: boolean = false
 ): string => {
   if (!url) return '';
   if (!url.includes('cloudinary.com')) return url;
@@ -145,7 +274,7 @@ export const getOptimizedUrl = (
   if (parts.length !== 2) return url;
 
   // Transformation Cloudinary: format WebP auto, compression intelligente, redimension
-  const transforms = `f_${format},q_${quality},w_${width},c_limit,dpr_auto`;
+  const transforms = `f_${format},q_${quality},w_${width},c_limit${useDpr ? ',dpr_auto' : ''}`;
   return `${parts[0]}/upload/${transforms}/${parts[1]}`;
 };
 

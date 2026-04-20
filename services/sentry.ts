@@ -25,6 +25,11 @@ export function initSentry(): void {
     return;
   }
 
+  if (import.meta.env.VITE_APP_ENV === 'development') {
+    console.info('ℹ️ Sentry désactivé en dev. Erreurs en console uniquement.');
+    return;
+  }
+
   // Defer loading until after first paint
   initPromise = new Promise<void>((resolve) => {
     const load = () => {

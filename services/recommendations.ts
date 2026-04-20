@@ -45,6 +45,7 @@ interface CachedProduct {
   sellerName: string;
   sellerAvatar?: string;
   sellerIsVerified: boolean;
+  sellerVerificationTier?: 'none' | 'phone' | 'identity' | 'shop';
   stockQuantity?: number;
   promotionEnd?: number;
   createdAt: number;
@@ -70,6 +71,7 @@ function cachedToProduct(p: CachedProduct): Product {
       email: '',
       avatar: p.sellerAvatar || '',
       isVerified: p.sellerIsVerified || false,
+      verificationTier: p.sellerVerificationTier || (p.sellerIsVerified ? 'identity' : 'none'),
       role: 'seller',
       joinDate: 0,
     },
@@ -88,7 +90,7 @@ function cachedToProduct(p: CachedProduct): Product {
 async function fetchCachedApi<T>(
   endpoint: string,
   params: Record<string, string> = {},
-  timeoutMs: number = 4000
+  timeoutMs: number = 6000
 ): Promise<T | null> {
   if (!FUNCTIONS_BASE) return null;
 
@@ -105,8 +107,13 @@ async function fetchCachedApi<T>(
     clearTimeout(timer);
     if (!res.ok) return null;
     return res.json();
-  } catch {
+  } catch (err) {
     clearTimeout(timer);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      console.debug(`[recs] ${endpoint} timeout after ${timeoutMs}ms — using fallback`);
+    } else {
+      console.debug(`[recs] ${endpoint} network error — using fallback`, err);
+    }
     return null;
   }
 }

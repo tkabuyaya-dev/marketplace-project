@@ -1,10 +1,18 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  # Déploiement production : manuel via GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: 'Déployer en production ?'
+        required: true
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -80,11 +88,105 @@ jobs:
       - name: Run tests
         run: npm test -- --run
 
+  # ── E2E Playwright ──────────────────────────────────────────────────────────
+  e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [lint-and-build]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+        continue-on-error: true
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/e2e/
+          retention-days: 7
+
+  # ── Deploy → Staging (auto sur push main) ───────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    needs: [lint-and-build, test, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build (staging)
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY_STAGING }}
+          VITE_FIREBASE_AUTH_DOMAIN: nunulia-staging.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: nunulia-staging
+          VITE_FIREBASE_STORAGE_BUCKET: nunulia-staging.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_STAGING }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID_STAGING }}
+          VITE_CLOUDINARY_CLOUD_NAME: dyqzcbjnz
+          VITE_CLOUDINARY_UPLOAD_PRESET: aurabuja-staging
+          VITE_CLOUDINARY_API_KEY: 825691158576526
+          VITE_CLOUDINARY_FOLDER: aurabuja-staging-2026
+          VITE_ALGOLIA_APP_ID: NZ5TI2OD7P
+          VITE_ALGOLIA_SEARCH_KEY: ${{ secrets.VITE_ALGOLIA_SEARCH_KEY_STAGING }}
+          VITE_FUNCTIONS_BASE_URL: https://europe-west1-nunulia-staging.cloudfunctions.net
+          VITE_APP_NAME: 'Nunulia STAGING'
+          VITE_APP_ENV: staging
+          VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY_STAGING }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+          channelId: live
+          projectId: nunulia-staging
+
+  # ── Deploy → Production (manuel uniquement) ──────────────────────────────────
   deploy-hosting:
-    name: Deploy Hosting
+    name: Deploy → Production
     runs-on: ubuntu-latest
     needs: [lint-and-build, test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: >
+      (github.ref == 'refs/heads/main' && github.event_name == 'push')
+      || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_production == 'true')
+    environment:
+      name: production
+      url: https://nunulia.com
 
     steps:
       - uses: actions/checkout@v4

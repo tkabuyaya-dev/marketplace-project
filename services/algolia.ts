@@ -3,6 +3,17 @@
  *
  * Uses the search-only API key (safe for client-side).
  * Falls back to Firestore prefix search when Algolia is unavailable.
+ *
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║  QUOTA GUARDS — DO NOT WEAKEN WITHOUT CHECKING DASHBOARD    ║
+ * ║  Free plan: 10,000 req/month ≈ 80 daily searchers at 20     ║
+ * ║  req/user. Raising limits below will exhaust quota fast.     ║
+ * ║                                                              ║
+ * ║  • algoliaSearchProductsFull: min 2 chars (line ~213)       ║
+ * ║  • algoliaAutocompleteProducts: min 2 chars, cache hit first ║
+ * ║  • analytics/clickAnalytics: OFF in autocomplete             ║
+ * ║  Alert threshold: set Algolia dashboard alert at 7,000/month ║
+ * ╚══════════════════════════════════════════════════════════════╝
  */
 
 import { Product, User, SearchFilters } from "../types";
@@ -27,6 +38,7 @@ interface AlgoliaSearchParams {
   numericFilters?: string[];
   optionalFilters?: string[];
   page?: number;
+  attributesToRetrieve?: string[];
   attributesToHighlight?: string[];
   highlightPreTag?: string;
   highlightPostTag?: string;
@@ -68,11 +80,12 @@ async function algoliaSearch(
   if (params.facetFilters) body.facetFilters = params.facetFilters;
   if (params.numericFilters) body.numericFilters = params.numericFilters;
   if (params.optionalFilters) body.optionalFilters = params.optionalFilters;
+  if (params.attributesToRetrieve) body.attributesToRetrieve = params.attributesToRetrieve;
   if (params.attributesToHighlight) body.attributesToHighlight = params.attributesToHighlight;
   if (params.highlightPreTag) body.highlightPreTag = params.highlightPreTag;
   if (params.highlightPostTag) body.highlightPostTag = params.highlightPostTag;
-  if (params.analytics) body.analytics = params.analytics;
-  if (params.clickAnalytics) body.clickAnalytics = params.clickAnalytics;
+  if (params.analytics !== undefined) body.analytics = params.analytics;
+  if (params.clickAnalytics !== undefined) body.clickAnalytics = params.clickAnalytics;
   if (params.userToken) body.userToken = params.userToken;
 
   const response = await fetch(
@@ -118,6 +131,7 @@ function hitToProduct(hit: AlgoliaHit): Product {
       email: "",
       avatar: "",
       isVerified: hit.sellerIsVerified || false,
+      verificationTier: hit.sellerVerificationTier || (hit.sellerIsVerified ? "identity" : "none"),
       role: "seller",
       joinDate: 0,
     },
@@ -143,6 +157,8 @@ function hitToSeller(hit: AlgoliaHit): User {
     email: "",
     avatar: hit.avatar || "",
     isVerified: hit.isVerified || false,
+    verificationTier: hit.verificationTier || (hit.isVerified ? "identity" : "none"),
+    trustScore: typeof hit.trustScore === "number" ? hit.trustScore : undefined,
     role: "seller",
     joinDate: 0,
     productCount: hit.productCount || 0,
@@ -205,6 +221,10 @@ export async function algoliaSearchProductsFull(
   highlightResults: Map<string, Record<string, string>>;
 }> {
   if (!isConfigured) {
+    return { products: [], totalHits: 0, totalPages: 0, page: 0, highlightResults: new Map() };
+  }
+  // Never fire an Algolia request for single-char queries (min 2 chars — allows "TV", "PC", etc.)
+  if (queryText.trim().length < 2) {
     return { products: [], totalHits: 0, totalPages: 0, page: 0, highlightResults: new Map() };
   }
 
@@ -300,6 +320,49 @@ export async function algoliaSearchSellers(
   } catch (err) {
     console.warn("[Algolia] Seller search failed:", err);
     return null;
+  }
+}
+
+// In-memory cache for autocomplete — avoids re-calling Algolia for the same prefix
+const autocompleteCache = new Map<string, Product[]>();
+
+/**
+ * Lightweight autocomplete search — only the fields needed for the dropdown.
+ * analytics and clickAnalytics disabled to reduce Algolia quota usage.
+ * Used by SearchOverlay dropdown only (not the full search page).
+ */
+export async function algoliaAutocompleteProducts(
+  queryText: string,
+  countryId?: string,
+): Promise<Product[]> {
+  if (!isConfigured) return [];
+  if (queryText.trim().length < 2) return [];
+
+  // Return from cache if same query+country was already fetched this session
+  const cacheKey = `${queryText.trim().toLowerCase()}|${countryId || ''}`;
+  if (autocompleteCache.has(cacheKey)) return autocompleteCache.get(cacheKey)!;
+
+  try {
+    const optionalFilters: string[] = [];
+    if (countryId) optionalFilters.push(`countryId:${countryId}<score=3>`);
+
+    const result = await algoliaSearch(PRODUCTS_INDEX, {
+      query: queryText,
+      hitsPerPage: 5,
+      page: 0,
+      filters: "status:approved",
+      optionalFilters: optionalFilters.length > 0 ? optionalFilters : undefined,
+      attributesToRetrieve: ['objectID', 'title', 'price', 'images', 'sellerName', 'currency', 'countryId', 'slug', 'isSponsored'],
+      attributesToHighlight: [],
+      analytics: false,
+      clickAnalytics: false,
+    });
+
+    const products = result.hits.map(hitToProduct);
+    autocompleteCache.set(cacheKey, products);
+    return products;
+  } catch {
+    return [];
   }
 }
 

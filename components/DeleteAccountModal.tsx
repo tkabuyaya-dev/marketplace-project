@@ -7,8 +7,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase-config';
+import { getFirebaseFunctions } from '../firebase-config';
 import { reauthenticateWithGoogle, clearCachedUser } from '../services/firebase';
 import { useToast } from './Toast';
 
@@ -54,7 +53,12 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     }
 
     try {
-      // Step 2: Call Cloud Function
+      // Step 2: Call Cloud Function (firebase/functions chargé en lazy — ~40 kB économisés au démarrage)
+      const [{ httpsCallable }, functions] = await Promise.all([
+        import('firebase/functions'),
+        getFirebaseFunctions(),
+      ]);
+      if (!functions) throw new Error('Firebase Functions non disponible');
       const deleteAccount = httpsCallable(functions, 'deleteUserAccount');
       await deleteAccount();
 

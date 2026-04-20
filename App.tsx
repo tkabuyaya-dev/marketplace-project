@@ -5,17 +5,39 @@ import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { ConsentBanner } from './components/ConsentBanner';
 import { BackgroundLoader } from './components/BackgroundLoader';
 import { useAppContext } from './contexts/AppContext';
+/** Écran de chargement affiché pendant les transitions auth (login/logout/init) */
+const AuthLoadingScreen: React.FC<{ message?: string }> = ({ message }) => (
+  <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
+    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-amber-500 flex items-center justify-center shadow-lg shadow-gold-400/30 animate-pulse">
+      <span className="text-2xl font-black text-gray-900">N</span>
+    </div>
+    <div className="w-8 h-8 border-[3px] border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
+    {message && (
+      <p className="text-sm text-gray-400 animate-fade-in">{message}</p>
+    )}
+  </div>
+);
+
 const App: React.FC = () => {
   const {
     currentUser,
     isOnline,
     handleSellerAccess,
     backgroundLoading,
+    isAuthTransitioning,
+    loginLoading,
   } = useAppContext();
   const location = useLocation();
 
+  // Bloque UNIQUEMENT pendant les transitions login/logout (popup Google ouvert).
+  // PAS pendant l'init Firebase (authReady) — ça bloquerait le rendu 1-5s sur 4G lente
+  // et tuerait LCP + CLS. On rend immédiatement, l'état auth se met à jour en arrière-plan.
+  if (isAuthTransitioning) {
+    return <AuthLoadingScreen message={loginLoading ? 'Connexion en cours…' : undefined} />;
+  }
+
   // Pages without the main Navbar (dashboard/admin have their own nav)
-  const hideNavbar = ['/login', '/register-seller', '/dashboard', '/admin', '/cgu', '/politique-confidentialite'].includes(location.pathname)
+  const hideNavbar = ['/login', '/auth-google', '/register-seller', '/dashboard', '/admin', '/cgu', '/politique-confidentialite'].includes(location.pathname)
     || location.pathname.startsWith('/product/')
     || location.pathname.startsWith('/shop/');
 
@@ -43,10 +65,7 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {/* PWA Install Prompt */}
       <PWAInstallPrompt />
-
-      {/* Consent Banner */}
       <ConsentBanner />
     </div>
   );

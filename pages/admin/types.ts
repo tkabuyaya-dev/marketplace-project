@@ -4,7 +4,7 @@
 import { Product, User, Category, Country, Currency } from '../../types';
 import type { BannerData, BannerActionType } from '../../services/firebase';
 
-export type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'currencies' | 'requests';
+export type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'currencies' | 'requests' | 'audit' | 'boosts';
 
 // Countries et Languages gérés directement via Firebase Console
 
@@ -34,6 +34,14 @@ export interface ProductsProps extends AdminSharedProps {
   pendingCount: number;
   productFilter: 'all' | 'pending' | 'approved' | 'rejected';
   setProductFilter: (f: 'all' | 'pending' | 'approved' | 'rejected') => void;
+  productSellerSearch: string;
+  setProductSellerSearch: (v: string) => void;
+  productCategoryFilter: string;
+  setProductCategoryFilter: (v: string) => void;
+  productDateSort: 'newest' | 'oldest';
+  setProductDateSort: (v: 'newest' | 'oldest') => void;
+  productResubmittedOnly: boolean;
+  setProductResubmittedOnly: (v: boolean) => void;
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   setAllProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   rejectingProductId: string | null;
@@ -66,3 +74,7 @@ export interface CurrenciesProps extends AdminSharedProps {
   countries: Country[];
   setCurrencies: React.Dispatch<React.SetStateAction<Currency[]>>;
 }
+
+export interface AuditLogsProps extends AdminSharedProps {}
+
+export interface BoostRequestsAdminProps extends AdminSharedProps {}

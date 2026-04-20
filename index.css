@@ -4,6 +4,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Font metric override — eliminates CLS caused by FOUT (system font → Inter swap).
+ * "Inter Fallback" mirrors Inter's UPM metrics on Android's Roboto/system-ui,
+ * so the fallback font occupies the same space as Inter before it loads.
+ * This prevents any layout shift when the swap happens.
+ * Values from https://screenspan.net/fallback for Inter → Arial.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 90.20%;
+  descent-override: 22.48%;
+  line-gap-override: 0%;
+  size-adjust: 107.40%;
+}
+
 /* Imports locaux (pas de Google Fonts bloquante) */
 @layer base {
   html {
@@ -40,8 +56,9 @@
     padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
   }
   /* Page content offset below the mobile header — accounts for iPhone safe area */
+  /* 104px = pt-safe-nav(12px) + logo row(44px+6px) + search bar row(32px+10px) */
   .pt-safe-header {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 68px);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 104px);
   }
   .pt-safe-header-lg {
     padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);

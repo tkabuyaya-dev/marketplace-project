@@ -43,8 +43,8 @@ export const ProductQualityScore: React.FC<Props> = ({ score }) => {
       {/* Progress bar */}
       <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-700 ease-out ${colors.bar}`}
-          style={{ width: `${score.percentage}%` }}
+          className={`h-full rounded-full origin-left transition-transform duration-700 ease-out ${colors.bar}`}
+          style={{ transform: `scaleX(${score.percentage / 100})` }}
         />
       </div>
 

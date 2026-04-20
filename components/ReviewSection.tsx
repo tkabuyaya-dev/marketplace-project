@@ -129,8 +129,8 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                 <span className="text-yellow-400">&#9733;</span>
                 <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-yellow-400 rounded-full transition-all duration-500"
-                    style={{ width: `${pct}%` }}
+                    className="h-full bg-yellow-400 rounded-full origin-left transition-transform duration-500"
+                    style={{ transform: `scaleX(${pct / 100})` }}
                   />
                 </div>
                 <span className="text-gray-500 w-6 text-right">{count}</span>

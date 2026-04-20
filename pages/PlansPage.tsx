@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import {
@@ -347,7 +347,13 @@ export const PlansPage: React.FC = () => {
               <div className="mt-4 bg-blue-900/20 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
                 <p className="font-bold mb-1">{t('plans.instructions')}</p>
                 <ol className="list-decimal ml-4 space-y-1">
-                  <li dangerouslySetInnerHTML={{ __html: t('plans.instruction1', { amount: `<strong>${formatPrice(getPrice(selectedPlan.id))}</strong>` }) }} />
+                  <li>
+                    <Trans
+                      i18nKey="plans.instruction1"
+                      values={{ amount: formatPrice(getPrice(selectedPlan.id)) }}
+                      components={{ strong: <strong /> }}
+                    />
+                  </li>
                   <li>{t('plans.instruction2')}</li>
                   <li>{t('plans.instruction3')}</li>
                 </ol>

@@ -18,6 +18,9 @@ dist-ssr
 .env.production
 .env.staging
 
+# ⚠️ SÉCURITÉ: Workflows n8n contiennent des tokens — ne jamais committer
+n8n_workflows/
+
 # Firebase local emulator data
 .firebase/
 firebase-debug.log

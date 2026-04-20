@@ -8,6 +8,10 @@ import type { ProductsProps } from './types';
 
 export const Products: React.FC<ProductsProps> = ({
   products, allProducts, categories, pendingCount, productFilter, setProductFilter,
+  productSellerSearch, setProductSellerSearch,
+  productCategoryFilter, setProductCategoryFilter,
+  productDateSort, setProductDateSort,
+  productResubmittedOnly, setProductResubmittedOnly,
   setProducts, setAllProducts, currentUser,
   rejectingProductId, setRejectingProductId, rejectReason, setRejectReason,
 }) => {
@@ -96,6 +100,74 @@ export const Products: React.FC<ProductsProps> = ({
           </div>
         </div>
 
+        {/* Advanced filters row */}
+        <div className="flex flex-wrap gap-3 items-center p-3 bg-gray-900/60 border border-gray-800 rounded-xl">
+          {/* Seller search */}
+          <div className="relative flex-1 min-w-[160px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">🔍</span>
+            <input
+              type="text"
+              value={productSellerSearch}
+              onChange={e => setProductSellerSearch(e.target.value)}
+              placeholder={t('admin.filterSellerPlaceholder')}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+
+          {/* Category dropdown */}
+          <select
+            value={productCategoryFilter}
+            onChange={e => setProductCategoryFilter(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500 transition-colors"
+          >
+            <option value="all">{t('admin.filterAllCategories')}</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+
+          {/* Date sort */}
+          <button
+            onClick={() => setProductDateSort(productDateSort === 'newest' ? 'oldest' : 'newest')}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600 bg-gray-800 rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+          >
+            {productDateSort === 'newest' ? '↓' : '↑'}
+            {productDateSort === 'newest' ? t('admin.filterNewest') : t('admin.filterOldest')}
+          </button>
+
+          {/* Resubmitted only toggle */}
+          <button
+            onClick={() => setProductResubmittedOnly(!productResubmittedOnly)}
+            className={`flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap ${
+              productResubmittedOnly
+                ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            🔁 {t('admin.filterResubmitted')}
+          </button>
+
+          {/* Clear all filters */}
+          {(productSellerSearch || productCategoryFilter !== 'all' || productDateSort !== 'newest' || productResubmittedOnly) && (
+            <button
+              onClick={() => {
+                setProductSellerSearch('');
+                setProductCategoryFilter('all');
+                setProductDateSort('newest');
+                setProductResubmittedOnly(false);
+              }}
+              className="text-xs text-gray-500 hover:text-red-400 transition-colors underline ml-auto"
+            >
+              {t('admin.filterClearAll')}
+            </button>
+          )}
+        </div>
+
+        {/* Result count */}
+        <p className="text-xs text-gray-500">
+          {t('admin.filterResultCount', { count: products.length })}
+        </p>
+
         {products.length === 0 ? (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center text-gray-500">
             <div className="text-4xl mb-3">
@@ -109,7 +181,7 @@ export const Products: React.FC<ProductsProps> = ({
               <div key={product.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col sm:flex-row gap-4">
                 <div className="w-full sm:w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 bg-gray-800">
                   {product.images[0] ? (
-                    <img src={getOptimizedUrl(product.images[0], 200)} alt={product.title} className="w-full h-full object-cover" />
+                    <img src={getOptimizedUrl(product.images[0], 200)} alt={product.title} loading="lazy" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-600 text-3xl">📷</div>
                   )}
@@ -141,7 +213,7 @@ export const Products: React.FC<ProductsProps> = ({
                   <p className="text-xs text-gray-500 mb-2 line-clamp-2">{product.description}</p>
                   <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
                     <span className="flex items-center gap-1">
-                      {product.seller?.avatar && <img src={getOptimizedUrl(product.seller.avatar, 20)} className="w-4 h-4 rounded-full" alt="" />}
+                      {product.seller?.avatar && <img src={getOptimizedUrl(product.seller.avatar, 20)} className="w-4 h-4 rounded-full" alt="" loading="lazy" />}
                       {product.seller?.name || 'Vendeur'}
                     </span>
                     <span>📂 {categories.find(c => c.id === product.category || c.slug === product.category)?.name || product.category}</span>

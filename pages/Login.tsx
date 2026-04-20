@@ -1,24 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
-import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 const Login: React.FC = () => {
-  const { handleLogin, loginLoading } = useAppContext();
+  const { handleLogin, loginLoading, currentUser } = useAppContext();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { t } = useTranslation();
-  const [recaptchaLoading] = useState(false);
 
-  // Appel direct sans reCAPTCHA : signInWithPopup (Google OAuth) a sa propre
-  // protection anti-bot. Ajouter verifyRecaptcha ici introduit un délai réseau
-  // (500ms-3s) qui invalide le "user gesture context" sur mobile → popup bloqué.
-  const handleLoginWithRecaptcha = handleLogin;
-
-  const isLoading = loginLoading || recaptchaLoading;
+  if (currentUser) {
+    return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/'} replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 pt-16 relative">
@@ -33,11 +27,11 @@ const Login: React.FC = () => {
 
         <div className="space-y-4">
           <button
-            onClick={handleLoginWithRecaptcha}
-            disabled={isLoading}
+            onClick={handleLogin}
+            disabled={loginLoading}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 font-bold h-14 rounded-xl text-base transition-colors disabled:opacity-50 shadow-lg"
           >
-            {isLoading ? (
+            {loginLoading ? (
               <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
             ) : (
               <>

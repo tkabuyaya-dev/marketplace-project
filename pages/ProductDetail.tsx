@@ -7,7 +7,7 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { ShareSheet } from '../components/ShareSheet';
 import { Badge } from '../components/Badge';
 import { CURRENCY, THEME, TC } from '../constants';
-import { toggleLikeProduct, reportProduct, checkIsLiked, incrementProductViews, getProductBySlugOrId, placeBid } from '../services/firebase';
+import { toggleLikeProduct, reportProduct, checkIsLiked, incrementProductViews, getProductBySlugOrId } from '../services/firebase';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import { useAppContext } from '../contexts/AppContext';
@@ -18,13 +18,15 @@ import { StockUrgency } from '../components/StockUrgency';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ReviewSection } from '../components/ReviewSection';
 import { ProductSection } from '../components/ProductSection';
+import { VerifiedBadge } from '../components/VerifiedBadge';
+import { UnverifiedSellerNotice } from '../components/UnverifiedSellerNotice';
 import { trackProductView, getSimilarProducts, getCustomersAlsoViewed } from '../services/recommendations';
 
 const ProductDetail: React.FC = () => {
   const { slugOrId } = useParams<{ slugOrId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, handleContactSeller } = useAppContext();
+  const { currentUser } = useAppContext();
   const { toast } = useToast();
   const { t } = useTranslation();
   const { categories } = useCategories();
@@ -43,14 +45,14 @@ const ProductDetail: React.FC = () => {
   const [likeCount, setLikeCount] = useState(0);
   const [activeImage, setActiveImage] = useState(0);
 
-  // Auction state
-  const [bidAmount, setBidAmount] = useState('');
-  const [bidding, setBidding] = useState(false);
-  const [auctionTimeLeft, setAuctionTimeLeft] = useState('');
-
   // Recommendation sections
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [alsoViewed, setAlsoViewed] = useState<Product[]>([]);
+
+  // Scroll to top on every product navigation (React Router preserves scroll position)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slugOrId]);
 
   // Load product from slug/ID if not passed via state
   useEffect(() => {
@@ -100,23 +102,6 @@ const ProductDetail: React.FC = () => {
   // Reset image index when product changes
   useEffect(() => { setActiveImage(0); }, [product?.id]);
 
-  // Auction countdown (must be before any early returns to respect hook rules)
-  useEffect(() => {
-    if (!product?.isAuction || !product.auctionEndTime) return;
-    const tick = () => {
-      const diff = product.auctionEndTime! - Date.now();
-      if (diff <= 0) { setAuctionTimeLeft(t('product.auctionEnded')); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setAuctionTimeLeft(d > 0 ? `${d}j ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [product?.auctionEndTime, t]);
-
   const onProductClick = (p: Product) => {
     navigate(`/product/${p.slug || p.id}`, { state: { product: p } });
     // Reset state for new product
@@ -155,27 +140,6 @@ const ProductDetail: React.FC = () => {
     && product.promotionEnd > now
     && (!product.promotionStart || product.promotionStart <= now);
   const displayPrice = isOnPromotion ? product.discountPrice! : product.price;
-
-  const handlePlaceBid = async () => {
-    if (!product || !currentUser || bidding) return;
-    const amount = Number(bidAmount);
-    const minBid = (product.currentBid || product.startingBid || 0) + 1;
-    if (!amount || amount < minBid) {
-      toast(t('product.bidTooLow', { min: minBid.toLocaleString('fr-FR') }), 'error');
-      return;
-    }
-    setBidding(true);
-    try {
-      await placeBid(product.id, amount);
-      setProduct({ ...product, currentBid: amount, currentBidderId: currentUser.id, bidCount: (product.bidCount || 0) + 1 });
-      setBidAmount('');
-      toast(t('product.bidPlaced'), 'success');
-    } catch (err: any) {
-      toast(err.message || t('product.bidError'), 'error');
-    } finally {
-      setBidding(false);
-    }
-  };
 
   const handleWhatsApp = () => {
     if (product.seller.whatsapp) {
@@ -217,7 +181,7 @@ const ProductDetail: React.FC = () => {
           text: t('productDetail.shareText', { title: product.title }),
           url: shareUrl,
         });
-      } catch (error) { console.log('Share error', error); }
+      } catch (error) { console.error('[Share] Web Share API failed:', error); }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
@@ -327,7 +291,7 @@ const ProductDetail: React.FC = () => {
                 i === activeImage ? 'border-blue-500 scale-105' : 'border-gray-700 opacity-60 hover:opacity-100'
               }`}
             >
-              <img src={getOptimizedUrl(img, 80)} alt={t('productDetail.photo', { number: i + 1 })} className="w-full h-full object-cover" />
+              <img src={getOptimizedUrl(img, 80)} alt={t('productDetail.photo', { number: i + 1 })} loading="lazy" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -431,79 +395,43 @@ const ProductDetail: React.FC = () => {
           </div>
         )}
 
-        {/* Auction section */}
-        {product.isAuction && product.auctionEndTime && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🔨</span>
-                <span className="text-red-400 font-bold text-sm">{t('product.auctionLabel')}</span>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-mono font-bold text-lg">{auctionTimeLeft}</p>
-                <p className="text-gray-500 text-[10px]">{t('product.timeRemaining')}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between bg-black/20 rounded-xl p-3">
-              <div>
-                <p className="text-gray-500 text-xs">{t('product.currentBid')}</p>
-                <p className="text-white font-bold text-xl">
-                  {(product.currentBid || product.startingBid || 0).toLocaleString('fr-FR')} <span className="text-sm text-gray-400">{product.currency || CURRENCY}</span>
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-gray-500 text-xs">{t('product.bidders')}</p>
-                <p className="text-white font-bold">{product.bidCount || 0}</p>
-              </div>
-            </div>
-            {product.auctionEndTime > Date.now() && currentUser && currentUser.id !== product.seller.id && (
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={bidAmount}
-                  onChange={e => setBidAmount(e.target.value)}
-                  placeholder={`${((product.currentBid || product.startingBid || 0) + 1).toLocaleString('fr-FR')}+`}
-                  className="flex-1 bg-gray-900 border border-gray-700 rounded-xl p-3 text-white font-mono focus:ring-1 focus:ring-red-500 outline-none"
-                />
-                <Button
-                  variant="primary"
-                  className="bg-red-600 hover:bg-red-500 border-transparent"
-                  onClick={handlePlaceBid}
-                  isLoading={bidding}
-                >
-                  {t('product.placeBid')}
-                </Button>
-              </div>
-            )}
-            {product.auctionEndTime <= Date.now() && (
-              <p className="text-center text-gray-500 text-sm font-medium">{t('product.auctionEnded')}</p>
-            )}
-          </div>
-        )}
-
         {/* Action buttons */}
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
-            <Button variant="primary" className="flex-1 bg-green-600 hover:bg-green-500 border-transparent text-white" onClick={() => handleContactSeller(product.seller, product.id)} icon={<span className="text-lg">📱</span>}>WhatsApp</Button>
+            <Button variant="primary" className="flex-1 bg-green-600 hover:bg-green-500 border-transparent text-white" onClick={handleWhatsApp} icon={<span className="text-lg">📱</span>}>WhatsApp</Button>
           </div>
+          {/* Edit button — visible to product owner or admin */}
+          {currentUser && (currentUser.id === product.seller.id || currentUser.role === 'admin') && (
+            <button
+              onClick={() => navigate('/dashboard', { state: { editProduct: product } })}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 hover:bg-gray-800/50 transition-all text-sm font-medium"
+            >
+              ✏️ {t('dashboard.editProduct')}
+            </button>
+          )}
         </div>
 
         {/* Seller Info */}
-        <div
-          onClick={() => onVisitShop(product.seller)}
-          className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 cursor-pointer hover:bg-gray-800 transition-colors group"
-        >
-          <img src={product.seller.avatar} alt={product.seller.name} className="w-12 h-12 rounded-full border border-gray-600 group-hover:border-gold-400" />
-          <div className="flex-1">
-            <div className="flex items-center gap-1">
-              <h4 className="text-white font-medium group-hover:text-gold-400 transition-colors">{product.seller.name}</h4>
-              {product.seller.isVerified && <span className={tc.text500}>✓</span>}
+        <div className="space-y-2">
+          <div
+            onClick={() => onVisitShop(product.seller)}
+            className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 cursor-pointer hover:bg-gray-800 transition-colors group"
+          >
+            <img src={getOptimizedUrl(product.seller.avatar, 48)} alt={product.seller.name} loading="lazy" className="w-12 h-12 rounded-full border border-gray-600 group-hover:border-gold-400" />
+            <div className="flex-1">
+              <div className="flex items-center gap-1">
+                <h4 className="text-white font-medium group-hover:text-gold-400 transition-colors">{product.seller.name}</h4>
+                {product.seller.isVerified && (
+                  <VerifiedBadge tier={product.seller.verificationTier} size="sm" />
+                )}
+              </div>
+              <p className="text-xs text-gray-400">{t('productDetail.memberSince', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}</p>
             </div>
-            <p className="text-xs text-gray-400">{t('productDetail.memberSince', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}</p>
+            <div className="text-xs font-bold text-gray-400 group-hover:text-white flex items-center gap-1 bg-gray-800 px-3 py-1.5 rounded-full">
+              {t('productDetail.shopButton')} <span>→</span>
+            </div>
           </div>
-          <div className="text-xs font-bold text-gray-400 group-hover:text-white flex items-center gap-1 bg-gray-800 px-3 py-1.5 rounded-full">
-            {t('productDetail.shopButton')} <span>→</span>
-          </div>
+          <UnverifiedSellerNotice tier={product.seller.verificationTier} variant="banner" />
         </div>
 
         {/* Description */}

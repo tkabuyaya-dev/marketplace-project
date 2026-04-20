@@ -30,7 +30,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter', 'Inter Fallback', 'system-ui', '-apple-system', 'sans-serif'],
       },
       spacing: {
         'safe': 'env(safe-area-inset-bottom)',
@@ -38,6 +38,8 @@ export default {
       animation: {
         'fade-in':  'fadeIn 0.2s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
+        'card-in':  'cardIn 0.45s cubic-bezier(0.22,1,0.36,1) both',
+        'shimmer':  'shimmer 1.8s infinite linear',
       },
       keyframes: {
         fadeIn: {
@@ -47,7 +49,15 @@ export default {
         slideUp: {
           '0%':   { transform: 'translateY(20px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
-        }
+        },
+        cardIn: {
+          '0%':   { opacity: '0', transform: 'translateY(14px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        shimmer: {
+          'from': { transform: 'translateX(-100%)' },
+          'to':   { transform: 'translateX(200%)' },
+        },
       },
       scale: {
         '98': '0.98',
@@ -74,7 +84,7 @@ export default {
     'bg-gold-400/10', 'bg-gold-400/8', 'bg-gold-600/5',
     'bg-blue-500/10', 'bg-rose-500/10', 'bg-green-500/10', 'bg-yellow-500/10', 'bg-red-500/10',
     // Animations
-    'animate-fade-in', 'animate-slide-up', 'animate-pulse',
+    'animate-fade-in', 'animate-slide-up', 'animate-pulse', 'animate-card-in', 'animate-shimmer',
     // Scale
     'active:scale-[0.98]', 'active:scale-95',
     // Scrollbar

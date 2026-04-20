@@ -2,24 +2,25 @@
  * NUNULIA — Authentication Service
  *
  * Strategy:
- * 1. Always try signInWithPopup (works on desktop + most mobile browsers)
- * 2. If popup blocked → fallback to signInWithRedirect (last resort)
- * 3. NEVER rely on getRedirectResult — it breaks on storage-partitioned browsers
- *    (iOS standalone PWA, Safari ITP, Chrome third-party cookie deprecation)
- * 4. onAuthStateChanged handles ALL auth results (popup + redirect + existing session)
- * 5. resolveFirebaseUser creates profile on first login — called from both flows
+ * 1. ALL platforms → Google One Tap (native overlay, no popup/redirect)
+ * 2. Fallback desktop → signInWithPopup (if One Tap unavailable)
+ * 3. Fallback iOS PWA / WebView → /auth-google in Safari
+ * 4. NEVER use signInWithRedirect — "missing initial state" on mobile Chrome
+ * 5. resolveFirebaseUser creates profile on first login — called from all flows
  *
  * Cache user in localStorage for instant app shell on 2G/3G networks.
  */
 
 import {
   signInWithPopup,
+  signInWithCredential,
   reauthenticateWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
 } from 'firebase/auth';
+import { promptOneTap } from '../google-one-tap';
 import { User } from '../../types';
 import {
   db, auth, doc, getDoc, setDoc, serverTimestamp,
@@ -70,6 +71,7 @@ const resolveFirebaseUser = async (firebaseUser: FirebaseUser): Promise<User> =>
       email:       firebaseUser.email || '',
       avatar:      firebaseUser.photoURL || '',
       isVerified:  false,
+      verificationTier: 'none',
       isSuspended: false,
       role:        'buyer',
       joinDate:    Date.now(),
@@ -106,63 +108,106 @@ const isWebView = (): boolean => {
   );
 };
 
+/** Android mobile browser (not WebView). Popup opens a new tab that never closes → white screen. */
+const isAndroidBrowser = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent) && !isWebView();
+};
+
+/** Desktop browser (not mobile, not WebView, not iOS standalone). */
+const isDesktop = (): boolean => !isWebView() && !isIOSStandalone() && !isAndroidBrowser();
+
 /**
- * Sign in with Google — stratégie popup uniquement, JAMAIS de redirect.
+ * Sign in with Google.
  *
- * signInWithRedirect est définitivement supprimé car il cause :
- * - "missing initial state" sur iOS Safari (ITP efface sessionStorage)
- * - Écran blanc au retour du redirect sur iOS PWA standalone
- * - Boucles de redirect sur certains Android WebView
+ * Stratégie (dépend de la plateforme) :
  *
- * Stratégie :
- * 1. signInWithPopup → fonctionne sur desktop + Android Chrome + Safari mobile
- * 2. Popup bloqué sur iOS PWA/WebView → ouvre /auth-google dans Safari full
- * 3. Popup bloqué ailleurs → message clair "activez les popups"
+ * DESKTOP → `signInWithPopup` directement. One Tap sur desktop (avec FedCM
+ *   désormais obligatoire sur Chrome) consomme l'user activation pendant que
+ *   le callback n'est plus fiable, ce qui provoque `auth/popup-blocked` sur
+ *   le popup qui suit. Le popup fonctionne proprement sur desktop — pas
+ *   d'onglet orphelin à ce niveau, contrairement à Android.
+ *
+ * MOBILE :
+ *   1. Google One Tap — overlay natif, évite le popup/redirect pénible
+ *   2. WebView (FB/Insta/WA) → ouvrir /auth-google dans le navigateur
+ *   3. iOS PWA standalone → ouvrir /auth-google dans Safari
+ *   4. Android browser → `window.location.href = '/auth-google'`
+ *
+ * JAMAIS `signInWithRedirect` — "missing initial state" sur Chrome mobile.
  */
 export const signInWithGoogle = async (): Promise<User | null> => {
   if (!auth || !db) throw new Error('Firebase non initialisé');
 
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
+  // ── DESKTOP: popup direct, pas de One Tap ──
+  // L'attente asynchrone One Tap invalide l'user activation avant le popup.
+  if (isDesktop()) {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
 
-  try {
-    const result = await signInWithPopup(auth, provider);
-    return resolveFirebaseUser(result.user);
-  } catch (err: any) {
-    // Utilisateur a fermé / annulé — pas une erreur
-    if (
-      err.code === 'auth/popup-closed-by-user' ||
-      err.code === 'auth/cancelled-popup-request'
-    ) {
-      return null;
-    }
-
-    // Popup bloqué ou environnement sans support popup
-    if (
-      err.code === 'auth/popup-blocked' ||
-      err.code === 'auth/operation-not-supported-in-this-environment' ||
-      err.code === 'auth/web-storage-unsupported'
-    ) {
-      if (isIOSStandalone() || isWebView()) {
-        // iOS PWA / in-app browser → ouvrir dans Safari full
-        // (window.open '_blank' depuis une PWA iOS ouvre dans Safari, pas dans la PWA)
-        const opened = window.open(`${window.location.origin}/auth-google`, '_blank');
-        if (!opened) {
-          const e: any = new Error('Ouvrez cette page dans votre navigateur pour vous connecter.');
-          e.code = 'auth/needs-browser-open';
-          throw e;
-        }
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return resolveFirebaseUser(result.user);
+    } catch (err: any) {
+      if (
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request'
+      ) {
         return null;
       }
 
-      // Tout autre cas (popup bloqué par extension, paramètres navigateur)
-      const e: any = new Error('Les popups sont bloqués. Autorisez-les pour ce site dans votre navigateur.');
-      e.code = 'auth/popup-blocked-manual';
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/operation-not-supported-in-this-environment' ||
+        err.code === 'auth/web-storage-unsupported'
+      ) {
+        const e: any = new Error('Les popups sont bloqués. Autorisez-les pour ce site dans votre navigateur.');
+        e.code = 'auth/popup-blocked-manual';
+        throw e;
+      }
+
+      throw err;
+    }
+  }
+
+  // ── MOBILE: One Tap d'abord ──
+  const oneTapResult = await promptOneTap();
+  if (oneTapResult) {
+    const credential = GoogleAuthProvider.credential(oneTapResult.credential);
+    const result = await signInWithCredential(auth, credential);
+    return resolveFirebaseUser(result.user);
+  }
+
+  // ── Fallbacks mobiles ──
+
+  // WebView (Facebook, Instagram, WhatsApp) → /auth-google dans le navigateur
+  if (isWebView()) {
+    const opened = window.open(`${window.location.origin}/auth-google`, '_blank');
+    if (!opened) {
+      const e: any = new Error('Ouvrez cette page dans votre navigateur pour vous connecter.');
+      e.code = 'auth/needs-browser-open';
       throw e;
     }
-
-    throw err;
+    return null;
   }
+
+  // iOS PWA standalone → /auth-google dans Safari
+  if (isIOSStandalone()) {
+    window.open(`${window.location.origin}/auth-google`, '_blank');
+    return null;
+  }
+
+  // Android browser → /auth-google via navigation SPA (caller utilise React Router).
+  // Un `window.location.href` ici ferait un hard reload → 1-3s d'écran blanc sur 3G/4G
+  // pendant que /auth-google charge. On throw un code dédié pour que le caller
+  // (AuthContext.handleLogin) fasse une transition SPA fluide via `navigate()`.
+  if (isAndroidBrowser()) {
+    const e: any = new Error('Auth page redirect required');
+    e.code = 'auth/needs-auth-page';
+    throw e;
+  }
+
+  return null;
 };
 
 export const signOut = async (): Promise<void> => {
@@ -203,16 +248,23 @@ export const subscribeToAuth = (callback: (user: User | null) => void): Unsubscr
       callback(null);
       return;
     }
+
+    // ── Fast path: unblock authReady immediately with cached user ──
+    // Calling callback here (before the Firestore await) means the app
+    // renders content instantly on page reload without waiting for the network.
+    // The second callback below updates with fresh Firestore data.
+    const cached = getCachedUser();
+    if (cached && cached.id === firebaseUser.uid) {
+      callback(cached);
+    }
+
     try {
       // resolveFirebaseUser reads existing profile OR creates one for new users
       const user = await resolveFirebaseUser(firebaseUser);
-      callback(user);
+      callback(user); // refresh with live Firestore data (may cause a silent re-render)
     } catch {
-      // Network error — use cached user if available (offline/slow network)
-      const cached = getCachedUser();
-      if (cached && cached.id === firebaseUser.uid) {
-        callback(cached);
-      } else {
+      // Network error — if we already called back with cached, don't regress to null
+      if (!cached || cached.id !== firebaseUser.uid) {
         callback(null);
       }
     }
@@ -224,12 +276,31 @@ export const subscribeToUserProfile = (
   callback: (user: User) => void
 ): Unsubscribe => {
   if (!db) return () => {};
+  let prevClaimsTs: number | null = null;
   return onSnapshot(doc(db, COLLECTIONS.USERS, userId), (snap) => {
     if (snap.exists()) {
-      callback(docToUser(snap.data(), userId));
+      const data = snap.data();
+      callback(docToUser(data, userId));
+      const claimsTs = data.claimsUpdatedAt?.toMillis?.() ?? null;
+      if (prevClaimsTs !== null && claimsTs !== null && claimsTs !== prevClaimsTs) {
+        auth?.currentUser?.getIdToken(true).catch(() => {});
+      }
+      prevClaimsTs = claimsTs;
     }
   });
 };
+
+export async function withClaimsRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (err: any) {
+    if (err?.code === 'permission-denied' && auth?.currentUser) {
+      await auth.currentUser.getIdToken(true);
+      return await operation();
+    }
+    throw err;
+  }
+}
 
 export const reauthenticateWithGoogle = async (): Promise<void> => {
   const user = getCurrentUser();

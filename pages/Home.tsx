@@ -6,9 +6,12 @@ import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { ProductSection } from '../components/ProductSection';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
-import { getProducts, getBanners, checkIsLikedBatch, getTrendingProducts, getPopularProducts } from '../services/firebase';
+import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getTrendingProducts, getPopularProducts, getBoostedProducts } from '../services/firebase';
 import { getRecentlyViewedIds, getPersonalizedRecommendations } from '../services/recommendations';
 import { getProductsByIds } from '../services/firebase';
+import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
+import { useNetworkQuality } from '../hooks/useNetworkQuality';
+import { prefetchProductImages } from '../utils/prefetch';
 import { trackCountrySwitch } from '../services/analytics';
 import { useAppContext } from '../contexts/AppContext';
 import { useCategories } from '../hooks/useCategories';
@@ -26,10 +29,12 @@ interface HomeCache {
   hasMore: boolean;
   banners: Banner[];
   likedMap: Record<string, boolean>;
+  boostedProducts: Product[];
   ts: number; // timestamp for staleness check
 }
 interface SectionsCache {
   userId: string | undefined;
+  countryId: string | undefined;
   trending: Product[];
   popular: Product[];
   recentlyViewed: Product[];
@@ -66,11 +71,15 @@ export const Home: React.FC = () => {
   const currentKey = cacheKey(activeCategory, activeCountry, wholesaleMode);
   const cached = _homeCache?.key === currentKey ? _homeCache : null;
   const anyCached = _homeCache; // Show ANY cached data to avoid blank page
-  const cachedSections = _sectionsCache?.userId === currentUser?.id ? _sectionsCache : null;
+  const cachedSections = _sectionsCache?.userId === currentUser?.id && _sectionsCache?.countryId === activeCountry ? _sectionsCache : null;
 
   const [products, setProducts] = useState<Product[]>(cached?.products || anyCached?.products || []);
   const { categories } = useCategories();
+  const networkQuality = useNetworkQuality();
   const [loading, setLoading] = useState(!(cached || anyCached?.products?.length));
+  // Sections (trending/popular/recs) ne démarrent qu'après le grid principal.
+  // Priorité bande passante sur 2G/3G : banners + produits d'abord.
+  const [mainReady, setMainReady] = useState(!!(cached || anyCached?.products?.length));
   const [lastDoc, setLastDoc] = useState<any>(cached?.lastDoc || null);
   const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -79,6 +88,9 @@ export const Home: React.FC = () => {
 
   // Country state — loaded dynamically via Firestore listener
   const { countries } = useActiveCountries();
+
+  // Boosted products
+  const [boostedProducts, setBoostedProducts] = useState<Product[]>([]);
 
   // Recommendation sections state
   const [trendingProducts, setTrendingProducts] = useState<Product[]>(cachedSections?.trending || []);
@@ -93,86 +105,185 @@ export const Home: React.FC = () => {
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  // Validate active country when countries list changes
-  // Use country IDs string as dep to avoid infinite loop (countries array is new each render)
+  // Validate active country when countries list changes.
+  // '' means "Tous les pays" — valid, do NOT reset to first country.
   const countryIds = countries.map(c => c.id).join(',');
   useEffect(() => {
-    if (countries.length > 0 && (!activeCountry || !countries.find(c => c.id === activeCountry))) {
-      setActiveCountry(countries[0].id);
+    if (countries.length > 0 && activeCountry && !countries.find(c => c.id === activeCountry)) {
+      // Unknown/stale country code → reset to Tous
+      setActiveCountry('');
     }
   }, [countryIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Don't load products until we have a valid activeCountry
-  const isCountryReady = !!activeCountry && countries.length > 0 && !!countries.find(c => c.id === activeCountry);
+  // Ready as soon as: country is '' (Tous) OR is a known active country
+  const isCountryReady = activeCountry === '' || (countries.length > 0 && !!countries.find(c => c.id === activeCountry));
 
-  // Chargement initial avec pagination + cache stale-while-revalidate
+  // ── Prune stale IDB entries once per session (low-priority) ──────────────
   useEffect(() => {
-    if (!isCountryReady) return; // Wait for valid country before fetching
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => pruneStaleFeeds(), { timeout: 10000 });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Three-phase loading: IDB → Firestore cache → Network ─────────────────
+  //
+  // Phase 1 (0–10ms):  Module-level _homeCache (in-memory, survives unmount)
+  // Phase 2 (10–50ms): IDB snapshot (persists across page reloads)
+  // Phase 3 (50ms+):   Firestore SDK cache (IndexedDB, instant when offline)
+  // Phase 4 (1–30s):   Network fetch (background — never blocks the UI)
+  //
+  // Rule: setLoading(false) is called as soon as ANY phase returns data.
+  // The network fetch always runs in background to keep data fresh.
+  useEffect(() => {
+    if (!isCountryReady) return;
     const key = cacheKey(activeCategory, activeCountry, wholesaleMode);
-    const hit = _homeCache?.key === key ? _homeCache : null;
+    const hit  = _homeCache?.key === key ? _homeCache : null;
     const isStale = hit && (Date.now() - hit.ts > CACHE_TTL);
 
-    // Cache hit and fresh → skip fetch entirely
+    // ── Phase 1: Module-level cache (in-memory) ──────────────────────────
     if (hit && !isStale) {
       setProducts(hit.products);
       setLastDoc(hit.lastDoc);
       setHasMore(hit.hasMore);
       setBanners(hit.banners);
       setLikedMap(hit.likedMap);
+      setBoostedProducts(hit.boostedProducts || []);
       setLoading(false);
-      return;
+      setMainReady(true);
+      return; // Fresh — no network needed
     }
 
-    // Cache hit but stale → show cached data immediately, refresh in background
+    // Show stale module cache immediately, then fall through to refresh
     if (hit && isStale) {
       setProducts(hit.products);
       setLastDoc(hit.lastDoc);
       setHasMore(hit.hasMore);
       setBanners(hit.banners);
       setLikedMap(hit.likedMap);
+      setBoostedProducts(hit.boostedProducts || []);
       setLoading(false);
-      // Fall through to refresh below (no loading spinner)
+      // Fall through — background refresh below
     } else {
-      // No cache → show loading
-      setLoading(true);
+      setLoading(true); // Will be cancelled quickly by Phase 2 or 3
     }
 
     const loadData = async () => {
-      const [{ products: fetchedProducts, lastDoc: newLastDoc }, fetchedBanners] = await Promise.all([
-        getProducts(activeCategory, undefined, undefined, undefined, activeCountry, wholesaleMode || undefined),
-        getBanners(),
-      ]);
-      if (!mountedRef.current) return;
+      // ── Phase 2: IDB snapshot (survives page reload, has full feed) ───
+      if (!hit) {
+        const idbSnap = await getFeedFromIDB(key);
+        if (idbSnap && mountedRef.current) {
+          setProducts(idbSnap.products);
+          setBanners(idbSnap.banners);
+          setBoostedProducts(idbSnap.boostedProducts || []);
+          setLoading(false);
+          setMainReady(true);
+          // Prefetch below-fold images from IDB data immediately
+          prefetchProductImages(
+            idbSnap.products.slice(6).flatMap(p => p.images?.slice(0, 1) ?? []),
+            networkQuality === 'slow'
+          );
+          // Continue to Phase 4 (network) in background — don't return
+        }
 
-      let newLikedMap: Record<string, boolean> = {};
-      if (currentUser && fetchedProducts.length > 0) {
-        newLikedMap = await checkIsLikedBatch(fetchedProducts.map(p => p.id), currentUser.id);
+        // ── Phase 3: Firestore SDK cache (near-instant, even on slow 2G) ─
+        if (!idbSnap) {
+          try {
+            const cachedProds = await getProductsFromCache(
+              activeCategory, activeCountry || undefined, wholesaleMode || undefined
+            );
+            if (cachedProds.length > 0 && mountedRef.current) {
+              setProducts(cachedProds);
+              setLoading(false);
+              setMainReady(true);
+            }
+          } catch {
+            // Firestore cache empty (first visit) — skeleton stays, Phase 4 will load
+          }
+        }
       }
-      if (!mountedRef.current) return;
 
-      // Update cache
-      _homeCache = {
-        key,
-        products: fetchedProducts,
-        lastDoc: newLastDoc,
-        hasMore: newLastDoc !== null,
-        banners: fetchedBanners as Banner[],
-        likedMap: newLikedMap,
-        ts: Date.now(),
-      };
+      // ── Phase 4: Network fetch (always runs; updates data silently) ────
+      // On slow networks, we already show cached content — this is background only.
+      // Strict 8-second timeout: if exceeded, we keep the cached data shown.
+      const NETWORK_TIMEOUT_MS = 8000;
+      const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
+        Promise.race([p, new Promise<never>((_, r) =>
+          setTimeout(() => r(new Error('network-timeout')), NETWORK_TIMEOUT_MS)
+        )]);
 
-      setProducts(fetchedProducts);
-      setBanners(fetchedBanners as Banner[]);
-      setLastDoc(newLastDoc);
-      setHasMore(newLastDoc !== null);
-      setLikedMap(newLikedMap);
-      setLoading(false);
+      try {
+        const [{ products: fetchedProducts, lastDoc: newLastDoc }, fetchedBanners, fetchedBoosted] =
+          await Promise.all([
+            withTimeout(getProducts(activeCategory, undefined, undefined, undefined, activeCountry, wholesaleMode || undefined)),
+            withTimeout(getBanners()),
+            withTimeout(getBoostedProducts(activeCountry || undefined)),
+          ]);
+
+        if (!mountedRef.current) return;
+
+        // Liked map (non-blocking — don't block render on this)
+        let newLikedMap: Record<string, boolean> = {};
+        if (currentUser && fetchedProducts.length > 0) {
+          try {
+            newLikedMap = await checkIsLikedBatch(fetchedProducts.map(p => p.id), currentUser.id);
+          } catch {}
+        }
+        if (!mountedRef.current) return;
+
+        // Update module-level cache
+        _homeCache = {
+          key,
+          products: fetchedProducts,
+          lastDoc: newLastDoc,
+          hasMore: newLastDoc !== null,
+          banners: fetchedBanners as Banner[],
+          likedMap: newLikedMap,
+          boostedProducts: fetchedBoosted,
+          ts: Date.now(),
+        };
+
+        // Persist to IDB for next page reload (fire-and-forget)
+        saveFeedToIDB({
+          key,
+          products: fetchedProducts,
+          banners: fetchedBanners as Banner[],
+          boostedProducts: fetchedBoosted,
+          ts: Date.now(),
+        });
+
+        setBoostedProducts(fetchedBoosted);
+        setProducts(fetchedProducts);
+        setBanners(fetchedBanners as Banner[]);
+        setLastDoc(newLastDoc);
+        setHasMore(newLastDoc !== null);
+        setLikedMap(newLikedMap);
+        setLoading(false);
+        setMainReady(true);
+
+        // Prefetch below-fold images after network data lands
+        prefetchProductImages(
+          fetchedProducts.slice(6).flatMap(p => p.images?.slice(0, 1) ?? []),
+          networkQuality === 'slow'
+        );
+
+      } catch {
+        // Network failed or timed out — cached data is already visible, just unblock
+        if (mountedRef.current) {
+          setLoading(false);
+          setMainReady(true);
+        }
+      }
     };
+
     loadData();
-  }, [activeCategory, activeCountry, wholesaleMode, isCountryReady]);
+  }, [activeCategory, activeCountry, wholesaleMode, isCountryReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load recommendation sections (with cache)
+  // Ne démarre qu'après que le grid principal est visible (mainReady).
+  // Sur 2G/3G : banners + produits reçoivent toute la bande passante en premier.
   useEffect(() => {
+    if (!mainReady) return;
+
     const secHit = _sectionsCache?.userId === currentUser?.id ? _sectionsCache : null;
     const secStale = secHit && (Date.now() - secHit.ts > CACHE_TTL);
 
@@ -193,10 +304,16 @@ export const Home: React.FC = () => {
     }
 
     const loadSections = async () => {
+      // On 2G/saveData, skip trending & popular to save bandwidth.
+      // Recently viewed + personalized recs are cheaper (IDs only).
+      if (networkQuality === 'slow') {
+        setSectionsLoading(false);
+        return;
+      }
       try {
         const [trending, popular] = await Promise.all([
-          getTrendingProducts(8),
-          getPopularProducts(8),
+          getTrendingProducts(8, activeCountry || undefined),
+          getPopularProducts(8, activeCountry || undefined),
         ]);
         if (!mountedRef.current) return;
         setTrendingProducts(trending);
@@ -217,6 +334,7 @@ export const Home: React.FC = () => {
         // Update cache
         _sectionsCache = {
           userId: currentUser?.id,
+          countryId: activeCountry || undefined,
           trending,
           popular,
           recentlyViewed: recentProducts,
@@ -229,7 +347,7 @@ export const Home: React.FC = () => {
       if (mountedRef.current) setSectionsLoading(false);
     };
     loadSections();
-  }, [currentUser?.id]);
+  }, [currentUser?.id, activeCountry, mainReady]); // activeCountry : trending/popular sont filtrés par pays
 
   // Chargement de la page suivante (scroll infini)
   const loadMore = useCallback(async () => {
@@ -261,35 +379,24 @@ export const Home: React.FC = () => {
   }, [products, nearbyMode, position]);
 
   return (
-    <div className="pb-24 pt-safe-header md:pt-24 px-4 max-w-7xl mx-auto space-y-8">
-      {/* Country context banner — compact, links to search country filter */}
-      {activeCountryInfo && (
-        <div className="flex items-center justify-between bg-gray-800/40 border border-gray-700/40 rounded-xl px-4 py-2.5">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-lg">{activeCountryInfo.flag}</span>
-            <span className="text-gray-300">{t('home.browsingIn', { name: activeCountryInfo.name })}</span>
-          </div>
-          {countries.length > 1 && (
-            <div className="flex items-center gap-1.5">
-              {countries.filter(c => c.id !== activeCountry).slice(0, 4).map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => { trackCountrySwitch(activeCountry, c.id); setActiveCountry(c.id); }}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-500 transition-all text-sm"
-                  title={c.name}
-                >
-                  {c.flag}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
+    <div className="pb-24 pt-safe-header md:pt-24 px-3 max-w-7xl mx-auto space-y-3">
       {/* Banner Carousel */}
       <BannerCarousel
         banners={banners.length > 0 ? banners : undefined}
       />
+
+      {/* Sponsored / Boosted Products */}
+      {boostedProducts.length > 0 && (
+        <ProductSection
+          title={t('home.sections.sponsored')}
+          icon="⚡"
+          products={boostedProducts}
+          loading={false}
+          currentUserId={currentUser?.id}
+          likedMap={likedMap}
+          onProductClick={onProductClick}
+        />
+      )}
 
       {/* Trending Products */}
       <ProductSection
@@ -303,74 +410,74 @@ export const Home: React.FC = () => {
       />
 
       {/* Categories */}
-      <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
-        <div className="flex gap-3">
-            {/* Bouton "Près de moi" — géolocalisation */}
-            <button
-              onClick={() => {
-                if (!nearbyMode) {
-                  requestLocation();
-                  setNearbyMode(true);
-                  setActiveCategory('all');
-                } else {
-                  setNearbyMode(false);
-                }
-              }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all border ${
-                nearbyMode
-                  ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-500/20'
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-750 hover:text-white'
-              }`}
-            >
-              {geoLoading ? (
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : (
-                <span className="text-lg">📍</span>
-              )}
-              <span className="text-sm font-medium">{t('home.nearMe')}</span>
-            </button>
+      <div className="overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
+        <div className="flex gap-1.5">
+          {/* Bouton "Près de moi" */}
+          <button
+            onClick={() => {
+              if (!nearbyMode) {
+                requestLocation();
+                setNearbyMode(true);
+                setActiveCategory('all');
+              } else {
+                setNearbyMode(false);
+              }
+            }}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
+              nearbyMode
+                ? 'bg-green-600 border-green-500 text-white'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            {geoLoading ? (
+              <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+            ) : (
+              <span className="text-xs">📍</span>
+            )}
+            {t('home.nearMe')}
+          </button>
 
-            {/* Bouton "Grossiste B2B" */}
-            <button
-              onClick={() => {
-                setWholesaleMode(!wholesaleMode);
-                if (!wholesaleMode) setActiveCategory('all');
-              }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all border ${
-                wholesaleMode
-                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-750 hover:text-white'
-              }`}
-            >
-              <span className="text-lg">🏭</span>
-              <span className="text-sm font-medium">{t('home.wholesale')}</span>
-            </button>
+          {/* Bouton "Grossiste B2B" */}
+          <button
+            onClick={() => {
+              setWholesaleMode(!wholesaleMode);
+              if (!wholesaleMode) setActiveCategory('all');
+            }}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
+              wholesaleMode
+                ? 'bg-indigo-600 border-indigo-500 text-white'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            <span className="text-xs">🏭</span>
+            {t('home.wholesale')}
+          </button>
 
-            {/* Bouton "Tout" (Statique) */}
-            <button
-              onClick={() => { setActiveCategory('all'); setNearbyMode(false); }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all border ${
-                activeCategory === 'all' && !nearbyMode
-                  ? `${tc.bg600} ${tc.border500} text-white ${tc.shadowLg}`
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-750 hover:text-white'
-              }`}
-            >
-              <span className="text-lg">🔍</span>
-              <span className="text-sm font-medium">{t('home.all')}</span>
-            </button>
+          {/* Bouton "Tout" */}
+          <button
+            onClick={() => { setActiveCategory('all'); setNearbyMode(false); }}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
+              activeCategory === 'all' && !nearbyMode
+                ? `${tc.bg600} ${tc.border500} text-white`
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            <span className="text-xs">🔍</span>
+            {t('home.all')}
+          </button>
 
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => { setActiveCategory(cat.id); setNearbyMode(false); }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all border ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
                 activeCategory === cat.id
-                  ? `${tc.bg600} ${tc.border500} text-white ${tc.shadowLg}`
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-750 hover:text-white'
+                  ? `${tc.bg600} ${tc.border500} text-white`
+                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
               }`}
             >
-              <span className="text-lg">{cat.icon}</span>
-              <span className="text-sm font-medium">{cat.name}</span>
+              <span className="text-xs">{cat.icon}</span>
+              {cat.name}
             </button>
           ))}
         </div>
@@ -378,13 +485,13 @@ export const Home: React.FC = () => {
 
       {/* B2B wholesale banner */}
       {wholesaleMode && (
-        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 flex items-center gap-3">
-          <span className="text-2xl">🏭</span>
-          <div className="flex-1">
-            <p className="text-indigo-400 font-semibold text-sm">{t('home.wholesaleActive')}</p>
-            <p className="text-indigo-400/60 text-xs">{t('home.wholesaleHint')}</p>
+        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-2 flex items-center gap-2">
+          <span className="text-base">🏭</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-indigo-400 font-semibold text-xs leading-tight">{t('home.wholesaleActive')}</p>
+            <p className="text-indigo-400/60 text-[10px] leading-tight">{t('home.wholesaleHint')}</p>
           </div>
-          <button onClick={() => setWholesaleMode(false)} className="text-indigo-400/60 hover:text-white text-xs px-3 py-1 border border-indigo-500/30 rounded-lg">
+          <button onClick={() => setWholesaleMode(false)} className="text-indigo-400/60 hover:text-white text-[10px] px-2 py-0.5 border border-indigo-500/30 rounded-lg flex-shrink-0">
             {t('home.nearbyDisable')}
           </button>
         </div>
@@ -392,13 +499,13 @@ export const Home: React.FC = () => {
 
       {/* Nearby mode banner */}
       {nearbyMode && (
-        <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex items-center gap-3">
-          <span className="text-2xl">📍</span>
-          <div className="flex-1">
-            <p className="text-green-400 font-semibold text-sm">{t('home.nearbyActive')}</p>
-            <p className="text-green-400/60 text-xs">{position ? t('home.nearbyHint') : t('home.nearbyWaiting')}</p>
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-2 flex items-center gap-2">
+          <span className="text-base">📍</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-green-400 font-semibold text-xs leading-tight">{t('home.nearbyActive')}</p>
+            <p className="text-green-400/60 text-[10px] leading-tight">{position ? t('home.nearbyHint') : t('home.nearbyWaiting')}</p>
           </div>
-          <button onClick={() => setNearbyMode(false)} className="text-green-400/60 hover:text-white text-xs px-3 py-1 border border-green-500/30 rounded-lg">
+          <button onClick={() => setNearbyMode(false)} className="text-green-400/60 hover:text-white text-[10px] px-2 py-0.5 border border-green-500/30 rounded-lg flex-shrink-0">
             {t('home.nearbyDisable')}
           </button>
         </div>
@@ -406,37 +513,60 @@ export const Home: React.FC = () => {
 
       {/* Product Grid — Dernieres annonces */}
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            {wholesaleMode ? '🏭' : nearbyMode ? '📍' : '🛒'} {wholesaleMode ? t('home.wholesale') : nearbyMode ? t('home.nearMe') : t('home.latestListings')}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-sm">{wholesaleMode ? '🏭' : nearbyMode ? '📍' : '🛒'}</span>
+          <h3 className="text-sm font-bold text-white">
+            {wholesaleMode ? t('home.wholesale') : nearbyMode ? t('home.nearMe') : t('home.latestListings')}
           </h3>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="bg-gray-800 rounded-2xl h-80 animate-pulse"></div>
+          // Shimmer skeleton — matches grid card layout (square image + info zone)
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
+              <div key={n} className="rounded-xl overflow-hidden bg-gray-900 border border-gray-800/60 animate-pulse">
+                <div className="aspect-square bg-gray-800 relative overflow-hidden">
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.055) 50%, transparent 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: `shimmer 1.8s ${n * 0.12}s infinite linear`,
+                    }}
+                  />
+                </div>
+                <div className="p-2 space-y-1.5">
+                  <div className="h-3 bg-gray-800 rounded-full w-full" />
+                  <div className="h-3 bg-gray-800 rounded-full w-3/5" />
+                  <div className="h-3.5 bg-gray-700/60 rounded-full w-2/5 mt-0.5" />
+                  <div className="h-2.5 bg-gray-800/60 rounded-full w-1/2" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayProducts.map((product: any) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {displayProducts.map((product: any, idx: number) => (
               <div key={product.id} className="relative">
                 <ProductCard
                   product={product}
                   onClick={() => onProductClick(product)}
                   currentUserId={currentUser?.id || null}
                   initialLiked={likedMap[product.id]}
+                  variant="grid"
+                  index={idx}
                 />
                 {nearbyMode && position && product._distance < 9999 && (
-                  <span className="absolute top-2 left-2 bg-green-600/90 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
+                  <span className="absolute top-1.5 left-1.5 bg-green-600/90 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20">
                     📍 {formatDistance(product._distance)}
                   </span>
                 )}
               </div>
             ))}
-            {displayProducts.length === 0 && !loading && (
-              <div className="col-span-full text-center py-10 text-gray-500">{t('home.noProductsInCategory')}</div>
+            {displayProducts.length === 0 && (
+              <div className="col-span-full text-center py-10 text-gray-500">
+                {t('home.noProductsInCategory')}
+              </div>
             )}
           </div>
         )}
@@ -444,11 +574,11 @@ export const Home: React.FC = () => {
 
       {/* Bouton Charger plus (pagination) */}
       {hasMore && !loading && (
-        <div className="text-center mt-4">
+        <div className="text-center">
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-8 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-full text-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+            className="px-6 py-2 bg-gray-800 border border-gray-700 text-gray-400 rounded-full text-xs hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             {loadingMore ? t('home.loading') : t('home.loadMore')}
           </button>
@@ -487,7 +617,7 @@ export const Home: React.FC = () => {
         onProductClick={onProductClick}
       />
       {/* Footer legal */}
-      <div className="text-center py-8 mt-4 border-t border-gray-800/50">
+      <div className="text-center py-4 border-t border-gray-800/50">
         <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
           <Link to="/cgu" className="hover:text-amber-400 hover:underline transition-colors">
             Conditions d'utilisation

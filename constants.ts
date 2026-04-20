@@ -1,4 +1,4 @@
-import { Product, User, ThemeColors, Category, SubscriptionTier, Country, Currency, PaymentMethod, SubscriptionPricing } from './types';
+import { Product, User, ThemeColors, Category, SubscriptionTier, Country, Currency, PaymentMethod, SubscriptionPricing, BoostPricing } from './types';
 
 export const CURRENCY = 'FBu'; // legacy default — use Currency system for multi-currency
 export const LOW_STOCK_THRESHOLD = 5;
@@ -21,61 +21,26 @@ export const PROVINCES_RWANDA = [
   'Kigali', 'Est', 'Nord', 'Ouest', 'Sud'
 ];
 
-export const PROVINCES_UGANDA = [
-  'Central', 'Eastern', 'Northern', 'Western', 'Kampala'
-];
-
-export const PROVINCES_TANZANIE = [
-  'Dar es Salaam', 'Dodoma', 'Arusha', 'Mwanza', 'Zanzibar',
-  'Mbeya', 'Morogoro', 'Tanga', 'Kagera', 'Kigoma',
-  'Kilimanjaro', 'Iringa', 'Mara', 'Mtwara', 'Tabora',
-  'Lindi', 'Rukwa', 'Ruvuma', 'Shinyanga', 'Singida',
-  'Geita', 'Katavi', 'Njombe', 'Simiyu', 'Songwe',
-  'Pemba North', 'Pemba South', 'Unguja North', 'Unguja South',
-];
-
-export const PROVINCES_KENYA = [
-  'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu',
-  'Kiambu', 'Machakos', 'Kajiado', 'Kilifi', 'Kwale',
-  'Nyeri', 'Murang\'a', 'Kakamega', 'Bungoma', 'Nandi',
-  'Kericho', 'Bomet', 'Trans-Nzoia', 'Laikipia', 'Embu',
-  'Meru', 'Tharaka-Nithi', 'Makueni', 'Kitui', 'Taita-Taveta',
-  'Lamu', 'Tana River', 'Garissa', 'Wajir', 'Mandera',
-  'Marsabit', 'Isiolo', 'Samburu', 'Turkana', 'West Pokot',
-  'Baringo', 'Elgeyo-Marakwet', 'Nyandarua', 'Kirinyaga',
-  'Nyamira', 'Kisii', 'Homa Bay', 'Migori', 'Siaya',
-  'Vihiga', 'Busia', 'Narok',
-];
-
-/** Lookup provinces by country ID */
+/** Lookup provinces by country ID — Grands Lacs region only */
 export const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
   bi: PROVINCES_BURUNDI,
   cd: PROVINCES_RDC,
   rw: PROVINCES_RWANDA,
-  ug: PROVINCES_UGANDA,
-  tz: PROVINCES_TANZANIE,
-  ke: PROVINCES_KENYA,
 };
 
-// --- PAYS SUPPORTÉS (Extensible par Admin) ---
+// --- PAYS SUPPORTÉS — Région des Grands Lacs ---
 export const INITIAL_COUNTRIES: Country[] = [
     { id: 'bi', name: 'Burundi', code: 'BI', currency: 'FBu', flag: '🇧🇮', isActive: true },
-    { id: 'cd', name: 'RDC', code: 'CD', currency: 'FC', flag: '🇨🇩', isActive: true },
-    { id: 'rw', name: 'Rwanda', code: 'RW', currency: 'FRw', flag: '🇷🇼', isActive: true },
-    { id: 'ug', name: 'Ouganda', code: 'UG', currency: 'USh', flag: '🇺🇬', isActive: true },
-    { id: 'tz', name: 'Tanzanie', code: 'TZ', currency: 'TZS', flag: '🇹🇿', isActive: true },
-    { id: 'ke', name: 'Kenya', code: 'KE', currency: 'KES', flag: '🇰🇪', isActive: true },
+    { id: 'cd', name: 'RDC',     code: 'CD', currency: 'FC',  flag: '🇨🇩', isActive: true },
+    { id: 'rw', name: 'Rwanda',  code: 'RW', currency: 'FRw', flag: '🇷🇼', isActive: true },
 ];
 
-// --- DEVISES (Admin-managed via Firestore, seeded from here) ---
+// --- DEVISES — Grands Lacs + USD international ---
 export const INITIAL_CURRENCIES: Currency[] = [
-  { id: 'BIF', code: 'BIF', name: 'Franc Burundais',       symbol: 'FBu', countryId: 'bi',   isActive: true },
-  { id: 'CDF', code: 'CDF', name: 'Franc Congolais',       symbol: 'FC',  countryId: 'cd',   isActive: true },
-  { id: 'RWF', code: 'RWF', name: 'Franc Rwandais',        symbol: 'FRw', countryId: 'rw',   isActive: true },
-  { id: 'UGX', code: 'UGX', name: 'Shilling Ougandais',    symbol: 'USh', countryId: 'ug',   isActive: true },
-  { id: 'TZS', code: 'TZS', name: 'Shilling Tanzanien',    symbol: 'TZS', countryId: 'tz',   isActive: true },
-  { id: 'USD', code: 'USD', name: 'Dollar Américain',       symbol: '$',   countryId: 'intl', isActive: true },
-  { id: 'KES', code: 'KES', name: 'Shilling Kényan',        symbol: 'KES', countryId: 'ke',   isActive: true },
+  { id: 'BIF', code: 'BIF', name: 'Franc Burundais',  symbol: 'FBu', countryId: 'bi',   isActive: true },
+  { id: 'CDF', code: 'CDF', name: 'Franc Congolais',  symbol: 'FC',  countryId: 'cd',   isActive: true },
+  { id: 'RWF', code: 'RWF', name: 'Franc Rwandais',   symbol: 'FRw', countryId: 'rw',   isActive: true },
+  { id: 'USD', code: 'USD', name: 'Dollar Américain', symbol: '$',   countryId: 'intl', isActive: true },
 ];
 
 export const THEME: ThemeColors = {
@@ -119,29 +84,18 @@ export const FREE_TIER_WARNING_AT = 3; // Show upgrade warning when reaching thi
 // --- PAYMENT METHODS PAR PAYS ---
 export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
   bi: [
-    { name: 'Lumicash', number: '68 515 135', icon: '📱' },
-    { name: 'Ecocash', number: '68 515 135', icon: '📱' },
+    { name: 'Lumicash',      number: '68 515 135',         icon: '📱' },
+    { name: 'Ecocash',       number: '68 515 135',         icon: '📱' },
     { name: 'Bancobu / BCB', number: 'Contactez via WhatsApp', icon: '🏦' },
   ],
   cd: [
-    { name: 'Airtel Money', number: '+243 979 055 933', icon: '📱' },
-    { name: 'Orange Money', number: '+243 979 055 933', icon: '📱' },
-    { name: 'M-Pesa', number: '+243 979 055 933', icon: '📱' },
+    { name: 'Airtel Money',  number: '+243 979 055 933',   icon: '📱' },
+    { name: 'Orange Money',  number: '+243 979 055 933',   icon: '📱' },
+    { name: 'M-Pesa',        number: '+243 979 055 933',   icon: '📱' },
   ],
   rw: [
-    { name: 'MTN MoMo', number: 'Contactez support', icon: '📱' },
-    { name: 'Airtel Money', number: 'Contactez support', icon: '📱' },
-  ],
-  ug: [
-    { name: 'MTN MoMo', number: 'Contactez support', icon: '📱' },
-    { name: 'Airtel Money', number: 'Contactez support', icon: '📱' },
-  ],
-  tz: [
-    { name: 'M-Pesa', number: 'Contactez support', icon: '📱' },
-    { name: 'Tigo Pesa', number: 'Contactez support', icon: '📱' },
-  ],
-  ke: [
-    { name: 'M-Pesa', number: 'Contactez support', icon: '📱' },
+    { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },
+    { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
   ],
 };
 
@@ -149,20 +103,22 @@ export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
 export const SUPPORT_WHATSAPP: Record<string, string> = {
   bi: '+25768515135',
   cd: '+243979055933',
-  rw: '+25768515135',  // fallback BI
-  ug: '+25768515135',  // fallback BI
-  tz: '+25768515135',  // fallback BI
-  ke: '+25768515135',  // fallback BI
+  rw: '+25768515135',
 };
 
 // --- PRIX D'ABONNEMENT PAR PAYS (defaults — admin peut modifier via Firestore) ---
 export const DEFAULT_SUBSCRIPTION_PRICING: Record<string, SubscriptionPricing> = {
   bi: { prices: { starter: 15000, pro: 45000, elite: 100000, unlimited: 250000 }, currency: 'BIF' },
-  cd: { prices: { starter: 5, pro: 15, elite: 30, unlimited: 75 }, currency: 'USD' },
-  rw: { prices: { starter: 5000, pro: 15000, elite: 30000, unlimited: 75000 }, currency: 'RWF' },
-  ug: { prices: { starter: 20000, pro: 60000, elite: 120000, unlimited: 300000 }, currency: 'UGX' },
-  tz: { prices: { starter: 10000, pro: 30000, elite: 60000, unlimited: 150000 }, currency: 'TZS' },
-  ke: { prices: { starter: 500, pro: 1500, elite: 3000, unlimited: 7500 }, currency: 'KES' },
+  cd: { prices: { starter: 5,     pro: 15,    elite: 30,     unlimited: 75     }, currency: 'USD' },
+  rw: { prices: { starter: 5000,  pro: 15000, elite: 30000,  unlimited: 75000  }, currency: 'RWF' },
+};
+
+// --- PRIX BOOST PAR PAYS (defaults — admin peut modifier via Firestore collection boostPricing) ---
+// Équivalent ~1 USD partout. Modifiable dans Firebase Console : boostPricing/{countryId}
+export const DEFAULT_BOOST_PRICING: Record<string, BoostPricing> = {
+  bi: { amount: 5000, currency: 'BIF' },
+  cd: { amount: 2500, currency: 'CDF' },
+  rw: { amount: 1000, currency: 'RWF' },
 };
 
 // --- USERS MOCK ---
@@ -188,8 +144,10 @@ export const MOCK_USER: User = {
   productCount: 0 
 };
 
-// --- CATÉGORIES UNIFIÉES (10 catégories + sous-catégories) ---
+// --- CATÉGORIES UNIFIÉES (14 catégories + sous-catégories) ---
 // Ordered by priority — Electronique, Mode, Beauté first, then the rest
+// ⚠️ Ne jamais modifier id/slug — ce sont des clés étrangères dans les produits Firestore et Algolia.
+//    Seuls name, icon et subCategories peuvent évoluer librement.
 export const INITIAL_CATEGORIES: Category[] = [
   {
     id: 'electronique-telephonie',
@@ -202,7 +160,7 @@ export const INITIAL_CATEGORIES: Category[] = [
       'Ordinateurs Portables', 'PC Bureau & Écrans', 'Tablettes',
       'TV & Home Cinéma', 'Photo & Vidéo', 'Gaming & Consoles',
       'Imprimantes & Encre', 'Composants PC', 'Stockage (USB/HDD/SSD)',
-      'Réseaux & Wifi', 'Drones', 'Maison Connectée', 'Électroménager léger',
+      'Réseaux & Wifi', 'Drones', 'Maison Connectée',
     ],
   },
   {
@@ -233,8 +191,10 @@ export const INITIAL_CATEGORIES: Category[] = [
     ],
   },
   {
+    // ⚠️ slug 'restaurant' conservé — les produits existants l'utilisent
+    // Renommé "Restauration & Traiteur" pour inclure les traiteurs/jus à emporter
     id: 'restaurant',
-    name: 'Restaurant',
+    name: 'Restauration & Traiteur',
     icon: '🍽️',
     slug: 'restaurant',
     order: 4,
@@ -242,7 +202,8 @@ export const INITIAL_CATEGORIES: Category[] = [
       'Plats locaux', 'Grillades & Brochettes', 'Fast-food',
       'Pizzeria', 'Pâtisserie & Boulangerie', 'Boissons & Jus frais',
       'Buffet & Traiteur', 'Cuisine africaine', 'Cuisine internationale',
-      'Café & Salon de thé', 'Livraison repas',
+      'Cafétéria & Salon de thé', // Renommé pour éviter la confusion avec "Café & Thé" (produit)
+      'Livraison repas',
     ],
   },
   {
@@ -259,12 +220,19 @@ export const INITIAL_CATEGORIES: Category[] = [
     ],
   },
   {
+    // ⚠️ slug 'maison-cuisine' conservé
+    // Renommé "Maison & Décoration", électroménager rapatrié ici (doublon supprimé dans Électronique)
     id: 'maison-cuisine',
-    name: 'Maison & Cuisine',
+    name: 'Maison & Décoration',
     icon: '🏠',
     slug: 'maison-cuisine',
     order: 6,
-    subCategories: ['Ustensiles', 'Décoration', 'Literie', 'Petit électroménager'],
+    subCategories: [
+      'Ustensiles de cuisine', 'Vaisselle & Arts de la table',
+      'Électroménager', // Anciennement "Petit électroménager" — seule occurrence, doublon supprimé
+      'Mobilier & Meubles', 'Décoration & Objets déco', 'Literie & Textiles maison',
+      'Luminaires & Éclairage', 'Jardinage & Plantes',
+    ],
   },
   {
     id: 'bebe-enfants',
@@ -272,30 +240,79 @@ export const INITIAL_CATEGORIES: Category[] = [
     icon: '👶',
     slug: 'bebe-enfants',
     order: 7,
-    subCategories: ['Vêtements', 'Jouets', 'Accessoires scolaires'],
+    subCategories: [
+      'Vêtements bébé & enfant', 'Alimentation bébé',
+      'Poussettes & Transport', 'Soins & Hygiène bébé',
+      'Jouets', 'Jouets éducatifs & Éveil',
+      'Accessoires scolaires',
+    ],
+  },
+  {
+    id: 'sport-loisirs',
+    name: 'Sport & Loisirs',
+    icon: '⚽',
+    slug: 'sport-loisirs',
+    order: 8,
+    subCategories: [
+      'Équipements sportifs', 'Vélos & Trottinettes',
+      'Chasse & Pêche', 'Camping & Randonnée', 'Jeux & Loisirs',
+    ],
+  },
+  {
+    id: 'education-fournitures',
+    name: 'Éducation & Fournitures',
+    icon: '📚',
+    slug: 'education-fournitures',
+    order: 9,
+    subCategories: [
+      'Livres scolaires & universitaires', 'Fournitures scolaires',
+      'Papeterie & Bureau', 'Jeux éducatifs',
+    ],
   },
   {
     id: 'construction-btp',
     name: 'Construction & BTP',
     icon: '🏗️',
     slug: 'construction-btp',
-    order: 8,
-    subCategories: ['Matériaux', 'Outils', 'Quincaillerie'],
+    order: 10,
+    subCategories: [
+      'Matériaux de construction', 'Ciment & Béton',
+      'Peinture & Enduit', 'Menuiserie & Bois',
+      'Outils & Machines', 'Quincaillerie',
+      'Plomberie & Sanitaires', 'Électricité & Câblage',
+    ],
   },
   {
     id: 'auto-moto',
     name: 'Auto & Moto',
     icon: '🚗',
     slug: 'auto-moto',
-    order: 9,
-    subCategories: ['Pièces détachées', 'Accessoires', 'Pneus'],
+    order: 11,
+    subCategories: [
+      'Véhicules (Vente)', 'Motos & Vélos',
+      'Pièces détachées', 'Accessoires auto & moto',
+      'Pneus', 'Huiles & Lubrifiants', 'Batteries',
+      'Entretien & Réparation',
+    ],
+  },
+  {
+    id: 'energie-solaire',
+    name: 'Énergie & Solaire',
+    icon: '☀️',
+    slug: 'energie-solaire',
+    order: 12,
+    subCategories: [
+      'Panneaux solaires', 'Batteries & Onduleurs',
+      'Groupes électrogènes', 'Pièces détachées groupes électrogènes',
+      'Ampoules & LED', 'Câbles & Prises',
+    ],
   },
   {
     id: 'agriculture-elevage',
     name: 'Agriculture & Élevage',
     icon: '🌾',
     slug: 'agriculture-elevage',
-    order: 10,
+    order: 13,
     subCategories: ['Semences', 'Engrais', 'Outils agricoles', 'Produits vétérinaires'],
   },
   {
@@ -303,8 +320,16 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: 'Services',
     icon: '🔧',
     slug: 'services',
-    order: 11,
-    subCategories: ['Réparation électroménager', 'Livraison', 'Couture', 'Plomberie', 'Électricité'],
+    order: 14,
+    // Services = prestations humaines uniquement (pas de vente de matériel)
+    // Matériaux → Construction & BTP | Pièces tech → Électronique | Vêtements cousus → Mode
+    subCategories: [
+      'Réparation électroménager', 'Informatique & Dépannage',
+      'Couture sur commande', 'Coiffure & Salon de beauté',
+      'Plomberie', 'Électricité',
+      'Transport & Déménagement', 'Livraison',
+      'Événementiel & Photographie',
+    ],
   },
 ];
 

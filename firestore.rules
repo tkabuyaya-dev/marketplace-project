@@ -22,26 +22,39 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
 
-    // Récupère le document utilisateur depuis Firestore (rôle vérifié serveur-side)
+    // Récupère le document utilisateur depuis Firestore.
+    // Réservé aux checks où le JWT ne suffit pas :
+    //   - canCreateProduct() : maxProducts / productCount / lastProductCreatedAt (compteurs volatils)
+    //   - isNotSuspendedStrict() : anti-TTL JWT sur writes critiques (products)
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Vérifie le rôle depuis Firestore (pas depuis le client !)
-    function hasRole(role) {
-      return isAuth() && getUserData().role == role;
-    }
-
+    // Rôle lu depuis les custom claims Firebase Auth (JWT).
+    // Synchronisé par la CF onUserRoleWrite à chaque changement de users/{uid}.role,
+    // propagé au client via claimsUpdatedAt + getIdToken(true). TTL ~1h max.
     function isAdmin() {
-      return hasRole('admin');
+      return isAuth() && request.auth.token.get('role', '') == 'admin';
     }
 
     function isSeller() {
-      return hasRole('seller') || isAdmin();
+      return isAuth() && (
+        request.auth.token.get('role', '') == 'seller'
+        || request.auth.token.get('role', '') == 'admin'
+      );
     }
 
-    // Vérifie que le compte n'est pas suspendu
+    // Suspension — version rapide (JWT, TTL ~1h). Utilisée par défaut sur tous les
+    // writes non critiques (reports, reviews, subscriptionRequests, boostRequests,
+    // buyerRequestContacts, users/self-update).
     function isNotSuspended() {
+      return isAuth() && request.auth.token.get('suspended', false) == false;
+    }
+
+    // Suspension — version stricte (lecture Firestore, effet immédiat, 1 read extra).
+    // Utilisée sur les writes critiques où un décalage TTL JWT serait dangereux :
+    // création et édition de produits.
+    function isNotSuspendedStrict() {
       return isAuth() && getUserData().get('isSuspended', false) == false;
     }
 
@@ -57,7 +70,7 @@ service cloud.firestore {
 
     // ── Subscription Enforcement (server-side) ──
 
-    // Check if seller's subscription allows creating products
+    // Check if seller's subscription allows creating products + rate limiting
     function canCreateProduct() {
       let seller = getUserData();
       let maxProducts = seller.get('sellerDetails', {}).get('maxProducts', 5);
@@ -65,11 +78,20 @@ service cloud.firestore {
       let expiresAt = seller.get('sellerDetails', {}).get('subscriptionExpiresAt', null);
       let isPaid = maxProducts > 5;
 
+      // Burst protection (server-enforced): 20-second cooldown between creations.
+      // lastProductCreatedAt is written by addProduct() after each successful create.
+      // This prevents direct API abuse even if client-side checks are bypassed.
+      let lastCreate = seller.get('lastProductCreatedAt', 0);
+      let cooldownOk = lastCreate < request.time.toMillis() - 20000;
+
       // Rule 1: If paid tier and expired → enforce free tier limit (5)
       // Rule 2: If within limits → allow
-      return (isPaid && expiresAt != null && expiresAt < request.time.toMillis())
-        ? productCount < 5                // Expired → free tier limit
-        : productCount < maxProducts;     // Active → tier limit
+      // Rule 3: Cooldown must be respected regardless of tier
+      return cooldownOk && (
+        (isPaid && expiresAt != null && expiresAt < request.time.toMillis())
+          ? productCount < 5                // Expired → free tier limit
+          : productCount < maxProducts      // Active → tier limit
+      );
     }
 
     // ─────────────────────────────────────────────────────────
@@ -88,25 +110,35 @@ service cloud.firestore {
       // Mise à jour: soi-même avec restrictions, ou admin sans restriction
       allow update: if isAdmin()
         || (isOwner(userId) && isNotSuspended() && (
-          // Cas 1: Mise à jour profil normale (pas de changement role/isVerified/sellerDetails.subscription*)
+          // Cas 1: Mise à jour profil normale.
+          // Champs verrouillés admin-only :
+          //   - role, isVerified (historiques)
+          //   - verificationTier : source canonique du niveau de confiance
+          //   - trustScore : score calculé, jamais auto-déclaré
+          //   - verifiedAt : timestamp de vérification
+          //   - verificationMethod : méthode utilisée par l'admin
+          // + champs d'abonnement (sellerDetails.maxProducts/subscriptionExpiresAt/tierLabel/verifiedAt/verificationMethod)
           (
-            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isVerified'])
-            // Empêcher la modification des champs d'abonnement par le vendeur
+            !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['role', 'isVerified', 'verificationTier', 'trustScore', 'verifiedAt', 'verificationMethod'])
             && (
               !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sellerDetails'])
               || (
                 request.resource.data.get('sellerDetails', {}).get('maxProducts', 5) == resource.data.get('sellerDetails', {}).get('maxProducts', 5)
                 && request.resource.data.get('sellerDetails', {}).get('subscriptionExpiresAt', null) == resource.data.get('sellerDetails', {}).get('subscriptionExpiresAt', null)
                 && request.resource.data.get('sellerDetails', {}).get('tierLabel', 'Gratuit') == resource.data.get('sellerDetails', {}).get('tierLabel', 'Gratuit')
+                && request.resource.data.get('sellerDetails', {}).get('verifiedAt', null) == resource.data.get('sellerDetails', {}).get('verifiedAt', null)
+                && request.resource.data.get('sellerDetails', {}).get('verificationMethod', null) == resource.data.get('sellerDetails', {}).get('verificationMethod', null)
               )
             )
           )
           ||
-          // Cas 2: Inscription vendeur — buyer → seller uniquement (isVerified reste false)
+          // Cas 2: Inscription vendeur — buyer → seller uniquement (isVerified/tier restent non vérifiés)
           (
             resource.data.role == 'buyer'
             && request.resource.data.role == 'seller'
             && request.resource.data.get('isVerified', false) == false
+            && request.resource.data.get('verificationTier', 'none') == 'none'
             && request.resource.data.keys().hasAll(['sellerDetails'])
           )
         ));
@@ -124,9 +156,9 @@ service cloud.firestore {
         || (isAuth() && resource.data.sellerId == request.auth.uid)
         || isAdmin();
 
-      // Création: vendeur authentifié, non suspendu, abonnement valide, champs validés
+      // Création: vendeur authentifié, non suspendu (strict Firestore), abonnement valide, champs validés
       allow create: if isSeller()
-        && isNotSuspended()
+        && isNotSuspendedStrict()
         && canCreateProduct()
         && request.resource.data.sellerId == request.auth.uid
         && validString(request.resource.data.title, 200)
@@ -136,6 +168,8 @@ service cloud.firestore {
         && request.resource.data.views == 0
         && request.resource.data.likesCount == 0
         && request.resource.data.reports == 0
+        // createdAt doit être le timestamp serveur (empêche toute falsification de date)
+        && request.resource.data.createdAt == request.time
         && request.resource.data.keys().hasAll(['title', 'titleLower', 'price', 'description', 'sellerId', 'category', 'status', 'createdAt'])
         && (request.resource.data.get('marketplace', null) == null
             || request.resource.data.marketplace in ['bata', 'kamenge', 'centre-ville', 'kinama', 'autres']);
@@ -145,18 +179,30 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (isAuth()
           && resource.data.sellerId == request.auth.uid
-          && isNotSuspended()
+          && isNotSuspendedStrict()
           // Vendeur ne peut PAS changer: status, views, likesCount, reports, sellerId
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['status', 'sellerId', 'reports', 'isPromoted']))
         || (isAuth()
-          // Vendeur peut re-soumettre un produit rejeté (status: rejected → pending)
+          // Vendeur peut re-soumettre un produit rejeté (status: rejected → pending), max 3 fois
           && resource.data.sellerId == request.auth.uid
-          && isNotSuspended()
+          && isNotSuspendedStrict()
           && resource.data.status == 'rejected'
           && request.resource.data.status == 'pending'
+          && resource.data.get('resubmitCount', 0) < 3
           && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['status', 'resubmittedAt']))
+              .hasOnly(['status', 'resubmittedAt', 'resubmitCount']))
+        || (isAuth()
+          // Vendeur peut éditer le contenu ET re-soumettre un produit rejeté en 1 write atomique.
+          // Capacités équivalentes à (branche edit) + (branche resubmit) combinées, mais sans
+          // risque de désynchronisation entre 2 writes séparés.
+          && resource.data.sellerId == request.auth.uid
+          && isNotSuspendedStrict()
+          && resource.data.status == 'rejected'
+          && request.resource.data.status == 'pending'
+          && resource.data.get('resubmitCount', 0) < 3
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['sellerId', 'reports', 'isPromoted', 'createdAt']))
         || (isAuth()
           // Tout utilisateur auth peut incrémenter/décrémenter views ou likesCount de 1 max
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likesCount'])
@@ -186,43 +232,14 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
-    // CONVERSATIONS & MESSAGES — Chat P2P
-    // Chat supprimé — rules conservées pour migration données existantes
+    // CONVERSATIONS & MESSAGES — SUPPRIMÉS (A5, 2026-04-15)
+    // Le chat P2P a été retiré du produit ; aucune route front ne
+    // lit/écrit `conversations/*` (grep = 0 référence dans le code).
+    // Les rules ont été supprimées → la deny-all par défaut en fin de
+    // fichier bloque tout accès résiduel. La collection Firestore peut
+    // être purgée via `firebase firestore:delete --recursive conversations`
+    // quand l'opérateur confirme qu'il n'y a plus de données utiles.
     // ─────────────────────────────────────────────────────────
-    match /conversations/{convId} {
-      // Lecture: participants uniquement
-      allow read: if isAuth()
-        && request.auth.uid in resource.data.participantIds;
-
-      // Création: utilisateur authentifié, non suspendu
-      allow create: if isAuth()
-        && isNotSuspended()
-        && request.auth.uid in request.resource.data.participantIds
-        && request.resource.data.participantIds.size() == 2;
-
-      // Mise à jour: participants (pour marquer lu, lastMessage)
-      allow update: if isAuth()
-        && request.auth.uid in resource.data.participantIds;
-    }
-
-    match /conversations/{convId}/messages/{msgId} {
-      // Lecture: participants de la conversation
-      allow read: if isAuth()
-        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participantIds;
-
-      // Envoi: participant, message valide, non vide
-      allow create: if isAuth()
-        && isNotSuspended()
-        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participantIds
-        && request.resource.data.senderId == request.auth.uid
-        && validString(request.resource.data.text, 2000)
-        && request.resource.data.keys().hasAll(['text', 'senderId', 'timestamp', 'read']);
-
-      // Mise à jour: seulement pour marquer comme lu
-      allow update: if isAuth()
-        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participantIds
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-    }
 
     // ─────────────────────────────────────────────────────────
     // CATEGORIES — Gérées par admin uniquement
@@ -424,18 +441,23 @@ service cloud.firestore {
 
       // Création: tout le monde (acheteurs anonymes supportés), champs validés
       // Protection: timestamps vérifiés côté serveur, format WhatsApp validé
+      //
+      // NOTE: on utilise `is number` (pas `is int`) car le SDK Firebase JS peut encoder
+      // les grands entiers (Date.now() ≈ 1.7×10¹²) tantôt en integer_value, tantôt en
+      // double_value selon la plateforme (iOS Safari notamment). La vérification de
+      // plage (>= / <=) est la vraie protection sécuritaire — le type exact importe peu.
       allow create: if validString(request.resource.data.title, 200)
         && validWhatsapp(request.resource.data.whatsapp)
         && validString(request.resource.data.buyerName, 100)
         && request.resource.data.status == 'active'
         && request.resource.data.viewCount == 0
         && request.resource.data.contactCount == 0
-        // createdAt doit être dans les 60 secondes autour du temps serveur (stocké en ms)
-        && request.resource.data.createdAt is int
-        && request.resource.data.createdAt >= request.time.toMillis() - 60000
-        && request.resource.data.createdAt <= request.time.toMillis() + 60000
-        // expiresAt doit être entre 1 et 8 jours après createdAt
-        && request.resource.data.expiresAt is int
+        // createdAt : nombre de ms — tolérance ±5 min (horloge décalée Android/iOS)
+        && request.resource.data.createdAt is number
+        && request.resource.data.createdAt >= request.time.toMillis() - 300000
+        && request.resource.data.createdAt <= request.time.toMillis() + 300000
+        // expiresAt : entre 1 et 8 jours après createdAt
+        && request.resource.data.expiresAt is number
         && request.resource.data.expiresAt > request.resource.data.createdAt
         && request.resource.data.expiresAt <= request.resource.data.createdAt + 691200000
         && request.resource.data.keys().hasAll([
@@ -478,6 +500,48 @@ service cloud.firestore {
           ]);
 
       allow update, delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // BOOST REQUESTS — Demandes de mise en avant payante
+    // ─────────────────────────────────────────────────────────
+    match /boostRequests/{requestId} {
+      // Lecture: admin voit tout, vendeur voit ses propres demandes
+      allow read: if isAdmin()
+        || (isAuth() && resource.data.userId == request.auth.uid);
+
+      // Création: vendeur authentifié, non suspendu, crée pour lui-même
+      allow create: if isAuth()
+        && isNotSuspended()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && validString(request.resource.data.productId, 100)
+        && validString(request.resource.data.productTitle, 200)
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.keys().hasAll([
+            'userId', 'sellerName', 'countryId', 'productId', 'productTitle',
+            'amount', 'currency', 'status', 'createdAt', 'updatedAt'
+          ]);
+
+      // Update: admin peut tout modifier, vendeur peut seulement confirmer paiement
+      allow update: if isAdmin()
+        || (isAuth()
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'pending_validation'
+          && request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly(['status', 'transactionRef', 'updatedAt']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // BOOST PRICING — Prix boost par pays (admin gère, public lit)
+    // ─────────────────────────────────────────────────────────
+    match /boostPricing/{countryId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // ─────────────────────────────────────────────────────────

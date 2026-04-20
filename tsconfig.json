@@ -29,5 +29,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["dist", "node_modules", "functions"]
+  "exclude": ["dist", "node_modules", "functions", "tests/e2e", "tests/rules"]
 }

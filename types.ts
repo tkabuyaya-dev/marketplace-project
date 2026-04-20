@@ -1,6 +1,14 @@
 export type Role = 'buyer' | 'seller' | 'admin';
 export type ProductStatus = 'pending' | 'approved' | 'rejected';
 
+// Niveaux de vérification — gradation de confiance
+// 'none'     : aucune vérification
+// 'phone'    : téléphone vérifié par OTP SMS (réservé Phase 4)
+// 'identity' : pièces + numéros confirmés à distance par l'équipe
+// 'shop'     : visite terrain effectuée par l'équipe ou un ambassadeur
+export type VerificationTier = 'none' | 'phone' | 'identity' | 'shop';
+export type VerificationMethod = 'phone_otp' | 'document_review' | 'field_visit';
+
 // Structure GPS
 export interface Coordinates {
   lat: number;
@@ -41,9 +49,12 @@ export interface SellerDetails {
   };
   verificationStatus?: 'none' | 'pending' | 'verified' | 'rejected';
   verificationNote?: string;
+  verifiedAt?: number;              // Timestamp de la dernière approbation admin
+  verificationMethod?: VerificationMethod; // Trace d'audit — comment ça a été vérifié
   maxProducts?: number;
   tierLabel?: string;
-  subscriptionExpiresAt?: number; // timestamp — 30-day expiration for paid tiers
+  subscriptionExpiresAt?: number;    // timestamp — 30-day expiration for paid tiers
+  reminderSentForExpiry?: number;    // equals subscriptionExpiresAt when J-3 reminder was sent (dedup guard)
 }
 
 export interface User {
@@ -52,7 +63,11 @@ export interface User {
   name: string;
   email: string;
   avatar: string;
-  isVerified: boolean;
+  isVerified: boolean;                    // Reste la source de vérité pour le badge public
+  verificationTier?: VerificationTier;    // Détail du niveau — null pour anciens comptes (= 'none')
+  verifiedAt?: number;                    // Timestamp de la dernière approbation admin (racine + miroir dans sellerDetails)
+  verificationMethod?: VerificationMethod; // Méthode utilisée (document_review, field_visit, phone_otp)
+  trustScore?: number;                    // 0-100, calculé périodiquement ou à l'affichage
   isSuspended?: boolean;
   role: Role;
   whatsapp?: string;
@@ -92,6 +107,7 @@ export interface Product {
   status: ProductStatus;
   rejectionReason?: string;
   resubmittedAt?: number;
+  resubmitCount?: number; // nombre de fois que le vendeur a resoumis ce produit (max 3)
   views: number;
   likesCount?: number;
   reports: number;
@@ -105,15 +121,11 @@ export interface Product {
   isWholesale?: boolean;
   minOrderQuantity?: number;
   wholesalePrice?: number;
-  // Auction
-  isAuction?: boolean;
-  auctionEndTime?: number;
-  startingBid?: number;
-  currentBid?: number;
-  currentBidderId?: string;
-  bidCount?: number;
   // Progressive image (LQIP)
   blurhash?: string;
+  // Boost (mise en avant payante)
+  isBoosted?: boolean;
+  boostExpiresAt?: number; // timestamp ms
 }
 
 // ─── Currencies ───
@@ -190,6 +202,9 @@ export type NotificationType =
   | 'product_rejected'
   | 'new_message'
   | 'subscription_change'
+  | 'subscription_reminder'
+  | 'boost_activated'
+  | 'boost_expired'
   | 'system';
 
 export interface AppNotification {
@@ -282,4 +297,31 @@ export interface BuyerRequestContact {
 export interface SubscriptionPricing {
   prices: Record<string, number>; // tierId → price in local currency
   currency: string;
+}
+
+// ─── Boost Requests (mise en avant payante 7 jours) ───
+export type BoostRequestStatus = 'pending' | 'pending_validation' | 'approved' | 'rejected';
+
+export interface BoostRequest {
+  id: string;
+  userId: string;
+  sellerName: string;
+  countryId: string;
+  productId: string;
+  productTitle: string;
+  amount: number;
+  currency: string;
+  status: BoostRequestStatus;
+  transactionRef: string | null;
+  rejectionReason: string | null;
+  createdAt: number;
+  updatedAt: number;
+  approvedBy: string | null;
+  boostStartAt: number | null;
+  boostExpiresAt: number | null;
+}
+
+export interface BoostPricing {
+  amount: number;   // prix pour 7 jours
+  currency: string; // ex: 'BIF', 'CDF', 'USD'
 }

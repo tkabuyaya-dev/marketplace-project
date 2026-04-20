@@ -1,10 +1,46 @@
 /**
- * NUNULIA — Communes/Cities by Province
+ * NUNULIA — Geographic data for Grands Lacs region
  *
- * Structure: countryId → province → communes[]
- * Currently covers: Burundi (bi) + RDC (cd)
- * Other countries fallback to free text input.
+ * CITIES_BY_COUNTRY : flat city list per country (used in filters + seller forms)
+ * COMMUNES_BY_PROVINCE : legacy detailed data (kept for reference, no longer used in UI)
  */
+
+// ── Authorized cities per country ─────────────────────────────────────────────
+// This is the single source of truth for geographic filters and seller registration.
+// Only these cities appear in dropdowns — in the order listed.
+
+export const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  bi: [
+    'Bujumbura',
+    'Gitega',
+    'Ngozi',
+    'Rumonge',
+    'Kayanza',
+    'Muyinga',
+  ],
+  cd: [
+    'Kinshasa',
+    'Goma',
+    'Butembo',
+    'Beni',
+    'Bukavu',
+    'Uvira',
+    'Kalemie',
+    'Lubumbashi',
+    'Kolwezi',
+    'Bunia',
+    'Matadi',
+    'Kikwit',
+  ],
+  rw: [
+    'Kigali',
+    'Rubavu (Gisenyi)',
+    'Musanze (Ruhengeri)',
+    'Huye (Butare)',
+    'Rusizi (Cyangugu)',
+    'Muhanga (Gitarama)',
+  ],
+};
 
 export const COMMUNES_BY_PROVINCE: Record<string, Record<string, string[]>> = {
   // ═══════════════════════════════════════════
@@ -174,6 +210,43 @@ export const COMMUNES_BY_PROVINCE: Record<string, Record<string, string[]>> = {
     ],
     'Tshuapa': [
       'Boende', 'Befale', 'Bokungu', 'Djolu', 'Ikela', 'Monkoto',
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // 🇷🇼  RWANDA
+  // Province → Districts/Villes principales
+  // ═══════════════════════════════════════════
+  rw: {
+    'Kigali': [
+      'Gasabo', 'Kicukiro', 'Nyarugenge',
+      // Secteurs clés de Kigali
+      'Remera', 'Kimironko', 'Gisozi', 'Kacyiru', 'Kibagabaga',
+      'Gikondo', 'Niboye', 'Kagarama', 'Nyamirambo', 'Nyakabanda',
+      'Gitega', 'Muhima', 'Biryogo',
+    ],
+    'Nord': [
+      'Musanze (Ruhengeri)', 'Burera', 'Gakenke', 'Gicumbi', 'Rulindo',
+      // Villes notables
+      'Ruhengeri', 'Cyanika', 'Kinigi', 'Byumba',
+    ],
+    'Ouest': [
+      'Rubavu (Gisenyi)', 'Karongi (Kibuye)', 'Ngororero', 'Nyabihu',
+      'Nyamasheke', 'Rutsiro', 'Rusizi (Cyangugu)',
+      // Villes notables
+      'Gisenyi', 'Cyangugu', 'Kibuye', 'Kamembe',
+    ],
+    'Sud': [
+      'Huye (Butare)', 'Muhanga (Gitarama)', 'Gisagara', 'Kamonyi',
+      'Nyamagabe', 'Nyanza', 'Nyaruguru', 'Ruhango',
+      // Villes notables
+      'Butare', 'Gitarama', 'Nyanza', 'Eglise',
+    ],
+    'Est': [
+      'Bugesera', 'Gatsibo', 'Kayonza', 'Kirehe', 'Ngoma',
+      'Nyagatare', 'Rwamagana',
+      // Villes notables
+      'Rwamagana', 'Nyagatare', 'Kibungo',
     ],
   },
 };

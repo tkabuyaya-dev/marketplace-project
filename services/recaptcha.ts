@@ -17,21 +17,23 @@ declare global {
   }
 }
 
-/** Load reCAPTCHA v3 script dynamically (avoids hardcoding key in index.html) */
+/**
+ * Load reCAPTCHA v3 script on demand.
+ * Call this when the user opens a protected form — NOT at module import time.
+ * badge=hidden: suppresses the floating reCAPTCHA widget (must disclose usage in UI instead).
+ * hl=fr: French UI labels.
+ */
 let recaptchaLoaded = false;
-function loadRecaptchaScript(): void {
+export function loadRecaptchaScript(): void {
   if (recaptchaLoaded || !SITE_KEY || typeof document === 'undefined') return;
   recaptchaLoaded = true;
 
   const script = document.createElement('script');
-  script.src = `https://www.google.com/recaptcha/api.js?render=${SITE_KEY}`;
+  script.src = `https://www.google.com/recaptcha/api.js?render=${SITE_KEY}&badge=hidden&hl=fr`;
   script.async = true;
   script.defer = true;
   document.head.appendChild(script);
 }
-
-// Auto-load on import
-loadRecaptchaScript();
 
 /**
  * Execute reCAPTCHA v3 and verify the token server-side.
@@ -46,6 +48,9 @@ export async function verifyRecaptcha(action: string): Promise<boolean> {
     return true;
   }
 
+  // Ensure script is loaded (idempotent — no-op if already loaded)
+  loadRecaptchaScript();
+
   // Wait for grecaptcha to be ready
   if (!window.grecaptcha) {
     console.warn('[reCAPTCHA] Script not loaded — skipping verification');
@@ -53,13 +58,20 @@ export async function verifyRecaptcha(action: string): Promise<boolean> {
   }
 
   try {
-    const token = await new Promise<string>((resolve, reject) => {
-      window.grecaptcha.ready(() => {
-        window.grecaptcha.execute(SITE_KEY, { action })
-          .then(resolve)
-          .catch(reject);
-      });
-    });
+    // iOS Safari (ITP) and ad-blockers can prevent grecaptcha.ready() from ever
+    // firing. We race against a 5-second timeout so the form never freezes.
+    const token = await Promise.race([
+      new Promise<string>((resolve, reject) => {
+        window.grecaptcha.ready(() => {
+          window.grecaptcha.execute(SITE_KEY, { action })
+            .then(resolve)
+            .catch(reject);
+        });
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('reCAPTCHA timeout')), 5000),
+      ),
+    ]);
 
     // Verify server-side
     const response = await fetch(`${FUNCTIONS_BASE}/verifyRecaptcha`, {
@@ -72,7 +84,7 @@ export async function verifyRecaptcha(action: string): Promise<boolean> {
     return data.success === true;
   } catch (err) {
     console.error('[reCAPTCHA] Verification error:', err);
-    // On network error, allow the action (don't block legitimate users)
+    // On network error / timeout / iOS ITP block: allow the action (don't block legitimate users)
     return true;
   }
 }

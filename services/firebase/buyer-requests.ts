@@ -11,9 +11,11 @@ import { BuyerRequest, BuyerRequestContact, BuyerRequestStatus } from '../../typ
 import {
   db, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, increment,
-  serverTimestamp, COLLECTIONS,
+  COLLECTIONS,
 } from './constants';
 import type { QueryDocumentSnapshot } from './constants';
+import { getFirebaseFunctions } from '../../firebase-config';
+import { httpsCallable } from 'firebase/functions';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_REQUESTS_PER_DAY = 3;
@@ -81,31 +83,26 @@ export interface CreateBuyerRequestData {
 }
 
 export async function createBuyerRequest(data: CreateBuyerRequestData): Promise<string> {
-  if (!db) throw new Error('Firebase not initialized');
+  // ╔══════════════════════════════════════════════════════════════════════════╗
+  // ║  ⚠️  NE PAS MODIFIER — FIX CRITIQUE iOS Safari                          ║
+  // ║                                                                          ║
+  // ║  Cette fonction DOIT passer par la Cloud Function `submitBuyerRequest`.  ║
+  // ║  NE PAS remplacer par un addDoc() direct vers Firestore.                 ║
+  // ║                                                                          ║
+  // ║  Raison : sur iOS Safari (ITP), le SDK Firebase JS encode Date.now()     ║
+  // ║  en double_value protobuf au lieu d'integer_value. Les règles Firestore  ║
+  // ║  rejettent alors l'écriture → "Missing or insufficient permissions".     ║
+  // ║  L'Admin SDK côté serveur bypasse les rules et génère le timestamp       ║
+  // ║  server-side → fonctionne sur iOS, Android et tout navigateur.           ║
+  // ║                                                                          ║
+  // ║  Fix validé en production le 2026-04-14. Ne pas toucher.                 ║
+  // ╚══════════════════════════════════════════════════════════════════════════╝
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase Functions not initialized');
 
-  const now = Date.now();
-  const payload = {
-    title:          data.title.trim(),
-    description:    data.description?.trim() || null,
-    countryId:      data.countryId,
-    province:       data.province,
-    city:           data.city,
-    category:       data.category || null,
-    budget:         data.budget ?? null,
-    budgetCurrency: data.budgetCurrency || null,
-    imageUrl:       data.imageUrl || null,
-    whatsapp:       data.whatsapp.replace(/\s/g, ''),
-    buyerId:        data.buyerId || null,
-    buyerName:      data.buyerName,
-    status:         'active' as BuyerRequestStatus,
-    createdAt:      now,
-    expiresAt:      now + SEVEN_DAYS_MS,
-    viewCount:      0,
-    contactCount:   0,
-  };
-
-  const ref = await addDoc(collection(db, COLLECTIONS.BUYER_REQUESTS), payload);
-  return ref.id;
+  const fn = httpsCallable<CreateBuyerRequestData, { id: string }>(fns, 'submitBuyerRequest');
+  const result = await fn(data);
+  return result.data.id;
 }
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
@@ -139,7 +136,11 @@ export async function getBuyerRequests(
 
   const q = query(collection(db, COLLECTIONS.BUYER_REQUESTS), ...constraints);
   const snap = await getDocs(q);
-  const requests = snap.docs.map(d => docToBuyerRequest(d.data(), d.id));
+  const now = Date.now();
+  // Filter out requests whose expiresAt has passed but the cron hasn't run yet (runs at 03:00 UTC once/day)
+  const requests = snap.docs
+    .map(d => docToBuyerRequest(d.data(), d.id))
+    .filter(r => r.expiresAt > now);
   const last = snap.docs[snap.docs.length - 1] ?? null;
 
   return { requests, lastDoc: last };

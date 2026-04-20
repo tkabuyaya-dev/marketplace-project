@@ -8,6 +8,12 @@ import {
   query, where, orderBy, limit, serverTimestamp, COLLECTIONS,
 } from './constants';
 
+export type ActivityEntry = {
+  productId: string;
+  action: ActivityAction;
+  createdAt: number; // ms timestamp
+};
+
 export const trackUserActivity = async (
   userId: string,
   productId: string,
@@ -89,4 +95,46 @@ export const getAlsoViewedProductIds = async (
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxResults)
     .map(([id]) => id);
+};
+
+/**
+ * Returns all activity events for a list of product IDs within the last 30 days.
+ * Batches in groups of 30 (Firestore 'in' limit).
+ * Client-side date filter to avoid needing a composite index.
+ */
+export const getProductActivityLast30Days = async (
+  productIds: string[]
+): Promise<ActivityEntry[]> => {
+  if (!db || productIds.length === 0) return [];
+
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const results: ActivityEntry[] = [];
+
+  for (let i = 0; i < productIds.length; i += 30) {
+    const batch = productIds.slice(i, i + 30);
+    try {
+      const snap = await getDocs(
+        query(
+          collection(db, COLLECTIONS.USER_ACTIVITY),
+          where('productId', 'in', batch),
+          limit(500)
+        )
+      );
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const ts: number = data.createdAt?.toMillis?.() ?? 0;
+        if (ts >= thirtyDaysAgo) {
+          results.push({
+            productId: data.productId as string,
+            action: data.action as ActivityAction,
+            createdAt: ts,
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('[getProductActivityLast30Days] batch error:', e);
+    }
+  }
+
+  return results;
 };

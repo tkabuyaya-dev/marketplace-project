@@ -233,7 +233,7 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
             {query && (
               <button
                 onClick={() => { setQuery(''); setAlgoliaResults(null); setShowSuggestions(false); }}
-                className="p-1.5 text-gray-500 hover:text-white transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-white transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

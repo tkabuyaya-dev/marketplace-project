@@ -7,18 +7,12 @@ import fr from './locales/fr/common.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'rn', label: 'Ikirundi', flag: '🇧🇮' },
-  { code: 'sw', label: 'Kiswahili', flag: '🇹🇿' },
-  { code: 'rw', label: 'Ikinyarwanda', flag: '🇷🇼' },
+  { code: 'en', label: 'English',  flag: '🇬🇧' },
 ] as const;
 
 // Lazy loaders for non-default languages
 const languageLoaders: Record<string, () => Promise<Record<string, any>>> = {
   en: () => import('./locales/en/common.json').then(m => m.default),
-  rn: () => import('./locales/rn/common.json').then(m => m.default),
-  sw: () => import('./locales/sw/common.json').then(m => m.default),
-  rw: () => import('./locales/rw/common.json').then(m => m.default),
 };
 
 // Detect saved language before init (same logic as i18next LanguageDetector)

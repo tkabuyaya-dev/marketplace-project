@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import { User, SellerDetails } from '../types';
-import { PROVINCES_BY_COUNTRY } from '../constants';
-import { COMMUNES_BY_PROVINCE } from '../data/locations';
+import { CITIES_BY_COUNTRY } from '../data/locations';
 import { registerSeller, updateUserProfile } from '../services/firebase';
 import { uploadImage } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
-import { verifyRecaptcha } from '../services/recaptcha';
+import { verifyRecaptcha, loadRecaptchaScript } from '../services/recaptcha';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 
@@ -57,6 +56,9 @@ export const SellerRegistration: React.FC = () => {
   const [files, setFiles] = useState<{ cni?: File, nif?: File, reg?: File, shop?: File }>({});
   const [gpsLoading, setGpsLoading] = useState(false);
 
+  // Load reCAPTCHA script on mount (lazy — not at module import)
+  useEffect(() => { loadRecaptchaScript(); }, []);
+
   // Validate formData country against active countries
   const regCountryIds = countries.map(c => c.id).join(',');
   useEffect(() => {
@@ -71,11 +73,10 @@ export const SellerRegistration: React.FC = () => {
   };
 
   const handleCountryChange = (countryId: string) => {
-    const provinces = PROVINCES_BY_COUNTRY[countryId];
     setFormData(prev => ({
       ...prev,
       countryId,
-      province: provinces?.[0] || '',
+      province: '',
       commune: '',
       quartier: '',
     }));
@@ -199,8 +200,7 @@ export const SellerRegistration: React.FC = () => {
     }
   };
 
-  const provinces = PROVINCES_BY_COUNTRY[formData.countryId];
-  const hasProvinceList = !!provinces && provinces.length > 0;
+  const cityList = CITIES_BY_COUNTRY[formData.countryId] ?? [];
   const selectedCountry = countries.find(c => c.id === formData.countryId);
 
   // --- RENDERING SECTIONS ---
@@ -263,76 +263,40 @@ export const SellerRegistration: React.FC = () => {
             />
         </div>
 
-        {/* Province — dropdown for all countries with known provinces, free text otherwise */}
+        {/* Ville */}
         <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1">
-              {formData.countryId === 'bi' ? t('registration.provinceLabel') : t('registration.provinceCityLabel')} *
-            </label>
-            {hasProvinceList ? (
-                <select
-                    value={formData.province}
-                    onChange={e => {
-                      handleChange('province', e.target.value);
-                      handleChange('commune', '');
-                    }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                >
-                    {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-            ) : (
-                <input
-                    value={formData.province}
-                    onChange={e => handleChange('province', e.target.value)}
-                    placeholder={t('registration.provincePlaceholder')}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                />
-            )}
+            <label className="block text-xs font-bold text-gray-400 mb-1">Ville *</label>
+            <select
+                required
+                value={formData.province}
+                onChange={e => {
+                  handleChange('province', e.target.value);
+                  handleChange('commune', e.target.value); // mirror for data consistency
+                }}
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+            >
+                <option value="">Sélectionnez votre ville</option>
+                {cityList.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+            </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">
-                  {formData.countryId === 'bi' ? t('registration.communeLabel') : t('registration.communeCityLabel')} *
-                </label>
-                {(() => {
-                  const communeList = COMMUNES_BY_PROVINCE[formData.countryId]?.[formData.province];
-                  if (communeList && communeList.length > 0) {
-                    return (
-                      <select
-                        value={formData.commune}
-                        onChange={e => handleChange('commune', e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                      >
-                        <option value="">{t('registration.selectCommune')}</option>
-                        {communeList.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    );
-                  }
-                  return (
-                    <input
-                      value={formData.commune}
-                      onChange={e => handleChange('commune', e.target.value)}
-                      placeholder={formData.countryId === 'cd' ? t('registration.communePlaceholder') : ''}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                    />
-                  );
-                })()}
-            </div>
-            <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">
-                  {formData.countryId === 'bi' ? t('registration.quarterLabel') : t('registration.quarterAddressLabel')} *
-                </label>
-                <input
-                    value={formData.quartier}
-                    onChange={e => handleChange('quartier', e.target.value)}
-                    placeholder={formData.countryId !== 'bi' ? t('registration.quarterPlaceholder') : ''}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
-                />
-            </div>
+        {/* Quartier / Adresse précise */}
+        <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1">
+              Quartier / Adresse (optionnel)
+            </label>
+            <input
+                value={formData.quartier}
+                onChange={e => handleChange('quartier', e.target.value)}
+                placeholder="Ex : Rohero, Centre-ville, Commune Ngagara…"
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none"
+            />
         </div>
 
         <div className="pt-4 flex justify-end">
-            <Button type="button" onClick={() => setStep(2)} disabled={!formData.cni || !formData.phone || !formData.province || !formData.commune}>{t('registration.next')}</Button>
+            <Button type="button" onClick={() => setStep(2)} disabled={!formData.cni || !formData.phone || !formData.province}>{t('registration.next')}</Button>
         </div>
     </div>
   );

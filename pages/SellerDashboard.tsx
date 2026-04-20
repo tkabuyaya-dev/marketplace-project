@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
-import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest } from '../types';
-import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, updateProduct, getActiveCurrencies, subscribeToMyRequests } from '../services/firebase';
+import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest, BoostRequest } from '../types';
+import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, editAndResubmitProduct, getActiveCurrencies, subscribeToMyRequests, getProductActivityLast30Days, ActivityEntry, MAX_RESUBMIT_ATTEMPTS, subscribeToMyBoostRequests, getBuyerRequestStats, canContactBuyer } from '../services/firebase';
+import { BoostProductModal } from '../components/BoostProductModal';
 import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
 import { generateBlurhash } from '../utils/blurhash';
-import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, PROVINCES_BY_COUNTRY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
+import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
+import { CITIES_BY_COUNTRY } from '../data/locations';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
@@ -19,18 +21,25 @@ import { SmartImageUpload } from '../components/SmartImageUpload';
 import { SmartTitleInput } from '../components/SmartTitleInput';
 import { ProductQualityScore } from '../components/ProductQualityScore';
 import { ProductPreview } from '../components/ProductPreview';
+import { RenewSubscriptionModal } from '../components/RenewSubscriptionModal';
+import { VerificationRequestModal } from '../components/VerificationRequestModal';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 
-type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests';
+type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
 export const SellerDashboard: React.FC = () => {
   const { currentUser } = useAppContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
 
   if (!currentUser || (currentUser.role !== 'seller' && currentUser.role !== 'admin')) {
     navigate('/');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-[3px] border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
+      </div>
+    );
   }
   const { toast } = useToast();
   const { categories: firestoreCategories } = useCategories();
@@ -42,7 +51,26 @@ export const SellerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | ProductStatus>('all');
   const [subRequests, setSubRequests] = useState<SubscriptionRequest[]>([]);
-  
+  const [showRenewModal, setShowRenewModal] = useState(false);
+  const [showVerifModal, setShowVerifModal] = useState(false);
+  const [verifForm, setVerifForm] = useState({
+    nif: currentUser.sellerDetails?.nif || '',
+    registryNumber: currentUser.sellerDetails?.registryNumber || '',
+    phone: currentUser.sellerDetails?.phone || currentUser.whatsapp || '',
+  });
+  const [verifSubmitting, setVerifSubmitting] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<ActivityEntry[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  // Buyer request stats (for feature banner in overview)
+  const [requestStats, setRequestStats] = useState<{ todayCount: number; fulfilledCount: number } | null>(null);
+
+  // Boost
+  const [boostRequests, setBoostRequests] = useState<BoostRequest[]>([]);
+  const [boostingProduct, setBoostingProduct] = useState<Product | null>(null);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [syncFailedIds, setSyncFailedIds] = useState<string[]>([]);
+
   // Profile Editable State
   const [shopProfile, setShopProfile] = useState({
       name: currentUser.name || '',
@@ -71,7 +99,7 @@ export const SellerDashboard: React.FC = () => {
   // Dynamic data (country-aware)
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const sellerCountryId = currentUser.sellerDetails?.countryId || 'bi';
-  const sellerProvinces = PROVINCES_BY_COUNTRY[sellerCountryId] || [];
+  const sellerCities = CITIES_BY_COUNTRY[sellerCountryId] ?? [];
 
   // Subscription status — computed from shared utility (single source of truth)
   // Server-side enforcement via Firestore rules + Cloud Function cron.
@@ -95,10 +123,6 @@ export const SellerDashboard: React.FC = () => {
   const [isWholesale, setIsWholesale] = useState(false);
   const [minOrderQty, setMinOrderQty] = useState('');
   const [wholesalePrice, setWholesalePrice] = useState('');
-  const [isAuction, setIsAuction] = useState(false);
-  const [auctionDuration, setAuctionDuration] = useState('7');
-  const [startingBid, setStartingBid] = useState('');
-
   // Product Quality Score
   const productScore = useProductScore({
     title, description: desc, price, category, subCategory, originalPrice,
@@ -145,6 +169,27 @@ export const SellerDashboard: React.FC = () => {
     const unsub = subscribeToMyRequests(currentUser.id, setSubRequests);
     return () => unsub();
   }, [currentUser.id]);
+
+  // Fetch buyer request stats once on mount (for overview feature card)
+  useEffect(() => {
+    getBuyerRequestStats().then(setRequestStats).catch(() => {});
+  }, []);
+
+  // Real-time listener for boost requests
+  useEffect(() => {
+    const unsub = subscribeToMyBoostRequests(currentUser.id, setBoostRequests);
+    return () => unsub();
+  }, [currentUser.id]);
+
+  // Load analytics when tab becomes active (lazy, once per session)
+  useEffect(() => {
+    if (activeTab !== 'analytics' || myProducts.length === 0 || analyticsData.length > 0) return;
+    const productIds = myProducts.map(p => p.id).filter((id): id is string => Boolean(id));
+    setAnalyticsLoading(true);
+    getProductActivityLast30Days(productIds)
+      .then(setAnalyticsData)
+      .finally(() => setAnalyticsLoading(false));
+  }, [activeTab, myProducts]);
 
   const hasNif = !!currentUser.sellerDetails?.nif;
   // Count only active products (approved + pending), not rejected/deleted
@@ -262,14 +307,10 @@ export const SellerDashboard: React.FC = () => {
         isWholesale,
         minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
         wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
-        isAuction,
-        auctionEndTime: isAuction ? Date.now() + Number(auctionDuration) * 86400000 : undefined,
-        startingBid: isAuction && startingBid ? Number(startingBid) : undefined,
       }, imagePreviews);
       setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
       setImageFiles([]); setImagePreviews([]);
       setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
-      setIsAuction(false); setAuctionDuration('7'); setStartingBid('');
       toast(t('dashboard.savedOffline'), 'success');
       setActiveTab('products');
       return;
@@ -279,6 +320,9 @@ export const SellerDashboard: React.FC = () => {
     try {
       setUploadProgress(t('dashboard.uploadingImages'));
       const imageUrls = await uploadImages(imageFiles);
+
+      // Guard: never create a Firestore document without images (all uploads must succeed first)
+      if (imageUrls.length === 0) throw new Error(t('dashboard.uploadError') || 'Échec upload images');
 
       // Generate BlurHash from first image (instant placeholder for 2G/3G/offline)
       const blurhash = imageFiles[0] ? await generateBlurhash(imageFiles[0]) : null;
@@ -297,21 +341,20 @@ export const SellerDashboard: React.FC = () => {
         isWholesale,
         minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
         wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
-        isAuction,
-        auctionEndTime: isAuction ? Date.now() + Number(auctionDuration) * 24 * 60 * 60 * 1000 : undefined,
-        startingBid: isAuction && startingBid ? Number(startingBid) : undefined,
       });
 
       // Reset form
       setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
       setImageFiles([]); setImagePreviews([]);
       setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
-      setIsAuction(false); setAuctionDuration('7'); setStartingBid('');
       setUploadProgress('');
 
       // Refresh products list
       const data = await getSellerAllProducts(currentUser.id);
       setMyProducts(data);
+      toast(t('dashboard.productSubmitSuccess'), 'success');
+      // Inform seller about Algolia indexing delay — prevents "my product isn't searchable" panic
+      setTimeout(() => toast(t('dashboard.searchDelayHint'), 'info'), 1800);
       setActiveTab('products');
     } catch (error: any) {
       console.error('Erreur ajout produit:', error);
@@ -329,10 +372,43 @@ export const SellerDashboard: React.FC = () => {
       }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.size === 0) return;
+    if (!window.confirm(t('dashboard.confirmBulkDelete', { count: selectedProductIds.size }))) return;
+    const ids = [...selectedProductIds];
+    for (const id of ids) {
+      try { await deleteProduct(id); } catch { /* silent — continue batch */ }
+    }
+    setMyProducts(prev => prev.filter(p => !p.id || !selectedProductIds.has(p.id)));
+    setSelectedProductIds(new Set());
+    setBulkSelectMode(false);
+    toast(t('dashboard.bulkDeleteSuccess', { count: ids.length }), 'success');
+  };
+
+  const toggleProductSelection = (id: string) => {
+    setSelectedProductIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const handleResubmit = async (id: string) => {
+    try {
       await resubmitProduct(id);
-      setMyProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'pending' as ProductStatus, resubmittedAt: Date.now() } : p));
+      setMyProducts(prev => prev.map(p =>
+        p.id === id
+          ? { ...p, status: 'pending' as ProductStatus, resubmittedAt: Date.now(), resubmitCount: (p.resubmitCount ?? 0) + 1 }
+          : p
+      ));
       toast(t('dashboard.resubmitted'), 'success');
+    } catch (err: any) {
+      if (err?.message === 'RESUBMIT_LIMIT_REACHED') {
+        toast(t('dashboard.resubmitLimitReached'), 'error');
+      } else {
+        toast(t('dashboard.resubmitError'), 'error');
+      }
+    }
   };
 
   const openEditProduct = (product: Product) => {
@@ -346,6 +422,17 @@ export const SellerDashboard: React.FC = () => {
     setEditNewImages([]);
     setEditNewPreviews([]);
   };
+
+  // Open edit modal if navigated here from ProductDetail with a product to edit
+  useEffect(() => {
+    const editProduct = (location.state as any)?.editProduct as Product | undefined;
+    if (editProduct) {
+      setActiveTab('products');
+      openEditProduct(editProduct);
+      // Clear state to avoid re-opening on tab changes
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEditNewImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -383,33 +470,38 @@ export const SellerDashboard: React.FC = () => {
     setEditLoading(true);
     try {
       let finalImages = [...editImages];
+      let newBlurhash: string | undefined = undefined;
       if (editNewImages.length > 0) {
         const uploaded = await uploadImages(editNewImages, { folder: 'aurabuja-app-2026/products' });
-        finalImages = [...finalImages, ...uploaded];
+        // New images prepended to front → regenerate blurhash from first new image
+        finalImages = [...uploaded, ...finalImages];
+        newBlurhash = (await generateBlurhash(editNewImages[0])) || undefined;
       }
 
-      await updateProduct(editingProduct.id, {
+      await editAndResubmitProduct(editingProduct.id, {
         title: trimmedTitle,
         description: editDesc.trim(),
         price: numPrice,
         category: editCategory,
         subCategory: editSubCategory,
         images: finalImages,
+        ...(newBlurhash ? { blurhash: newBlurhash } : {}),
       });
-
-      // Resubmit for review
-      await resubmitProduct(editingProduct.id);
 
       setMyProducts(prev => prev.map(p =>
         p.id === editingProduct.id
-          ? { ...p, title: trimmedTitle, description: editDesc.trim(), price: numPrice, category: editCategory, subCategory: editSubCategory, images: finalImages, status: 'pending' as ProductStatus, resubmittedAt: Date.now() }
+          ? { ...p, title: trimmedTitle, description: editDesc.trim(), price: numPrice, category: editCategory, subCategory: editSubCategory, images: finalImages, status: 'pending' as ProductStatus, resubmittedAt: Date.now(), resubmitCount: (p.resubmitCount ?? 0) + 1, ...(newBlurhash ? { blurhash: newBlurhash } : {}) }
           : p
       ));
 
       setEditingProduct(null);
       toast(t('dashboard.productEdited'), 'success');
     } catch (err: any) {
-      toast(err?.message || t('dashboard.editError'), 'error');
+      if (err?.message === 'RESUBMIT_LIMIT_REACHED') {
+        toast(t('dashboard.resubmitLimitReached'), 'error');
+      } else {
+        toast(err?.message || t('dashboard.editError'), 'error');
+      }
     } finally {
       setEditLoading(false);
     }
@@ -435,7 +527,7 @@ export const SellerDashboard: React.FC = () => {
       toast(t('dashboard.gpsNotSupported'), 'error');
       return;
     }
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       toast(t('dashboard.gpsNeedsHttps'), 'error');
       return;
     }
@@ -534,13 +626,13 @@ export const SellerDashboard: React.FC = () => {
 
   // --- SUB-COMPONENTS ---
 
-  const SidebarItem = ({ id, icon, label, count }: { id: Tab, icon: string, label: string, count?: number }) => (
-      <button 
+  const SidebarItem = ({ id, icon, label, count, gold }: { id: Tab, icon: string, label: string, count?: number, gold?: boolean }) => (
+      <button
         onClick={() => setActiveTab(id)}
         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
-            activeTab === id 
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' 
-            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            activeTab === id
+            ? gold ? 'bg-gradient-to-r from-amber-600 to-gold-500 text-white shadow-lg shadow-amber-900/50' : 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+            : gold ? 'text-gold-400 hover:bg-gold-400/10 border border-gold-400/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
         }`}
       >
           <div className="flex items-center gap-3">
@@ -548,7 +640,13 @@ export const SellerDashboard: React.FC = () => {
               <span className="font-medium text-sm">{label}</span>
           </div>
           {count !== undefined && (
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-500'}`}>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                activeTab === id
+                  ? 'bg-white/20 text-white'
+                  : gold
+                  ? 'bg-gold-400/20 text-gold-400 border border-gold-400/30'
+                  : 'bg-gray-800 text-gray-500'
+              }`}>
                   {count}
               </span>
           )}
@@ -580,7 +678,9 @@ export const SellerDashboard: React.FC = () => {
   const handleSyncQueue = async () => {
     if (syncing || !navigator.onLine || offlineQueue.length === 0) return;
     setSyncing(true);
+    setSyncFailedIds([]);
     let synced = 0;
+    const failed: string[] = [];
     for (const draft of offlineQueue) {
       try {
         // Convert base64 previews to files for upload
@@ -597,12 +697,17 @@ export const SellerDashboard: React.FC = () => {
         synced++;
       } catch (err) {
         console.error('[OfflineSync] Failed:', draft.id, err);
+        failed.push(draft.id);
       }
     }
     if (synced > 0) {
       toast(t('dashboard.syncSuccess', { count: synced }), 'success');
       const data = await getSellerAllProducts(currentUser.id);
       setMyProducts(data);
+    }
+    if (failed.length > 0) {
+      setSyncFailedIds(failed);
+      toast(t('dashboard.syncPartialError', { count: failed.length }), 'error');
     }
     setSyncing(false);
   };
@@ -619,25 +724,70 @@ export const SellerDashboard: React.FC = () => {
   const renderOverview = () => (
     <div className="space-y-6 animate-fade-in">
         {/* Offline Queue Banner */}
-        {queueCount > 0 && (
-          <div className={`${navigator.onLine ? 'bg-green-500/10 border-green-500/30' : 'bg-orange-500/10 border-orange-500/30'} border rounded-2xl p-4 flex items-center gap-3`}>
-            <span className="text-2xl">{navigator.onLine ? '🔄' : '📦'}</span>
-            <div className="flex-1">
-              <p className={`${navigator.onLine ? 'text-green-400' : 'text-orange-400'} font-semibold text-sm`}>
-                {t('dashboard.offlineQueue', { count: queueCount })}
-              </p>
-              <p className="text-gray-500 text-xs">
-                {navigator.onLine ? t('dashboard.readyToSync') : t('dashboard.willSyncOnline')}
-              </p>
+        {(queueCount > 0 || syncFailedIds.length > 0) && (
+          <div className={`border rounded-2xl p-4 space-y-3 ${
+            syncFailedIds.length > 0
+              ? 'bg-red-500/10 border-red-500/30'
+              : navigator.onLine
+              ? 'bg-green-500/10 border-green-500/30'
+              : 'bg-orange-500/10 border-orange-500/30'
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">
+                {syncFailedIds.length > 0 ? '⚠️' : navigator.onLine ? '🔄' : '📦'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm ${
+                  syncFailedIds.length > 0 ? 'text-red-400' : navigator.onLine ? 'text-green-400' : 'text-orange-400'
+                }`}>
+                  {syncFailedIds.length > 0
+                    ? t('dashboard.syncError', { count: syncFailedIds.length })
+                    : t('dashboard.offlineQueue', { count: queueCount })}
+                </p>
+                <p className="text-gray-500 text-xs">
+                  {syncFailedIds.length > 0
+                    ? t('dashboard.syncErrorHint')
+                    : navigator.onLine
+                    ? t('dashboard.readyToSync')
+                    : t('dashboard.willSyncOnline')}
+                </p>
+              </div>
+              {navigator.onLine && queueCount > 0 && (
+                <button
+                  onClick={handleSyncQueue}
+                  disabled={syncing}
+                  className={`text-xs px-4 py-2 border rounded-xl transition-colors disabled:opacity-50 ${
+                    syncFailedIds.length > 0
+                      ? 'text-red-400 border-red-500/30 hover:bg-red-500/10'
+                      : 'text-green-400 border-green-500/30 hover:bg-green-500/10'
+                  }`}
+                >
+                  {syncing
+                    ? t('dashboard.syncing')
+                    : syncFailedIds.length > 0
+                    ? t('dashboard.retrySync')
+                    : t('dashboard.syncNow')}
+                </button>
+              )}
             </div>
-            {navigator.onLine && (
-              <button
-                onClick={handleSyncQueue}
-                disabled={syncing}
-                className="text-green-400 text-xs px-4 py-2 border border-green-500/30 rounded-xl hover:bg-green-500/10 transition-colors disabled:opacity-50"
-              >
-                {syncing ? t('dashboard.syncing') : t('dashboard.syncNow')}
-              </button>
+
+            {/* Per-draft status rows */}
+            {offlineQueue.length > 0 && (
+              <div className="space-y-1.5 pl-9">
+                {offlineQueue.map(draft => {
+                  const hasFailed = syncFailedIds.includes(draft.id);
+                  return (
+                    <div key={draft.id} className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold w-14 flex-shrink-0 ${hasFailed ? 'text-red-400' : 'text-gray-500'}`}>
+                        {hasFailed ? t('dashboard.syncStatusFailed') : syncing ? t('dashboard.syncStatusPending') : t('dashboard.syncStatusWaiting')}
+                      </span>
+                      <span className="text-xs text-gray-400 truncate">
+                        {(draft.data.title as string | undefined) || t('dashboard.syncDraftNoTitle')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
@@ -668,13 +818,13 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                     <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-700 ${
+                          className={`h-full rounded-full origin-left transition-transform duration-700 ${
                             isLimitReached ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
                             progressPercentage > 80 ? 'bg-gradient-to-r from-yellow-600 to-orange-400 shadow-[0_0_6px_rgba(234,179,8,0.3)]' :
                             progressPercentage > 50 ? 'bg-gradient-to-r from-gold-400 to-gold-600' :
                             'bg-gradient-to-r from-emerald-500 to-blue-400'
                           }`}
-                          style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
+                          style={{ transform: `scaleX(${(currentTier.max === null ? 100 : Math.min(progressPercentage, 100)) / 100})` }}
                         ></div>
                     </div>
                     {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">{t('dashboard.limitReached')}. <button onClick={() => navigate('/plans')} className="underline text-gold-400 bg-transparent border-none cursor-pointer p-0">{t('dashboard.upgradePlan')}</button></p>}
@@ -705,7 +855,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-sm text-red-400 font-bold">{t('dashboard.subscriptionExpired')}</p>
               <p className="text-xs text-gray-400 mt-1">{t('dashboard.expiredLimitMessage')}</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
+                <button onClick={() => setShowRenewModal(true)} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
@@ -722,7 +872,7 @@ export const SellerDashboard: React.FC = () => {
               </p>
               <p className="text-xs text-gray-400 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => navigate('/plans')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>{t('dashboard.renewNow')}</button>
+                <button onClick={() => setShowRenewModal(true)} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>{t('dashboard.renewNow')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
               </div>
             </div>
@@ -750,6 +900,60 @@ export const SellerDashboard: React.FC = () => {
             <StatCard title={t('dashboard.statTotalViews')} value={myProducts.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} trend="👁" sub={t('dashboard.allListings')} color="blue" />
             <StatCard title={t('dashboard.statTotalLikes')} value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} trend="❤️" sub={t('dashboard.allListings')} color="red" />
             <StatCard title={t('dashboard.statPending')} value={myProducts.filter(p => p.status === 'pending').length} trend="⏳" sub={t('dashboard.adminValidation')} color="yellow" />
+        </div>
+
+        {/* ── Buyer Requests Feature Banner ── */}
+        <div
+          onClick={() => setActiveTab('requests')}
+          className="cursor-pointer relative overflow-hidden rounded-2xl border border-gold-400/30 bg-gradient-to-br from-amber-950/60 via-gray-900 to-gray-900 hover:border-gold-400/60 transition-all duration-300 group"
+        >
+          {/* Background glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.12),transparent_60%)] pointer-events-none" />
+          <div className="relative z-10 p-5">
+            <div className="flex items-start justify-between gap-4">
+              {/* Left: icon + title */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/30 to-gold-600/20 border border-gold-400/30 flex items-center justify-center text-2xl shrink-0">
+                  🛒
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-black text-white text-base">{t('dashboard.buyerRequestsCardTitle')}</h3>
+                    {requestStats && requestStats.todayCount > 0 && (
+                      <span className="text-[11px] bg-gold-400/20 text-gold-400 border border-gold-400/40 px-2 py-0.5 rounded-full font-bold animate-pulse shrink-0">
+                        +{requestStats.todayCount} {t('dashboard.buyerRequestsToday')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-0.5 line-clamp-1">{t('dashboard.buyerRequestsCardDesc')}</p>
+                </div>
+              </div>
+              {/* Right: arrow */}
+              <span className="text-gold-400/50 group-hover:text-gold-400 group-hover:translate-x-1 transition-all text-xl shrink-0 mt-1">→</span>
+            </div>
+
+            {/* Feature pills */}
+            <div className="flex flex-wrap gap-2 mt-4 mb-4">
+              {[
+                { icon: '📍', label: t('dashboard.buyerRequestsFeat1') },
+                { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
+                { icon: '🔓', label: t('dashboard.buyerRequestsFeat3') },
+              ].map(f => (
+                <span key={f.label} className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-800/60 border border-gray-700/50 px-2.5 py-1 rounded-full">
+                  <span>{f.icon}</span>
+                  {f.label}
+                </span>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <button
+              onClick={e => { e.stopPropagation(); navigate('/demandes'); }}
+              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-amber-900/30"
+            >
+              🔍 {t('dashboard.viewAllRequests')}
+            </button>
+          </div>
         </div>
 
         {/* ── My Subscription Card ── */}
@@ -808,10 +1012,10 @@ export const SellerDashboard: React.FC = () => {
             </div>
             <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
+                className={`h-full rounded-full origin-left transition-transform duration-500 ${
                   isLimitReached ? 'bg-red-500' : progressPercentage > 80 ? 'bg-yellow-500' : 'bg-emerald-500'
                 }`}
-                style={{ width: `${currentTier.max === null ? 100 : Math.min(progressPercentage, 100)}%` }}
+                style={{ transform: `scaleX(${(currentTier.max === null ? 100 : Math.min(progressPercentage, 100)) / 100})` }}
               />
             </div>
           </div>
@@ -829,7 +1033,7 @@ export const SellerDashboard: React.FC = () => {
                 );
               }
               if (isExpired) {
-                return <button onClick={() => navigate('/plans')} className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-colors">{t('dashboard.subRenew')}</button>;
+                return <button onClick={() => setShowRenewModal(true)} className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-colors">{t('dashboard.subRenew')}</button>;
               }
               return <button onClick={() => navigate('/plans')} className="w-full py-2.5 bg-gold-400/10 border border-gold-400/30 text-gold-400 hover:bg-gold-400/20 text-xs font-bold rounded-xl transition-colors">{isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')}</button>;
             })()}
@@ -907,6 +1111,7 @@ export const SellerDashboard: React.FC = () => {
               { icon: '➕', label: t('dashboard.addProduct'), action: () => setActiveTab('add_product') },
               { icon: '🎨', label: t('dashboard.myShopAction'), action: () => setActiveTab('shop') },
               { icon: '📦', label: t('dashboard.myProducts'), action: () => setActiveTab('products') },
+              { icon: '📈', label: t('dashboard.viewAnalytics'), action: () => setActiveTab('analytics') },
               { icon: '💬', label: t('dashboard.contactAdmin'), action: contactAdmin },
             ].map(item => (
               <button key={item.label} onClick={item.action} className="bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-xl p-4 text-center transition-all group">
@@ -925,7 +1130,7 @@ export const SellerDashboard: React.FC = () => {
               {[...myProducts].filter(p => p.status === 'approved').sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5).map((p, i) => (
                 <div key={p.id} className="flex items-center gap-3 bg-gray-800/30 rounded-lg p-2.5">
                   <span className="text-xs font-bold text-gray-500 w-5 text-center">{i + 1}</span>
-                  <img src={p.images[0] ? getOptimizedUrl(p.images[0], 40) : ''} alt="" className="w-8 h-8 rounded-md object-cover bg-gray-700" />
+                  <img src={p.images[0] ? getOptimizedUrl(p.images[0], 40) : ''} alt="" loading="lazy" className="w-8 h-8 rounded-md object-cover bg-gray-700" />
                   <span className="flex-1 text-sm text-white truncate">{p.title}</span>
                   <span className="text-xs text-gray-400">👁 {p.views}</span>
                   <span className="text-xs text-gray-400">❤️ {p.likesCount || 0}</span>
@@ -936,6 +1141,149 @@ export const SellerDashboard: React.FC = () => {
         )}
     </div>
   );
+
+  const renderAnalytics = () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const totalViews30 = analyticsData.filter(e => e.action === 'view').length;
+    const totalContacts30 = analyticsData.filter(e => e.action === 'contact').length;
+    const totalLikes30 = analyticsData.filter(e => e.action === 'like').length;
+
+    // Per-product stats from activity
+    const productStats: Record<string, { views: number; contacts: number; likes: number }> = {};
+    analyticsData.forEach(e => {
+      if (!productStats[e.productId]) productStats[e.productId] = { views: 0, contacts: 0, likes: 0 };
+      if (e.action === 'view') productStats[e.productId].views++;
+      else if (e.action === 'contact') productStats[e.productId].contacts++;
+      else if (e.action === 'like') productStats[e.productId].likes++;
+    });
+
+    // Daily view counts for the chart (index 0 = 30 days ago, index 29 = today)
+    const viewsByDay = Array.from({ length: 30 }, (_, i) => {
+      const dayStart = now - (29 - i) * DAY_MS;
+      const dayEnd = dayStart + DAY_MS;
+      return analyticsData.filter(e => e.action === 'view' && e.createdAt >= dayStart && e.createdAt < dayEnd).length;
+    });
+    const maxDayViews = Math.max(...viewsByDay, 1);
+
+    // Top 10 products sorted by 30-day views
+    const topProducts = myProducts
+      .filter(p => p.id)
+      .map(p => ({ product: p, stats: productStats[p.id!] ?? { views: 0, contacts: 0, likes: 0 } }))
+      .sort((a, b) => b.stats.views - a.stats.views)
+      .slice(0, 10);
+    const maxViews = topProducts[0]?.stats.views || 1;
+
+    // X-axis date labels (5 evenly-spaced labels)
+    const xLabels = [-29, -21, -14, -7, 0].map(offset => {
+      const d = new Date(now + offset * DAY_MS);
+      return `${d.getDate()}/${d.getMonth() + 1}`;
+    });
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h2 className="text-xl font-bold text-white">{t('dashboard.analyticsTitle')}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.analyticsSubtitle')}</p>
+        </div>
+
+        {analyticsLoading ? (
+          <div className="text-center py-16 text-gray-500 text-sm">{t('dashboard.loadingAnalytics')}</div>
+        ) : (
+          <>
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: totalViews30, label: t('dashboard.analyticsViews'), color: 'text-blue-400' },
+                { value: totalContacts30, label: t('dashboard.analyticsContacts'), color: 'text-green-400' },
+                { value: totalLikes30, label: t('dashboard.analyticsLikes'), color: 'text-pink-400' },
+              ].map(card => (
+                <div key={card.label} className="bg-gray-800/50 border border-gray-700/50 p-4 rounded-2xl text-center">
+                  <p className={`text-2xl font-black ${card.color}`}>{card.value}</p>
+                  <p className="text-[10px] text-gray-500 mt-1 leading-tight">{card.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* 30-day bar chart */}
+            <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-5">
+              <p className="text-sm font-bold text-white mb-4">{t('dashboard.analyticsChart')}</p>
+              {totalViews30 === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">{t('dashboard.analyticsNoData')}</div>
+              ) : (
+                <div className="w-full">
+                  <svg viewBox={`0 0 ${30 * 8} 80`} className="w-full" preserveAspectRatio="none" aria-hidden="true">
+                    {viewsByDay.map((count, i) => {
+                      const barH = count === 0 ? 2 : Math.max(4, (count / maxDayViews) * 70);
+                      return (
+                        <rect
+                          key={i}
+                          x={i * 8 + 1}
+                          y={80 - barH}
+                          width={6}
+                          height={barH}
+                          rx={1.5}
+                          fill={count === 0 ? '#374151' : '#3b82f6'}
+                          opacity={count === 0 ? 0.4 : 0.6 + 0.4 * (count / maxDayViews)}
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+                    {xLabels.map(label => (
+                      <span key={label}>{label}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Per-product ranking */}
+            <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-700/50">
+                <p className="text-sm font-bold text-white">{t('dashboard.analyticsTopProducts')}</p>
+              </div>
+              {topProducts.length === 0 ? (
+                <p className="text-center py-8 text-gray-500 text-sm">{t('dashboard.analyticsNoProducts')}</p>
+              ) : (
+                <div className="divide-y divide-gray-700/30">
+                  {topProducts.map(({ product, stats }) => (
+                    <div key={product.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-700">
+                        {product.images?.[0] && (
+                          <img
+                            src={getOptimizedUrl(product.images[0], 36)}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-medium truncate">{product.title}</p>
+                        <div className="flex gap-3 mt-0.5">
+                          <span className="text-[10px] text-blue-400">👁 {stats.views}</span>
+                          <span className="text-[10px] text-green-400">💬 {stats.contacts}</span>
+                          <span className="text-[10px] text-pink-400">❤️ {stats.likes}</span>
+                        </div>
+                      </div>
+                      <div className="w-16 bg-gray-700/60 h-1.5 rounded-full overflow-hidden flex-shrink-0">
+                        <div
+                          className="h-full bg-blue-500 rounded-full origin-left transition-transform"
+                          style={{ transform: `scaleX(${stats.views / maxViews})` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   const renderAddProduct = () => {
       // LOGIQUE DE BLOCAGE SI LIMITE ATTEINTE
@@ -1037,6 +1385,8 @@ export const SellerDashboard: React.FC = () => {
                       existingProducts={myProducts}
                       categories={categoriesList}
                       onSuggestionSelect={handleSuggestionSelect}
+                      selectedCategory={category}
+                      selectedSubCategory={subCategory}
                     />
 
                     {/* Description with generate button */}
@@ -1120,45 +1470,6 @@ export const SellerDashboard: React.FC = () => {
                               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
                               placeholder="0"
                             />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Auction Toggle */}
-                    <div className="border border-red-500/20 bg-red-500/5 rounded-xl p-4 space-y-3">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className={`relative w-11 h-6 rounded-full transition-colors ${isAuction ? 'bg-red-600' : 'bg-gray-700'}`}
-                          onClick={() => { setIsAuction(!isAuction); if (!isAuction) setIsWholesale(false); }}>
-                          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isAuction ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold text-white">{t('dashboard.auctionToggle')}</span>
-                          <p className="text-xs text-gray-500">{t('dashboard.auctionHint')}</p>
-                        </div>
-                      </label>
-                      {isAuction && (
-                        <div className="grid grid-cols-2 gap-4 pt-2">
-                          <div>
-                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.startingBid')}</label>
-                            <input
-                              type="number" min="1" value={startingBid} onChange={e => setStartingBid(e.target.value)}
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-red-500 outline-none"
-                              placeholder="1000"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.auctionDuration')}</label>
-                            <select
-                              value={auctionDuration} onChange={e => setAuctionDuration(e.target.value)}
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white text-sm focus:ring-1 focus:ring-red-500 outline-none"
-                            >
-                              <option value="1">1 {t('dashboard.day')}</option>
-                              <option value="3">3 {t('dashboard.days')}</option>
-                              <option value="7">7 {t('dashboard.days')}</option>
-                              <option value="14">14 {t('dashboard.days')}</option>
-                              <option value="30">30 {t('dashboard.days')}</option>
-                            </select>
                           </div>
                         </div>
                       )}
@@ -1404,38 +1715,22 @@ export const SellerDashboard: React.FC = () => {
                   {/* ADRESSE */}
                   <div className="bg-gray-900/50 border border-gray-700/50 p-4 rounded-xl space-y-3">
                       <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.addressLabel')}</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">{t('dashboard.provinceLabel')}</label>
-                          {sellerProvinces.length > 0 ? (
-                            <select
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
-                              value={shopProfile.province}
-                              onChange={(e) => setShopProfile({...shopProfile, province: e.target.value})}
-                            >
-                              <option value="">{t('dashboard.selectPlaceholder')}</option>
-                              {sellerProvinces.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                          ) : (
-                            <input
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
-                              value={shopProfile.province}
-                              onChange={(e) => setShopProfile({...shopProfile, province: e.target.value})}
-                              placeholder="Votre province ou région"
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">{t('dashboard.communeLabel')}</label>
-                          <input
+                          <label className="block text-[10px] text-gray-500 mb-1">Ville</label>
+                          <select
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
-                            value={shopProfile.commune}
-                            onChange={(e) => setShopProfile({...shopProfile, commune: e.target.value})}
-                            placeholder="Ex: Bujumbura Mairie"
-                          />
+                            value={shopProfile.province}
+                            onChange={e => setShopProfile({ ...shopProfile, province: e.target.value, commune: e.target.value })}
+                          >
+                            <option value="">Sélectionnez votre ville</option>
+                            {sellerCities.map(city => (
+                              <option key={city} value={city}>{city}</option>
+                            ))}
+                          </select>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">{t('dashboard.quarterLabel')}</label>
+                          <label className="block text-[10px] text-gray-500 mb-1">Quartier / Adresse (optionnel)</label>
                           <input
                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
                             value={shopProfile.quartier}
@@ -1485,17 +1780,36 @@ export const SellerDashboard: React.FC = () => {
   const hasDocuments = !!(currentUser.sellerDetails?.documents?.cniUrl);
 
   const handleRequestVerification = async () => {
-    if (!currentUser.sellerDetails?.documents?.cniUrl) {
-      toast(t('dashboard.verifyUploadFirst'), 'error');
+    const nif = verifForm.nif.trim();
+    const registry = verifForm.registryNumber.trim();
+    const phone = verifForm.phone.trim();
+
+    if (!phone) {
+      toast(t('dashboard.verifyNeedPhone'), 'error');
       return;
     }
+    if (!nif && !registry) {
+      toast(t('dashboard.verifyNeedNifOrRegistry'), 'error');
+      return;
+    }
+
+    setVerifSubmitting(true);
     try {
-      await updateUserProfile(currentUser.id, {
+      const updates: Record<string, any> = {
         'sellerDetails.verificationStatus': 'pending',
-      });
-      toast(t('dashboard.verifyRequestSent'), 'success');
+      };
+      if (nif)      updates['sellerDetails.nif'] = nif;
+      if (registry) updates['sellerDetails.registryNumber'] = registry;
+      if (phone && phone !== currentUser.sellerDetails?.phone) {
+        updates['sellerDetails.phone'] = phone;
+      }
+
+      await updateUserProfile(currentUser.id, updates);
+      setShowVerifModal(true);
     } catch {
       toast(t('dashboard.verifyRequestError'), 'error');
+    } finally {
+      setVerifSubmitting(false);
     }
   };
 
@@ -1535,46 +1849,268 @@ export const SellerDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Documents uploadés */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
-        <h3 className="text-white font-semibold">{t('dashboard.verifyDocuments')}</h3>
-        {currentUser.sellerDetails?.documents?.cniUrl ? (
-          <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
-            <span className="text-xl">🪪</span>
-            <div className="flex-1">
-              <p className="text-sm text-white font-medium">{t('dashboard.verifyCNI')}</p>
-              <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
-            </div>
-            <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
-               className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+      {/* Formulaire demande (affiché uniquement si non vérifié / non pending) */}
+      {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+          <div>
+            <h3 className="text-white font-semibold">{t('dashboard.verifyFormTitle')}</h3>
+            <p className="text-xs text-gray-500 mt-1">{t('dashboard.verifyFormSubtitle')}</p>
           </div>
-        ) : (
-          <p className="text-sm text-gray-500">{t('dashboard.verifyNoDocuments')}</p>
-        )}
-        {currentUser.sellerDetails?.documents?.nifUrl && (
-          <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
-            <span className="text-xl">📄</span>
-            <div className="flex-1">
-              <p className="text-sm text-white font-medium">NIF</p>
-              <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                {t('dashboard.verifyPhoneLabel')} <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="tel"
+                value={verifForm.phone}
+                onChange={(e) => setVerifForm(s => ({ ...s, phone: e.target.value }))}
+                placeholder={t('dashboard.verifyPhonePlaceholder')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+              />
             </div>
-            <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
-               className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                {t('dashboard.verifyNifLabel')}
+              </label>
+              <input
+                type="text"
+                value={verifForm.nif}
+                onChange={(e) => setVerifForm(s => ({ ...s, nif: e.target.value }))}
+                placeholder={t('dashboard.verifyNifPlaceholder')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                {t('dashboard.verifyRegistryLabel')}
+              </label>
+              <input
+                type="text"
+                value={verifForm.registryNumber}
+                onChange={(e) => setVerifForm(s => ({ ...s, registryNumber: e.target.value }))}
+                placeholder={t('dashboard.verifyRegistryPlaceholder')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              {t('dashboard.verifyNumbersHint')}
+            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Documents optionnels — accélère la vérification */}
+      {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+          <div>
+            <h3 className="text-white font-semibold">{t('dashboard.verifyDocumentsOptional')}</h3>
+            <p className="text-xs text-gray-500 mt-1">{t('dashboard.verifyDocumentsOptionalHint')}</p>
+          </div>
+          {currentUser.sellerDetails?.documents?.cniUrl && (
+            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+              <span className="text-xl">🪪</span>
+              <div className="flex-1">
+                <p className="text-sm text-white font-medium">{t('dashboard.verifyCNI')}</p>
+                <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+              </div>
+              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
+                 className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+            </div>
+          )}
+          {currentUser.sellerDetails?.documents?.nifUrl && (
+            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+              <span className="text-xl">📄</span>
+              <div className="flex-1">
+                <p className="text-sm text-white font-medium">NIF</p>
+                <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+              </div>
+              <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
+                 className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+            </div>
+          )}
+          {!hasDocuments && (
+            <p className="text-xs text-gray-500 italic">{t('dashboard.verifyNoDocuments')}</p>
+          )}
+        </div>
+      )}
+
+      {/* Documents déjà soumis — affichage compact pour vendeurs verifiés/pending */}
+      {(verificationStatus === 'verified' || verificationStatus === 'pending') && hasDocuments && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+          <h3 className="text-white font-semibold">{t('dashboard.verifyDocuments')}</h3>
+          {currentUser.sellerDetails?.documents?.cniUrl && (
+            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+              <span className="text-xl">🪪</span>
+              <div className="flex-1">
+                <p className="text-sm text-white font-medium">{t('dashboard.verifyCNI')}</p>
+                <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+              </div>
+              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
+                 className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bouton demander vérification */}
       {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
-        <Button onClick={handleRequestVerification} disabled={!hasDocuments} className="w-full">
-          {t('dashboard.verifyRequest')}
+        <Button onClick={handleRequestVerification} disabled={verifSubmitting} className="w-full">
+          {verifSubmitting ? t('common.loading') : t('dashboard.verifyRequest')}
         </Button>
       )}
-      {!hasDocuments && verificationStatus !== 'verified' && (
-        <p className="text-xs text-gray-500 text-center">{t('dashboard.verifyUploadHint')}</p>
-      )}
+
+      <VerificationRequestModal open={showVerifModal} onClose={() => setShowVerifModal(false)} />
     </div>
   );
+
+  const renderBoost = () => {
+    const approvedProducts = myProducts.filter(p => p.status === 'approved');
+    const countryId = currentUser.sellerDetails?.countryId || 'bi';
+
+    return (
+      <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
+        {/* Header */}
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span>⚡</span> {t('dashboard.boostTitle')}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">{t('dashboard.boostDesc')}</p>
+        </div>
+
+        {/* Comment ça marche */}
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 space-y-3">
+          <p className="text-sm font-bold text-amber-400">{t('dashboard.boostHowTitle')}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-400">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 font-black text-base">1</span>
+              <span>{t('dashboard.boostStep1')}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 font-black text-base">2</span>
+              <span>{t('dashboard.boostStep2')}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 font-black text-base">3</span>
+              <span>{t('dashboard.boostStep3')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Mes demandes en cours */}
+        {boostRequests.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('dashboard.boostMyRequests')}</p>
+            {boostRequests.map(req => (
+              <div key={req.id} className="flex items-center justify-between bg-gray-800/50 border border-gray-700/50 rounded-xl px-4 py-3 gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{req.productTitle}</p>
+                  <p className="text-xs text-gray-500">{new Date(req.createdAt).toLocaleDateString('fr-FR')}</p>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${
+                  req.status === 'approved'           ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                  : req.status === 'pending_validation' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                  : req.status === 'rejected'           ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                  : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                }`}>
+                  {req.status === 'approved'            ? t('dashboard.boostStatusActive')
+                   : req.status === 'pending_validation' ? t('dashboard.boostStatusValidating')
+                   : req.status === 'rejected'            ? t('dashboard.boostStatusRejected')
+                   : t('dashboard.boostStatusPending')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Liste des produits éligibles */}
+        {approvedProducts.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-3xl mb-3">📦</p>
+            <p className="text-sm">{t('dashboard.boostNoProducts')}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('dashboard.boostChooseProduct')}</p>
+            {approvedProducts.map(product => {
+              const isActive   = !!product.isBoosted && !!product.boostExpiresAt && product.boostExpiresAt > Date.now();
+              const isPending  = boostRequests.some(
+                r => r.productId === product.id && (r.status === 'pending' || r.status === 'pending_validation')
+              );
+              const thumb = product.images[0]
+                ? getOptimizedUrl(product.images[0], 80)
+                : null;
+
+              return (
+                <div
+                  key={product.id}
+                  className="flex items-center gap-4 bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4"
+                >
+                  {/* Thumbnail */}
+                  {thumb ? (
+                    <img src={thumb} alt={product.title} loading="lazy"
+                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-gray-700" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-gray-700 shrink-0" />
+                  )}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{product.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {product.price.toLocaleString()} {product.currency || 'BIF'}
+                    </p>
+                    {isActive && (
+                      <p className="text-xs text-amber-400 font-bold mt-0.5">
+                        ⚡ {t('dashboard.boostActiveUntil', {
+                          date: new Date(product.boostExpiresAt!).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+                        })}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* CTA */}
+                  {isPending ? (
+                    <span className="text-xs text-yellow-400 font-bold bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20 whitespace-nowrap">
+                      {t('dashboard.boostStatusPending')}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setBoostingProduct(product)}
+                      className={`text-xs font-black px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+                        isActive
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
+                          : 'bg-amber-500 hover:bg-amber-400 text-gray-900 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40'
+                      }`}
+                    >
+                      {isActive ? t('dashboard.boostRenew') : `⚡ ${t('dashboard.boostCta')}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Modal boost */}
+        {boostingProduct && (
+          <BoostProductModal
+            isOpen
+            onClose={() => setBoostingProduct(null)}
+            product={boostingProduct}
+            sellerCountryId={countryId}
+            userId={currentUser.id}
+            sellerName={currentUser.name}
+            existingRequests={boostRequests}
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col md:flex-row">
@@ -1587,7 +2123,9 @@ export const SellerDashboard: React.FC = () => {
            <div className="space-y-2 flex-1">
                <SidebarItem id="overview" icon="📊" label={t('dashboard.overview')} />
                <SidebarItem id="products" icon="📦" label={t('dashboard.inventory')} count={myProducts.length} />
-               <SidebarItem id="requests" icon="🔍" label={t('dashboard.buyerRequests')} />
+               <SidebarItem id="analytics" icon="📈" label={t('dashboard.analytics')} />
+               <SidebarItem id="boost" icon="⚡" label={t('dashboard.boost')} />
+               <SidebarItem id="requests" icon="🛒" label={t('dashboard.buyerRequests')} count={requestStats?.todayCount || undefined} gold />
                <SidebarItem id="shop" icon="🎨" label={t('dashboard.myShop')} />
                <SidebarItem id="verification" icon="✅" label={t('dashboard.verification')} />
            </div>
@@ -1607,7 +2145,9 @@ export const SellerDashboard: React.FC = () => {
            </div>
        </aside>
 
-       <div className="md:hidden bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 p-3 px-4 flex justify-between items-center sticky top-0 z-30">
+       <div className="md:hidden bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 sticky top-0 z-30">
+         {/* Header mobile */}
+         <div className="p-3 px-4 flex justify-between items-center">
            <span className="font-black text-lg text-white">{t('dashboard.sellerSpace')}</span>
            <div className="flex items-center gap-2">
              <div className="bg-gray-800 px-2 py-1 rounded-lg border border-gray-700">
@@ -1616,17 +2156,64 @@ export const SellerDashboard: React.FC = () => {
                </span>
              </div>
              <LanguageSwitcher compact />
-             <button onClick={() => navigate('/')} className="text-gray-400 p-1 hover:text-white">✕</button>
+             <button onClick={() => navigate('/')} className="text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white">✕</button>
            </div>
+         </div>
+         {/* Onglets de navigation mobile — scroll horizontal */}
+         <div className="flex overflow-x-auto gap-1 px-3 pb-2 scrollbar-none">
+           {([
+             { id: 'overview',      icon: '📊', label: t('dashboard.overview') },
+             { id: 'products',      icon: '📦', label: t('dashboard.inventory') },
+             { id: 'add_product',   icon: '➕', label: t('dashboard.newButton') },
+             { id: 'analytics',     icon: '📈', label: t('dashboard.analytics') },
+             { id: 'boost',         icon: '⚡', label: t('dashboard.boost') },
+             { id: 'requests',      icon: '🔍', label: t('dashboard.buyerRequests') },
+             { id: 'shop',          icon: '🎨', label: t('dashboard.myShop') },
+             { id: 'verification',  icon: '✅', label: t('dashboard.verification') },
+           ] as { id: Tab; icon: string; label: string }[]).map(tab => (
+             <button
+               key={tab.id}
+               onClick={() => setActiveTab(tab.id)}
+               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                 activeTab === tab.id
+                   ? 'bg-blue-600 text-white border-blue-500'
+                   : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-white'
+               }`}
+             >
+               <span>{tab.icon}</span>
+               <span>{tab.label}</span>
+             </button>
+           ))}
+         </div>
        </div>
 
        <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-60px)] md:h-screen">
            {activeTab === 'overview' && renderOverview()}
+           {activeTab === 'analytics' && renderAnalytics()}
            {activeTab === 'products' && (
                <div className="space-y-4 animate-fade-in">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-2">
                     <h2 className="text-xl font-bold text-white">{t('dashboard.myInventory')}</h2>
-                    <Button size="sm" onClick={() => setActiveTab('add_product')}>{t('dashboard.newButton')}</Button>
+                    <div className="flex items-center gap-2">
+                      {filteredProducts.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setBulkSelectMode(m => !m);
+                            setSelectedProductIds(new Set());
+                          }}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                            bulkSelectMode
+                              ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                              : 'border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+                          }`}
+                        >
+                          {bulkSelectMode ? t('dashboard.bulkCancel') : t('dashboard.bulkSelect')}
+                        </button>
+                      )}
+                      {!bulkSelectMode && (
+                        <Button size="sm" onClick={() => setActiveTab('add_product')}>{t('dashboard.newButton')}</Button>
+                      )}
+                    </div>
                 </div>
 
                 {/* Status filter tabs */}
@@ -1651,6 +2238,37 @@ export const SellerDashboard: React.FC = () => {
                   ))}
                 </div>
 
+                {/* Bulk action bar */}
+                {bulkSelectMode && filteredProducts.length > 0 && (
+                  <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5">
+                    <button
+                      onClick={() => {
+                        const allIds = filteredProducts.map(p => p.id).filter((id): id is string => Boolean(id));
+                        const allSelected = allIds.every(id => selectedProductIds.has(id));
+                        setSelectedProductIds(allSelected ? new Set() : new Set(allIds));
+                      }}
+                      className="text-xs text-blue-400 font-bold hover:text-blue-300 transition-colors"
+                    >
+                      {filteredProducts.every(p => p.id && selectedProductIds.has(p.id))
+                        ? t('dashboard.bulkDeselectAll')
+                        : t('dashboard.bulkSelectAll')}
+                    </button>
+                    <span className="text-xs text-gray-500 flex-1">
+                      {selectedProductIds.size > 0
+                        ? t('dashboard.bulkSelected', { count: selectedProductIds.size })
+                        : t('dashboard.bulkNoneSelected')}
+                    </span>
+                    {selectedProductIds.size > 0 && (
+                      <button
+                        onClick={handleBulkDelete}
+                        className="text-xs font-bold px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+                      >
+                        🗑 {t('dashboard.bulkDeleteBtn', { count: selectedProductIds.size })}
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {filteredProducts.length === 0 ? (
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-8 text-center text-gray-400">
                     <div className="text-4xl mb-3">📦</div>
@@ -1661,17 +2279,33 @@ export const SellerDashboard: React.FC = () => {
                   <div className="space-y-3">
                     {filteredProducts.map(product => {
                       const cur = product.currency || CURRENCY;
+                      const isSelected = product.id ? selectedProductIds.has(product.id) : false;
                       return (
-                      <div key={product.id} className={`bg-gray-800/50 border rounded-xl p-4 space-y-2 transition-all ${
-                        product.status === 'rejected' ? 'border-red-800/40' :
-                        product.status === 'pending' ? 'border-yellow-800/30' :
-                        'border-gray-700/50'
-                      }`}>
+                      <div
+                        key={product.id}
+                        onClick={() => bulkSelectMode && product.id && toggleProductSelection(product.id)}
+                        className={`bg-gray-800/50 border rounded-xl p-4 space-y-2 transition-all ${
+                          bulkSelectMode ? 'cursor-pointer' : ''
+                        } ${
+                          isSelected ? 'border-blue-500/60 bg-blue-900/10' :
+                          product.status === 'rejected' ? 'border-red-800/40' :
+                          product.status === 'pending' ? 'border-yellow-800/30' :
+                          'border-gray-700/50'
+                        }`}
+                      >
                         <div className="flex items-center gap-4">
+                          {bulkSelectMode && (
+                            <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                              isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-600'
+                            }`}>
+                              {isSelected && <span className="text-white text-[10px] font-black">✓</span>}
+                            </div>
+                          )}
                           <div className="relative flex-shrink-0">
                             <img
                               src={product.images[0] ? getOptimizedUrl(product.images[0], 80) : ''}
                               alt={product.title}
+                              loading="lazy"
                               className="w-16 h-16 rounded-lg object-cover bg-gray-700"
                             />
                             {product.images.length > 1 && (
@@ -1696,6 +2330,11 @@ export const SellerDashboard: React.FC = () => {
                               }`}>
                                 {product.status === 'approved' ? t('dashboard.statusActive') : product.status === 'pending' ? t('dashboard.statusPending') : t('dashboard.statusRejected')}
                               </span>
+                              {product.status === 'pending' && (
+                                <span className="text-[10px] text-gray-500 italic">
+                                  {t('dashboard.searchDelayHint')}
+                                </span>
+                              )}
                               {product.isPromoted && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/30">{t('dashboard.statusSponsored')}</span>}
                             </div>
                           </div>
@@ -1704,13 +2343,15 @@ export const SellerDashboard: React.FC = () => {
                               <span>👁 {product.views}</span>
                               <span>❤️ {product.likesCount || 0}</span>
                             </div>
-                            <button
-                              onClick={() => handleDeleteProduct(product.id)}
-                              className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20"
-                              title="Supprimer"
-                            >
-                              🗑️
-                            </button>
+                            {!bulkSelectMode && (
+                              <button
+                                onClick={() => handleDeleteProduct(product.id)}
+                                className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20"
+                                title="Supprimer"
+                              >
+                                🗑️
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -1722,20 +2363,34 @@ export const SellerDashboard: React.FC = () => {
                                 <span className="font-bold">{t('dashboard.rejectionReason')}</span> {product.rejectionReason}
                               </p>
                             )}
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => openEditProduct(product)}
-                                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors"
-                              >
-                                {t('dashboard.editAndResubmit')}
-                              </button>
-                              <button
-                                onClick={() => handleResubmit(product.id)}
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
-                              >
-                                {t('dashboard.resubmitAsIs')}
-                              </button>
-                            </div>
+                            {(product.resubmitCount ?? 0) >= MAX_RESUBMIT_ATTEMPTS ? (
+                              <p className="text-xs text-gray-500 italic">
+                                {t('dashboard.resubmitLimitReached')}
+                              </p>
+                            ) : (
+                              <>
+                                <p className="text-[10px] text-gray-600">
+                                  {t('dashboard.resubmitAttemptsLeft', {
+                                    left: MAX_RESUBMIT_ATTEMPTS - (product.resubmitCount ?? 0),
+                                    max: MAX_RESUBMIT_ATTEMPTS,
+                                  })}
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => openEditProduct(product)}
+                                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors"
+                                  >
+                                    {t('dashboard.editAndResubmit')}
+                                  </button>
+                                  <button
+                                    onClick={() => handleResubmit(product.id)}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+                                  >
+                                    {t('dashboard.resubmitAsIs')}
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1745,57 +2400,150 @@ export const SellerDashboard: React.FC = () => {
                 )}
                </div>
            )}
+           {activeTab === 'boost' && renderBoost()}
            {activeTab === 'add_product' && renderAddProduct()}
            {activeTab === 'shop' && renderShopSettings()}
            {activeTab === 'verification' && renderVerification()}
-           {activeTab === 'requests' && (
-             <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
-               <div className="flex items-center justify-between">
-                 <div>
-                   <h2 className="text-xl font-bold text-white">{t('dashboard.buyerRequests')}</h2>
-                   <p className="text-sm text-gray-500 mt-1">{t('dashboard.buyerRequestsDesc')}</p>
+           {activeTab === 'requests' && (() => {
+             const isEligible = canContactBuyer(currentUser.sellerDetails);
+             return (
+               <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+                 {/* Header */}
+                 <div className="flex items-center justify-between">
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <h2 className="text-xl font-black text-white">{t('dashboard.buyerRequests')}</h2>
+                       {requestStats && requestStats.todayCount > 0 && (
+                         <span className="text-xs bg-gold-400/20 text-gold-400 border border-gold-400/40 px-2.5 py-0.5 rounded-full font-bold animate-pulse">
+                           {requestStats.todayCount} {t('dashboard.buyerRequestsToday')}
+                         </span>
+                       )}
+                     </div>
+                     <p className="text-sm text-gray-500 mt-0.5">{t('dashboard.buyerRequestsDesc')}</p>
+                   </div>
+                   <button
+                     onClick={() => navigate('/demandes')}
+                     className="px-4 py-2 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-amber-900/30"
+                   >
+                     🔍 {t('dashboard.viewAllRequests')}
+                   </button>
                  </div>
-                 <button
-                   onClick={() => navigate('/demandes')}
-                   className="px-4 py-2 bg-gold-400 hover:bg-gold-300 text-gray-900 font-bold rounded-xl text-sm transition-all hover:scale-105 active:scale-95"
-                 >
-                   🔍 {t('dashboard.viewAllRequests')}
-                 </button>
+
+                 {/* Plan eligibility banner */}
+                 {!isEligible ? (
+                   <div className="relative overflow-hidden rounded-2xl border border-gold-400/30 bg-gradient-to-br from-amber-950/50 via-gray-900 to-gray-900 p-6">
+                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.1),transparent_60%)] pointer-events-none" />
+                     <div className="relative z-10">
+                       <div className="flex items-start gap-4 mb-5">
+                         <div className="w-14 h-14 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center text-3xl shrink-0">🔒</div>
+                         <div>
+                           <h3 className="text-white font-black text-lg">{t('requests.planGate.title')}</h3>
+                           <p className="text-gray-400 text-sm mt-1">{t('requests.planGate.subtitle')}</p>
+                         </div>
+                       </div>
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                         {[
+                           { icon: '📋', label: t('dashboard.buyerRequestsFeat1') },
+                           { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
+                           { icon: '📈', label: t('dashboard.buyerRequestsFeat3') },
+                         ].map(f => (
+                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-800/50 border border-gray-700/40 rounded-xl p-3">
+                             <span className="text-xl">{f.icon}</span>
+                             <span className="text-sm text-gray-300 font-medium">{f.label}</span>
+                           </div>
+                         ))}
+                       </div>
+                       <div className="flex flex-col sm:flex-row gap-3">
+                         <button
+                           onClick={() => navigate('/plans')}
+                           className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] shadow-lg shadow-amber-900/30"
+                         >
+                           ⭐ {t('requests.planGate.cta')}
+                         </button>
+                         <button
+                           onClick={() => navigate('/demandes')}
+                           className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold rounded-xl text-sm transition-colors"
+                         >
+                           👁 {t('dashboard.buyerRequestsPreview')}
+                         </button>
+                       </div>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-950/30 via-gray-900 to-gray-900 p-6">
+                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(34,197,94,0.07),transparent_60%)] pointer-events-none" />
+                     <div className="relative z-10">
+                       <div className="flex items-start gap-4 mb-5">
+                         <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-3xl shrink-0">✅</div>
+                         <div>
+                           <h3 className="text-white font-black text-lg">{t('dashboard.buyerRequestsUnlocked')}</h3>
+                           <p className="text-gray-400 text-sm mt-1">{t('dashboard.buyerRequestsUnlockedDesc')}</p>
+                         </div>
+                       </div>
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                         {[
+                           { icon: '📋', label: t('dashboard.buyerRequestsFeat1') },
+                           { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
+                           { icon: '📈', label: t('dashboard.buyerRequestsFeat3') },
+                         ].map(f => (
+                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-800/50 border border-gray-700/40 rounded-xl p-3">
+                             <span className="text-xl">{f.icon}</span>
+                             <span className="text-sm text-gray-300 font-medium">{f.label}</span>
+                           </div>
+                         ))}
+                       </div>
+                       <button
+                         onClick={() => navigate('/demandes')}
+                         className="w-full py-3 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] shadow-lg shadow-amber-900/30"
+                       >
+                         🔍 {t('dashboard.viewAllRequests')}
+                       </button>
+                     </div>
+                   </div>
+                 )}
+
+                 {/* Stats row */}
+                 {requestStats && (
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4 text-center">
+                       <p className="text-2xl font-black text-gold-400">{requestStats.todayCount}</p>
+                       <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wide">{t('dashboard.buyerRequestsStatToday')}</p>
+                     </div>
+                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4 text-center">
+                       <p className="text-2xl font-black text-green-400">{requestStats.fulfilledCount}</p>
+                       <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wide">{t('dashboard.buyerRequestsStatFulfilled')}</p>
+                     </div>
+                   </div>
+                 )}
                </div>
-               <div className="bg-gray-800/50 border border-gold-400/20 rounded-2xl p-6 text-center">
-                 <div className="text-4xl mb-3">🛒</div>
-                 <p className="text-base font-bold text-white mb-2">{t('dashboard.buyerRequestsPromo')}</p>
-                 <p className="text-sm text-gray-400 mb-4">{t('dashboard.buyerRequestsPromoDesc')}</p>
-                 <button
-                   onClick={() => navigate('/demandes')}
-                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-400 hover:bg-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-105 active:scale-95"
-                 >
-                   🔍 {t('dashboard.viewAllRequests')}
-                 </button>
-               </div>
-             </div>
-           )}
+             );
+           })()}
        </main>
 
        {/* Mobile Bottom Nav — All tabs visible with labels */}
        <div className="md:hidden fixed bottom-0 w-full bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 pb-safe z-50">
          <div className="flex justify-around items-center h-16">
            {([
-             { id: 'overview' as Tab, icon: '📊', label: t('dashboard.mobileHome') },
-             { id: 'products' as Tab, icon: '📦', label: t('dashboard.mobileProducts') },
-             { id: 'add_product' as Tab, icon: '➕', label: t('dashboard.mobileAdd') },
-             { id: 'requests' as Tab, icon: '🔍', label: t('dashboard.mobileRequests') },
-             { id: 'shop' as Tab, icon: '🎨', label: t('dashboard.mobileShop') },
+             { id: 'overview' as Tab, icon: '📊', label: t('dashboard.mobileHome'), gold: false },
+             { id: 'products' as Tab, icon: '📦', label: t('dashboard.mobileProducts'), gold: false },
+             { id: 'add_product' as Tab, icon: '➕', label: t('dashboard.mobileAdd'), gold: false },
+             { id: 'requests' as Tab, icon: '🛒', label: t('dashboard.mobileRequests'), gold: true },
+             { id: 'shop' as Tab, icon: '🎨', label: t('dashboard.mobileShop'), gold: false },
            ]).map(item => (
              <button
                key={item.id}
                onClick={() => setActiveTab(item.id)}
-               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${
-                 activeTab === item.id ? 'text-blue-400' : 'text-gray-500'
+               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 relative ${
+                 activeTab === item.id
+                   ? item.gold ? 'text-gold-400' : 'text-blue-400'
+                   : item.gold ? 'text-amber-600' : 'text-gray-500'
                }`}
              >
                <span className={`text-lg transition-transform ${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</span>
                <span className="text-[9px] font-medium">{item.label}</span>
+               {item.gold && requestStats && requestStats.todayCount > 0 && activeTab !== item.id && (
+                 <span className="absolute top-1 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-gold-400 ring-2 ring-gray-900" />
+               )}
              </button>
            ))}
          </div>
@@ -1847,7 +2595,7 @@ export const SellerDashboard: React.FC = () => {
                  <div className="flex gap-2 flex-wrap">
                    {editImages.map((img, i) => (
                      <div key={i} className="relative w-16 h-16">
-                       <img src={getOptimizedUrl(img, 80)} className="w-full h-full object-cover rounded-lg" />
+                       <img src={getOptimizedUrl(img, 80)} loading="lazy" className="w-full h-full object-cover rounded-lg" />
                        <button onClick={() => removeEditExistingImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">&times;</button>
                      </div>
                    ))}
@@ -1892,6 +2640,17 @@ export const SellerDashboard: React.FC = () => {
            </div>
          </div>
        )}
+
+      {/* Renewal modal — inline, without navigating to /plans */}
+      <RenewSubscriptionModal
+        isOpen={showRenewModal}
+        onClose={() => setShowRenewModal(false)}
+        currentTierLabel={currentUser.sellerDetails?.tierLabel || ''}
+        sellerCountryId={sellerCountryId}
+        userId={currentUser.id}
+        sellerName={currentUser.sellerDetails?.shopName || currentUser.name}
+        existingRequests={subRequests}
+      />
     </div>
   );
 };

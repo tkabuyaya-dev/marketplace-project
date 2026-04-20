@@ -19,9 +19,9 @@ import {
   getRecentRequestCountByWhatsApp,
 } from '../../services/firebase/buyer-requests';
 import { uploadImage } from '../../services/cloudinary';
-import { verifyRecaptcha } from '../../services/recaptcha';
-import { INITIAL_COUNTRIES, PROVINCES_BY_COUNTRY } from '../../constants';
-import { COMMUNES_BY_PROVINCE } from '../../data/locations';
+import { verifyRecaptcha, loadRecaptchaScript } from '../../services/recaptcha';
+import { INITIAL_COUNTRIES } from '../../constants';
+import { CITIES_BY_COUNTRY } from '../../data/locations';
 
 // Indicatifs téléphoniques par pays
 const PHONE_CODES: Record<string, string> = {
@@ -51,7 +51,6 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   // Form fields
   const [title, setTitle]       = useState(initialQuery);
   const [countryId, setCountryId] = useState(defaultCountry);
-  const [province, setProvince] = useState('');
   const [city, setCity]         = useState('');
   const [localPhone, setLocalPhone] = useState(() => {
     const wp = currentUser?.whatsapp || '';
@@ -78,16 +77,18 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
 
   // Derived
   const phonePrefix = PHONE_CODES[countryId] || '+257';
-  const provinces   = PROVINCES_BY_COUNTRY[countryId] || [];
-  const communes    = (province && COMMUNES_BY_PROVINCE[countryId]?.[province])
-    ? COMMUNES_BY_PROVINCE[countryId][province]
-    : [];
+  const cities      = CITIES_BY_COUNTRY[countryId] || [];
   const selectedCountry = INITIAL_COUNTRIES.find(c => c.id === countryId);
 
   // Sync title when search query changes
   useEffect(() => {
     if (initialQuery && step === 'form') setTitle(initialQuery);
   }, [initialQuery]);
+
+  // Load reCAPTCHA script on first open (lazy — not at module import)
+  useEffect(() => {
+    if (isOpen) loadRecaptchaScript();
+  }, [isOpen]);
 
   // Focus title on open + reset state
   useEffect(() => {
@@ -140,10 +141,9 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
     if (imageInputRef.current) imageInputRef.current.value = '';
   }, []);
 
-  // When country changes: reset province, city and clear local phone
+  // When country changes: reset city and clear local phone
   const handleCountryChange = (newCountryId: string) => {
     setCountryId(newCountryId);
-    setProvince('');
     setCity('');
     setLocalPhone('');
   };
@@ -156,33 +156,42 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
     const digitsOnly   = localPhone.replace(/\D/g, '');
     const fullWhatsapp = phonePrefix + digitsOnly;
 
+    // Synchronous validation — fail fast before any network call
     if (!trimmedTitle)  { setError(t('jeCherche.form.errorTitle'));    return; }
     if (!digitsOnly)    { setError(t('jeCherche.form.errorWhatsapp')); return; }
-    if (!province)      { setError(t('jeCherche.form.errorProvince')); return; }
     if (!city)          { setError(t('jeCherche.form.errorCity'));      return; }
 
-    // Rate limit check
+    // Show loading spinner immediately — before any async work
+    // (reCAPTCHA + rate limit can take 1-3s on slow networks)
+    setLoading(true);
+
     try {
-      const recentCount = await getRecentRequestCountByWhatsApp(fullWhatsapp);
-      if (recentCount >= 3) {
-        setError(t('jeCherche.form.errorRateLimit'));
+      // Rate limit check — fire-and-forget on error (don't block legit users)
+      try {
+        const recentCount = await getRecentRequestCountByWhatsApp(fullWhatsapp);
+        if (recentCount >= 3) {
+          setError(t('jeCherche.form.errorRateLimit'));
+          return;
+        }
+      } catch { /* network error — continue */ }
+
+      // ⚠️  NE PAS supprimer ce Promise.race — Fix iOS Safari (ITP)
+      // Sur iPhone, window.grecaptcha.ready() peut ne jamais se déclencher
+      // (ITP bloque les scripts Google). Sans ce timeout, le formulaire
+      // se bloque indéfiniment. Le fallback resolve(true) laisse passer la soumission.
+      const captchaOk = await Promise.race([
+        verifyRecaptcha('je_cherche_submit'),
+        new Promise<boolean>(resolve => setTimeout(() => resolve(true), 3000)),
+      ]);
+      if (!captchaOk) {
+        setError(t('jeCherche.form.errorCaptcha'));
         return;
       }
-    } catch { /* continue — better UX than blocking */ }
 
-    // reCAPTCHA v3 verification (bot protection)
-    const captchaOk = await verifyRecaptcha('je_cherche_submit');
-    if (!captchaOk) {
-      setError(t('jeCherche.form.errorCaptcha'));
-      return;
-    }
-
-    setLoading(true);
-    try {
       await createBuyerRequest({
         title:          trimmedTitle,
         countryId,
-        province,
+        province:       city,
         city,
         whatsapp:       fullWhatsapp,
         buyerId:        currentUser?.id,
@@ -192,6 +201,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         budgetCurrency: selectedCountry?.currency,
         imageUrl:       imageUrl || undefined,
       });
+
       setStep('success');
     } catch (err: any) {
       setError(err?.message || t('jeCherche.form.errorGeneric'));
@@ -269,35 +279,19 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
               </select>
             </div>
 
-            {/* 3. Province — required */}
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1.5">
-                {t('jeCherche.form.labelProvince')} <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={province}
-                onChange={e => { setProvince(e.target.value); setCity(''); }}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-gold-400/50 outline-none text-sm cursor-pointer"
-              >
-                <option value="">{t('jeCherche.form.selectProvince')}</option>
-                {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-
-            {/* 4. Ville/Commune — dropdown si données dispo, sinon texte libre */}
+            {/* 3. Ville — dropdown depuis la liste officielle par pays */}
             <div>
               <label className="block text-xs font-bold text-gray-400 mb-1.5">
                 {t('jeCherche.form.labelCity')} <span className="text-red-400">*</span>
               </label>
-              {communes.length > 0 ? (
+              {cities.length > 0 ? (
                 <select
                   value={city}
                   onChange={e => setCity(e.target.value)}
-                  disabled={!province}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-gold-400/50 outline-none text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-gold-400/50 outline-none text-sm cursor-pointer"
                 >
                   <option value="">{t('jeCherche.form.selectCity')}</option>
-                  {communes.map(c => <option key={c} value={c}>{c}</option>)}
+                  {cities.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               ) : (
                 <input

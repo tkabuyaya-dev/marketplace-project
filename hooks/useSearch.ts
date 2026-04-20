@@ -5,21 +5,31 @@
  * URL sync, caching, and filter composition.
  *
  * Architecture: URL params → state → Algolia query → results
+ *
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║  QUOTA GUARDS — DO NOT WEAKEN WITHOUT CHECKING DASHBOARD    ║
+ * ║  • Minimum debounce: 400ms (line ~234). Below = per-         ║
+ * ║    keystroke Algolia calls. African mobile users type slow.  ║
+ * ║  • Minimum query length: 2 chars (line ~227).               ║
+ * ║  • searchCache (module-level Map) survives navigation.       ║
+ * ║    Cache hit = 0 Algolia requests for repeated searches.     ║
+ * ╚══════════════════════════════════════════════════════════════╝
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Product } from '../types';
 import { algoliaSearchProductsFull, ExtendedSearchFilters } from '../services/algolia';
 import { searchProducts } from '../services/firebase';
 import { useAppContext } from '../contexts/AppContext';
+import { useAdaptiveDebounce } from './useAdaptiveDebounce';
 
 // ── Types ──
 
 export interface SearchFiltersState {
   country: string | null;
+  /** City selected by the user (stored as sellerProvince in Algolia). */
   province: string | null;
-  commune: string | null;
   isNew: boolean;
   category: string | null;
   sortBy: 'relevance' | 'newest' | 'price_asc' | 'price_desc';
@@ -43,7 +53,6 @@ export interface SearchState {
 const DEFAULT_FILTERS: SearchFiltersState = {
   country: null,
   province: null,
-  commune: null,
   isNew: false,
   category: null,
   sortBy: 'relevance',
@@ -52,7 +61,6 @@ const DEFAULT_FILTERS: SearchFiltersState = {
 };
 
 const HITS_PER_PAGE = 20;
-const DEBOUNCE_MS = 200;
 
 // ── Simple in-memory cache ──
 const searchCache = new Map<string, { results: Product[]; total: number; pages: number; highlights: Map<string, Record<string, string>> }>();
@@ -61,24 +69,29 @@ function cacheKey(query: string, filters: SearchFiltersState, page: number): str
   return JSON.stringify({ q: query.trim().toLowerCase(), ...filters, page });
 }
 
+// ── Parse filters from URL search params ──
+function parseFiltersFromParams(params: URLSearchParams): SearchFiltersState {
+  return {
+    country: params.get('country') || null,
+    province: params.get('city') || params.get('province') || null,
+    isNew: params.get('new') === 'true',
+    category: params.get('category') || null,
+    sortBy: (params.get('sort') as SearchFiltersState['sortBy']) || 'relevance',
+    minPrice: params.get('minPrice') ? Number(params.get('minPrice')) : null,
+    maxPrice: params.get('maxPrice') ? Number(params.get('maxPrice')) : null,
+  };
+}
+
 // ── Hook ──
 
 export function useSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeCountry } = useAppContext();
+  const adaptiveDebounceMs = useAdaptiveDebounce();
 
   // Initialize state from URL params
   const initialQuery = searchParams.get('q') || '';
-  const initialFilters: SearchFiltersState = {
-    country: searchParams.get('country') || null,
-    province: searchParams.get('province') || null,
-    commune: searchParams.get('commune') || null,
-    isNew: searchParams.get('new') === 'true',
-    category: searchParams.get('category') || null,
-    sortBy: (searchParams.get('sort') as SearchFiltersState['sortBy']) || 'relevance',
-    minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : null,
-    maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : null,
-  };
+  const initialFilters = parseFiltersFromParams(searchParams);
 
   const [state, setState] = useState<SearchState>({
     query: initialQuery,
@@ -96,13 +109,17 @@ export function useSearch() {
   const abortRef = useRef(0); // incremented to cancel stale requests
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Track the last query we pushed to the URL internally (to ignore our own URL updates)
+  const internalQueryRef = useRef(initialQuery);
+
   // ── URL ↔ State sync ──
   const syncUrlFromState = useCallback((query: string, filters: SearchFiltersState) => {
+    // Mark this URL update as internal so the external-change detector ignores it
+    internalQueryRef.current = query.trim();
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
     if (filters.country) params.set('country', filters.country);
-    if (filters.province) params.set('province', filters.province);
-    if (filters.commune) params.set('commune', filters.commune);
+    if (filters.province) params.set('city', filters.province);
     if (filters.isNew) params.set('new', 'true');
     if (filters.category) params.set('category', filters.category);
     if (filters.sortBy !== 'relevance') params.set('sort', filters.sortBy);
@@ -144,7 +161,6 @@ export function useSearch() {
               filters.sortBy === 'price_asc' ? 'price_asc' : 'price_desc',
         countryId: filters.country || undefined,
         sellerProvince: filters.province || undefined,
-        sellerCommune: filters.commune || undefined,
         category: filters.category || undefined,
         isNew: filters.isNew || undefined,
         minPrice: filters.minPrice ?? undefined,
@@ -222,11 +238,20 @@ export function useSearch() {
   const triggerSearch = useCallback((query: string, filters: SearchFiltersState) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
+    // Skip Algolia for single-char queries — 2 chars minimum allows "TV", "PC", etc.
+    if (query.trim().length < 2) {
+      syncUrlFromState(query, filters);
+      setState(prev => ({ ...prev, results: [], totalCount: 0, hasMore: false, isLoading: false, error: null }));
+      return;
+    }
+
+    // Minimum 400ms debounce on search page — prevents per-keystroke Algolia calls
+    const debounceMs = adaptiveDebounceMs === Infinity ? 500 : Math.max(adaptiveDebounceMs, 400);
     debounceRef.current = setTimeout(() => {
       syncUrlFromState(query, filters);
       executeSearch(query, filters, 0, false);
-    }, DEBOUNCE_MS);
-  }, [executeSearch, syncUrlFromState]);
+    }, debounceMs);
+  }, [executeSearch, syncUrlFromState, adaptiveDebounceMs]);
 
   // ── Public setters ──
   const setQuery = useCallback((newQuery: string) => {
@@ -270,15 +295,44 @@ export function useSearch() {
   }, [setSearchParams]);
 
   // ── Initial search on mount (from URL params) ──
-  const initialSearchDone = useRef(false);
   useEffect(() => {
-    if (initialSearchDone.current) return;
-    initialSearchDone.current = true;
-
-    // Always trigger a search — if query is empty, it returns recent products
-    executeSearch(initialQuery, initialFilters, 0, false);
+    if (initialQuery.trim().length >= 2) {
+      executeSearch(initialQuery, initialFilters, 0, false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Detect external URL changes (e.g. SearchOverlay navigates to /search?q=X) ──
+  // When the user is already on /search and the overlay navigates to a new query,
+  // the component is NOT remounted — so we must react to searchParams changes here.
+  useEffect(() => {
+    const urlQuery = searchParams.get('q') || '';
+
+    // Skip if this URL change came from our own syncUrlFromState
+    if (urlQuery === internalQueryRef.current) return;
+
+    // External navigation detected — sync state from URL and re-search
+    internalQueryRef.current = urlQuery;
+    const urlFilters = parseFiltersFromParams(searchParams);
+
+    // Clear old results immediately so the user sees loading, not stale data
+    setState(prev => ({
+      ...prev,
+      query: urlQuery,
+      filters: urlFilters,
+      results: [],
+      totalCount: 0,
+      page: 0,
+      isLoading: urlQuery.trim().length >= 2,
+      error: null,
+      highlightResults: new Map(),
+    }));
+
+    if (urlQuery.trim().length >= 2) {
+      executeSearch(urlQuery, urlFilters, 0, false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return {
     ...state,

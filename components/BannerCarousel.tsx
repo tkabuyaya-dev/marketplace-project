@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getOptimizedUrl } from '../services/cloudinary';
+import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
 import type { BannerActionType } from '../services/firebase';
 
 export interface Banner {
@@ -19,7 +19,7 @@ export interface Banner {
 const DEFAULT_BANNERS: Banner[] = [
   {
     id: 'default-1',
-    imageUrl: 'https://images.unsplash.com/photo-1616075193899-760777555365?auto=format&fit=crop&w=1200&q=60',
+    imageUrl: 'https://images.unsplash.com/photo-1616075193899-760777555365?auto=format&fit=crop&w=800&q=60',
     title: 'Bienvenue sur Nunulia',
     subtitle: 'Le marketplace — Électronique, Mode, Beauté, Services et plus',
     ctaText: 'Explorer',
@@ -29,7 +29,7 @@ const DEFAULT_BANNERS: Banner[] = [
   },
   {
     id: 'default-2',
-    imageUrl: 'https://images.unsplash.com/photo-1576670393454-5d513aa67362?auto=format&fit=crop&w=1200&q=60',
+    imageUrl: 'https://images.unsplash.com/photo-1576670393454-5d513aa67362?auto=format&fit=crop&w=800&q=60',
     title: 'Vendez sur Nunulia',
     subtitle: 'Créez votre boutique en ligne et touchez des milliers de clients',
     ctaText: 'Commencer',
@@ -138,8 +138,9 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {activeBanners.map((banner) => {
+        {activeBanners.map((banner, bannerIdx) => {
           const hasAction = banner.ctaActionType && banner.ctaActionType !== 'none' && banner.ctaAction?.trim();
+          const isFirst = bannerIdx === 0; // LCP image — highest priority
           return (
             <div
               key={banner.id}
@@ -149,11 +150,14 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
               {/* Background image */}
               <div className="absolute inset-0 z-0 overflow-hidden">
                 <img
-                  src={getOptimizedUrl(banner.imageUrl, 800, 'auto')}
+                  src={getOptimizedUrl(banner.imageUrl, 700, 'auto')}
+                  srcSet={banner.imageUrl.includes('cloudinary.com') ? getResponsiveSrcSet(banner.imageUrl) : undefined}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1200px"
                   alt={banner.title || 'Banner'}
                   className="w-full h-full object-cover"
                   loading="eager"
-                  decoding="async"
+                  decoding={isFirst ? 'sync' : 'async'}
+                  fetchPriority={isFirst ? 'high' : 'low'}
                 />
               </div>
               {/* Gradient overlay */}
@@ -198,9 +202,13 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
             <button
               key={i}
               onClick={() => { goTo(i); resetInterval(); }}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === current ? 'w-6 bg-white' : 'w-1.5 bg-white/40'
-              }`}
+              aria-label={`Slide ${i + 1}`}
+              className="h-1.5 w-6 rounded-full origin-left transition-[transform,opacity] duration-300"
+              style={{
+                transform: i === current ? 'scaleX(1)' : 'scaleX(0.25)',
+                opacity: i === current ? 1 : 0.4,
+                backgroundColor: 'white',
+              }}
             />
           ))}
         </div>

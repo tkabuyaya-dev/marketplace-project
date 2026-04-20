@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Disallow private/admin routes
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /notifications
+
+# Sitemap
+Sitemap: https://nunulia.com/sitemap.xml

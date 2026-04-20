@@ -35,6 +35,7 @@ export const NotificationBell: React.FC = () => {
       case 'product_rejected': return '❌';
       case 'new_message': return '💬';
       case 'subscription_change': return '⭐';
+      case 'subscription_reminder': return '⏰';
       default: return '🔔';
     }
   };
@@ -54,7 +55,7 @@ export const NotificationBell: React.FC = () => {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+        className="relative p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
         aria-label="Notifications"
       >
         <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
