@@ -3,14 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#111318" />
+  <meta name="theme-color" content="#111318" /> <!-- gray-950 -->
   <title>Nunulia — Hors ligne</title>
   <style>
+    :root {
+      --bg-950: #111318;    /* gray-950 */
+      --text-100: #f3f4f6;  /* gray-100 */
+      --text-400: #9ca3af;  /* gray-400 */
+      --text-700: #374151;  /* gray-700 */
+      --gold-400: #F5C842;
+      --gold-600: #D4941A;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #111318;
-      color: #f3f4f6;
+      background: var(--bg-950);
+      color: var(--text-100);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -29,7 +37,7 @@
     .brand-name {
       font-size: 1.75rem;
       font-weight: 900;
-      background: linear-gradient(135deg, #F5C842, #D4941A);
+      background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -39,15 +47,15 @@
     .offline-icon { font-size: 2.5rem; margin-bottom: 1rem; }
     h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
     p {
-      color: #9ca3af;
+      color: var(--text-400);
       font-size: 0.875rem;
       max-width: 320px;
       line-height: 1.6;
       margin-bottom: 2rem;
     }
     button {
-      background: linear-gradient(135deg, #F5C842, #D4941A);
-      color: #111318;
+      background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
+      color: var(--bg-950);
       border: none;
       padding: 0.75rem 2rem;
       border-radius: 0.75rem;
@@ -61,7 +69,7 @@
       position: absolute;
       bottom: 2rem;
       font-size: 0.7rem;
-      color: #374151;
+      color: var(--text-700);
       font-weight: 600;
       letter-spacing: 0.15em;
       text-transform: uppercase;

@@ -52,20 +52,18 @@ export const THEME: ThemeColors = {
 
 // --- THEME CLASSES STATIQUES (Tailwind JIT ne compile pas les interpolations dynamiques) ---
 export const TC = {
-  bg600: 'bg-gold-400',
-  bg500: 'bg-gold-500',
-  bg500_10: 'bg-gold-400/10',
-  bg950: 'bg-gold-950',
-  text400: 'text-gold-400',
-  text500: 'text-gold-400',
-  text400_70: 'text-gold-400/70',
-  border400: 'border-gold-400',
-  border500: 'border-gold-400',
-  border500_50: 'border-gold-400/50',
-  border500_20: 'border-gold-400/20',
-  shadowLg: 'shadow-lg shadow-gold-400/20',
-  hoverBorder: 'hover:border-gold-400/50',
-  hoverShadow: 'hover:shadow-gold-900/20',
+  bg400:        'bg-gold-400',
+  bg500:        'bg-gold-500',
+  bg400_10:     'bg-gold-400/10',
+  bg950:        'bg-gold-950',
+  text400:      'text-gold-400',
+  text400_70:   'text-gold-400/70',
+  border400:    'border-gold-400',
+  border400_50: 'border-gold-400/50',
+  border400_20: 'border-gold-400/20',
+  shadowLg:     'shadow-lg shadow-gold-400/20',
+  hoverBorder:  'hover:border-gold-400/50',
+  hoverShadow:  'hover:shadow-gold-900/20',
 } as const;
 
 // --- SUBSCRIPTION TIERS (Business Model) ---

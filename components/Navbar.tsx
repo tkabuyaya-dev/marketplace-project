@@ -240,7 +240,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
               key={item.path + item.label}
               onClick={() => handleNav(item)}
               className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                isActive(item.path) ? TC.text500 : 'text-gray-500'
+                isActive(item.path) ? TC.text400 : 'text-gray-500'
               }`}
             >
               <span className={`text-xl transition-transform duration-200 ${isActive(item.path) ? 'scale-110' : ''}`}>

@@ -458,7 +458,7 @@ export const Home: React.FC = () => {
             onClick={() => { setActiveCategory('all'); setNearbyMode(false); }}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
               activeCategory === 'all' && !nearbyMode
-                ? `${tc.bg600} ${tc.border500} text-white`
+                ? `${tc.bg400} ${tc.border400} text-white`
                 : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
             }`}
           >
@@ -472,7 +472,7 @@ export const Home: React.FC = () => {
               onClick={() => { setActiveCategory(cat.id); setNearbyMode(false); }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
                 activeCategory === cat.id
-                  ? `${tc.bg600} ${tc.border500} text-white`
+                  ? `${tc.bg400} ${tc.border400} text-white`
                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
               }`}
             >

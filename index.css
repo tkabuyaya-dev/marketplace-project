@@ -29,8 +29,8 @@
 
   body {
     overscroll-behavior-y: none;
-    background-color: #111318;
-    color: #f3f4f6;
+    background-color: theme('colors.gray.950');
+    color: theme('colors.gray.100');
   }
 
   /* Scrollbar masquée globalement pour UX mobile native */
@@ -71,13 +71,13 @@
 
   /* Gradient text */
   .text-gradient-tech {
-    background: linear-gradient(to right, #F5C842, #D4941A);
+    background: linear-gradient(to right, theme('colors.gold.400'), theme('colors.gold.600'));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .text-gradient-beauty {
-    background: linear-gradient(to right, #FFD866, #F5C842);
+    background: linear-gradient(to right, theme('colors.gold.300'), theme('colors.gold.400'));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

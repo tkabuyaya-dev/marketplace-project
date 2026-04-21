@@ -500,7 +500,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
             </span>
           )}
           {product.isPromoted && !product.isBoosted && (
-            <span className={`${tc.bg600} backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-[3px] rounded-full tracking-widest uppercase shadow`}>
+            <span className={`${tc.bg400} backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-[3px] rounded-full tracking-widest uppercase shadow`}>
               Promo
             </span>
           )}
@@ -656,7 +656,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
 
         {/* Badge Promu */}
         {product.isPromoted && !product.isBoosted && (
-          <div className={`absolute top-2 left-2 ${tc.bg600} text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
+          <div className={`absolute top-2 left-2 ${tc.bg400} text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
             {t('product.sponsored')}
           </div>
         )}

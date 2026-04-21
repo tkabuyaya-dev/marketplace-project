@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#111318" />
+    <meta name="theme-color" content="#111318" /> <!-- gray-950 -->
     <meta name="description" content="Nunulia — Le marketplace d'Afrique de l'Est." />
     <meta name="application-name" content="Nunulia" />
     <link rel="manifest" href="/manifest.json" />
@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nunulia" />
-    <meta name="msapplication-TileColor" content="#111318" />
+    <meta name="msapplication-TileColor" content="#111318" /> <!-- gray-950 -->
     <!-- DNS + TCP pre-connections pour les ressources critiques -->
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -41,11 +41,17 @@
     <!-- reCAPTCHA v3 and Google Analytics are loaded dynamically from environment variables -->
     <!-- See services/recaptcha.ts and services/analytics.ts -->
     <style>
+      :root {
+        --bg-950: #111318;    /* gray-950 */
+        --text-100: #f3f4f6;  /* gray-100 */
+        --gold-400: #F5C842;
+        --gold-600: #D4941A;
+      }
       *, *::before, *::after { box-sizing: border-box; }
       body {
         margin: 0;
-        background-color: #111318;
-        color: #f3f4f6;
+        background-color: var(--bg-950);
+        color: var(--text-100);
         font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
@@ -58,7 +64,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #111318;
+        background: var(--bg-950);
         z-index: 9999;
         gap: 16px;
         transition: opacity 0.3s ease;
@@ -73,7 +79,7 @@
       #app-loader .logo-text {
         font-size: 28px;
         font-weight: 900;
-        background: linear-gradient(135deg, #F5C842, #D4941A);
+        background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         letter-spacing: -1px;
@@ -82,8 +88,8 @@
       #app-loader .spinner {
         width: 32px;
         height: 32px;
-        border: 3px solid rgba(245,200,66,0.15);
-        border-top-color: #F5C842;
+        border: 3px solid rgba(245,200,66,0.15); /* gold-400 @ 15% */
+        border-top-color: var(--gold-400);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
