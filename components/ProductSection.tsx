@@ -58,7 +58,6 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
                 onClick={() => onProductClick(product)}
                 currentUserId={currentUserId}
                 initialLiked={likedMap[product.id]}
-                variant="dense"
               />
             </div>
           ))}

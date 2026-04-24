@@ -553,14 +553,11 @@ export const Home: React.FC = () => {
                   onClick={() => onProductClick(product)}
                   currentUserId={currentUser?.id || null}
                   initialLiked={likedMap[product.id]}
-                  variant="grid"
                   index={idx}
+                  distanceLabel={nearbyMode && position && product._distance < 9999
+                    ? `📍 ${formatDistance(product._distance)}`
+                    : undefined}
                 />
-                {nearbyMode && position && product._distance < 9999 && (
-                  <span className="absolute top-1.5 left-1.5 bg-green-600/90 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20">
-                    📍 {formatDistance(product._distance)}
-                  </span>
-                )}
               </div>
             ))}
             {displayProducts.length === 0 && (

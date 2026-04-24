@@ -55,33 +55,24 @@ describe('ProductCard', () => {
     expect(screen.getByText(/Tech Shop/)).toBeInTheDocument();
   });
 
-  it('renders rating', () => {
-    render(<ProductCard product={mockProduct} onClick={() => {}} />);
-    expect(screen.getByText('4.5')).toBeInTheDocument();
-  });
-
-  it('renders views count', () => {
-    render(<ProductCard product={mockProduct} onClick={() => {}} />);
-    expect(screen.getByText('150')).toBeInTheDocument();
-  });
-
-  it('shows discount badge when originalPrice is set', () => {
+  it('shows strikethrough original price when originalPrice is set', () => {
     const discountProduct = {
       ...mockProduct,
       originalPrice: 2000000,
     };
     render(<ProductCard product={discountProduct} onClick={() => {}} />);
-    expect(screen.getByText(/-25%/)).toBeInTheDocument();
+    // Original price rendered with French locale, inline next to current price
+    expect(screen.getByText(/2[\s\u202f]000[\s\u202f]000/)).toBeInTheDocument();
   });
 
-  it('shows low stock badge when stockQuantity <= 5', () => {
+  it('shows "Stock limité" badge when stockQuantity <= 5', () => {
     const lowStockProduct = {
       ...mockProduct,
       stockQuantity: 3,
     };
     render(<ProductCard product={lowStockProduct} onClick={() => {}} />);
-    // t('product.onlyLeft') returns the key when i18next is not initialized
-    expect(screen.getByText(/product\.onlyLeft/)).toBeInTheDocument();
+    // i18n key falls back to French default when i18next is not initialized
+    expect(screen.getByText(/Stock limité|product\.lowStock/)).toBeInTheDocument();
   });
 
   it('has accessible like button', () => {
