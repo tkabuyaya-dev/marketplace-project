@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { THEME, TC } from '../constants';
-import { Product } from '../types';
+import { TC } from '../constants';
+import { Product, User } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { ProductSection } from '../components/ProductSection';
+import { ProductCardSkeleton } from '../components/Skeleton';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
-import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getTrendingProducts, getPopularProducts, getBoostedProducts } from '../services/firebase';
-import { getRecentlyViewedIds, getPersonalizedRecommendations } from '../services/recommendations';
-import { getProductsByIds } from '../services/firebase';
+import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
+import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
+import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts } from '../services/firebase';
 import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { prefetchProductImages } from '../utils/prefetch';
-import { trackCountrySwitch } from '../services/analytics';
 import { useAppContext } from '../contexts/AppContext';
 import { useCategories } from '../hooks/useCategories';
 import { useGeolocation, haversineDistance, formatDistance } from '../hooks/useGeolocation';
@@ -20,7 +20,7 @@ import { useActiveCountries } from '../hooks/useActiveCountries';
 
 // ── Module-level cache ──────────────────────────────────────────────────────
 // Persists between navigations (React unmount/remount).
-// Prevents re-fetching 5+ Firestore queries every time user returns to Home.
+// Prevents re-fetching Firestore queries every time user returns to Home.
 // Automatically invalidated when category/country/wholesale changes.
 interface HomeCache {
   key: string; // "category|country|wholesale" — invalidation key
@@ -30,23 +30,16 @@ interface HomeCache {
   banners: Banner[];
   likedMap: Record<string, boolean>;
   boostedProducts: Product[];
-  ts: number; // timestamp for staleness check
-}
-interface SectionsCache {
-  userId: string | undefined;
-  countryId: string | undefined;
-  trending: Product[];
-  popular: Product[];
-  recentlyViewed: Product[];
-  recommended: Product[];
   ts: number;
 }
 let _homeCache: HomeCache | null = null;
-let _sectionsCache: SectionsCache | null = null;
 const CACHE_TTL = 2 * 60 * 1000; // 2 minutes — then refresh in background
-// Persist UI state across navigations (so returning to Home doesn't reset category)
 let _lastCategory = 'all';
 let _lastWholesale = false;
+
+// Interstitial cadence
+const JE_CHERCHE_AT = 6;   // one-shot insertion after the 6th product
+const VENDOR_EVERY = 10;   // featured-vendor card after every 10th product
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const Home: React.FC = () => {
@@ -60,44 +53,29 @@ export const Home: React.FC = () => {
   const cacheKey = (cat: string, country: string, wholesale: boolean) =>
     `${cat}|${country}|${wholesale}`;
 
-  // Restore last selected category/wholesale from module state
   const [activeCategory, _setActiveCategory] = useState(_lastCategory);
   const [wholesaleMode, _setWholesaleMode] = useState(_lastWholesale);
   const setActiveCategory = (cat: string) => { _lastCategory = cat; _setActiveCategory(cat); };
   const setWholesaleMode = (v: boolean) => { _lastWholesale = v; _setWholesaleMode(v); };
 
-  // Restore from cache instantly — always show last data, even if key doesn't match
-  // (useEffect will refresh if key changed)
   const currentKey = cacheKey(activeCategory, activeCountry, wholesaleMode);
   const cached = _homeCache?.key === currentKey ? _homeCache : null;
-  const anyCached = _homeCache; // Show ANY cached data to avoid blank page
-  const cachedSections = _sectionsCache?.userId === currentUser?.id && _sectionsCache?.countryId === activeCountry ? _sectionsCache : null;
+  const anyCached = _homeCache;
 
   const [products, setProducts] = useState<Product[]>(cached?.products || anyCached?.products || []);
   const { categories } = useCategories();
   const networkQuality = useNetworkQuality();
   const [loading, setLoading] = useState(!(cached || anyCached?.products?.length));
-  // Sections (trending/popular/recs) ne démarrent qu'après le grid principal.
-  // Priorité bande passante sur 2G/3G : banners + produits d'abord.
-  const [mainReady, setMainReady] = useState(!!(cached || anyCached?.products?.length));
   const [lastDoc, setLastDoc] = useState<any>(cached?.lastDoc || null);
   const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [banners, setBanners] = useState<Banner[]>(cached?.banners || anyCached?.banners || []);
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>(cached?.likedMap || anyCached?.likedMap || {});
 
-  // Country state — loaded dynamically via Firestore listener
   const { countries } = useActiveCountries();
 
-  // Boosted products
   const [boostedProducts, setBoostedProducts] = useState<Product[]>([]);
 
-  // Recommendation sections state
-  const [trendingProducts, setTrendingProducts] = useState<Product[]>(cachedSections?.trending || []);
-  const [popularProducts, setPopularProducts] = useState<Product[]>(cachedSections?.popular || []);
-  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>(cachedSections?.recentlyViewed || []);
-  const [recommended, setRecommended] = useState<Product[]>(cachedSections?.recommended || []);
-  const [sectionsLoading, setSectionsLoading] = useState(!cachedSections);
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
 
@@ -110,15 +88,12 @@ export const Home: React.FC = () => {
   const countryIds = countries.map(c => c.id).join(',');
   useEffect(() => {
     if (countries.length > 0 && activeCountry && !countries.find(c => c.id === activeCountry)) {
-      // Unknown/stale country code → reset to Tous
       setActiveCountry('');
     }
   }, [countryIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ready as soon as: country is '' (Tous) OR is a known active country
   const isCountryReady = activeCountry === '' || (countries.length > 0 && !!countries.find(c => c.id === activeCountry));
 
-  // ── Prune stale IDB entries once per session (low-priority) ──────────────
   useEffect(() => {
     if (typeof requestIdleCallback !== 'undefined') {
       requestIdleCallback(() => pruneStaleFeeds(), { timeout: 10000 });
@@ -131,16 +106,12 @@ export const Home: React.FC = () => {
   // Phase 2 (10–50ms): IDB snapshot (persists across page reloads)
   // Phase 3 (50ms+):   Firestore SDK cache (IndexedDB, instant when offline)
   // Phase 4 (1–30s):   Network fetch (background — never blocks the UI)
-  //
-  // Rule: setLoading(false) is called as soon as ANY phase returns data.
-  // The network fetch always runs in background to keep data fresh.
   useEffect(() => {
     if (!isCountryReady) return;
     const key = cacheKey(activeCategory, activeCountry, wholesaleMode);
     const hit  = _homeCache?.key === key ? _homeCache : null;
     const isStale = hit && (Date.now() - hit.ts > CACHE_TTL);
 
-    // ── Phase 1: Module-level cache (in-memory) ──────────────────────────
     if (hit && !isStale) {
       setProducts(hit.products);
       setLastDoc(hit.lastDoc);
@@ -149,11 +120,9 @@ export const Home: React.FC = () => {
       setLikedMap(hit.likedMap);
       setBoostedProducts(hit.boostedProducts || []);
       setLoading(false);
-      setMainReady(true);
-      return; // Fresh — no network needed
+      return;
     }
 
-    // Show stale module cache immediately, then fall through to refresh
     if (hit && isStale) {
       setProducts(hit.products);
       setLastDoc(hit.lastDoc);
@@ -162,13 +131,11 @@ export const Home: React.FC = () => {
       setLikedMap(hit.likedMap);
       setBoostedProducts(hit.boostedProducts || []);
       setLoading(false);
-      // Fall through — background refresh below
     } else {
-      setLoading(true); // Will be cancelled quickly by Phase 2 or 3
+      setLoading(true);
     }
 
     const loadData = async () => {
-      // ── Phase 2: IDB snapshot (survives page reload, has full feed) ───
       if (!hit) {
         const idbSnap = await getFeedFromIDB(key);
         if (idbSnap && mountedRef.current) {
@@ -176,16 +143,12 @@ export const Home: React.FC = () => {
           setBanners(idbSnap.banners);
           setBoostedProducts(idbSnap.boostedProducts || []);
           setLoading(false);
-          setMainReady(true);
-          // Prefetch below-fold images from IDB data immediately
           prefetchProductImages(
             idbSnap.products.slice(6).flatMap(p => p.images?.slice(0, 1) ?? []),
             networkQuality === 'slow'
           );
-          // Continue to Phase 4 (network) in background — don't return
         }
 
-        // ── Phase 3: Firestore SDK cache (near-instant, even on slow 2G) ─
         if (!idbSnap) {
           try {
             const cachedProds = await getProductsFromCache(
@@ -194,7 +157,6 @@ export const Home: React.FC = () => {
             if (cachedProds.length > 0 && mountedRef.current) {
               setProducts(cachedProds);
               setLoading(false);
-              setMainReady(true);
             }
           } catch {
             // Firestore cache empty (first visit) — skeleton stays, Phase 4 will load
@@ -202,9 +164,6 @@ export const Home: React.FC = () => {
         }
       }
 
-      // ── Phase 4: Network fetch (always runs; updates data silently) ────
-      // On slow networks, we already show cached content — this is background only.
-      // Strict 8-second timeout: if exceeded, we keep the cached data shown.
       const NETWORK_TIMEOUT_MS = 8000;
       const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
         Promise.race([p, new Promise<never>((_, r) =>
@@ -221,7 +180,6 @@ export const Home: React.FC = () => {
 
         if (!mountedRef.current) return;
 
-        // Liked map (non-blocking — don't block render on this)
         let newLikedMap: Record<string, boolean> = {};
         if (currentUser && fetchedProducts.length > 0) {
           try {
@@ -230,7 +188,6 @@ export const Home: React.FC = () => {
         }
         if (!mountedRef.current) return;
 
-        // Update module-level cache
         _homeCache = {
           key,
           products: fetchedProducts,
@@ -242,7 +199,6 @@ export const Home: React.FC = () => {
           ts: Date.now(),
         };
 
-        // Persist to IDB for next page reload (fire-and-forget)
         saveFeedToIDB({
           key,
           products: fetchedProducts,
@@ -258,19 +214,15 @@ export const Home: React.FC = () => {
         setHasMore(newLastDoc !== null);
         setLikedMap(newLikedMap);
         setLoading(false);
-        setMainReady(true);
 
-        // Prefetch below-fold images after network data lands
         prefetchProductImages(
           fetchedProducts.slice(6).flatMap(p => p.images?.slice(0, 1) ?? []),
           networkQuality === 'slow'
         );
 
       } catch {
-        // Network failed or timed out — cached data is already visible, just unblock
         if (mountedRef.current) {
           setLoading(false);
-          setMainReady(true);
         }
       }
     };
@@ -278,78 +230,6 @@ export const Home: React.FC = () => {
     loadData();
   }, [activeCategory, activeCountry, wholesaleMode, isCountryReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load recommendation sections (with cache)
-  // Ne démarre qu'après que le grid principal est visible (mainReady).
-  // Sur 2G/3G : banners + produits reçoivent toute la bande passante en premier.
-  useEffect(() => {
-    if (!mainReady) return;
-
-    const secHit = _sectionsCache?.userId === currentUser?.id ? _sectionsCache : null;
-    const secStale = secHit && (Date.now() - secHit.ts > CACHE_TTL);
-
-    if (secHit && !secStale) {
-      setTrendingProducts(secHit.trending);
-      setPopularProducts(secHit.popular);
-      setRecentlyViewed(secHit.recentlyViewed);
-      setRecommended(secHit.recommended);
-      setSectionsLoading(false);
-      return;
-    }
-
-    if (secHit && secStale) {
-      // Show cached, refresh in background
-      setSectionsLoading(false);
-    } else {
-      setSectionsLoading(true);
-    }
-
-    const loadSections = async () => {
-      // On 2G/saveData, skip trending & popular to save bandwidth.
-      // Recently viewed + personalized recs are cheaper (IDs only).
-      if (networkQuality === 'slow') {
-        setSectionsLoading(false);
-        return;
-      }
-      try {
-        const [trending, popular] = await Promise.all([
-          getTrendingProducts(8, activeCountry || undefined),
-          getPopularProducts(8, activeCountry || undefined),
-        ]);
-        if (!mountedRef.current) return;
-        setTrendingProducts(trending);
-        setPopularProducts(popular);
-
-        const recentIds = await getRecentlyViewedIds(currentUser?.id, 8);
-        let recentProducts: Product[] = [];
-        if (recentIds.length > 0) {
-          recentProducts = await getProductsByIds(recentIds);
-        }
-        if (!mountedRef.current) return;
-        setRecentlyViewed(recentProducts);
-
-        const recs = await getPersonalizedRecommendations(currentUser?.id, recentIds, 8);
-        if (!mountedRef.current) return;
-        setRecommended(recs);
-
-        // Update cache
-        _sectionsCache = {
-          userId: currentUser?.id,
-          countryId: activeCountry || undefined,
-          trending,
-          popular,
-          recentlyViewed: recentProducts,
-          recommended: recs,
-          ts: Date.now(),
-        };
-      } catch (e) {
-        console.warn('[Home] Recommendation sections load error:', e);
-      }
-      if (mountedRef.current) setSectionsLoading(false);
-    };
-    loadSections();
-  }, [currentUser?.id, activeCountry, mainReady]); // activeCountry : trending/popular sont filtrés par pays
-
-  // Chargement de la page suivante (scroll infini)
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
     setLoadingMore(true);
@@ -358,9 +238,7 @@ export const Home: React.FC = () => {
     setLastDoc(newLastDoc);
     setHasMore(newLastDoc !== null);
     setLoadingMore(false);
-  }, [hasMore, loadingMore, lastDoc, activeCategory, activeCountry]);
-
-  const activeCountryInfo = countries.find(c => c.id === activeCountry);
+  }, [hasMore, loadingMore, lastDoc, activeCategory, activeCountry, wholesaleMode]);
 
   // Tri par distance quand le mode "Près de moi" est actif
   const displayProducts = React.useMemo(() => {
@@ -377,6 +255,26 @@ export const Home: React.FC = () => {
     }
     return products;
   }, [products, nearbyMode, position]);
+
+  // Featured vendors derived client-side from loaded products.
+  // Eligibility: verified seller (tier 'identity' or 'shop'), has slug, ≥ 3 products in feed.
+  // Sorted by product count desc.
+  const featuredVendors = React.useMemo(() => {
+    const groups = new Map<string, { seller: User; products: Product[] }>();
+    for (const p of displayProducts) {
+      const s = p.seller;
+      if (!s || !s.id || !s.slug) continue;
+      if (!s.isVerified) continue;
+      const tier = s.verificationTier;
+      if (tier !== 'identity' && tier !== 'shop') continue;
+      const g = groups.get(s.id) || { seller: s, products: [] };
+      g.products.push(p);
+      groups.set(s.id, g);
+    }
+    return Array.from(groups.values())
+      .filter(g => g.products.length >= 3)
+      .sort((a, b) => b.products.length - a.products.length);
+  }, [displayProducts]);
 
   return (
     <div className="pb-24 pt-safe-header md:pt-24 px-3 max-w-7xl mx-auto space-y-3">
@@ -397,17 +295,6 @@ export const Home: React.FC = () => {
           onProductClick={onProductClick}
         />
       )}
-
-      {/* Trending Products */}
-      <ProductSection
-        title={t('home.sections.trending')}
-        icon="🔥"
-        products={trendingProducts}
-        loading={sectionsLoading}
-        currentUserId={currentUser?.id}
-        likedMap={likedMap}
-        onProductClick={onProductClick}
-      />
 
       {/* Categories */}
       <div className="overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
@@ -521,45 +408,64 @@ export const Home: React.FC = () => {
         </div>
 
         {loading ? (
-          // Shimmer skeleton — matches grid card layout (square image + info zone)
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
-              <div key={n} className="rounded-xl overflow-hidden bg-gray-900 border border-gray-800/60 animate-pulse">
-                <div className="aspect-square bg-gray-800 relative overflow-hidden">
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.055) 50%, transparent 75%)',
-                      backgroundSize: '200% 100%',
-                      animation: `shimmer 1.8s ${n * 0.12}s infinite linear`,
-                    }}
-                  />
-                </div>
-                <div className="p-2 space-y-1.5">
-                  <div className="h-3 bg-gray-800 rounded-full w-full" />
-                  <div className="h-3 bg-gray-800 rounded-full w-3/5" />
-                  <div className="h-3.5 bg-gray-700/60 rounded-full w-2/5 mt-0.5" />
-                  <div className="h-2.5 bg-gray-800/60 rounded-full w-1/2" />
-                </div>
-              </div>
+            {Array.from({ length: 20 }).map((_, n) => (
+              <ProductCardSkeleton key={n} />
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {displayProducts.map((product: any, idx: number) => (
-              <div key={product.id} className="relative">
-                <ProductCard
-                  product={product}
-                  onClick={() => onProductClick(product)}
-                  currentUserId={currentUser?.id || null}
-                  initialLiked={likedMap[product.id]}
-                  index={idx}
-                  distanceLabel={nearbyMode && position && product._distance < 9999
-                    ? `📍 ${formatDistance(product._distance)}`
-                    : undefined}
-                />
-              </div>
-            ))}
+            {(() => {
+              const items: React.ReactNode[] = [];
+              let vendorCursor = 0; // index into featuredVendors for next slot
+              const usedSellerIds = new Set<string>();
+
+              displayProducts.forEach((product: any, idx: number) => {
+                items.push(
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onClick={() => onProductClick(product)}
+                    currentUserId={currentUser?.id || null}
+                    initialLiked={likedMap[product.id]}
+                    index={idx}
+                    distanceLabel={nearbyMode && position && product._distance < 9999
+                      ? `📍 ${formatDistance(product._distance)}`
+                      : undefined}
+                  />
+                );
+
+                const positionInGrid = idx + 1; // 1-based count of products rendered
+
+                // Je Cherche — once, after the 6th product
+                if (positionInGrid === JE_CHERCHE_AT) {
+                  items.push(<JeChercheInlineCard key="je-cherche-inline" />);
+                }
+
+                // Featured Vendor — after every 10th product, if a vendor is available
+                if (positionInGrid % VENDOR_EVERY === 0) {
+                  while (vendorCursor < featuredVendors.length && usedSellerIds.has(featuredVendors[vendorCursor].seller.id)) {
+                    vendorCursor++;
+                  }
+                  if (vendorCursor < featuredVendors.length) {
+                    const v = featuredVendors[vendorCursor];
+                    usedSellerIds.add(v.seller.id);
+                    vendorCursor++;
+                    items.push(
+                      <FeaturedVendorCard
+                        key={`featured-vendor-${v.seller.id}-${positionInGrid}`}
+                        seller={v.seller}
+                        products={v.products}
+                      />
+                    );
+                  }
+                  // Otherwise: silently skip — grid continues uninterrupted
+                }
+              });
+
+              return items;
+            })()}
+
             {displayProducts.length === 0 && (
               <div className="col-span-full text-center py-10 text-gray-500">
                 {t('home.noProductsInCategory')}
@@ -582,37 +488,6 @@ export const Home: React.FC = () => {
         </div>
       )}
 
-      {/* Recommended for you */}
-      <ProductSection
-        title={t('home.recommendedForYou')}
-        icon="✨"
-        products={recommended}
-        loading={sectionsLoading}
-        currentUserId={currentUser?.id}
-        likedMap={likedMap}
-        onProductClick={onProductClick}
-      />
-
-      {/* Popular Products */}
-      <ProductSection
-        title={t('home.mostPopular')}
-        icon="⭐"
-        products={popularProducts}
-        loading={sectionsLoading}
-        currentUserId={currentUser?.id}
-        likedMap={likedMap}
-        onProductClick={onProductClick}
-      />
-
-      {/* Recently Viewed */}
-      <ProductSection
-        title={t('home.recentlyViewed')}
-        icon="👁"
-        products={recentlyViewed}
-        currentUserId={currentUser?.id}
-        likedMap={likedMap}
-        onProductClick={onProductClick}
-      />
       {/* Footer legal */}
       <div className="text-center py-4 border-t border-gray-800/50">
         <div className="flex items-center justify-center gap-2 text-xs text-gray-500">

@@ -62,7 +62,14 @@
     "nearbyDisable": "Désactiver",
     "wholesale": "Grossiste B2B",
     "wholesaleActive": "Mode grossiste activé",
-    "wholesaleHint": "Affichage des produits en gros uniquement"
+    "wholesaleHint": "Affichage des produits en gros uniquement",
+    "featuredShop": "Boutique mise en avant",
+    "viewShop": "Voir la boutique",
+    "jeCherche": {
+      "title": "Vous ne trouvez pas ce que vous cherchez ?",
+      "subtitle": "Postez votre demande — les vendeurs vous répondent",
+      "cta": "Publier ma demande"
+    }
   },
   "product": {
     "addToFavorites": "Ajouter aux favoris",

@@ -62,7 +62,14 @@
     "nearbyDisable": "Disable",
     "wholesale": "Wholesale B2B",
     "wholesaleActive": "Wholesale mode active",
-    "wholesaleHint": "Showing wholesale products only"
+    "wholesaleHint": "Showing wholesale products only",
+    "featuredShop": "Featured shop",
+    "viewShop": "View shop",
+    "jeCherche": {
+      "title": "Can't find what you're looking for?",
+      "subtitle": "Post your request — sellers will reply",
+      "cta": "Post my request"
+    }
   },
   "product": {
     "addToFavorites": "Add to favorites",
