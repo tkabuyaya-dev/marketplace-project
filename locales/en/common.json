@@ -400,6 +400,7 @@
     "similarProducts": "Similar products",
     "customersAlsoViewed": "Customers also viewed",
     "reportFraudulent": "Report a fraudulent listing",
+    "contactWhatsApp": "Contact via WhatsApp",
     "whatsappMessage": "Hello, I'm interested in your product: *{{title}}* on Nunulia.\n\n{{url}}",
     "noWhatsapp": "The seller has not provided a WhatsApp number.",
     "loginToContact": "Sign in to contact the seller.",

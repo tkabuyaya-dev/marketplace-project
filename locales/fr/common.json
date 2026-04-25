@@ -400,6 +400,7 @@
     "similarProducts": "Produits similaires",
     "customersAlsoViewed": "Les clients ont aussi vu",
     "reportFraudulent": "Signaler une annonce frauduleuse",
+    "contactWhatsApp": "Contacter via WhatsApp",
     "whatsappMessage": "Bonjour, je suis intéressé par votre produit: *{{title}}* sur Nunulia.\n\n{{url}}",
     "noWhatsapp": "Le vendeur n'a pas renseigné de numéro WhatsApp.",
     "loginToContact": "Connectez-vous pour contacter le vendeur.",
