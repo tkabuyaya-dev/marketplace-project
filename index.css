@@ -29,6 +29,10 @@
 
   body {
     overscroll-behavior-y: none;
+    background-color: #FAFAF8;
+    color: theme('colors.gray.900');
+  }
+  html.dark body {
     background-color: theme('colors.gray.950');
     color: theme('colors.gray.100');
   }

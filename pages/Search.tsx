@@ -23,21 +23,21 @@ import { JeChercheBlock } from '../components/JeCherche/JeChercheBlock';
 
 // ── Skeleton Card — matches AliExpress two-zone layout ──
 const SkeletonCard = () => (
-  <div className="rounded-xl overflow-hidden bg-gray-900 border border-gray-800/60 animate-pulse">
+  <div className="rounded-xl overflow-hidden bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800/60 animate-pulse">
     {/* Image zone */}
-    <div className="aspect-square bg-gray-800 relative overflow-hidden">
+    <div className="aspect-square bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
       <div className="absolute inset-0" style={{
-        background: 'linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.04) 50%, transparent 75%)',
+        background: 'linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.04) 50%, transparent 75%)',
         backgroundSize: '200% 100%',
         animation: 'shimmer 1.8s infinite linear',
       }} />
     </div>
     {/* Info zone */}
     <div className="p-2.5 space-y-2">
-      <div className="h-3 bg-gray-800 rounded-full w-full" />
-      <div className="h-3 bg-gray-800 rounded-full w-3/5" />
-      <div className="h-3 bg-gray-700/60 rounded-full w-2/5 mt-1" />
-      <div className="h-2 bg-gray-800/60 rounded-full w-1/2" />
+      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-full" />
+      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-3/5" />
+      <div className="h-3 bg-gray-200/70 dark:bg-gray-700/60 rounded-full w-2/5 mt-1" />
+      <div className="h-2 bg-gray-100/70 dark:bg-gray-800/60 rounded-full w-1/2" />
     </div>
   </div>
 );
@@ -97,14 +97,16 @@ const ProductCard: React.FC<{
       style={{ animationDelay: `${animDelay}ms` }}
       className={[
         'group w-full text-left overflow-hidden rounded-xl',
-        'animate-card-in bg-gray-900 border border-gray-800/60',
-        'hover:border-gray-600/80 hover:shadow-xl hover:-translate-y-px',
+        'animate-card-in bg-white border border-gray-200 shadow-sm',
+        'hover:border-gray-300 hover:shadow-md hover:-translate-y-px',
+        'dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none',
+        'dark:hover:border-gray-600/80 dark:hover:shadow-xl',
         'transition-[border-color,box-shadow,transform] duration-300 ease-out',
-        product.isSponsored ? 'ring-1 ring-amber-400/20 hover:ring-amber-400/40' : '',
+        product.isSponsored ? 'ring-1 ring-amber-400/30 hover:ring-amber-400/60 dark:ring-amber-400/20 dark:hover:ring-amber-400/40' : '',
       ].filter(Boolean).join(' ')}
     >
       {/* ── Image zone ── */}
-      <div className="relative aspect-square overflow-hidden bg-gray-800">
+      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800">
         {product.images?.[0] ? (
           <img
             src={getOptimizedUrl(product.images[0], 320)}
@@ -113,7 +115,7 @@ const ProductCard: React.FC<{
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-700 text-4xl">📦</div>
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-700 text-4xl">📦</div>
         )}
 
         {/* Discount badge — top-left */}
@@ -142,11 +144,11 @@ const ProductCard: React.FC<{
       <div className="p-2.5 space-y-1">
         {/* Title */}
         {highlight?.title ? (
-          <p className="text-[12px] text-gray-200 leading-snug line-clamp-2 [&>mark]:bg-amber-400/30 [&>mark]:text-amber-200 [&>mark]:rounded-sm">
+          <p className="text-[12px] text-gray-900 dark:text-gray-200 leading-snug line-clamp-2 [&>mark]:bg-amber-400/30 [&>mark]:text-amber-800 dark:[&>mark]:text-amber-200 [&>mark]:rounded-sm">
             {renderHighlight(highlight.title)}
           </p>
         ) : (
-          <p className="text-[12px] text-gray-200 leading-snug line-clamp-2">{product.title}</p>
+          <p className="text-[12px] text-gray-900 dark:text-gray-200 leading-snug line-clamp-2">{product.title}</p>
         )}
 
         {/* Stars + review count */}
@@ -156,7 +158,7 @@ const ProductCard: React.FC<{
               {[1, 2, 3, 4, 5].map(n => (
                 <svg key={n} width="9" height="9" viewBox="0 0 24 24"
                   fill={n <= stars ? '#f59e0b' : 'none'}
-                  stroke={n <= stars ? '#f59e0b' : '#4b5563'}
+                  stroke={n <= stars ? '#f59e0b' : '#9ca3af'}
                   strokeWidth="2"
                 >
                   <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
@@ -171,19 +173,19 @@ const ProductCard: React.FC<{
 
         {/* Price row */}
         <div className="flex items-baseline gap-1 flex-wrap">
-          <span className="text-[14px] font-bold text-white leading-none">
+          <span className="text-[14px] font-bold text-gold-600 dark:text-gold-400 leading-none">
             {product.price?.toLocaleString()}
           </span>
           <span className="text-[10px] text-gray-500 font-medium">{currency}</span>
           {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-[10px] text-gray-600 line-through ml-auto">
+            <span className="text-[10px] text-gray-400 dark:text-gray-600 line-through ml-auto">
               {product.originalPrice.toLocaleString()}
             </span>
           )}
         </div>
 
         {/* Seller + flag */}
-        <p className="text-[10px] text-gray-600 truncate leading-none">
+        <p className="text-[10px] text-gray-500 dark:text-gray-600 truncate leading-none">
           {product.seller?.name || '—'}{flag && <span className="ml-1">{flag}</span>}
         </p>
       </div>
@@ -295,7 +297,7 @@ const SearchPage: React.FC = () => {
     return (
       <>
         <span>{text.slice(0, idx)}</span>
-        <span className="text-white font-bold">{text.slice(idx, idx + matchQuery.length)}</span>
+        <span className="text-gray-900 dark:text-white font-bold">{text.slice(idx, idx + matchQuery.length)}</span>
         <span>{text.slice(idx + matchQuery.length)}</span>
       </>
     );
@@ -344,7 +346,7 @@ const SearchPage: React.FC = () => {
     <div className="space-y-6">
       {/* Pays — dropdown, défaut = Tous */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('search.countryLabel')}</h4>
+        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">{t('search.countryLabel')}</h4>
         <select
           value={filters.country ?? ''}
           onChange={e => {
@@ -352,7 +354,7 @@ const SearchPage: React.FC = () => {
             setFilter('country', val);
             setFilter('province', null); // reset city when country changes
           }}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer focus:border-gold-400/50"
+          className="w-full bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm outline-none cursor-pointer focus:border-gold-400/50"
         >
           <option value="">{t('search.allCountries')}</option>
           {countries.map(c => (
@@ -364,11 +366,11 @@ const SearchPage: React.FC = () => {
       {/* Ville — dropdown cascadant, visible uniquement quand un pays est sélectionné */}
       {filters.country && CITIES_BY_COUNTRY[filters.country] && (
         <div>
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ville</h4>
+          <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Ville</h4>
           <select
             value={filters.province ?? ''}
             onChange={e => setFilter('province', e.target.value || null)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer focus:border-gold-400/50"
+            className="w-full bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm outline-none cursor-pointer focus:border-gold-400/50"
           >
             <option value="">Toutes les villes</option>
             {CITIES_BY_COUNTRY[filters.country].map(city => (
@@ -380,15 +382,15 @@ const SearchPage: React.FC = () => {
 
       {/* Novelty */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('search.newest')}</h4>
+        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t('search.newest')}</h4>
         <button
           onClick={() => setFilter('isNew', !filters.isNew)}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full text-left ${
-            filters.isNew ? 'bg-green-500/10 text-green-400 font-bold' : 'text-gray-400 hover:bg-gray-800'
+            filters.isNew ? 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 font-bold' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
           }`}
         >
           <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-            filters.isNew ? 'bg-green-500 border-green-500' : 'border-gray-600'
+            filters.isNew ? 'bg-green-500 border-green-500' : 'border-gray-400 dark:border-gray-600'
           }`}>
             {filters.isNew && <span className="text-white text-[10px]">&#10003;</span>}
           </span>
@@ -398,7 +400,7 @@ const SearchPage: React.FC = () => {
 
       {/* Category */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('search.category')}</h4>
+        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t('search.category')}</h4>
         <div className="space-y-1 max-h-48 overflow-y-auto">
           <button
             onClick={() => setFilter('category', null)}
@@ -413,7 +415,7 @@ const SearchPage: React.FC = () => {
               key={cat.id}
               onClick={() => setFilter('category', filters.category === cat.id ? null : cat.id)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                filters.category === cat.id ? 'bg-gold-400/10 text-gold-400 font-bold' : 'text-gray-400 hover:bg-gray-800'
+                filters.category === cat.id ? 'bg-gold-400/15 text-gold-700 dark:bg-gold-400/10 dark:text-gold-400 font-bold' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
               }`}
             >
               {cat.icon && <span className="mr-1">{cat.icon}</span>}
@@ -425,21 +427,21 @@ const SearchPage: React.FC = () => {
 
       {/* Price Range */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('search.priceRange')}</h4>
+        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t('search.priceRange')}</h4>
         <div className="flex gap-2">
           <input
             type="number"
             placeholder={t('search.min')}
             value={filters.minPrice ?? ''}
             onChange={e => setFilter('minPrice', e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-gold-400/50 outline-none"
+            className="w-full bg-white border border-gray-200 text-gray-900 placeholder-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:border-gold-400/50 outline-none"
           />
           <input
             type="number"
             placeholder={t('search.max')}
             value={filters.maxPrice ?? ''}
             onChange={e => setFilter('maxPrice', e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-gold-400/50 outline-none"
+            className="w-full bg-white border border-gray-200 text-gray-900 placeholder-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:border-gold-400/50 outline-none"
           />
         </div>
       </div>
@@ -448,7 +450,7 @@ const SearchPage: React.FC = () => {
       {activeFilterCount > 0 && (
         <button
           onClick={resetFilters}
-          className="w-full py-2 text-sm text-red-400 hover:text-red-300 border border-red-500/20 rounded-lg hover:bg-red-500/5 transition-colors"
+          className="w-full py-2 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-300 dark:border-red-500/20 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/5 transition-colors"
         >
           {t('search.resetFilters')}
         </button>
@@ -457,12 +459,12 @@ const SearchPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 pt-safe-header md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
+    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 pt-safe-header md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
       {/* Toolbar: results count + sort + actions */}
       <div className="max-w-7xl mx-auto mb-4 space-y-2">
         {/* Row 1: count (left) + Je Cherche desktop + sort (right) */}
         <div className="flex items-center gap-2">
-          <p className="text-sm text-gray-400 flex-1 min-w-0 truncate">
+          <p className="text-sm text-gray-600 dark:text-gray-400 flex-1 min-w-0 truncate">
             {isLoading && results.length === 0
               ? t('search.searching')
               : totalCount > 0
@@ -477,7 +479,7 @@ const SearchPage: React.FC = () => {
           <select
             value={filters.sortBy}
             onChange={e => setFilter('sortBy', e.target.value as SearchFiltersState['sortBy'])}
-            className="shrink-0 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 outline-none cursor-pointer"
+            className="shrink-0 px-3 py-2 bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl text-sm outline-none cursor-pointer"
           >
             <option value="relevance">{t('search.sortRelevance')}</option>
             <option value="newest">{t('search.sortNewest')}</option>
@@ -486,11 +488,11 @@ const SearchPage: React.FC = () => {
           </select>
 
           {/* Grid density toggle — desktop only */}
-          <div className="hidden md:flex items-center bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shrink-0">
+          <div className="hidden md:flex items-center bg-white border border-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-xl overflow-hidden shrink-0">
             <button
               onClick={() => setGridDensity('comfortable')}
               title="Vue confortable"
-              className={`p-2 transition-colors ${gridDensity === 'comfortable' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`p-2 transition-colors ${gridDensity === 'comfortable' ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               {/* 2×2 grid icon */}
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -503,7 +505,7 @@ const SearchPage: React.FC = () => {
             <button
               onClick={() => setGridDensity('compact')}
               title="Vue compacte"
-              className={`p-2 transition-colors ${gridDensity === 'compact' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`p-2 transition-colors ${gridDensity === 'compact' ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               {/* 3×3 grid icon */}
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -525,7 +527,7 @@ const SearchPage: React.FC = () => {
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={() => setShowMobileFilters(true)}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl text-sm"
           >
             <span>&#9776;</span> {t('search.filters')}
             {activeFilterCount > 0 && (
@@ -541,8 +543,8 @@ const SearchPage: React.FC = () => {
       <div className="max-w-7xl mx-auto flex gap-6">
         {/* Desktop Sidebar */}
         <aside className="hidden md:block w-64 flex-shrink-0">
-          <div className="sticky top-24 bg-gray-800/30 border border-gray-700/50 rounded-2xl p-4">
-            <h3 className="text-sm font-bold text-white mb-4">{t('search.filters')}</h3>
+          <div className="sticky top-24 bg-white border border-gray-200 dark:bg-gray-800/30 dark:border-gray-700/50 rounded-2xl p-4 shadow-sm dark:shadow-none">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">{t('search.filters')}</h3>
             {renderFilters()}
           </div>
         </aside>
@@ -551,11 +553,11 @@ const SearchPage: React.FC = () => {
         <div className="flex-1 min-w-0">
           {/* Error */}
           {error && (
-            <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 mb-4 text-center">
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-500/30 rounded-xl p-4 mb-4 text-center">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
               <button
                 onClick={() => setQuery(query)}
-                className="mt-2 text-xs text-red-300 underline"
+                className="mt-2 text-xs text-red-700 dark:text-red-300 underline"
               >
                 {t('search.retry')}
               </button>
@@ -599,19 +601,19 @@ const SearchPage: React.FC = () => {
             <div className="space-y-8 py-4">
               {recentSearches.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.recentSearches')}</h3>
+                  <h3 className="text-xs font-bold text-gray-600 dark:text-gray-500 uppercase tracking-wider mb-3">{t('search.recentSearches')}</h3>
                   <div className="flex flex-wrap gap-2">
                     {recentSearches.map((term, i) => (
-                      <div key={i} className="flex items-center min-h-[44px] gap-1 bg-gray-800/60 border border-gray-700/50 rounded-full">
+                      <div key={i} className="flex items-center min-h-[44px] gap-1 bg-white border border-gray-200 dark:bg-gray-800/60 dark:border-gray-700/50 rounded-full">
                         <button
                           onClick={() => handleSelectSuggestion(term)}
-                          className="pl-3 pr-1 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
+                          className="pl-3 pr-1 py-1.5 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
                         >
                           {term}
                         </button>
                         <button
                           onClick={() => handleRemoveRecent(term)}
-                          className="pr-2 py-1.5 text-gray-600 hover:text-red-400 transition-colors"
+                          className="pr-2 py-1.5 text-gray-400 hover:text-red-600 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
                         >
                           &#10005;
                         </button>
@@ -627,7 +629,7 @@ const SearchPage: React.FC = () => {
                     <button
                       key={i}
                       onClick={() => handleSelectSuggestion(term)}
-                      className="px-3 py-1.5 text-sm text-gray-400 bg-gray-800/40 border border-gray-700/50 rounded-full hover:bg-gray-800 hover:text-white hover:border-gray-600 transition-all"
+                      className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 dark:text-gray-400 dark:bg-gray-800/40 dark:border-gray-700/50 dark:hover:bg-gray-800 dark:hover:text-white dark:hover:border-gray-600 rounded-full transition-all"
                     >
                       {term}
                     </button>
@@ -641,14 +643,14 @@ const SearchPage: React.FC = () => {
           {!isLoading && results.length === 0 && !error && query.trim() && (
             <div className="text-center py-16">
               <div className="text-6xl mb-4">&#128270;</div>
-              <p className="text-lg text-gray-300 font-bold mb-2">
+              <p className="text-lg text-gray-900 dark:text-gray-300 font-bold mb-2">
                 {t('search.noResults')} &ldquo;{query.trim()}&rdquo;
               </p>
               <p className="text-sm text-gray-500 mb-4">{t('search.tryDifferent')}</p>
               {activeFilterCount > 0 && (
                 <button
                   onClick={resetFilters}
-                  className="px-4 py-2 bg-gold-400/10 border border-gold-400/30 text-gold-400 rounded-xl text-sm font-bold hover:bg-gold-400/20 transition-colors"
+                  className="px-4 py-2 bg-gold-400/15 border border-gold-400/40 text-gold-700 dark:bg-gold-400/10 dark:border-gold-400/30 dark:text-gold-400 rounded-xl text-sm font-bold hover:bg-gold-400/25 dark:hover:bg-gold-400/20 transition-colors"
                 >
                   {t('search.clearAllFilters')}
                 </button>
@@ -682,7 +684,7 @@ const SearchPage: React.FC = () => {
               ) : (
                 <button
                   onClick={loadMore}
-                  className="px-6 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl text-sm transition-colors"
                 >
                   {t('search.loadMore')}
                 </button>
@@ -701,12 +703,12 @@ const SearchPage: React.FC = () => {
             onClick={() => setShowMobileFilters(false)}
           />
           {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto animate-slide-up">
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700 rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto animate-slide-up">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white">{t('search.filters')}</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('search.filters')}</h3>
               <button
                 onClick={() => setShowMobileFilters(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
               >
                 &#10005;
               </button>

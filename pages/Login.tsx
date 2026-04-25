@@ -15,21 +15,21 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 pt-16 relative">
+    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex items-center justify-center px-6 pt-16 relative">
       <div className="absolute top-4 right-4 z-50">
         <LanguageSwitcher compact />
       </div>
       <div className="w-full max-w-sm text-center space-y-8">
         <div>
-          <h1 className="text-4xl font-black bg-gradient-to-r from-gold-400 to-gold-600 text-transparent bg-clip-text mb-2">Nunulia</h1>
-          <p className="text-gray-400">{t('auth.loginSubtitle')}</p>
+          <h1 className="text-4xl font-black bg-gradient-to-r from-gold-600 to-gold-700 dark:from-gold-400 dark:to-gold-600 text-transparent bg-clip-text mb-2">Nunulia</h1>
+          <p className="text-gray-600 dark:text-gray-400">{t('auth.loginSubtitle')}</p>
         </div>
 
         <div className="space-y-4">
           <button
             onClick={handleLogin}
             disabled={loginLoading}
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 font-bold h-14 rounded-xl text-base transition-colors disabled:opacity-50 shadow-lg"
+            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-900 font-bold h-14 rounded-xl text-base transition-colors disabled:opacity-50 border border-gray-200 shadow-sm dark:border-transparent dark:shadow-lg dark:hover:bg-gray-100"
           >
             {loginLoading ? (
               <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -40,18 +40,18 @@ const Login: React.FC = () => {
               </>
             )}
           </button>
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
             En continuant, vous acceptez nos{' '}
-            <Link to="/cgu" className="underline text-amber-400 hover:text-amber-300">
+            <Link to="/cgu" className="underline text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300">
               Conditions d'utilisation
             </Link>
             {' '}et notre{' '}
-            <Link to="/politique-confidentialite" className="underline text-amber-400 hover:text-amber-300">
+            <Link to="/politique-confidentialite" className="underline text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300">
               Politique de confidentialité
             </Link>
           </p>
           <Button
-            className="w-full text-gray-500" variant="ghost"
+            className="w-full text-gray-600 dark:text-gray-500" variant="ghost"
             onClick={() => navigate('/')}
           >
             {t('auth.continueWithout')}

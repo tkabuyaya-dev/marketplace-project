@@ -1340,5 +1340,12 @@
     "inline": "Profil non vérifié",
     "banner": "Ce vendeur n'est pas encore vérifié par notre équipe. Consultez nos conseils avant tout achat.",
     "safetyTips": "Voir les conseils de sécurité"
+  },
+  "theme": {
+    "switchToLight": "Passer en mode clair",
+    "switchToDark": "Passer en mode sombre",
+    "appearance": "Apparence",
+    "light": "Clair",
+    "dark": "Sombre"
   }
 }

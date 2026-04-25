@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { ShareSheet } from '../components/ShareSheet';
 import { Badge } from '../components/Badge';
-import { CURRENCY, THEME, TC } from '../constants';
+import { CURRENCY } from '../constants';
 import { toggleLikeProduct, reportProduct, checkIsLiked, incrementProductViews, getProductBySlugOrId } from '../services/firebase';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { ProgressiveImage } from '../components/ProgressiveImage';
@@ -115,23 +115,21 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-gold-500 dark:border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
         <div className="text-6xl">😕</div>
-        <h1 className="text-xl font-bold text-white">{t('productDetail.notFound')}</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('productDetail.notFound')}</h1>
         <Button onClick={() => navigate('/')}>{t('productDetail.backToHome')}</Button>
       </div>
     );
   }
-
-  const tc = TC;
 
   // Promotion logic
   const now = Date.now();
@@ -213,10 +211,10 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24">
+    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 pb-24">
       {/* Header bar */}
-      <div className="sticky top-0 z-30 bg-gray-950/90 backdrop-blur-md border-b border-gray-800/50 flex items-center justify-between px-4 py-3">
-        <button onClick={handleBack} className="p-3 -m-1 text-white">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800/50 flex items-center justify-between px-4 py-3">
+        <button onClick={handleBack} className="p-3 -m-1 text-gray-900 dark:text-white">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7 7-7" />
           </svg>
@@ -224,13 +222,13 @@ const ProductDetail: React.FC = () => {
         <div className="flex items-center gap-2">
           <LanguageSwitcher compact />
           <ShareSheet url={window.location.href} title={product?.title || 'Nunulia'} text={product ? t('productDetail.shareText', { title: product.title }) : ''} />
-          <button onClick={handleLike} className={`p-3 rounded-full transition-colors ${liked ? 'bg-red-500/20 text-red-500' : 'bg-gray-800 text-white hover:bg-gray-700'}`}>❤️</button>
+          <button onClick={handleLike} className={`p-3 rounded-full transition-colors ${liked ? 'bg-red-100 text-red-500 dark:bg-red-500/20' : 'bg-gray-100 hover:bg-gray-200 text-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white'}`}>❤️</button>
         </div>
       </div>
 
       {/* Main image */}
       <div
-        className="relative w-full bg-black select-none"
+        className="relative w-full bg-gray-100 dark:bg-black select-none"
         onTouchStart={e => { (e.currentTarget as any)._touchX = e.touches[0].clientX; }}
         onTouchEnd={e => {
           const startX = (e.currentTarget as any)._touchX;
@@ -282,13 +280,13 @@ const ProductDetail: React.FC = () => {
 
       {/* Thumbnails strip */}
       {product.images.length > 1 && (
-        <div className="flex gap-2 px-4 py-3 bg-gray-900 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 px-4 py-3 bg-white dark:bg-gray-900 overflow-x-auto no-scrollbar">
           {product.images.map((img, i) => (
             <button
               key={i}
               onClick={() => setActiveImage(i)}
               className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
-                i === activeImage ? 'border-blue-500 scale-105' : 'border-gray-700 opacity-60 hover:opacity-100'
+                i === activeImage ? 'border-gold-500 dark:border-blue-500 scale-105' : 'border-gray-200 dark:border-gray-700 opacity-60 hover:opacity-100'
               }`}
             >
               <img src={getOptimizedUrl(img, 80)} alt={t('productDetail.photo', { number: i + 1 })} loading="lazy" className="w-full h-full object-cover" />
@@ -305,37 +303,37 @@ const ProductDetail: React.FC = () => {
             <Badge variant="info">{getCategoryName(product.category)}</Badge>
             {product.subCategory && (
               <>
-                <span className="text-gray-600 text-xs">/</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 text-gray-300 border border-white/10">
+                <span className="text-gray-400 dark:text-gray-600 text-xs">/</span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10">
                   {product.subCategory}
                 </span>
               </>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2 font-sans">{product.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 font-sans">{product.title}</h1>
 
           {/* Price with promotion support */}
           {(() => { const cur = product.currency || CURRENCY; return (
           <div className="mb-2">
             {isOnPromotion ? (
               <div className="flex items-baseline gap-3">
-                <p className="text-3xl font-bold text-red-400">
-                  {displayPrice.toLocaleString()} <span className="text-lg text-red-400/70">{cur}</span>
+                <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                  {displayPrice.toLocaleString()} <span className="text-lg text-red-600/70 dark:text-red-400/70">{cur}</span>
                 </p>
-                <p className="text-lg text-gray-500 line-through">
+                <p className="text-lg text-gray-400 dark:text-gray-500 line-through">
                   {product.price.toLocaleString()} {cur}
                 </p>
               </div>
             ) : (
-              <p className={`text-3xl font-bold ${tc.text400}`}>
-                {product.price.toLocaleString()} <span className={`text-lg ${tc.text400_70}`}>{cur}</span>
+              <p className="text-3xl font-bold text-gold-600 dark:text-gold-400">
+                {product.price.toLocaleString()} <span className="text-lg text-gold-600/70 dark:text-gold-400/70">{cur}</span>
               </p>
             )}
           </div>
           ); })()}
 
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-1"><span className="text-yellow-400">★</span> {product.rating || 0}</span>
+          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <span className="flex items-center gap-1"><span className="text-yellow-500 dark:text-yellow-400">★</span> {product.rating || 0}</span>
             <span className="flex items-center gap-1">👁 {product.views}</span>
             <span className="flex items-center gap-1">❤️ {likeCount}</span>
             {product.reviews > 0 && (
@@ -346,17 +344,17 @@ const ProductDetail: React.FC = () => {
           {/* Social proof badges */}
           <div className="flex flex-wrap gap-2 mt-3">
             {product.views > 10 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold-400/10 text-gold-400 text-xs font-bold rounded-full">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold-400/15 text-gold-700 dark:bg-gold-400/10 dark:text-gold-400 text-xs font-bold rounded-full">
                 👀 {Math.max(2, Math.floor(product.views / 50) + Math.floor(Math.random() * 3))} {t('productDetail.peopleViewing')}
               </span>
             )}
             {product.seller.isVerified && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 text-xs font-bold rounded-full">
                 🛡️ {t('productDetail.verifiedSeller', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}
               </span>
             )}
             {product.views > 50 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 text-orange-400 text-xs font-bold rounded-full">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400 text-xs font-bold rounded-full">
                 🔥 {t('product.trending')}
               </span>
             )}
@@ -378,17 +376,17 @@ const ProductDetail: React.FC = () => {
 
         {/* B2B Wholesale info */}
         {product.isWholesale && (
-          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 space-y-2">
+          <div className="bg-indigo-50 border border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/30 rounded-2xl p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full">B2B</span>
-              <span className="text-indigo-300 font-semibold text-sm">{t('product.wholesaleAvailable')}</span>
+              <span className="text-indigo-700 dark:text-indigo-300 font-semibold text-sm">{t('product.wholesaleAvailable')}</span>
             </div>
             {product.minOrderQuantity && (
-              <p className="text-gray-400 text-sm">{t('product.minOrder', { count: product.minOrderQuantity })}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{t('product.minOrder', { count: product.minOrderQuantity })}</p>
             )}
             {product.wholesalePrice && (
-              <p className="text-indigo-400 font-bold text-lg">
-                {product.wholesalePrice.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-400">{product.currency || CURRENCY}</span>
+              <p className="text-indigo-700 dark:text-indigo-400 font-bold text-lg">
+                {product.wholesalePrice.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-600 dark:text-gray-400">{product.currency || CURRENCY}</span>
                 <span className="text-xs text-gray-500 ml-2">/ {t('product.perUnit')}</span>
               </p>
             )}
@@ -404,7 +402,7 @@ const ProductDetail: React.FC = () => {
           {currentUser && (currentUser.id === product.seller.id || currentUser.role === 'admin') && (
             <button
               onClick={() => navigate('/dashboard', { state: { editProduct: product } })}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 hover:bg-gray-800/50 transition-all text-sm font-medium"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-gray-300 text-gray-700 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:text-white dark:hover:border-gray-400 dark:hover:bg-gray-800/50 transition-all text-sm font-medium"
             >
               ✏️ {t('dashboard.editProduct')}
             </button>
@@ -415,19 +413,19 @@ const ProductDetail: React.FC = () => {
         <div className="space-y-2">
           <div
             onClick={() => onVisitShop(product.seller)}
-            className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 cursor-pointer hover:bg-gray-800 transition-colors group"
+            className="flex items-center gap-4 p-4 bg-white border border-gray-200 hover:bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700/50 dark:hover:bg-gray-800 rounded-2xl cursor-pointer transition-colors group shadow-sm dark:shadow-none"
           >
-            <img src={getOptimizedUrl(product.seller.avatar, 48)} alt={product.seller.name} loading="lazy" className="w-12 h-12 rounded-full border border-gray-600 group-hover:border-gold-400" />
+            <img src={getOptimizedUrl(product.seller.avatar, 48)} alt={product.seller.name} loading="lazy" className="w-12 h-12 rounded-full border border-gray-200 dark:border-gray-600 group-hover:border-gold-400" />
             <div className="flex-1">
               <div className="flex items-center gap-1">
-                <h4 className="text-white font-medium group-hover:text-gold-400 transition-colors">{product.seller.name}</h4>
+                <h4 className="text-gray-900 dark:text-white font-medium group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">{product.seller.name}</h4>
                 {product.seller.isVerified && (
                   <VerifiedBadge tier={product.seller.verificationTier} size="sm" />
                 )}
               </div>
-              <p className="text-xs text-gray-400">{t('productDetail.memberSince', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">{t('productDetail.memberSince', { year: new Date(product.seller.joinDate || Date.now()).getFullYear() })}</p>
             </div>
-            <div className="text-xs font-bold text-gray-400 group-hover:text-white flex items-center gap-1 bg-gray-800 px-3 py-1.5 rounded-full">
+            <div className="text-xs font-bold text-gray-700 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full">
               {t('productDetail.shopButton')} <span>→</span>
             </div>
           </div>
@@ -436,8 +434,8 @@ const ProductDetail: React.FC = () => {
 
         {/* Description */}
         <div className="space-y-3 pb-4">
-          <h3 className="text-lg font-bold text-white">{t('product.description')}</h3>
-          <p className="text-gray-300 leading-relaxed text-sm">{product.description}</p>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('product.description')}</h3>
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{product.description}</p>
         </div>
 
         {/* Reviews Section */}
@@ -466,7 +464,7 @@ const ProductDetail: React.FC = () => {
           onProductClick={onProductClick}
         />
 
-        <button onClick={handleReport} className="text-xs text-gray-500 hover:text-red-400 underline text-center w-full pb-2">
+        <button onClick={handleReport} className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline text-center w-full pb-2">
           {t('productDetail.reportFraudulent')}
         </button>
       </div>

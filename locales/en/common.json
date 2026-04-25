@@ -1340,5 +1340,12 @@
     "inline": "Unverified profile",
     "banner": "This seller has not been verified by our team yet. Check our safety tips before buying.",
     "safetyTips": "See safety tips"
+  },
+  "theme": {
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "appearance": "Appearance",
+    "light": "Light",
+    "dark": "Dark"
   }
 }

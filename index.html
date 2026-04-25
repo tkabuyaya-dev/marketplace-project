@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#111318" /> <!-- gray-950 -->
+    <!-- Theme color: warm white default, gray-950 when user chose dark -->
+    <meta name="theme-color" content="#FAFAF8" id="theme-color-meta" />
     <meta name="description" content="Nunulia — Le marketplace d'Afrique de l'Est." />
     <meta name="application-name" content="Nunulia" />
     <link rel="manifest" href="/manifest.json" />
@@ -14,7 +15,21 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nunulia" />
-    <meta name="msapplication-TileColor" content="#111318" /> <!-- gray-950 -->
+    <meta name="msapplication-TileColor" content="#FAFAF8" />
+    <!-- Theme bootstrap: applies dark class BEFORE paint to prevent FOUC.
+         Default is 'light' — first-time visitors always see light mode. -->
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('nunulia_theme');
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) m.setAttribute('content', '#111318');
+          }
+        } catch (e) { /* localStorage blocked — light default applies */ }
+      })();
+    </script>
     <!-- DNS + TCP pre-connections pour les ressources critiques -->
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,16 +57,20 @@
     <!-- See services/recaptcha.ts and services/analytics.ts -->
     <style>
       :root {
-        --bg-950: #111318;    /* gray-950 */
-        --text-100: #f3f4f6;  /* gray-100 */
+        --bg-app: #FAFAF8;    /* warm white — light mode primary */
+        --text-app: #111318;  /* gray-950 */
         --gold-400: #F5C842;
         --gold-600: #D4941A;
+      }
+      html.dark {
+        --bg-app: #111318;    /* gray-950 */
+        --text-app: #f3f4f6;  /* gray-100 */
       }
       *, *::before, *::after { box-sizing: border-box; }
       body {
         margin: 0;
-        background-color: var(--bg-950);
-        color: var(--text-100);
+        background-color: var(--bg-app);
+        color: var(--text-app);
         font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
@@ -64,7 +83,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: var(--bg-950);
+        background: var(--bg-app);
         z-index: 9999;
         gap: 16px;
         transition: opacity 0.3s ease;
@@ -99,7 +118,7 @@
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
   </head>
-  <body class="bg-gray-950 text-white antialiased">
+  <body class="bg-[#FAFAF8] text-gray-900 dark:bg-gray-950 dark:text-white antialiased">
     <!-- Nettoyage des anciens Service Workers (évite les 400/404 causés par un SW périmé) -->
     <script>
       (function() {

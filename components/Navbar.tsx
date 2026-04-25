@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { User, Product } from '../types';
-import { THEME, TC } from '../constants';
+import { THEME } from '../constants';
 import { NotificationBell } from './NotificationBell';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { SearchOverlay } from './SearchOverlay';
 import { JeChercheForm } from './JeCherche/JeChercheForm';
 import { CountrySwitcher } from './CountrySwitcher';
+import { ThemeToggle } from './ThemeToggle';
 import { useRotatingPlaceholder } from '../hooks/useRotatingPlaceholder';
 
 interface NavbarProps {
@@ -87,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
       )}
 
       {/* ── Desktop/Tablet Top Nav ── */}
-      <nav className="hidden md:flex fixed top-0 w-full z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 px-6 py-4 justify-between items-center transition-all duration-500">
+      <nav className="hidden md:flex fixed top-0 w-full z-50 bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-4 justify-between items-center transition-all duration-500">
         <button
           onClick={() => navigate('/')}
           className={`text-2xl font-black bg-gradient-to-r ${THEME.gradient} text-transparent bg-clip-text transition-all duration-500`}
@@ -98,13 +99,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         {/* Desktop search bar — fake input, opens overlay on click */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="group relative flex items-center gap-2.5 px-4 py-2.5 bg-gray-800/90 hover:bg-gray-800 border border-gray-700/70 hover:border-gray-600 rounded-2xl w-64 lg:w-96 text-left transition-all duration-200 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400/40"
+          className="group relative flex items-center gap-2.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/90 dark:hover:bg-gray-800 border border-gray-200 hover:border-gray-300 dark:border-gray-700/70 dark:hover:border-gray-600 rounded-2xl w-64 lg:w-96 text-left transition-all duration-200 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400/40"
         >
           {/* Search icon */}
           <svg
             width="15" height="15" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" strokeWidth={2.5}
-            className="text-gray-500 group-hover:text-gray-300 flex-shrink-0 transition-colors duration-200"
+            className="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors duration-200"
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -112,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
           {/* Animated rotating placeholder */}
           <span className="flex-1 overflow-hidden h-5 relative">
             <span
-              className={`absolute inset-0 text-sm text-gray-500 group-hover:text-gray-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
+              className={`absolute inset-0 text-sm text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
                 termVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5'
               }`}
             >
@@ -121,7 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
           </span>
 
           {/* Keyboard shortcut badge */}
-          <span className="text-[10px] bg-gray-700/80 border border-gray-600/60 rounded-md px-1.5 py-0.5 text-gray-500 group-hover:text-gray-400 hidden lg:inline-block font-mono flex-shrink-0 transition-colors duration-200">
+          <span className="text-[10px] bg-gray-200 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600/60 rounded-md px-1.5 py-0.5 text-gray-600 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-400 hidden lg:inline-block font-mono flex-shrink-0 transition-colors duration-200">
             {t('nav.shortcut')}
           </span>
         </button>
@@ -140,6 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
 
           <LanguageSwitcher />
           <CountrySwitcher />
+          <ThemeToggle />
           {currentUser && <NotificationBell />}
 
           <div className="flex gap-6">
@@ -147,7 +149,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
               <button
                 key={item.path + item.label}
                 onClick={() => handleNav(item)}
-                className={`text-sm font-medium transition-colors ${isActive(item.path) ? TC.text400 : 'text-gray-400 hover:text-white'}`}
+                className={`text-sm font-medium transition-colors ${
+                  isActive(item.path)
+                    ? 'text-gold-600 dark:text-gold-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
               >
                 {item.label}
               </button>
@@ -157,7 +163,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
       </nav>
 
       {/* ── Mobile Top Bar — 2 rows like AliExpress ── */}
-      <div className="md:hidden fixed top-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 pt-safe-nav shadow-lg">
+      <div className="md:hidden fixed top-0 w-full z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 pt-safe-nav shadow-sm dark:shadow-lg">
 
         {/* Row 1: Brand + actions */}
         <div className="flex justify-between items-center px-4 pb-1.5">
@@ -171,6 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
           <div className="flex items-center gap-0.5">
             <LanguageSwitcher compact />
             <CountrySwitcher compact />
+            <ThemeToggle />
             {currentUser && <NotificationBell />}
 
             {/* Je Cherche button — amber/gold gradient */}
@@ -190,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         <div className="px-3 pb-2.5">
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="group w-full flex items-center gap-2.5 bg-gray-800/90 active:bg-gray-700 border border-gray-700/70 active:border-gray-600 rounded-2xl px-3.5 py-2.5 text-left transition-all duration-150 active:scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400/40"
+            className="group w-full flex items-center gap-2.5 bg-gray-100 active:bg-gray-200 dark:bg-gray-800/90 dark:active:bg-gray-700 border border-gray-200 active:border-gray-300 dark:border-gray-700/70 dark:active:border-gray-600 rounded-2xl px-3.5 py-2.5 text-left transition-all duration-150 active:scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400/40"
           >
             {/* Search icon with subtle pulse ring on active */}
             <div className="relative flex-shrink-0">
@@ -218,7 +225,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
             <svg
               width="15" height="15" fill="none" viewBox="0 0 24 24"
               stroke="currentColor" strokeWidth={1.8}
-              className="text-gray-600 flex-shrink-0"
+              className="text-gray-500 dark:text-gray-600 flex-shrink-0"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
             </svg>
@@ -233,14 +240,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
       />
 
       {/* ── Mobile Bottom Nav ── */}
-      <nav className="md:hidden fixed bottom-0 w-full z-50 bg-gray-900/95 backdrop-blur-xl border-t border-gold-900/30 pb-safe transition-all duration-500">
+      <nav className="md:hidden fixed bottom-0 w-full z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gold-900/30 pb-safe transition-all duration-500">
         <div className="flex justify-around items-center h-16">
           {navItems.map((item) => (
             <button
               key={item.path + item.label}
               onClick={() => handleNav(item)}
               className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                isActive(item.path) ? TC.text400 : 'text-gray-500'
+                isActive(item.path)
+                  ? 'text-gold-600 dark:text-gold-400'
+                  : 'text-gray-500 dark:text-gray-500'
               }`}
             >
               <span className={`text-xl transition-transform duration-200 ${isActive(item.path) ? 'scale-110' : ''}`}>
@@ -248,7 +257,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
               </span>
               <span className="text-[10px] font-medium">{item.label}</span>
               {isActive(item.path) && (
-                <span className={`absolute bottom-1 w-1 h-1 ${TC.bg500} rounded-full shadow-[0_0_8px_currentColor]`} />
+                <span className="absolute bottom-1 w-1 h-1 bg-current rounded-full shadow-[0_0_8px_currentColor]" />
               )}
             </button>
           ))}

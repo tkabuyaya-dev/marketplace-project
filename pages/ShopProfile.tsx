@@ -110,17 +110,17 @@ const ShopProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-gold-500 dark:border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (notFound || !seller) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
         <div className="text-6xl">😕</div>
-        <h1 className="text-xl font-bold text-white">{t('shopProfile.notFound')}</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('shopProfile.notFound')}</h1>
         <Button onClick={() => navigate('/')}>{t('shopProfile.backToHome')}</Button>
       </div>
     );
@@ -133,7 +133,7 @@ const ShopProfile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-20 font-sans animate-fade-in">
+    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 pb-20 font-sans animate-fade-in">
       {/* HERO / BANNER */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <div className="absolute top-4 right-4 z-20">
@@ -145,19 +145,19 @@ const ShopProfile: React.FC = () => {
         >
           <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         </button>
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#FAFAF8] dark:from-gray-950 via-transparent to-transparent z-10"></div>
         <img src={getOptimizedUrl(bannerUrl, 1200)} className="w-full h-full object-cover" alt="Shop Banner" />
       </div>
 
       {/* SHOP INFO HEADER */}
       <div className="max-w-7xl mx-auto px-4 -mt-16 relative z-20 mb-10">
-        <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 shadow-2xl flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
+        <div className="bg-white/95 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-xl dark:shadow-2xl flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
           <div className="relative -mt-16 md:-mt-20 shrink-0">
             <TrustScore user={seller} productCount={products.length}>
-              <img src={getOptimizedUrl(seller.avatar, 160)} className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-950 object-cover shadow-2xl" alt={seller.name} />
+              <img src={getOptimizedUrl(seller.avatar, 160)} className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white dark:border-gray-950 object-cover shadow-2xl" alt={seller.name} />
             </TrustScore>
             {seller.isVerified && (
-              <div className={`absolute bottom-2 right-2 p-1.5 rounded-full border-4 border-gray-900 shadow-lg ${
+              <div className={`absolute bottom-2 right-2 p-1.5 rounded-full border-4 border-white dark:border-gray-900 shadow-lg ${
                 seller.verificationTier === 'shop'
                   ? 'bg-gradient-to-br from-amber-400 to-yellow-600 shadow-amber-500/40'
                   : 'bg-blue-600 shadow-blue-500/30'
@@ -168,11 +168,11 @@ const ShopProfile: React.FC = () => {
           </div>
 
           <div className="flex-1 space-y-2">
-            <h1 className="text-3xl font-black text-white tracking-tight">{seller.sellerDetails?.shopName || seller.name}</h1>
-            <p className="text-gray-400 text-sm max-w-lg mx-auto md:mx-0">
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{seller.sellerDetails?.shopName || seller.name}</h1>
+            <p className="text-gray-600 dark:text-gray-400 text-sm max-w-lg mx-auto md:mx-0">
               {seller.bio || t('shopProfile.defaultBio')}
             </p>
-            <div className="flex items-center justify-center md:justify-start gap-4 text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">
+            <div className="flex items-center justify-center md:justify-start gap-4 text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-widest mt-2">
               <span>★ 4.9 {t('shopProfile.sellerRating')}</span>
               <span>•</span>
               <span>{products.length} {t('shop.products')}</span>
@@ -192,7 +192,7 @@ const ShopProfile: React.FC = () => {
       {/* Google Maps */}
       {seller.sellerDetails?.gps?.lat && seller.sellerDetails?.gps?.lng && (
         <div className="max-w-7xl mx-auto px-4 mb-10">
-          <Suspense fallback={<div className="h-48 bg-gray-800 rounded-xl animate-pulse" />}>
+          <Suspense fallback={<div className="h-48 bg-gray-200 dark:bg-gray-800 rounded-xl animate-pulse" />}>
             <ShopMap coordinates={seller.sellerDetails.gps} shopName={seller.sellerDetails.shopName || seller.name} />
           </Suspense>
         </div>
@@ -217,15 +217,15 @@ const ShopProfile: React.FC = () => {
         {loadingProducts ? (
           <div>
             <div className="flex items-center gap-4 mb-8">
-              <div className="h-6 w-32 bg-gray-800 rounded animate-pulse" />
-              <div className="h-px bg-gray-800 flex-1"></div>
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+              <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map(n => <div key={n} className="h-80 bg-gray-900 rounded-2xl animate-pulse" />)}
+              {[1, 2, 3, 4].map(n => <div key={n} className="h-80 bg-gray-100 dark:bg-gray-900 rounded-2xl animate-pulse" />)}
             </div>
           </div>
         ) : products.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
+          <div className="text-center py-20 text-gray-500 dark:text-gray-500">
             {t('shopProfile.noProductsYet')}
           </div>
         ) : (
@@ -237,8 +237,8 @@ const ShopProfile: React.FC = () => {
               return (
                 <div>
                   <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold text-white">{t('shopProfile.popular')}</h2>
-                    <div className="h-px bg-gray-800 flex-1"></div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('shopProfile.popular')}</h2>
+                    <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {popular.map(p => <ProductCard key={p.id} product={p} onClick={() => onProductClick(p)} />)}
@@ -255,8 +255,8 @@ const ShopProfile: React.FC = () => {
               return (
                 <div>
                   <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold text-white">{t('shopProfile.newArrivals')}</h2>
-                    <div className="h-px bg-gray-800 flex-1"></div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('shopProfile.newArrivals')}</h2>
+                    <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {recent.map(p => <ProductCard key={p.id} product={p} onClick={() => onProductClick(p)} />)}
@@ -268,9 +268,9 @@ const ShopProfile: React.FC = () => {
             {/* Tous les produits */}
             <div>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-xl font-bold text-white">{t('shop.allProducts')}</h2>
-                <span className="text-sm text-gray-500">({products.length})</span>
-                <div className="h-px bg-gray-800 flex-1"></div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('shop.allProducts')}</h2>
+                <span className="text-sm text-gray-500 dark:text-gray-500">({products.length})</span>
+                <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {products.map(p => <ProductCard key={p.id} product={p} onClick={() => onProductClick(p)} />)}
@@ -280,13 +280,13 @@ const ShopProfile: React.FC = () => {
             {/* Avis clients */}
             <div>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-xl font-bold text-white">{t('shopProfile.customerReviews')}</h2>
-                <div className="h-px bg-gray-800 flex-1"></div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('shopProfile.customerReviews')}</h2>
+                <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
               </div>
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8 text-center">
+              <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none rounded-2xl p-8 text-center">
                 <p className="text-3xl mb-3">💬</p>
-                <p className="text-gray-400 text-sm">{t('shopProfile.noReviews')}</p>
-                <p className="text-gray-500 text-xs mt-1">{t('shopProfile.reviewsComingSoon')}</p>
+                <p className="text-gray-700 dark:text-gray-400 text-sm">{t('shopProfile.noReviews')}</p>
+                <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">{t('shopProfile.reviewsComingSoon')}</p>
               </div>
             </div>
           </>

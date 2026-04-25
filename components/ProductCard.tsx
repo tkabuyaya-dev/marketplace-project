@@ -112,7 +112,7 @@ export const ProductCard = memo<ProductCardProps>(({
     <div
       ref={cardRef}
       onClick={onClick}
-      className="group relative bg-white shadow-sm border border-gray-100 dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none rounded-xl overflow-hidden cursor-pointer transition-[border-color,transform,box-shadow] duration-300 hover:border-gray-200 dark:hover:border-gray-700 hover:-translate-y-[2px] hover:shadow-lg"
+      className="group relative bg-white shadow-sm border border-gray-200 dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none rounded-xl overflow-hidden cursor-pointer transition-[border-color,transform,box-shadow] duration-300 hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-[2px] hover:shadow-md"
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-xl">

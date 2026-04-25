@@ -313,7 +313,7 @@ export const Home: React.FC = () => {
             className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
               nearbyMode
                 ? 'bg-green-600 border-green-500 text-white'
-                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+                : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
             {geoLoading ? (
@@ -333,7 +333,7 @@ export const Home: React.FC = () => {
             className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
               wholesaleMode
                 ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+                : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
             <span className="text-xs">🏭</span>
@@ -345,8 +345,8 @@ export const Home: React.FC = () => {
             onClick={() => { setActiveCategory('all'); setNearbyMode(false); }}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
               activeCategory === 'all' && !nearbyMode
-                ? `${tc.bg400} ${tc.border400} text-white`
-                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+                ? `${tc.bg400} ${tc.border400} text-gray-900 shadow-sm shadow-gold-400/30`
+                : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
             <span className="text-xs">🔍</span>
@@ -359,8 +359,8 @@ export const Home: React.FC = () => {
               onClick={() => { setActiveCategory(cat.id); setNearbyMode(false); }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
                 activeCategory === cat.id
-                  ? `${tc.bg400} ${tc.border400} text-white`
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+                  ? `${tc.bg400} ${tc.border400} text-gray-900 shadow-sm shadow-gold-400/30`
+                  : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
               }`}
             >
               <span className="text-xs">{cat.icon}</span>
@@ -372,13 +372,13 @@ export const Home: React.FC = () => {
 
       {/* B2B wholesale banner */}
       {wholesaleMode && (
-        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-2 flex items-center gap-2">
+        <div className="bg-indigo-50 border border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/30 rounded-xl p-2 flex items-center gap-2">
           <span className="text-base">🏭</span>
           <div className="flex-1 min-w-0">
-            <p className="text-indigo-400 font-semibold text-xs leading-tight">{t('home.wholesaleActive')}</p>
-            <p className="text-indigo-400/60 text-[10px] leading-tight">{t('home.wholesaleHint')}</p>
+            <p className="text-indigo-700 dark:text-indigo-400 font-semibold text-xs leading-tight">{t('home.wholesaleActive')}</p>
+            <p className="text-indigo-600/70 dark:text-indigo-400/60 text-[10px] leading-tight">{t('home.wholesaleHint')}</p>
           </div>
-          <button onClick={() => setWholesaleMode(false)} className="text-indigo-400/60 hover:text-white text-[10px] px-2 py-0.5 border border-indigo-500/30 rounded-lg flex-shrink-0">
+          <button onClick={() => setWholesaleMode(false)} className="text-indigo-600/70 hover:text-indigo-700 dark:text-indigo-400/60 dark:hover:text-white text-[10px] px-2 py-0.5 border border-indigo-200 dark:border-indigo-500/30 rounded-lg flex-shrink-0">
             {t('home.nearbyDisable')}
           </button>
         </div>
@@ -386,13 +386,13 @@ export const Home: React.FC = () => {
 
       {/* Nearby mode banner */}
       {nearbyMode && (
-        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-2 flex items-center gap-2">
+        <div className="bg-green-50 border border-green-200 dark:bg-green-500/10 dark:border-green-500/30 rounded-xl p-2 flex items-center gap-2">
           <span className="text-base">📍</span>
           <div className="flex-1 min-w-0">
-            <p className="text-green-400 font-semibold text-xs leading-tight">{t('home.nearbyActive')}</p>
-            <p className="text-green-400/60 text-[10px] leading-tight">{position ? t('home.nearbyHint') : t('home.nearbyWaiting')}</p>
+            <p className="text-green-700 dark:text-green-400 font-semibold text-xs leading-tight">{t('home.nearbyActive')}</p>
+            <p className="text-green-600/70 dark:text-green-400/60 text-[10px] leading-tight">{position ? t('home.nearbyHint') : t('home.nearbyWaiting')}</p>
           </div>
-          <button onClick={() => setNearbyMode(false)} className="text-green-400/60 hover:text-white text-[10px] px-2 py-0.5 border border-green-500/30 rounded-lg flex-shrink-0">
+          <button onClick={() => setNearbyMode(false)} className="text-green-600/70 hover:text-green-700 dark:text-green-400/60 dark:hover:text-white text-[10px] px-2 py-0.5 border border-green-200 dark:border-green-500/30 rounded-lg flex-shrink-0">
             {t('home.nearbyDisable')}
           </button>
         </div>
@@ -402,7 +402,7 @@ export const Home: React.FC = () => {
       <div>
         <div className="flex items-center gap-1.5 mb-2">
           <span className="text-sm">{wholesaleMode ? '🏭' : nearbyMode ? '📍' : '🛒'}</span>
-          <h3 className="text-sm font-bold text-white">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">
             {wholesaleMode ? t('home.wholesale') : nearbyMode ? t('home.nearMe') : t('home.latestListings')}
           </h3>
         </div>
@@ -481,7 +481,7 @@ export const Home: React.FC = () => {
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-6 py-2 bg-gray-800 border border-gray-700 text-gray-400 rounded-full text-xs hover:bg-gray-700 transition-colors disabled:opacity-50"
+            className="px-6 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 rounded-full text-xs transition-colors disabled:opacity-50"
           >
             {loadingMore ? t('home.loading') : t('home.loadMore')}
           </button>
@@ -489,17 +489,17 @@ export const Home: React.FC = () => {
       )}
 
       {/* Footer legal */}
-      <div className="text-center py-4 border-t border-gray-800/50">
-        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-          <Link to="/cgu" className="hover:text-amber-400 hover:underline transition-colors">
+      <div className="text-center py-4 border-t border-gray-200 dark:border-gray-800/50">
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-500">
+          <Link to="/cgu" className="hover:text-amber-700 dark:hover:text-amber-400 hover:underline transition-colors">
             Conditions d'utilisation
           </Link>
-          <span className="text-gray-700">&middot;</span>
-          <Link to="/politique-confidentialite" className="hover:text-amber-400 hover:underline transition-colors">
+          <span className="text-gray-400 dark:text-gray-700">&middot;</span>
+          <Link to="/politique-confidentialite" className="hover:text-amber-700 dark:hover:text-amber-400 hover:underline transition-colors">
             Politique de confidentialité
           </Link>
         </div>
-        <p className="text-[10px] text-gray-700 mt-1.5">&copy; 2026 NUNULIA</p>
+        <p className="text-[10px] text-gray-400 dark:text-gray-700 mt-1.5">&copy; 2026 NUNULIA</p>
       </div>
     </div>
   );
