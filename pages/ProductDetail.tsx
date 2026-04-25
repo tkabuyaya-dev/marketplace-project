@@ -457,6 +457,12 @@ const ProductDetail: React.FC = () => {
           <UnverifiedSellerNotice tier={product.seller.verificationTier} variant="banner" />
         </div>
 
+        {/* Trust notice — WhatsApp-only transactions */}
+        <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl px-4 py-3">
+          <span aria-hidden="true" className="text-base leading-none mt-0.5">💬</span>
+          <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">{t('productDetail.trustNotice')}</p>
+        </div>
+
         {/* Description */}
         <div className="space-y-3 pb-4">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('product.description')}</h3>

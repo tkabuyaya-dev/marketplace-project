@@ -409,7 +409,8 @@
     "reportSent": "Signalement envoyé à l'administration.",
     "shareText": "Regarde ça sur Nunulia : {{title}}",
     "linkCopied": "Lien copié dans le presse-papier !",
-    "photo": "Photo {{number}}"
+    "photo": "Photo {{number}}",
+    "trustNotice": "Toutes les transactions se font directement avec le vendeur via WhatsApp. NUNULIA ne gère pas les paiements."
   },
   "shopProfile": {
     "notFound": "Boutique introuvable",
