@@ -631,8 +631,8 @@ export const SellerDashboard: React.FC = () => {
         onClick={() => setActiveTab(id)}
         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
             activeTab === id
-            ? gold ? 'bg-gradient-to-r from-amber-600 to-gold-500 text-white shadow-lg shadow-amber-900/50' : 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-            : gold ? 'text-gold-400 hover:bg-gold-400/10 border border-gold-400/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            ? gold ? 'bg-gradient-to-r from-amber-500 to-gold-500 text-white shadow-lg shadow-amber-200/50 dark:shadow-amber-900/50' : 'bg-gold-400 text-gray-900 shadow-[0_4px_12px_rgba(245,200,66,0.35)]'
+            : gold ? 'text-gold-700 dark:text-gold-400 hover:bg-gold-400/10 border border-gold-400/30 dark:border-gold-400/20' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
         }`}
       >
           <div className="flex items-center gap-3">
@@ -642,10 +642,10 @@ export const SellerDashboard: React.FC = () => {
           {count !== undefined && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 activeTab === id
-                  ? 'bg-white/20 text-white'
+                  ? gold ? 'bg-white/20 text-white' : 'bg-gray-900/15 text-gray-900'
                   : gold
-                  ? 'bg-gold-400/20 text-gold-400 border border-gold-400/30'
-                  : 'bg-gray-800 text-gray-500'
+                  ? 'bg-gold-400/20 text-gold-700 dark:text-gold-400 border border-gold-400/30'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
               }`}>
                   {count}
               </span>
@@ -654,12 +654,12 @@ export const SellerDashboard: React.FC = () => {
   );
 
   const StatCard = ({ title, value, sub, trend, color }: any) => (
-      <div className="bg-gray-800/50 border border-gray-700/50 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-600 transition-colors">
+      <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-300 dark:hover:border-gray-600 transition-colors shadow-sm dark:shadow-none">
           <div className={`absolute top-0 right-0 w-24 h-24 bg-${color}-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-opacity group-hover:opacity-100`}></div>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-          <h3 className="text-2xl font-black text-white mb-1">{value}</h3>
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
+          <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-1">{value}</h3>
           <div className="flex items-center gap-2 text-xs">
-              <span className={`text-${color === 'red' ? 'red' : 'green'}-400 font-bold bg-${color === 'red' ? 'red' : 'green'}-500/10 px-1.5 py-0.5 rounded`}>
+              <span className={`text-${color === 'red' ? 'red' : 'green'}-600 dark:text-${color === 'red' ? 'red' : 'green'}-400 font-bold bg-${color === 'red' ? 'red' : 'green'}-500/10 px-1.5 py-0.5 rounded`}>
                   {trend}
               </span>
               <span className="text-gray-500">{sub}</span>
@@ -793,17 +793,17 @@ export const SellerDashboard: React.FC = () => {
         )}
 
         {/* Welcome Banner */}
-        <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 rounded-2xl p-6 border border-blue-800/50 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(59,130,246,0.3),transparent_50%)]"></div>
+        <div className="bg-gradient-to-br from-amber-50 via-white to-white dark:from-blue-900 dark:via-indigo-900 dark:to-purple-900 rounded-2xl p-6 border border-gray-200 dark:border-blue-800/50 shadow-sm dark:shadow-none relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(245,200,66,0.18),transparent_50%)] dark:bg-[radial-gradient(circle_at_30%_-20%,rgba(59,130,246,0.3),transparent_50%)]"></div>
             <div className="relative z-10">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                  <div>
-                    <h2 className="text-2xl font-black text-white mb-1">
+                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">
                       {currentUser.sellerDetails?.shopName || currentUser.name}
                     </h2>
-                    <p className="text-blue-200/80 text-sm flex items-center gap-2">
-                      {currentUser.isVerified && <span className="text-green-400">{t('dashboard.verified')}</span>}
-                      {!hasNif && <span className="text-yellow-400">{t('dashboard.noNif')}</span>}
+                    <p className="text-gray-600 dark:text-blue-200/80 text-sm flex items-center gap-2">
+                      {currentUser.isVerified && <span className="text-green-600 dark:text-green-400">{t('dashboard.verified')}</span>}
+                      {!hasNif && <span className="text-yellow-600 dark:text-yellow-400">{t('dashboard.noNif')}</span>}
                       {currentUser.sellerDetails?.sellerType === 'shop' && `🏪 ${t('dashboard.shopType')}`}
                       {currentUser.sellerDetails?.sellerType === 'street' && `🚶 ${t('dashboard.streetType')}`}
                       {currentUser.sellerDetails?.sellerType === 'online' && `🌐 ${t('dashboard.onlineType')}`}
@@ -811,12 +811,12 @@ export const SellerDashboard: React.FC = () => {
                  </div>
 
                  {/* Subscription Widget */}
-                 <div className="bg-black/30 backdrop-blur-md p-4 rounded-xl border border-white/10 min-w-[220px]">
+                 <div className="bg-white/80 dark:bg-black/30 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-white/10 min-w-[220px]">
                     <div className="flex justify-between items-center text-xs mb-2">
-                        <span className="text-blue-200 font-bold">{currentTier.label}</span>
-                        <span className={`${isLimitReached ? 'text-red-400' : 'text-white'} font-bold`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
+                        <span className="text-gray-700 dark:text-blue-200 font-bold">{currentTier.label}</span>
+                        <span className={`${isLimitReached ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'} font-bold`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
                     </div>
-                    <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full origin-left transition-transform duration-700 ${
                             isLimitReached ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
@@ -827,9 +827,9 @@ export const SellerDashboard: React.FC = () => {
                           style={{ transform: `scaleX(${(currentTier.max === null ? 100 : Math.min(progressPercentage, 100)) / 100})` }}
                         ></div>
                     </div>
-                    {isLimitReached && <p className="text-[10px] text-red-300 mt-1.5">{t('dashboard.limitReached')}. <button onClick={() => navigate('/plans')} className="underline text-gold-400 bg-transparent border-none cursor-pointer p-0">{t('dashboard.upgradePlan')}</button></p>}
+                    {isLimitReached && <p className="text-[10px] text-red-600 dark:text-red-300 mt-1.5">{t('dashboard.limitReached')}. <button onClick={() => navigate('/plans')} className="underline text-gold-600 dark:text-gold-400 bg-transparent border-none cursor-pointer p-0">{t('dashboard.upgradePlan')}</button></p>}
                     {daysRemaining !== null && isPaidTier && !isExpired && (
-                      <p className={`text-[10px] mt-1.5 font-medium ${daysRemaining <= 7 ? 'text-red-300' : daysRemaining <= 15 ? 'text-yellow-300' : 'text-green-300'}`}>
+                      <p className={`text-[10px] mt-1.5 font-medium ${daysRemaining <= 7 ? 'text-red-600 dark:text-red-300' : daysRemaining <= 15 ? 'text-yellow-600 dark:text-yellow-300' : 'text-green-600 dark:text-green-300'}`}>
                         {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
                       </p>
                     )}
@@ -837,10 +837,10 @@ export const SellerDashboard: React.FC = () => {
                </div>
 
                <div className="mt-5 flex flex-wrap gap-2">
-                 <Button size="sm" variant="secondary" className="bg-white/10 border-white/20 hover:bg-white/20 text-white" onClick={() => setActiveTab('add_product')}>
+                 <Button size="sm" variant="secondary" className="bg-gold-400 hover:bg-gold-300 border-gold-400 text-gray-900 dark:bg-white/10 dark:border-white/20 dark:hover:bg-white/20 dark:text-white" onClick={() => setActiveTab('add_product')}>
                     {t('dashboard.addArticle')}
                  </Button>
-                 <Button size="sm" variant="secondary" className="bg-white/5 border-white/10 hover:bg-white/15 text-white/80" onClick={() => setActiveTab('shop')}>
+                 <Button size="sm" variant="secondary" className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/15 dark:text-white/80" onClick={() => setActiveTab('shop')}>
                     {t('dashboard.editShop')}
                  </Button>
                </div>
@@ -849,11 +849,11 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Expiration Alert */}
         {isExpired && isPaidTier && (
-          <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-2xl">🚨</span>
             <div className="flex-1">
-              <p className="text-sm text-red-400 font-bold">{t('dashboard.subscriptionExpired')}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.expiredLimitMessage')}</p>
+              <p className="text-sm text-red-700 dark:text-red-400 font-bold">{t('dashboard.subscriptionExpired')}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.expiredLimitMessage')}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => setShowRenewModal(true)} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
@@ -864,13 +864,13 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Expiration Warning (< 7 days, urgent at <= 3 days) */}
         {showExpirationWarning && (
-          <div className={`${showUrgentWarning ? 'bg-red-900/20 border-red-500/30' : 'bg-yellow-900/20 border-yellow-500/30'} border rounded-xl p-4 flex items-start gap-3`}>
+          <div className={`${showUrgentWarning ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/30' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-500/30'} border rounded-xl p-4 flex items-start gap-3`}>
             <span className="text-2xl">{showUrgentWarning ? '&#9888;' : '&#9200;'}</span>
             <div className="flex-1">
-              <p className={`text-sm font-bold ${showUrgentWarning ? 'text-red-400' : 'text-yellow-400'}`}>
+              <p className={`text-sm font-bold ${showUrgentWarning ? 'text-red-700 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
                 {showUrgentWarning ? 'URGENT — ' : ''}{t('dashboard.expiresIn', { days: daysRemaining })}
               </p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.renewMessage')}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => setShowRenewModal(true)} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>{t('dashboard.renewNow')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
@@ -881,11 +881,11 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Upgrade Warning (free plan, 3+ products) */}
         {showUpgradeWarning && !isExpired && (
-          <div className="bg-gold-400/5 border border-gold-400/30 rounded-xl p-4 flex items-start gap-3">
+          <div className="bg-gold-50 dark:bg-gold-400/5 border border-gold-200 dark:border-gold-400/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-2xl">&#128640;</span>
             <div className="flex-1">
-              <p className="text-sm text-gold-400 font-bold">{t('dashboard.upgradeTitle')}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
+              <p className="text-sm text-gold-700 dark:text-gold-400 font-bold">{t('dashboard.upgradeTitle')}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.viewPlans')}</button>
                 <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
@@ -905,10 +905,10 @@ export const SellerDashboard: React.FC = () => {
         {/* ── Buyer Requests Feature Banner ── */}
         <div
           onClick={() => setActiveTab('requests')}
-          className="cursor-pointer relative overflow-hidden rounded-2xl border border-gold-400/30 bg-gradient-to-br from-amber-950/60 via-gray-900 to-gray-900 hover:border-gold-400/60 transition-all duration-300 group"
+          className="cursor-pointer relative overflow-hidden rounded-2xl border border-gold-400/40 bg-gradient-to-br from-amber-50 via-white to-white dark:from-amber-950/60 dark:via-gray-900 dark:to-gray-900 hover:border-gold-400/70 transition-all duration-300 group shadow-sm dark:shadow-none"
         >
           {/* Background glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.12),transparent_60%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.18),transparent_60%)] pointer-events-none" />
           <div className="relative z-10 p-5">
             <div className="flex items-start justify-between gap-4">
               {/* Left: icon + title */}
@@ -918,18 +918,18 @@ export const SellerDashboard: React.FC = () => {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-black text-white text-base">{t('dashboard.buyerRequestsCardTitle')}</h3>
+                    <h3 className="font-black text-gray-900 dark:text-white text-base">{t('dashboard.buyerRequestsCardTitle')}</h3>
                     {requestStats && requestStats.todayCount > 0 && (
-                      <span className="text-[11px] bg-gold-400/20 text-gold-400 border border-gold-400/40 px-2 py-0.5 rounded-full font-bold animate-pulse shrink-0">
+                      <span className="text-[11px] bg-gold-400/20 text-gold-700 dark:text-gold-400 border border-gold-400/40 px-2 py-0.5 rounded-full font-bold animate-pulse shrink-0">
                         +{requestStats.todayCount} {t('dashboard.buyerRequestsToday')}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-400 mt-0.5 line-clamp-1">{t('dashboard.buyerRequestsCardDesc')}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">{t('dashboard.buyerRequestsCardDesc')}</p>
                 </div>
               </div>
               {/* Right: arrow */}
-              <span className="text-gold-400/50 group-hover:text-gold-400 group-hover:translate-x-1 transition-all text-xl shrink-0 mt-1">→</span>
+              <span className="text-gold-500/70 dark:text-gold-400/50 group-hover:text-gold-600 dark:group-hover:text-gold-400 group-hover:translate-x-1 transition-all text-xl shrink-0 mt-1">→</span>
             </div>
 
             {/* Feature pills */}
@@ -939,7 +939,7 @@ export const SellerDashboard: React.FC = () => {
                 { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
                 { icon: '🔓', label: t('dashboard.buyerRequestsFeat3') },
               ].map(f => (
-                <span key={f.label} className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-800/60 border border-gray-700/50 px-2.5 py-1 rounded-full">
+                <span key={f.label} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-400 bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 px-2.5 py-1 rounded-full">
                   <span>{f.icon}</span>
                   {f.label}
                 </span>
@@ -949,7 +949,7 @@ export const SellerDashboard: React.FC = () => {
             {/* CTA */}
             <button
               onClick={e => { e.stopPropagation(); navigate('/demandes'); }}
-              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-amber-900/30"
+              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-amber-200/50 dark:shadow-amber-900/30"
             >
               🔍 {t('dashboard.viewAllRequests')}
             </button>
@@ -957,23 +957,23 @@ export const SellerDashboard: React.FC = () => {
         </div>
 
         {/* ── My Subscription Card ── */}
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">{t('dashboard.mySubscription')}</h3>
+        <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.mySubscription')}</h3>
 
           {/* Current plan info */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
                 isPaidTier && !isExpired
-                  ? 'bg-gold-400/20 text-gold-400'
+                  ? 'bg-gold-400/20 text-gold-700 dark:text-gold-400'
                   : isExpired
-                  ? 'bg-red-500/20 text-red-400'
-                  : 'bg-gray-700 text-gray-400'
+                  ? 'bg-red-500/20 text-red-600 dark:text-red-400'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
               }`}>
                 {isPaidTier && !isExpired ? '★' : isExpired ? '!' : '○'}
               </div>
               <div>
-                <p className="text-white font-bold text-sm">{currentTier.label}</p>
+                <p className="text-gray-900 dark:text-white font-bold text-sm">{currentTier.label}</p>
                 <p className="text-gray-500 text-xs">
                   {currentTier.max === null
                     ? t('dashboard.subUnlimited')
@@ -983,10 +983,10 @@ export const SellerDashboard: React.FC = () => {
             </div>
             <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
               isExpired
-                ? 'bg-red-500/20 text-red-400'
+                ? 'bg-red-500/20 text-red-600 dark:text-red-400'
                 : isPaidTier
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-gray-700 text-gray-400'
+                ? 'bg-green-500/20 text-green-700 dark:text-green-400'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
             }`}>
               {isExpired ? t('dashboard.subExpired') : isPaidTier ? t('dashboard.subActive') : t('dashboard.subFree')}
             </span>
@@ -994,9 +994,9 @@ export const SellerDashboard: React.FC = () => {
 
           {/* Expiration details (paid tier only) */}
           {isPaidTier && !isExpired && daysRemaining !== null && (
-            <div className="bg-gray-900/50 rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs text-gray-400">{t('dashboard.subExpiresOn')}</span>
-              <span className={`text-xs font-bold ${daysRemaining <= 7 ? 'text-red-400' : daysRemaining <= 15 ? 'text-yellow-400' : 'text-green-400'}`}>
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 flex items-center justify-between">
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.subExpiresOn')}</span>
+              <span className={`text-xs font-bold ${daysRemaining <= 7 ? 'text-red-600 dark:text-red-400' : daysRemaining <= 15 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
                 {currentUser.sellerDetails?.subscriptionExpiresAt
                   ? new Date(currentUser.sellerDetails.subscriptionExpiresAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
                   : '—'} ({daysRemaining} {t('dashboard.subDays')})
@@ -1007,10 +1007,10 @@ export const SellerDashboard: React.FC = () => {
           {/* Usage bar */}
           <div>
             <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-gray-400">{t('dashboard.subUsage')}</span>
-              <span className={`font-bold ${isLimitReached ? 'text-red-400' : 'text-white'}`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('dashboard.subUsage')}</span>
+              <span className={`font-bold ${isLimitReached ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
             </div>
-            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full origin-left transition-transform duration-500 ${
                   isLimitReached ? 'bg-red-500' : progressPercentage > 80 ? 'bg-yellow-500' : 'bg-emerald-500'
@@ -1026,8 +1026,8 @@ export const SellerDashboard: React.FC = () => {
               const hasPendingRequest = subRequests.some(r => r.status === 'pending' || r.status === 'pending_validation');
               if (hasPendingRequest) {
                 return (
-                  <button disabled className="w-full py-2.5 bg-gray-700 text-gray-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
-                    <span className="w-3 h-3 border-2 border-gray-500 border-t-gray-300 rounded-full animate-spin" />
+                  <button disabled className="w-full py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 border-2 border-gray-400 dark:border-gray-500 border-t-gray-700 dark:border-t-gray-300 rounded-full animate-spin" />
                     {t('dashboard.subPendingRequest')}
                   </button>
                 );
@@ -1042,39 +1042,39 @@ export const SellerDashboard: React.FC = () => {
           {/* Request history */}
           {subRequests.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('dashboard.subHistory')}</p>
+              <p className="text-xs font-bold text-gray-600 dark:text-gray-500 uppercase tracking-wider mb-2">{t('dashboard.subHistory')}</p>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {subRequests.slice(0, 5).map(req => (
-                  <div key={req.id} className="flex items-center justify-between bg-gray-900/50 rounded-lg p-2.5 text-xs">
+                  <div key={req.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2.5 text-xs">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        req.status === 'approved' ? 'bg-green-400' :
-                        req.status === 'rejected' ? 'bg-red-400' :
-                        req.status === 'pending_validation' ? 'bg-blue-400' :
-                        'bg-yellow-400'
+                        req.status === 'approved' ? 'bg-green-500' :
+                        req.status === 'rejected' ? 'bg-red-500' :
+                        req.status === 'pending_validation' ? 'bg-blue-500' :
+                        'bg-yellow-500'
                       }`} />
-                      <span className="text-white truncate">{req.planLabel}</span>
+                      <span className="text-gray-900 dark:text-white truncate">{req.planLabel}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className={`font-medium ${
-                        req.status === 'approved' ? 'text-green-400' :
-                        req.status === 'rejected' ? 'text-red-400' :
-                        req.status === 'pending_validation' ? 'text-blue-400' :
-                        'text-yellow-400'
+                        req.status === 'approved' ? 'text-green-600 dark:text-green-400' :
+                        req.status === 'rejected' ? 'text-red-600 dark:text-red-400' :
+                        req.status === 'pending_validation' ? 'text-blue-600 dark:text-blue-400' :
+                        'text-yellow-600 dark:text-yellow-400'
                       }`}>
                         {req.status === 'approved' ? t('dashboard.subApproved') :
                          req.status === 'rejected' ? t('dashboard.subRejected') :
                          req.status === 'pending_validation' ? t('dashboard.subValidating') :
                          t('dashboard.subPending')}
                       </span>
-                      <span className="text-gray-600">{new Date(req.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                      <span className="text-gray-500 dark:text-gray-600">{new Date(req.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                     </div>
                   </div>
                 ))}
               </div>
               {subRequests.some(r => r.status === 'rejected' && r.rejectionReason) && (
-                <div className="mt-2 bg-red-900/10 border border-red-800/20 rounded-lg p-2.5 space-y-2">
-                  <p className="text-xs text-red-400">
+                <div className="mt-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/20 rounded-lg p-2.5 space-y-2">
+                  <p className="text-xs text-red-700 dark:text-red-400">
                     {t('dashboard.subLastRejection')}: {subRequests.find(r => r.status === 'rejected')?.rejectionReason}
                   </p>
                   <button
@@ -1091,12 +1091,12 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Rejected products alert */}
         {myProducts.filter(p => p.status === 'rejected').length > 0 && (
-          <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-4 flex items-start gap-3">
+          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-xl">⚠️</span>
             <div>
-              <p className="text-sm text-red-400 font-bold">{t('dashboard.rejectedProducts', { count: myProducts.filter(p => p.status === 'rejected').length })}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.rejectedHint')}</p>
-              <button onClick={() => { setActiveTab('products'); setProductStatusFilter('rejected'); }} className="text-xs text-blue-400 hover:underline mt-1">
+              <p className="text-sm text-red-700 dark:text-red-400 font-bold">{t('dashboard.rejectedProducts', { count: myProducts.filter(p => p.status === 'rejected').length })}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.rejectedHint')}</p>
+              <button onClick={() => { setActiveTab('products'); setProductStatusFilter('rejected'); }} className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1">
                 {t('dashboard.viewRejected')}
               </button>
             </div>
@@ -1105,7 +1105,7 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <div>
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.quickActions')}</h3>
+          <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.quickActions')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { icon: '➕', label: t('dashboard.addProduct'), action: () => setActiveTab('add_product') },
@@ -1114,9 +1114,9 @@ export const SellerDashboard: React.FC = () => {
               { icon: '📈', label: t('dashboard.viewAnalytics'), action: () => setActiveTab('analytics') },
               { icon: '💬', label: t('dashboard.contactAdmin'), action: contactAdmin },
             ].map(item => (
-              <button key={item.label} onClick={item.action} className="bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-xl p-4 text-center transition-all group">
+              <button key={item.label} onClick={item.action} className="bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 text-center transition-all group shadow-sm dark:shadow-none">
                 <span className="text-2xl block mb-1 group-hover:scale-110 transition-transform">{item.icon}</span>
-                <span className="text-xs text-gray-400 font-medium">{item.label}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{item.label}</span>
               </button>
             ))}
           </div>
@@ -1125,15 +1125,15 @@ export const SellerDashboard: React.FC = () => {
         {/* Top products by views */}
         {myProducts.filter(p => p.status === 'approved' && p.views > 0).length > 0 && (
           <div>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.topByViews')}</h3>
+            <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.topByViews')}</h3>
             <div className="space-y-2">
               {[...myProducts].filter(p => p.status === 'approved').sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5).map((p, i) => (
-                <div key={p.id} className="flex items-center gap-3 bg-gray-800/30 rounded-lg p-2.5">
+                <div key={p.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-lg p-2.5">
                   <span className="text-xs font-bold text-gray-500 w-5 text-center">{i + 1}</span>
-                  <img src={p.images[0] ? getOptimizedUrl(p.images[0], 40) : ''} alt="" loading="lazy" className="w-8 h-8 rounded-md object-cover bg-gray-700" />
-                  <span className="flex-1 text-sm text-white truncate">{p.title}</span>
-                  <span className="text-xs text-gray-400">👁 {p.views}</span>
-                  <span className="text-xs text-gray-400">❤️ {p.likesCount || 0}</span>
+                  <img src={p.images[0] ? getOptimizedUrl(p.images[0], 40) : ''} alt="" loading="lazy" className="w-8 h-8 rounded-md object-cover bg-gray-200 dark:bg-gray-700" />
+                  <span className="flex-1 text-sm text-gray-900 dark:text-white truncate">{p.title}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">👁 {p.views}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">❤️ {p.likesCount || 0}</span>
                 </div>
               ))}
             </div>
@@ -1184,7 +1184,7 @@ export const SellerDashboard: React.FC = () => {
     return (
       <div className="space-y-6 animate-fade-in">
         <div>
-          <h2 className="text-xl font-bold text-white">{t('dashboard.analyticsTitle')}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.analyticsTitle')}</h2>
           <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.analyticsSubtitle')}</p>
         </div>
 
@@ -1199,7 +1199,7 @@ export const SellerDashboard: React.FC = () => {
                 { value: totalContacts30, label: t('dashboard.analyticsContacts'), color: 'text-green-400' },
                 { value: totalLikes30, label: t('dashboard.analyticsLikes'), color: 'text-pink-400' },
               ].map(card => (
-                <div key={card.label} className="bg-gray-800/50 border border-gray-700/50 p-4 rounded-2xl text-center">
+                <div key={card.label} className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none p-4 rounded-2xl text-center">
                   <p className={`text-2xl font-black ${card.color}`}>{card.value}</p>
                   <p className="text-[10px] text-gray-500 mt-1 leading-tight">{card.label}</p>
                 </div>
@@ -1207,8 +1207,8 @@ export const SellerDashboard: React.FC = () => {
             </div>
 
             {/* 30-day bar chart */}
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-5">
-              <p className="text-sm font-bold text-white mb-4">{t('dashboard.analyticsChart')}</p>
+            <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-5">
+              <p className="text-sm font-bold text-gray-900 dark:text-white mb-4">{t('dashboard.analyticsChart')}</p>
               {totalViews30 === 0 ? (
                 <div className="text-center py-8 text-gray-500 text-sm">{t('dashboard.analyticsNoData')}</div>
               ) : (
@@ -1240,17 +1240,17 @@ export const SellerDashboard: React.FC = () => {
             </div>
 
             {/* Per-product ranking */}
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-700/50">
-                <p className="text-sm font-bold text-white">{t('dashboard.analyticsTopProducts')}</p>
+            <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700/50">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{t('dashboard.analyticsTopProducts')}</p>
               </div>
               {topProducts.length === 0 ? (
                 <p className="text-center py-8 text-gray-500 text-sm">{t('dashboard.analyticsNoProducts')}</p>
               ) : (
-                <div className="divide-y divide-gray-700/30">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700/30">
                   {topProducts.map(({ product, stats }) => (
                     <div key={product.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-700">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                         {product.images?.[0] && (
                           <img
                             src={getOptimizedUrl(product.images[0], 36)}
@@ -1261,14 +1261,14 @@ export const SellerDashboard: React.FC = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-medium truncate">{product.title}</p>
+                        <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{product.title}</p>
                         <div className="flex gap-3 mt-0.5">
                           <span className="text-[10px] text-blue-400">👁 {stats.views}</span>
                           <span className="text-[10px] text-green-400">💬 {stats.contacts}</span>
                           <span className="text-[10px] text-pink-400">❤️ {stats.likes}</span>
                         </div>
                       </div>
-                      <div className="w-16 bg-gray-700/60 h-1.5 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="w-16 bg-gray-200 dark:bg-gray-700/60 h-1.5 rounded-full overflow-hidden flex-shrink-0">
                         <div
                           className="h-full bg-blue-500 rounded-full origin-left transition-transform"
                           style={{ transform: `scaleX(${stats.views / maxViews})` }}
@@ -1290,17 +1290,17 @@ export const SellerDashboard: React.FC = () => {
       if (isLimitReached) {
           return (
             <div className="max-w-md mx-auto animate-fade-in py-10 text-center">
-                <div className="bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-700 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                <div className="bg-white dark:bg-gradient-to-b dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-3xl p-8 shadow-xl dark:shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-500"></div>
-                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-gray-700 shadow-inner">
+                    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-gray-200 dark:border-gray-700 shadow-inner">
                         <span className="text-4xl">🔒</span>
                     </div>
-                    
-                    <h2 className="text-2xl font-black text-white mb-2">{t('dashboard.limitReachedTitle')}</h2>
+
+                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">{t('dashboard.limitReachedTitle')}</h2>
 
                     {!hasNif ? (
                          <div className="mb-6">
-                            <p className="text-gray-300 text-sm mb-4">
+                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-4">
                                 {t('dashboard.noNifLimit')}
                             </p>
                             <Button onClick={() => setActiveTab('shop')} className="w-full bg-blue-600 text-white">
@@ -1309,7 +1309,7 @@ export const SellerDashboard: React.FC = () => {
                          </div>
                     ) : (
                         <div className="mb-6 space-y-3">
-                            <p className="text-gray-400 mb-4 text-sm leading-relaxed">
+                            <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
                                 {t('dashboard.usedSlots', { max: currentTier.max, label: currentTier.label })}
                             </p>
                             <a
@@ -1322,7 +1322,7 @@ export const SellerDashboard: React.FC = () => {
                         </div>
                     )}
 
-                    <button onClick={() => setActiveTab('overview')} className="mt-4 text-sm text-gray-500 hover:text-white underline">
+                    <button onClick={() => setActiveTab('overview')} className="mt-4 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white underline">
                         {t('dashboard.backToDashboard')}
                     </button>
                 </div>
@@ -1333,9 +1333,9 @@ export const SellerDashboard: React.FC = () => {
       return (
         <div className="max-w-5xl mx-auto animate-fade-in">
             <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => setActiveTab('products')} className="text-gray-400 hover:text-white">{t('dashboard.backButton')}</button>
-                <h2 className="text-xl font-bold text-white">{t('dashboard.addProductTitle')}</h2>
-                <span className="ml-auto text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded border border-gray-700">
+                <button onClick={() => setActiveTab('products')} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">{t('dashboard.backButton')}</button>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.addProductTitle')}</h2>
+                <span className="ml-auto text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
                     {t('dashboard.quota', { current: currentCount, max: currentTier.max === null ? '∞' : currentTier.max })}
                 </span>
             </div>
@@ -1347,15 +1347,15 @@ export const SellerDashboard: React.FC = () => {
                   {/* Quality Score */}
                   <ProductQualityScore score={productScore} />
 
-                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">{t('dashboard.basicInfo')}</h3>
+                  <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-6 space-y-4">
+                    <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">{t('dashboard.basicInfo')}</h3>
 
                     <div className="grid grid-cols-2 gap-4">
                        <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.categoryLabel')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.categoryLabel')}</label>
                           <select
                               required value={category} onChange={e => { setCategory(e.target.value); setSubCategory(''); }}
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
+                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
                           >
                               <option value="">{t('dashboard.selectPlaceholder')}</option>
                               {categoriesList.map(c => (
@@ -1364,10 +1364,10 @@ export const SellerDashboard: React.FC = () => {
                           </select>
                        </div>
                        <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.subCategoryLabel')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.subCategoryLabel')}</label>
                           <select
                               value={subCategory} onChange={e => setSubCategory(e.target.value)}
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
+                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
                               disabled={!category}
                           >
                               <option value="">{t('dashboard.selectPlaceholder')}</option>
@@ -1403,71 +1403,71 @@ export const SellerDashboard: React.FC = () => {
                         </div>
                         <textarea
                           required value={desc} onChange={e => setDesc(e.target.value)}
-                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:ring-1 focus:ring-blue-500 outline-none min-h-[100px]"
+                          className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none min-h-[100px]"
                           placeholder={t('dashboard.descriptionPlaceholder')}
                         />
                     </div>
                   </div>
 
-                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 space-y-4">
-                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">{t('dashboard.priceAndImages')}</h3>
+                  <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-6 space-y-4">
+                     <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">{t('dashboard.priceAndImages')}</h3>
 
                      <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.priceLabel')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.priceLabel')}</label>
                           <input
                             required type="number" min="0.01" step="any" value={price} onChange={e => setPrice(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
                             placeholder="0"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.currencyLabel')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.currencyLabel')}</label>
                           <select
                             value={productCurrency}
                             onChange={e => setProductCurrency(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                           >
                             {currencies.map(c => <option key={c.id} value={c.code}>{c.symbol} ({c.code})</option>)}
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.oldPrice')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.oldPrice')}</label>
                           <input
                             type="number" min="0" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
                             placeholder="—"
                           />
                         </div>
                      </div>
 
                     {/* B2B Wholesale Toggle */}
-                    <div className="border border-indigo-500/20 bg-indigo-500/5 rounded-xl p-4 space-y-3">
+                    <div className="border border-indigo-300 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/5 rounded-xl p-4 space-y-3">
                       <label className="flex items-center gap-3 cursor-pointer">
-                        <div className={`relative w-11 h-6 rounded-full transition-colors ${isWholesale ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                        <div className={`relative w-11 h-6 rounded-full transition-colors ${isWholesale ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-700'}`}
                           onClick={() => setIsWholesale(!isWholesale)}>
                           <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isWholesale ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
                         </div>
                         <div>
-                          <span className="text-sm font-semibold text-white">{t('dashboard.wholesaleToggle')}</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{t('dashboard.wholesaleToggle')}</span>
                           <p className="text-xs text-gray-500">{t('dashboard.wholesaleHint')}</p>
                         </div>
                       </label>
                       {isWholesale && (
                         <div className="grid grid-cols-2 gap-4 pt-2">
                           <div>
-                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.minOrder')}</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.minOrder')}</label>
                             <input
                               type="number" min="2" value={minOrderQty} onChange={e => setMinOrderQty(e.target.value)}
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
+                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
                               placeholder="10"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.wholesalePrice')}</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.wholesalePrice')}</label>
                             <input
                               type="number" min="0" step="any" value={wholesalePrice} onChange={e => setWholesalePrice(e.target.value)}
-                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
+                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
                               placeholder="0"
                             />
                           </div>
@@ -1487,13 +1487,13 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   {formError && (
-                    <div className="bg-red-900/20 border border-red-500/40 text-red-300 text-sm p-3 rounded-xl">
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-500/40 text-red-700 dark:text-red-300 text-sm p-3 rounded-xl">
                       {formError}
                     </div>
                   )}
 
                   {uploadProgress && (
-                    <div className="bg-blue-900/20 border border-blue-500/40 text-blue-300 text-sm p-3 rounded-xl flex items-center gap-2">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300 text-sm p-3 rounded-xl flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                       {uploadProgress}
                     </div>
@@ -1546,15 +1546,15 @@ export const SellerDashboard: React.FC = () => {
 
   const renderShopSettings = () => (
       <div className="max-w-2xl mx-auto animate-fade-in space-y-6 pb-24 md:pb-6">
-          <h2 className="text-xl font-bold text-white mb-4">{t('dashboard.shopCustomization')}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t('dashboard.shopCustomization')}</h2>
 
-          <form onSubmit={handleSaveProfile} className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6">
+          <form onSubmit={handleSaveProfile} className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-6">
               <div className="space-y-4">
                   {/* Logo / Image boutique */}
                   <div>
                       <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.logoLabel')}</label>
                       <div className="flex items-center gap-4">
-                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-700 bg-gray-900 flex-shrink-0">
+                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
                           <img
                             src={avatarPreview || '/icons/icon-192.png'}
                             alt="Logo"
@@ -1572,7 +1572,7 @@ export const SellerDashboard: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => avatarInputRef.current?.click()}
-                            className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-blue-500 transition-colors"
+                            className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-blue-500 transition-colors"
                           >
                             {t('dashboard.changeImage')}
                           </button>
@@ -1582,18 +1582,18 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.shopNameLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.shopNameLabel')}</label>
                       <input
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
                         value={shopProfile.name}
                         onChange={(e) => setShopProfile({...shopProfile, name: e.target.value})}
                       />
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.bioLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.bioLabel')}</label>
                       <textarea
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none min-h-[80px]"
+                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none min-h-[80px]"
                         value={shopProfile.bio}
                         onChange={(e) => setShopProfile({...shopProfile, bio: e.target.value})}
                         placeholder={t('dashboard.bioPlaceholder')}
@@ -1601,9 +1601,9 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.whatsappLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.whatsappLabel')}</label>
                       <input
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
                         value={shopProfile.whatsapp}
                         onChange={(e) => setShopProfile({...shopProfile, whatsapp: e.target.value})}
                         placeholder="+257..."
@@ -1611,8 +1611,8 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   {/* GPS — Capture automatique */}
-                  <div className="bg-blue-900/10 border border-blue-500/30 p-4 rounded-xl space-y-3">
-                      <label className="block text-xs font-bold text-blue-300">{t('dashboard.gpsLabel')}</label>
+                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-300 dark:border-blue-500/30 p-4 rounded-xl space-y-3">
+                      <label className="block text-xs font-bold text-blue-700 dark:text-blue-300">{t('dashboard.gpsLabel')}</label>
                       <button
                         type="button"
                         onClick={captureGPS}
@@ -1635,9 +1635,9 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.locationUrlLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.locationUrlLabel')}</label>
                       <input
-                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                          className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
                           value={shopProfile.locationUrl}
                           onChange={(e) => setShopProfile({...shopProfile, locationUrl: e.target.value})}
                           placeholder="https://maps.google.com/..."
@@ -1646,7 +1646,7 @@ export const SellerDashboard: React.FC = () => {
                   
                   {/* TYPE DE VENTE */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.sellingTypeLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-2">{t('dashboard.sellingTypeLabel')}</label>
                       <div className="grid grid-cols-3 gap-2">
                         {([
                           { value: 'shop' as const, icon: '🏪', label: t('dashboard.fixedShop') },
@@ -1659,8 +1659,8 @@ export const SellerDashboard: React.FC = () => {
                             onClick={() => setShopProfile({...shopProfile, sellerType: opt.value})}
                             className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-sm font-medium transition-all ${
                               shopProfile.sellerType === opt.value
-                                ? 'bg-blue-600/20 border-blue-500 text-white'
-                                : 'bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600'
+                                ? 'bg-blue-600/20 border-blue-500 text-blue-700 dark:text-white'
+                                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                             }`}
                           >
                             <span className="text-xl">{opt.icon}</span>
@@ -1672,18 +1672,18 @@ export const SellerDashboard: React.FC = () => {
 
                   {/* PHOTO DE LA BOUTIQUE (distincte du logo/avatar) */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.shopPhotoLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-2">{t('dashboard.shopPhotoLabel')}</label>
                       <div className="flex items-center gap-4">
-                        <div className="relative w-24 h-16 rounded-lg overflow-hidden border-2 border-gray-700 bg-gray-900 flex-shrink-0">
+                        <div className="relative w-24 h-16 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
                           {shopImagePreview ? (
                             <img src={shopImagePreview} alt="Boutique" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-600 text-2xl">🏪</div>
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-600 text-2xl">🏪</div>
                           )}
                         </div>
                         <div className="flex-1">
                           <input ref={shopImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleShopImageSelect} className="hidden" />
-                          <button type="button" onClick={() => shopImageInputRef.current?.click()} className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-blue-500 transition-colors">
+                          <button type="button" onClick={() => shopImageInputRef.current?.click()} className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-blue-500 transition-colors">
                             {shopImagePreview ? t('dashboard.changePhoto') : t('dashboard.addPhoto2')}
                           </button>
                           <p className="text-[10px] text-gray-500 mt-1">{t('dashboard.shopPhotoHint')}</p>
@@ -1693,7 +1693,7 @@ export const SellerDashboard: React.FC = () => {
 
                   {/* CATÉGORIES */}
                   <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.categoriesLabel')}</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-2">{t('dashboard.categoriesLabel')}</label>
                       <div className="flex flex-wrap gap-2">
                         {firestoreCategories.map(c => (
                           <button
@@ -1702,8 +1702,8 @@ export const SellerDashboard: React.FC = () => {
                             onClick={() => toggleShopCategory(c.name)}
                             className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                               shopProfile.categories.includes(c.name)
-                                ? 'bg-blue-600 text-white border-blue-500'
-                                : 'bg-transparent text-gray-500 border-gray-700 hover:border-gray-600'
+                                ? 'bg-gold-400 text-gray-900 border-gold-400 shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
+                                : 'bg-transparent text-gray-600 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                             }`}
                           >
                             {c.icon} {c.name}
@@ -1713,13 +1713,13 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   {/* ADRESSE */}
-                  <div className="bg-gray-900/50 border border-gray-700/50 p-4 rounded-xl space-y-3">
-                      <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.addressLabel')}</label>
+                  <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 p-4 rounded-xl space-y-3">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.addressLabel')}</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-500 mb-1">Ville</label>
                           <select
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none"
                             value={shopProfile.province}
                             onChange={e => setShopProfile({ ...shopProfile, province: e.target.value, commune: e.target.value })}
                           >
@@ -1732,7 +1732,7 @@ export const SellerDashboard: React.FC = () => {
                         <div>
                           <label className="block text-[10px] text-gray-500 mb-1">Quartier / Adresse (optionnel)</label>
                           <input
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none"
                             value={shopProfile.quartier}
                             onChange={(e) => setShopProfile({...shopProfile, quartier: e.target.value})}
                             placeholder="Ex: Rohero, Av. de la Liberté"
@@ -1742,12 +1742,12 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   {/* SECTION NIF & REGISTRE */}
-                  <div className={`p-4 rounded-xl border ${!hasNif ? 'bg-red-900/10 border-red-500/30' : 'bg-green-900/10 border-green-500/30'}`}>
+                  <div className={`p-4 rounded-xl border ${!hasNif ? 'bg-red-50 dark:bg-red-900/10 border-red-300 dark:border-red-500/30' : 'bg-green-50 dark:bg-green-900/10 border-green-300 dark:border-green-500/30'}`}>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.nifLabel')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.nifLabel')}</label>
                           <input
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
                             value={shopProfile.nif}
                             onChange={(e) => setShopProfile({...shopProfile, nif: e.target.value})}
                             placeholder={!hasNif ? t('dashboard.nifPlaceholder') : t('dashboard.nifRegistered')}
@@ -1755,9 +1755,9 @@ export const SellerDashboard: React.FC = () => {
                           {!hasNif && <p className="text-xs text-red-400 mt-2">{t('dashboard.addNifHint')}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-400 mb-1">{t('dashboard.registryLabel')}</label>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.registryLabel')}</label>
                           <input
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
                             value={shopProfile.registryNumber}
                             onChange={(e) => setShopProfile({...shopProfile, registryNumber: e.target.value})}
                             placeholder="Ex: RC/BUJ/2026-xxxx"
@@ -1815,14 +1815,14 @@ export const SellerDashboard: React.FC = () => {
 
   const renderVerification = () => (
     <div className="max-w-2xl mx-auto animate-fade-in space-y-6 pb-24 md:pb-6">
-      <h2 className="text-xl font-bold text-white">{t('dashboard.verification')}</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.verification')}</h2>
 
       {/* Statut actuel */}
       <div className={`p-5 rounded-2xl border ${
-        verificationStatus === 'verified' ? 'bg-green-500/10 border-green-500/30' :
-        verificationStatus === 'pending' ? 'bg-blue-500/10 border-blue-500/30' :
-        verificationStatus === 'rejected' ? 'bg-red-500/10 border-red-500/30' :
-        'bg-gray-800/50 border-gray-700'
+        verificationStatus === 'verified' ? 'bg-green-50 dark:bg-green-500/10 border-green-300 dark:border-green-500/30' :
+        verificationStatus === 'pending' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/30' :
+        verificationStatus === 'rejected' ? 'bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/30' :
+        'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-none'
       }`}>
         <div className="flex items-center gap-3">
           <span className="text-3xl">
@@ -1830,9 +1830,9 @@ export const SellerDashboard: React.FC = () => {
           </span>
           <div>
             <p className={`font-bold ${
-              verificationStatus === 'verified' ? 'text-green-400' :
-              verificationStatus === 'pending' ? 'text-blue-400' :
-              verificationStatus === 'rejected' ? 'text-red-400' : 'text-gray-300'
+              verificationStatus === 'verified' ? 'text-green-600 dark:text-green-400' :
+              verificationStatus === 'pending' ? 'text-blue-600 dark:text-blue-400' :
+              verificationStatus === 'rejected' ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'
             }`}>
               {verificationStatus === 'verified' ? t('dashboard.verifyStatusVerified') :
                verificationStatus === 'pending' ? t('dashboard.verifyStatusPending') :
@@ -1851,15 +1851,15 @@ export const SellerDashboard: React.FC = () => {
 
       {/* Formulaire demande (affiché uniquement si non vérifié / non pending) */}
       {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 space-y-4 shadow-sm dark:shadow-none">
           <div>
-            <h3 className="text-white font-semibold">{t('dashboard.verifyFormTitle')}</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold">{t('dashboard.verifyFormTitle')}</h3>
             <p className="text-xs text-gray-500 mt-1">{t('dashboard.verifyFormSubtitle')}</p>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1.5">
                 {t('dashboard.verifyPhoneLabel')} <span className="text-red-400">*</span>
               </label>
               <input
@@ -1867,12 +1867,12 @@ export const SellerDashboard: React.FC = () => {
                 value={verifForm.phone}
                 onChange={(e) => setVerifForm(s => ({ ...s, phone: e.target.value }))}
                 placeholder={t('dashboard.verifyPhonePlaceholder')}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1.5">
                 {t('dashboard.verifyNifLabel')}
               </label>
               <input
@@ -1880,12 +1880,12 @@ export const SellerDashboard: React.FC = () => {
                 value={verifForm.nif}
                 onChange={(e) => setVerifForm(s => ({ ...s, nif: e.target.value }))}
                 placeholder={t('dashboard.verifyNifPlaceholder')}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1.5">
                 {t('dashboard.verifyRegistryLabel')}
               </label>
               <input
@@ -1893,7 +1893,7 @@ export const SellerDashboard: React.FC = () => {
                 value={verifForm.registryNumber}
                 onChange={(e) => setVerifForm(s => ({ ...s, registryNumber: e.target.value }))}
                 placeholder={t('dashboard.verifyRegistryPlaceholder')}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
               />
             </div>
 
@@ -1906,16 +1906,16 @@ export const SellerDashboard: React.FC = () => {
 
       {/* Documents optionnels — accélère la vérification */}
       {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 space-y-3 shadow-sm dark:shadow-none">
           <div>
-            <h3 className="text-white font-semibold">{t('dashboard.verifyDocumentsOptional')}</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold">{t('dashboard.verifyDocumentsOptional')}</h3>
             <p className="text-xs text-gray-500 mt-1">{t('dashboard.verifyDocumentsOptionalHint')}</p>
           </div>
           {currentUser.sellerDetails?.documents?.cniUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <span className="text-xl">🪪</span>
               <div className="flex-1">
-                <p className="text-sm text-white font-medium">{t('dashboard.verifyCNI')}</p>
+                <p className="text-sm text-gray-900 dark:text-white font-medium">{t('dashboard.verifyCNI')}</p>
                 <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
               </div>
               <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
@@ -1923,10 +1923,10 @@ export const SellerDashboard: React.FC = () => {
             </div>
           )}
           {currentUser.sellerDetails?.documents?.nifUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <span className="text-xl">📄</span>
               <div className="flex-1">
-                <p className="text-sm text-white font-medium">NIF</p>
+                <p className="text-sm text-gray-900 dark:text-white font-medium">NIF</p>
                 <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
               </div>
               <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
@@ -1941,13 +1941,13 @@ export const SellerDashboard: React.FC = () => {
 
       {/* Documents déjà soumis — affichage compact pour vendeurs verifiés/pending */}
       {(verificationStatus === 'verified' || verificationStatus === 'pending') && hasDocuments && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
-          <h3 className="text-white font-semibold">{t('dashboard.verifyDocuments')}</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 space-y-3 shadow-sm dark:shadow-none">
+          <h3 className="text-gray-900 dark:text-white font-semibold">{t('dashboard.verifyDocuments')}</h3>
           {currentUser.sellerDetails?.documents?.cniUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <span className="text-xl">🪪</span>
               <div className="flex-1">
-                <p className="text-sm text-white font-medium">{t('dashboard.verifyCNI')}</p>
+                <p className="text-sm text-gray-900 dark:text-white font-medium">{t('dashboard.verifyCNI')}</p>
                 <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
               </div>
               <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
@@ -1976,16 +1976,16 @@ export const SellerDashboard: React.FC = () => {
       <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
         {/* Header */}
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <span>⚡</span> {t('dashboard.boostTitle')}
           </h2>
           <p className="text-sm text-gray-500 mt-1">{t('dashboard.boostDesc')}</p>
         </div>
 
         {/* Comment ça marche */}
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 space-y-3">
-          <p className="text-sm font-bold text-amber-400">{t('dashboard.boostHowTitle')}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-400">
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 space-y-3">
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">{t('dashboard.boostHowTitle')}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700 dark:text-gray-400">
             <div className="flex items-start gap-2">
               <span className="text-amber-400 font-black text-base">1</span>
               <span>{t('dashboard.boostStep1')}</span>
@@ -2004,11 +2004,11 @@ export const SellerDashboard: React.FC = () => {
         {/* Mes demandes en cours */}
         {boostRequests.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('dashboard.boostMyRequests')}</p>
+            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.boostMyRequests')}</p>
             {boostRequests.map(req => (
-              <div key={req.id} className="flex items-center justify-between bg-gray-800/50 border border-gray-700/50 rounded-xl px-4 py-3 gap-4">
+              <div key={req.id} className="flex items-center justify-between bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-xl px-4 py-3 gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{req.productTitle}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{req.productTitle}</p>
                   <p className="text-xs text-gray-500">{new Date(req.createdAt).toLocaleDateString('fr-FR')}</p>
                 </div>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${
@@ -2035,7 +2035,7 @@ export const SellerDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('dashboard.boostChooseProduct')}</p>
+            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.boostChooseProduct')}</p>
             {approvedProducts.map(product => {
               const isActive   = !!product.isBoosted && !!product.boostExpiresAt && product.boostExpiresAt > Date.now();
               const isPending  = boostRequests.some(
@@ -2048,19 +2048,19 @@ export const SellerDashboard: React.FC = () => {
               return (
                 <div
                   key={product.id}
-                  className="flex items-center gap-4 bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4"
+                  className="flex items-center gap-4 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-4"
                 >
                   {/* Thumbnail */}
                   {thumb ? (
                     <img src={thumb} alt={product.title} loading="lazy"
-                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-gray-700" />
+                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-gray-200 dark:bg-gray-700" />
                   ) : (
-                    <div className="w-14 h-14 rounded-xl bg-gray-700 shrink-0" />
+                    <div className="w-14 h-14 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0" />
                   )}
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{product.title}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{product.title}</p>
                     <p className="text-xs text-gray-500">
                       {product.price.toLocaleString()} {product.currency || 'BIF'}
                     </p>
@@ -2113,12 +2113,12 @@ export const SellerDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col md:flex-row">
-       <aside className="hidden md:flex flex-col w-64 bg-gray-900 border-r border-gray-800 h-screen sticky top-0 p-4">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col md:flex-row">
+       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen sticky top-0 p-4">
            {/* ... Sidebar content same as before ... */}
            <div className="flex items-center gap-2 mb-8 px-2">
                <div className="w-8 h-8 bg-gradient-to-br from-gold-400 to-gold-600 rounded-lg"></div>
-               <span className="font-black text-xl text-white tracking-tight">{t('dashboard.sellerSpace')}</span>
+               <span className="font-black text-xl text-gray-900 dark:text-white tracking-tight">{t('dashboard.sellerSpace')}</span>
            </div>
            <div className="space-y-2 flex-1">
                <SidebarItem id="overview" icon="📊" label={t('dashboard.overview')} />
@@ -2129,34 +2129,34 @@ export const SellerDashboard: React.FC = () => {
                <SidebarItem id="shop" icon="🎨" label={t('dashboard.myShop')} />
                <SidebarItem id="verification" icon="✅" label={t('dashboard.verification')} />
            </div>
-           <div className="mb-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
-               <div className="flex justify-between text-xs text-gray-400 mb-1">
+           <div className="mb-4 bg-gray-100 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
+               <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                    <span>{currentTier.label}</span>
-                   <span className={isLimitReached ? "text-red-400 font-bold" : "text-blue-400"}>{currentCount}/{currentTier.max || '∞'}</span>
+                   <span className={isLimitReached ? "text-red-500 dark:text-red-400 font-bold" : "text-blue-600 dark:text-blue-400"}>{currentCount}/{currentTier.max || '∞'}</span>
                </div>
-               <div className="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
+               <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
                    <div className={`h-full ${isLimitReached ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(progressPercentage, 100)}%` }}></div>
                </div>
            </div>
-           <div className="pt-4 border-t border-gray-800">
-               <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-white transition-colors">
+           <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+               <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                    <span>🚪</span> {t('dashboard.backToSite')}
                </button>
            </div>
        </aside>
 
-       <div className="md:hidden bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 sticky top-0 z-30">
+       <div className="md:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30">
          {/* Header mobile */}
          <div className="p-3 px-4 flex justify-between items-center">
-           <span className="font-black text-lg text-white">{t('dashboard.sellerSpace')}</span>
+           <span className="font-black text-lg text-gray-900 dark:text-white">{t('dashboard.sellerSpace')}</span>
            <div className="flex items-center gap-2">
-             <div className="bg-gray-800 px-2 py-1 rounded-lg border border-gray-700">
-               <span className={`text-xs font-bold ${isLimitReached ? 'text-red-400' : 'text-blue-400'}`}>
+             <div className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
+               <span className={`text-xs font-bold ${isLimitReached ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                  {currentCount}/{currentTier.max || '∞'}
                </span>
              </div>
              <LanguageSwitcher compact />
-             <button onClick={() => navigate('/')} className="text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white">✕</button>
+             <button onClick={() => navigate('/')} className="text-gray-500 dark:text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-gray-900 dark:hover:text-white">✕</button>
            </div>
          </div>
          {/* Onglets de navigation mobile — scroll horizontal */}
@@ -2176,8 +2176,8 @@ export const SellerDashboard: React.FC = () => {
                onClick={() => setActiveTab(tab.id)}
                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                  activeTab === tab.id
-                   ? 'bg-blue-600 text-white border-blue-500'
-                   : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-white'
+                   ? 'bg-gold-400 text-gray-900 border-gold-400 shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
+                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:text-gray-900 dark:hover:text-white'
                }`}
              >
                <span>{tab.icon}</span>
@@ -2193,7 +2193,7 @@ export const SellerDashboard: React.FC = () => {
            {activeTab === 'products' && (
                <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center gap-2">
-                    <h2 className="text-xl font-bold text-white">{t('dashboard.myInventory')}</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.myInventory')}</h2>
                     <div className="flex items-center gap-2">
                       {filteredProducts.length > 0 && (
                         <button
@@ -2203,8 +2203,8 @@ export const SellerDashboard: React.FC = () => {
                           }}
                           className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
                             bulkSelectMode
-                              ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
-                              : 'border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+                              ? 'bg-blue-600/20 border-blue-500/50 text-blue-600 dark:text-blue-400'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
                           }`}
                         >
                           {bulkSelectMode ? t('dashboard.bulkCancel') : t('dashboard.bulkSelect')}
@@ -2229,8 +2229,8 @@ export const SellerDashboard: React.FC = () => {
                       onClick={() => setProductStatusFilter(tab.value)}
                       className={`flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${
                         productStatusFilter === tab.value
-                          ? 'bg-blue-600 text-white border-blue-500'
-                          : 'bg-transparent text-gray-500 border-gray-700 hover:border-gray-600'
+                          ? 'bg-gold-400 text-gray-900 border-gold-400 shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
+                          : 'bg-transparent text-gray-600 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
                       {tab.label} ({tab.count})
@@ -2240,14 +2240,14 @@ export const SellerDashboard: React.FC = () => {
 
                 {/* Bulk action bar */}
                 {bulkSelectMode && filteredProducts.length > 0 && (
-                  <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5">
+                  <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-none rounded-xl px-4 py-2.5">
                     <button
                       onClick={() => {
                         const allIds = filteredProducts.map(p => p.id).filter((id): id is string => Boolean(id));
                         const allSelected = allIds.every(id => selectedProductIds.has(id));
                         setSelectedProductIds(allSelected ? new Set() : new Set(allIds));
                       }}
-                      className="text-xs text-blue-400 font-bold hover:text-blue-300 transition-colors"
+                      className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
                     >
                       {filteredProducts.every(p => p.id && selectedProductIds.has(p.id))
                         ? t('dashboard.bulkDeselectAll')
@@ -2270,9 +2270,9 @@ export const SellerDashboard: React.FC = () => {
                 )}
 
                 {filteredProducts.length === 0 ? (
-                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-8 text-center text-gray-400">
+                  <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-8 text-center text-gray-600 dark:text-gray-400">
                     <div className="text-4xl mb-3">📦</div>
-                    <p className="font-medium text-white mb-1">{t('dashboard.noProducts')}</p>
+                    <p className="font-medium text-gray-900 dark:text-white mb-1">{t('dashboard.noProducts')}</p>
                     <p className="text-sm">{productStatusFilter === 'all' ? t('dashboard.startAdding') : t('dashboard.noProductsInCategory')}</p>
                   </div>
                 ) : (
@@ -2284,13 +2284,13 @@ export const SellerDashboard: React.FC = () => {
                       <div
                         key={product.id}
                         onClick={() => bulkSelectMode && product.id && toggleProductSelection(product.id)}
-                        className={`bg-gray-800/50 border rounded-xl p-4 space-y-2 transition-all ${
+                        className={`bg-white dark:bg-gray-800/50 border rounded-xl p-4 space-y-2 transition-all shadow-sm dark:shadow-none ${
                           bulkSelectMode ? 'cursor-pointer' : ''
                         } ${
-                          isSelected ? 'border-blue-500/60 bg-blue-900/10' :
-                          product.status === 'rejected' ? 'border-red-800/40' :
-                          product.status === 'pending' ? 'border-yellow-800/30' :
-                          'border-gray-700/50'
+                          isSelected ? 'border-blue-500/60 bg-blue-50 dark:bg-blue-900/10' :
+                          product.status === 'rejected' ? 'border-red-300 dark:border-red-800/40' :
+                          product.status === 'pending' ? 'border-yellow-300 dark:border-yellow-800/30' :
+                          'border-gray-200 dark:border-gray-700/50'
                         }`}
                       >
                         <div className="flex items-center gap-4">
@@ -2306,20 +2306,20 @@ export const SellerDashboard: React.FC = () => {
                               src={product.images[0] ? getOptimizedUrl(product.images[0], 80) : ''}
                               alt={product.title}
                               loading="lazy"
-                              className="w-16 h-16 rounded-lg object-cover bg-gray-700"
+                              className="w-16 h-16 rounded-lg object-cover bg-gray-200 dark:bg-gray-700"
                             />
                             {product.images.length > 1 && (
-                              <span className="absolute -bottom-1 -right-1 bg-gray-700 text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-gray-600">
+                              <span className="absolute -bottom-1 -right-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-gray-300 dark:border-gray-600">
                                 +{product.images.length - 1}
                               </span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-white font-medium text-sm truncate">{product.title}</h4>
+                            <h4 className="text-gray-900 dark:text-white font-medium text-sm truncate">{product.title}</h4>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-blue-400 text-sm font-bold">{product.price.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-500">{cur}</span></p>
+                              <p className="text-blue-600 dark:text-blue-400 text-sm font-bold">{product.price.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-500">{cur}</span></p>
                               {product.originalPrice && product.originalPrice > product.price && (
-                                <p className="text-gray-600 text-xs line-through">{product.originalPrice.toLocaleString('fr-FR')}</p>
+                                <p className="text-gray-500 text-xs line-through">{product.originalPrice.toLocaleString('fr-FR')}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-1">
@@ -2378,7 +2378,7 @@ export const SellerDashboard: React.FC = () => {
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => openEditProduct(product)}
-                                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors"
+                                    className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white text-xs font-bold rounded-lg transition-colors"
                                   >
                                     {t('dashboard.editAndResubmit')}
                                   </button>
@@ -2412,7 +2412,7 @@ export const SellerDashboard: React.FC = () => {
                  <div className="flex items-center justify-between">
                    <div>
                      <div className="flex items-center gap-2">
-                       <h2 className="text-xl font-black text-white">{t('dashboard.buyerRequests')}</h2>
+                       <h2 className="text-xl font-black text-gray-900 dark:text-white">{t('dashboard.buyerRequests')}</h2>
                        {requestStats && requestStats.todayCount > 0 && (
                          <span className="text-xs bg-gold-400/20 text-gold-400 border border-gold-400/40 px-2.5 py-0.5 rounded-full font-bold animate-pulse">
                            {requestStats.todayCount} {t('dashboard.buyerRequestsToday')}
@@ -2431,14 +2431,14 @@ export const SellerDashboard: React.FC = () => {
 
                  {/* Plan eligibility banner */}
                  {!isEligible ? (
-                   <div className="relative overflow-hidden rounded-2xl border border-gold-400/30 bg-gradient-to-br from-amber-950/50 via-gray-900 to-gray-900 p-6">
-                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.1),transparent_60%)] pointer-events-none" />
+                   <div className="relative overflow-hidden rounded-2xl border border-gold-400/40 bg-gradient-to-br from-amber-50 via-white to-white dark:from-amber-950/50 dark:via-gray-900 dark:to-gray-900 p-6 shadow-sm dark:shadow-none">
+                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.15),transparent_60%)] pointer-events-none" />
                      <div className="relative z-10">
                        <div className="flex items-start gap-4 mb-5">
-                         <div className="w-14 h-14 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center text-3xl shrink-0">🔒</div>
+                         <div className="w-14 h-14 rounded-2xl bg-gold-400/15 dark:bg-gold-400/10 border border-gold-400/30 dark:border-gold-400/20 flex items-center justify-center text-3xl shrink-0">🔒</div>
                          <div>
-                           <h3 className="text-white font-black text-lg">{t('requests.planGate.title')}</h3>
-                           <p className="text-gray-400 text-sm mt-1">{t('requests.planGate.subtitle')}</p>
+                           <h3 className="text-gray-900 dark:text-white font-black text-lg">{t('requests.planGate.title')}</h3>
+                           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{t('requests.planGate.subtitle')}</p>
                          </div>
                        </div>
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
@@ -2447,22 +2447,22 @@ export const SellerDashboard: React.FC = () => {
                            { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
                            { icon: '📈', label: t('dashboard.buyerRequestsFeat3') },
                          ].map(f => (
-                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-800/50 border border-gray-700/40 rounded-xl p-3">
+                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/40 rounded-xl p-3">
                              <span className="text-xl">{f.icon}</span>
-                             <span className="text-sm text-gray-300 font-medium">{f.label}</span>
+                             <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{f.label}</span>
                            </div>
                          ))}
                        </div>
                        <div className="flex flex-col sm:flex-row gap-3">
                          <button
                            onClick={() => navigate('/plans')}
-                           className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] shadow-lg shadow-amber-900/30"
+                           className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] shadow-lg shadow-amber-200/50 dark:shadow-amber-900/30"
                          >
                            ⭐ {t('requests.planGate.cta')}
                          </button>
                          <button
                            onClick={() => navigate('/demandes')}
-                           className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold rounded-xl text-sm transition-colors"
+                           className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl text-sm transition-colors"
                          >
                            👁 {t('dashboard.buyerRequestsPreview')}
                          </button>
@@ -2470,14 +2470,14 @@ export const SellerDashboard: React.FC = () => {
                      </div>
                    </div>
                  ) : (
-                   <div className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-950/30 via-gray-900 to-gray-900 p-6">
-                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(34,197,94,0.07),transparent_60%)] pointer-events-none" />
+                   <div className="relative overflow-hidden rounded-2xl border border-green-500/40 bg-gradient-to-br from-green-50 via-white to-white dark:from-green-950/30 dark:via-gray-900 dark:to-gray-900 p-6 shadow-sm dark:shadow-none">
+                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(34,197,94,0.1),transparent_60%)] pointer-events-none" />
                      <div className="relative z-10">
                        <div className="flex items-start gap-4 mb-5">
-                         <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-3xl shrink-0">✅</div>
+                         <div className="w-14 h-14 rounded-2xl bg-green-500/15 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/20 flex items-center justify-center text-3xl shrink-0">✅</div>
                          <div>
-                           <h3 className="text-white font-black text-lg">{t('dashboard.buyerRequestsUnlocked')}</h3>
-                           <p className="text-gray-400 text-sm mt-1">{t('dashboard.buyerRequestsUnlockedDesc')}</p>
+                           <h3 className="text-gray-900 dark:text-white font-black text-lg">{t('dashboard.buyerRequestsUnlocked')}</h3>
+                           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{t('dashboard.buyerRequestsUnlockedDesc')}</p>
                          </div>
                        </div>
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
@@ -2486,9 +2486,9 @@ export const SellerDashboard: React.FC = () => {
                            { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
                            { icon: '📈', label: t('dashboard.buyerRequestsFeat3') },
                          ].map(f => (
-                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-800/50 border border-gray-700/40 rounded-xl p-3">
+                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/40 rounded-xl p-3">
                              <span className="text-xl">{f.icon}</span>
-                             <span className="text-sm text-gray-300 font-medium">{f.label}</span>
+                             <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{f.label}</span>
                            </div>
                          ))}
                        </div>
@@ -2505,11 +2505,11 @@ export const SellerDashboard: React.FC = () => {
                  {/* Stats row */}
                  {requestStats && (
                    <div className="grid grid-cols-2 gap-4">
-                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4 text-center">
+                     <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-4 text-center">
                        <p className="text-2xl font-black text-gold-400">{requestStats.todayCount}</p>
                        <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wide">{t('dashboard.buyerRequestsStatToday')}</p>
                      </div>
-                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4 text-center">
+                     <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-4 text-center">
                        <p className="text-2xl font-black text-green-400">{requestStats.fulfilledCount}</p>
                        <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wide">{t('dashboard.buyerRequestsStatFulfilled')}</p>
                      </div>
@@ -2521,7 +2521,7 @@ export const SellerDashboard: React.FC = () => {
        </main>
 
        {/* Mobile Bottom Nav — All tabs visible with labels */}
-       <div className="md:hidden fixed bottom-0 w-full bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 pb-safe z-50">
+       <div className="md:hidden fixed bottom-0 w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 pb-safe z-50">
          <div className="flex justify-around items-center h-16">
            {([
              { id: 'overview' as Tab, icon: '📊', label: t('dashboard.mobileHome'), gold: false },
@@ -2535,14 +2535,14 @@ export const SellerDashboard: React.FC = () => {
                onClick={() => setActiveTab(item.id)}
                className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 relative ${
                  activeTab === item.id
-                   ? item.gold ? 'text-gold-400' : 'text-blue-400'
+                   ? item.gold ? 'text-gold-600 dark:text-gold-400' : 'text-blue-600 dark:text-blue-400'
                    : item.gold ? 'text-amber-600' : 'text-gray-500'
                }`}
              >
                <span className={`text-lg transition-transform ${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</span>
                <span className="text-[9px] font-medium">{item.label}</span>
                {item.gold && requestStats && requestStats.todayCount > 0 && activeTab !== item.id && (
-                 <span className="absolute top-1 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-gold-400 ring-2 ring-gray-900" />
+                 <span className="absolute top-1 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-gold-400 ring-2 ring-white dark:ring-gray-900" />
                )}
              </button>
            ))}
@@ -2552,10 +2552,10 @@ export const SellerDashboard: React.FC = () => {
        {/* Edit Rejected Product Modal */}
        {editingProduct && (
          <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEditingProduct(null)}>
-           <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
+           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
              <div className="flex items-center justify-between">
-               <h3 className="text-lg font-bold text-white">{t('dashboard.editProductTitle')}</h3>
-               <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-white text-xl">&times;</button>
+               <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.editProductTitle')}</h3>
+               <button onClick={() => setEditingProduct(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl">&times;</button>
              </div>
 
              {editingProduct.rejectionReason && (
@@ -2565,18 +2565,18 @@ export const SellerDashboard: React.FC = () => {
              )}
 
              <div>
-               <label className="block text-xs font-bold text-gray-400 mb-1">Titre *</label>
-               <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" />
+               <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Titre *</label>
+               <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500" />
              </div>
 
              <div className="grid grid-cols-2 gap-3">
                <div>
-                 <label className="block text-xs font-bold text-gray-400 mb-1">Prix *</label>
-                 <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" />
+                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Prix *</label>
+                 <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500" />
                </div>
                <div>
-                 <label className="block text-xs font-bold text-gray-400 mb-1">Categorie *</label>
-                 <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none">
+                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Categorie *</label>
+                 <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none">
                    <option value="">Choisir</option>
                    {firestoreCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                  </select>
@@ -2584,8 +2584,8 @@ export const SellerDashboard: React.FC = () => {
              </div>
 
              <div>
-               <label className="block text-xs font-bold text-gray-400 mb-1">Description</label>
-               <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 resize-none" />
+               <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Description</label>
+               <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500 resize-none" />
              </div>
 
              {/* Existing images */}
@@ -2620,13 +2620,13 @@ export const SellerDashboard: React.FC = () => {
 
              <div>
                <input ref={editFileRef} type="file" accept="image/*" multiple onChange={handleEditNewImages} className="hidden" />
-               <button onClick={() => editFileRef.current?.click()} className="w-full border border-dashed border-gray-600 rounded-xl p-3 text-sm text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">
+               <button onClick={() => editFileRef.current?.click()} className="w-full border border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-3 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">
                  + Ajouter des images
                </button>
              </div>
 
              <div className="flex gap-3 pt-2">
-               <button onClick={() => setEditingProduct(null)} className="flex-1 px-4 py-2.5 bg-gray-800 text-gray-300 rounded-xl font-medium hover:bg-gray-700 transition-colors">
+               <button onClick={() => setEditingProduct(null)} className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                  {t('common.cancel')}
                </button>
                <button
