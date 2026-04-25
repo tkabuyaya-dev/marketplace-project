@@ -405,7 +405,9 @@ const SearchPage: React.FC = () => {
           <button
             onClick={() => setFilter('category', null)}
             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-              !filters.category ? 'bg-gold-400/10 text-gold-400 font-bold' : 'text-gray-400 hover:bg-gray-800'
+              !filters.category
+                ? 'bg-gold-400/15 text-gold-700 dark:bg-gold-400/10 dark:text-gold-400 font-bold'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
             }`}
           >
             {t('search.allCategories')}
@@ -523,7 +525,7 @@ const SearchPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Row 2: mobile only — Filtres */}
+        {/* Row 2: mobile only — Filtres + Reset (when filters active) */}
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={() => setShowMobileFilters(true)}
@@ -536,6 +538,50 @@ const SearchPage: React.FC = () => {
               </span>
             )}
           </button>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={resetFilters}
+              className="px-3 min-h-[44px] text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+              aria-label={t('search.resetFilters')}
+            >
+              &#10005;
+            </button>
+          )}
+        </div>
+
+        {/* Mobile category chip rail — horizontal scroll, matches reference Home.html spec */}
+        <div className="md:hidden -mx-4 px-4">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <button
+              onClick={() => setFilter('category', null)}
+              className={[
+                'flex-shrink-0 h-9 px-3 rounded-full text-[13px] transition-all',
+                !filters.category
+                  ? 'bg-gold-400 text-gray-900 font-bold shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-medium',
+              ].join(' ')}
+            >
+              {t('search.allCategories')}
+            </button>
+            {categories.map(cat => {
+              const on = filters.category === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setFilter('category', on ? null : cat.id)}
+                  className={[
+                    'flex-shrink-0 h-9 px-3 rounded-full text-[13px] transition-all flex items-center gap-1.5',
+                    on
+                      ? 'bg-gold-400 text-gray-900 font-bold shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-medium',
+                  ].join(' ')}
+                >
+                  {cat.icon && <span className="text-[15px] leading-none">{cat.icon}</span>}
+                  <span>{cat.name || cat.id}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
