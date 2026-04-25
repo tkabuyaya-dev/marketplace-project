@@ -459,7 +459,7 @@ const SearchPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 pt-safe-header md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 pt-safe-header md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
       {/* Toolbar: results count + sort + actions */}
       <div className="max-w-7xl mx-auto mb-4 space-y-2">
         {/* Row 1: count (left) + Je Cherche desktop + sort (right) */}

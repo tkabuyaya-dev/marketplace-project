@@ -110,7 +110,7 @@ const ShopProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex items-center justify-center">
         <div className="w-8 h-8 border-3 border-gold-500 dark:border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -118,7 +118,7 @@ const ShopProfile: React.FC = () => {
 
   if (notFound || !seller) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
         <div className="text-6xl">😕</div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('shopProfile.notFound')}</h1>
         <Button onClick={() => navigate('/')}>{t('shopProfile.backToHome')}</Button>
@@ -133,7 +133,7 @@ const ShopProfile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 pb-20 font-sans animate-fade-in">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 pb-20 font-sans animate-fade-in">
       {/* HERO / BANNER */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <div className="absolute top-4 right-4 z-20">
@@ -145,7 +145,7 @@ const ShopProfile: React.FC = () => {
         >
           <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         </button>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#FAFAF8] dark:from-gray-950 via-transparent to-transparent z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#F7F7F5] dark:from-gray-950 via-transparent to-transparent z-10"></div>
         <img src={getOptimizedUrl(bannerUrl, 1200)} className="w-full h-full object-cover" alt="Shop Banner" />
       </div>
 

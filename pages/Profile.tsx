@@ -8,6 +8,9 @@ import { updateUserProfile } from '../services/firebase';
 import { useNotificationConsent } from '../hooks/useNotificationConsent';
 import { useToast } from '../components/Toast';
 import { getOptimizedUrl } from '../services/cloudinary';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { CountrySwitcher } from '../components/CountrySwitcher';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const Profile: React.FC = () => {
   const { currentUser, handleLogout, handleSellerAccess } = useAppContext();
@@ -52,11 +55,11 @@ const Profile: React.FC = () => {
 
   return (
     <div className="pt-safe-header-lg md:pt-24 px-4 pb-24">
-      <div className="bg-gray-800 rounded-3xl p-6 text-center border border-gray-700 max-w-md mx-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 text-center border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-none max-w-md mx-auto">
         {currentUser.avatar ? (
-          <img src={getOptimizedUrl(currentUser.avatar, 96)} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-gray-900 object-cover" alt="Profile" />
+          <img src={getOptimizedUrl(currentUser.avatar, 96)} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-white dark:border-gray-900 shadow-md object-cover" alt="Profile" />
         ) : (
-          <div className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-gray-900 bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
+          <div className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-white dark:border-gray-900 shadow-md bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-gray-900 text-3xl font-black">
             {currentUser.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
         )}
@@ -64,29 +67,29 @@ const Profile: React.FC = () => {
         {editing ? (
           <div className="space-y-3 text-left mb-6">
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">{t('profile.name')}</label>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">{t('profile.name')}</label>
               <input
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-gold-400 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">{t('profile.bio')}</label>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">{t('profile.bio')}</label>
               <textarea
                 value={editBio}
                 onChange={e => setEditBio(e.target.value)}
                 placeholder={t('profile.bioPlaceholder')}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none min-h-[60px]"
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-gold-400 outline-none min-h-[60px]"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">{t('profile.whatsapp')}</label>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">{t('profile.whatsapp')}</label>
               <input
                 value={editWhatsapp}
                 onChange={e => setEditWhatsapp(e.target.value)}
                 placeholder="+257..."
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-gold-400 outline-none"
               />
             </div>
             <div className="flex gap-2 pt-2">
@@ -96,25 +99,37 @@ const Profile: React.FC = () => {
           </div>
         ) : (
           <>
-            <h2 className="text-xl text-white font-bold">{currentUser.name}</h2>
-            <p className="text-gray-400 text-sm mb-1">{currentUser.email}</p>
-            {currentUser.bio && <p className="text-gray-500 text-xs mb-2 italic">"{currentUser.bio}"</p>}
+            <h2 className="text-xl text-gray-900 dark:text-white font-bold">{currentUser.name}</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{currentUser.email}</p>
+            {currentUser.bio && <p className="text-gray-500 dark:text-gray-500 text-xs mb-2 italic">"{currentUser.bio}"</p>}
             <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="inline-block px-3 py-1 bg-gray-700 rounded-full text-xs text-gray-300 uppercase tracking-wider">{roleLabel}</span>
+              <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">{roleLabel}</span>
               <span className="text-xs text-gray-500">{t('profile.since', { year: joinYear })}</span>
             </div>
-            <button onClick={startEdit} className="text-xs text-blue-400 hover:underline mb-4 block mx-auto">{t('profile.editProfile')}</button>
+            <button onClick={startEdit} className="text-xs text-gold-600 dark:text-gold-400 hover:underline mb-4 block mx-auto">{t('profile.editProfile')}</button>
           </>
         )}
 
-        <div className="space-y-3">
+        {/* Préférences — Lang / Country / Theme (relocated from mobile navbar) */}
+        <div className="border-t border-gray-200 dark:border-gray-700/50 mt-6 pt-5">
+          <p className="text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-3 text-left">
+            {t('profile.preferences', 'Préférences')}
+          </p>
+          <div className="flex items-center justify-around gap-2">
+            <LanguageSwitcher />
+            <CountrySwitcher />
+            <ThemeToggle />
+          </div>
+        </div>
+
+        <div className="space-y-3 mt-6">
           {currentUser.role === 'seller' && currentUser.slug && (
             <Button className="w-full" variant="secondary" onClick={() => navigate(`/shop/${currentUser.slug}`)}>
               {t('profile.viewMyShop')}
             </Button>
           )}
           {currentUser.role === 'buyer' && (
-            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 border-none text-white" onClick={() => navigate('/register-seller')}>
+            <Button className="w-full bg-gradient-to-r from-gold-400 to-gold-600 border-none text-gray-900 font-bold" onClick={() => navigate('/register-seller')}>
               {t('profile.becomeSeller')}
             </Button>
           )}
@@ -123,13 +138,13 @@ const Profile: React.FC = () => {
               {currentUser.role === 'admin' ? t('profile.adminConsole') : t('profile.sellerArea')}
             </Button>
           )}
-          <Button className="w-full border-red-900/50 text-red-400 hover:bg-red-900/20" variant="outline" onClick={handleLogout}>{t('profile.logout')}</Button>
+          <Button className="w-full border-red-300 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" variant="outline" onClick={handleLogout}>{t('profile.logout')}</Button>
         </div>
 
         {/* Notification consent */}
-        <div className="border-t border-gray-700/50 mt-6 pt-4">
+        <div className="border-t border-gray-200 dark:border-gray-700/50 mt-6 pt-4">
           {permission === 'granted' && (
-            <p className="text-xs text-green-400/70 text-center">🔔 Notifications activées</p>
+            <p className="text-xs text-emerald-600 dark:text-green-400/70 text-center">🔔 Notifications activées</p>
           )}
           {permission === 'denied' && (
             <p className="text-xs text-gray-500 text-center">🔕 Notifications désactivées dans le navigateur</p>
@@ -141,7 +156,7 @@ const Profile: React.FC = () => {
                 if (result === 'granted') toast(t('profile.notifsEnabled'), 'success');
                 else toast(t('profile.notifsBlocked'), 'error');
               }}
-              className="w-full py-2.5 border border-amber-500/30 text-amber-400 text-sm font-medium rounded-xl hover:bg-amber-500/10 transition-colors"
+              className="w-full py-2.5 border border-amber-500/40 text-amber-600 dark:text-amber-400 text-sm font-medium rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
             >
               🔔 {t('profile.enableNotifs')}
             </button>
@@ -149,26 +164,26 @@ const Profile: React.FC = () => {
         </div>
 
         {/* Legal links */}
-        <div className="border-t border-gray-700/50 mt-6 pt-4 pb-2 text-center">
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-            <Link to="/cgu" className="hover:text-amber-400 hover:underline transition-colors">
+        <div className="border-t border-gray-200 dark:border-gray-700/50 mt-6 pt-4 pb-2 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <Link to="/cgu" className="hover:text-gold-600 dark:hover:text-amber-400 hover:underline transition-colors">
               {t('profile.terms')}
             </Link>
-            <span className="text-gray-600">&middot;</span>
-            <Link to="/politique-confidentialite" className="hover:text-amber-400 hover:underline transition-colors">
+            <span className="text-gray-400 dark:text-gray-600">&middot;</span>
+            <Link to="/politique-confidentialite" className="hover:text-gold-600 dark:hover:text-amber-400 hover:underline transition-colors">
               {t('profile.privacy')}
             </Link>
           </div>
-          <p className="text-[10px] text-gray-600 mt-1.5">&copy; 2026 NUNULIA. Tous droits réservés.</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-600 mt-1.5">&copy; 2026 NUNULIA. Tous droits réservés.</p>
         </div>
 
         {/* Danger zone */}
-        <div className="border-t border-gray-700 mt-4 pt-5">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{t('profile.dangerZone')}</p>
-          <p className="text-xs text-gray-600 mb-3">{t('profile.dangerZoneHint')}</p>
+        <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-5">
+          <p className="text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-1">{t('profile.dangerZone')}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-600 mb-3">{t('profile.dangerZoneHint')}</p>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="w-full py-2.5 border border-red-600/30 text-red-400 text-sm font-bold rounded-xl hover:bg-red-600/10 transition-colors"
+            className="w-full py-2.5 border border-red-300 dark:border-red-600/30 text-red-600 dark:text-red-400 text-sm font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-600/10 transition-colors"
           >
             {t('profile.deleteAccountTitle')}
           </button>

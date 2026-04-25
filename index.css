@@ -29,7 +29,7 @@
 
   body {
     overscroll-behavior-y: none;
-    background-color: #FAFAF8;
+    background-color: #F7F7F5;
     color: theme('colors.gray.900');
   }
   html.dark body {
@@ -60,9 +60,9 @@
     padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
   }
   /* Page content offset below the mobile header — accounts for iPhone safe area */
-  /* 104px = pt-safe-nav(12px) + logo row(44px+6px) + search bar row(32px+10px) */
+  /* 68px = pt-safe-nav(12px) + single row 56px (matches Home.html reference) */
   .pt-safe-header {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 104px);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 68px);
   }
   .pt-safe-header-lg {
     padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);

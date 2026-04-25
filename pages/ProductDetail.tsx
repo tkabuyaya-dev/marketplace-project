@@ -115,7 +115,7 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex items-center justify-center">
         <div className="w-8 h-8 border-3 border-gold-500 dark:border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -123,7 +123,7 @@ const ProductDetail: React.FC = () => {
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
         <div className="text-6xl">😕</div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('productDetail.notFound')}</h1>
         <Button onClick={() => navigate('/')}>{t('productDetail.backToHome')}</Button>
@@ -211,7 +211,7 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 pb-24">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 pb-24">
       {/* Header bar */}
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800/50 flex items-center justify-between px-4 py-3">
         <button onClick={handleBack} className="p-3 -m-1 text-gray-900 dark:text-white">

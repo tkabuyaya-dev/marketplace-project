@@ -55,28 +55,28 @@ export const NotificationBell: React.FC = () => {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+        className="relative w-[34px] h-[34px] flex items-center justify-center rounded-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
         aria-label="Notifications"
       >
-        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-gray-900">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="fixed md:absolute right-2 md:right-0 top-16 md:top-full mt-0 md:mt-2 w-[calc(100vw-16px)] md:w-80 max-h-[420px] bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-[60] animate-fade-in">
+        <div className="fixed md:absolute right-2 md:right-0 top-16 md:top-full mt-0 md:mt-2 w-[calc(100vw-16px)] md:w-80 max-h-[420px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-[60] animate-fade-in">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">Notifications</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+            <h3 className="text-gray-900 dark:text-white font-bold text-sm">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllNotifsRead()}
-                className="text-xs text-blue-400 hover:text-blue-300"
+                className="text-xs text-gold-600 dark:text-gold-400 hover:underline"
               >
                 Tout marquer lu
               </button>
@@ -86,7 +86,7 @@ export const NotificationBell: React.FC = () => {
           {/* List */}
           <div className="overflow-y-auto max-h-[360px] scrollbar-hide">
             {notifications.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
+              <div className="text-center py-10 text-gray-500 dark:text-gray-500">
                 <div className="text-3xl mb-2">🔔</div>
                 <p className="text-sm">Aucune notification</p>
               </div>
@@ -95,20 +95,20 @@ export const NotificationBell: React.FC = () => {
                 <div
                   key={notif.id}
                   onClick={() => handleNotifClick(notif)}
-                  className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800 transition-colors border-b border-gray-800/50 ${
-                    !notif.read ? 'bg-blue-900/10' : ''
+                  className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800/50 ${
+                    !notif.read ? 'bg-gold-50 dark:bg-blue-900/10' : ''
                   }`}
                 >
                   <span className="text-lg mt-0.5 flex-shrink-0">{typeIcon(notif.type)}</span>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!notif.read ? 'text-white font-semibold' : 'text-gray-300'}`}>
+                    <p className={`text-sm ${!notif.read ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
                       {notif.title}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">{notif.body}</p>
-                    <p className="text-[10px] text-gray-600 mt-1">{timeAgo(notif.createdAt)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 truncate">{notif.body}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-600 mt-1">{timeAgo(notif.createdAt)}</p>
                   </div>
                   {!notif.read && (
-                    <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />
+                    <span className="w-2 h-2 bg-gold-500 dark:bg-blue-500 rounded-full flex-shrink-0 mt-2" />
                   )}
                 </div>
               ))

@@ -80,7 +80,7 @@ const AuthGoogle: React.FC = () => {
   }, [status, handleCredential, t]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col items-center justify-center px-6">
       {/* Logo */}
       <div className="mb-8 text-center">
         <div className="w-16 h-16 bg-gradient-to-br from-gold-400 to-amber-500 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-gold-400/30">

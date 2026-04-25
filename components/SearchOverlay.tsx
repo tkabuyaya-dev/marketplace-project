@@ -168,7 +168,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
   const showEmptyState = query.length === 0;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#FAFAF8]/95 dark:bg-gray-950/95 backdrop-blur-2xl animate-fade-in flex flex-col font-sans">
+    <div className="fixed inset-0 z-[100] bg-[#F7F7F5]/95 dark:bg-gray-950/95 backdrop-blur-2xl animate-fade-in flex flex-col font-sans">
 
       {/* --- HEADER --- */}
       <div className="pt-safe px-4 pb-4 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-900/80 shadow-md dark:shadow-2xl z-20">

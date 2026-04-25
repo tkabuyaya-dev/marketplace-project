@@ -232,6 +232,7 @@
   },
   "profile": {
     "title": "Mon profil",
+    "preferences": "Préférences",
     "editProfile": "Modifier le profil",
     "myFavorites": "Mes favoris",
     "myMessages": "Mes messages",

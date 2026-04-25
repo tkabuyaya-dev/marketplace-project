@@ -7,7 +7,7 @@ import { BackgroundLoader } from './components/BackgroundLoader';
 import { useAppContext } from './contexts/AppContext';
 /** Écran de chargement affiché pendant les transitions auth (login/logout/init) */
 const AuthLoadingScreen: React.FC<{ message?: string }> = ({ message }) => (
-  <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
+  <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-amber-500 flex items-center justify-center shadow-lg shadow-gold-400/30 animate-pulse">
       <span className="text-2xl font-black text-gray-900">N</span>
     </div>
@@ -42,7 +42,7 @@ const App: React.FC = () => {
     || location.pathname.startsWith('/shop/');
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans selection:bg-gold-400/30">
+    <div className="min-h-screen bg-[#F7F7F5] text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans selection:bg-gold-400/30">
       {/* Background sync indicator */}
       <BackgroundLoader visible={backgroundLoading} />
 

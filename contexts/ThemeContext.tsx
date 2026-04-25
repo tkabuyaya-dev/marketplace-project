@@ -43,7 +43,7 @@ const applyTheme = (t: Theme) => {
   else root.classList.remove('dark');
   // Keep PWA theme-color in sync (status bar tint on Android Chrome)
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', t === 'dark' ? '#111318' : '#FAFAF8');
+  if (meta) meta.setAttribute('content', t === 'dark' ? '#111318' : '#F7F7F5');
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

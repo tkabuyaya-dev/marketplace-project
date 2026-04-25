@@ -162,74 +162,58 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         </div>
       </nav>
 
-      {/* ── Mobile Top Bar — 2 rows like AliExpress ── */}
-      <div className="md:hidden fixed top-0 w-full z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 pt-safe-nav shadow-sm dark:shadow-lg">
-
-        {/* Row 1: Brand + actions */}
-        <div className="flex justify-between items-center px-4 pb-1.5">
+      {/* ── Mobile Top Bar — single row 56px matching Home reference ── */}
+      <div className="md:hidden fixed top-0 w-full z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 pt-safe-nav shadow-[0_1px_10px_rgba(0,0,0,0.06)] dark:shadow-none">
+        <div className="flex items-center gap-2 px-3 h-14">
+          {/* Logo */}
           <button
             onClick={() => navigate('/')}
-            className={`font-black text-lg bg-gradient-to-r ${THEME.gradient} text-transparent bg-clip-text tracking-tighter`}
+            className="flex items-center gap-1.5 flex-shrink-0"
+            aria-label="NUNULIA — Accueil"
           >
-            NUNULIA
+            <div className="w-7 h-7 rounded-md bg-gold-400 flex items-center justify-center text-gray-900 font-black text-sm leading-none">
+              N
+            </div>
+            <span className="text-base font-black tracking-[-0.03em] text-gray-900 dark:text-white">
+              NUNULIA
+            </span>
           </button>
 
-          <div className="flex items-center gap-0.5">
-            <LanguageSwitcher compact />
-            <CountrySwitcher compact />
-            <ThemeToggle />
-            {currentUser && <NotificationBell />}
-
-            {/* Je Cherche button — amber/gold gradient */}
-            <button
-              onClick={() => setIsJeChercheOpen(true)}
-              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-2 rounded-xl bg-gradient-to-br from-amber-500 to-gold-400 shadow-[0_0_10px_rgba(251,191,36,0.4)] active:scale-95 transition-all duration-150"
-            >
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} className="text-gray-900">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <span className="text-[9px] font-bold leading-none mt-0.5 text-gray-900">Je cherche</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Row 2: Search bar — full width, always visible */}
-        <div className="px-3 pb-2.5">
+          {/* Search input — flex:1, opens overlay on tap */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="group w-full flex items-center gap-2.5 bg-gray-100 active:bg-gray-200 dark:bg-gray-800/90 dark:active:bg-gray-700 border border-gray-200 active:border-gray-300 dark:border-gray-700/70 dark:active:border-gray-600 rounded-2xl px-3.5 py-2.5 text-left transition-all duration-150 active:scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400/40"
+            className="flex-1 min-w-0 flex items-center gap-1.5 bg-[#F7F7F5] dark:bg-gray-800 border-[1.5px] border-gray-200 dark:border-gray-700 hover:border-gold-400 focus-visible:border-gold-400 rounded-[10px] px-2.5 h-9 text-left transition-colors duration-200 focus-visible:outline-none"
+            aria-label={t('nav.search')}
           >
-            {/* Search icon with subtle pulse ring on active */}
-            <div className="relative flex-shrink-0">
-              <svg
-                width="16" height="16" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" strokeWidth={2.5}
-                className="text-gray-500 transition-colors duration-150"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-
-            {/* Animated rotating placeholder — fixed height to avoid layout shift */}
-            <span className="flex-1 overflow-hidden h-5 relative">
+            <svg
+              width="15" height="15" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" strokeWidth={2.5}
+              className="text-gray-400 dark:text-gray-500 flex-shrink-0"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="flex-1 overflow-hidden h-4 relative">
               <span
-                className={`absolute inset-0 text-sm text-gray-500 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
-                  termVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5'
+                className={`absolute inset-0 text-[13px] text-gray-500 dark:text-gray-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
+                  termVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'
                 }`}
               >
                 {rotatingTerm || t('search.searchPlaceholder')}
               </span>
             </span>
-
-            {/* Microphone icon (UX hint) */}
-            <svg
-              width="15" height="15" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" strokeWidth={1.8}
-              className="text-gray-500 dark:text-gray-600 flex-shrink-0"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-            </svg>
           </button>
+
+          {/* Actions — Bell + Avatar */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {currentUser && <NotificationBell />}
+            <button
+              onClick={() => navigate(currentUser ? '/profile' : '/login')}
+              className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-gray-900 font-black text-[13px] flex-shrink-0 active:scale-95 transition-transform"
+              aria-label={t('nav.account')}
+            >
+              {currentUser?.name?.charAt(0)?.toUpperCase() || '?'}
+            </button>
+          </div>
         </div>
       </div>
 

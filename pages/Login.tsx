@@ -15,7 +15,7 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] dark:bg-gray-950 flex items-center justify-center px-6 pt-16 relative">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex items-center justify-center px-6 pt-16 relative">
       <div className="absolute top-4 right-4 z-50">
         <LanguageSwitcher compact />
       </div>

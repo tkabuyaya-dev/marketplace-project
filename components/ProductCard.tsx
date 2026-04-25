@@ -89,10 +89,10 @@ export const ProductCard = memo<ProductCardProps>(({
   const shownBadges = ordered.slice(0, 2);
 
   const badgeStyle: Record<BadgeKey, { cls: string; label: string }> = {
-    sponsored: { cls: 'bg-gray-600/90 text-white',    label: t('product.sponsored', 'Sponsorisé') },
+    sponsored: { cls: 'bg-amber-500/95 text-white',   label: t('product.sponsored', 'Sponsorisé') },
     lowStock:  { cls: 'bg-orange-500/95 text-white',  label: t('product.lowStock',  'Stock limité') },
-    b2b:       { cls: 'bg-purple-600/95 text-white',  label: 'B2B' },
-    new:       { cls: 'bg-gold-500 text-gray-950',    label: t('product.new',       'Nouveau') },
+    b2b:       { cls: 'bg-indigo-500/95 text-white',  label: 'B2B' },
+    new:       { cls: 'bg-emerald-500/95 text-white', label: t('product.new',       'Nouveau') },
   };
 
   const hasWhatsApp = !!product.seller?.whatsapp;
