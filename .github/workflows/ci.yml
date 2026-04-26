@@ -242,6 +242,9 @@ jobs:
           VITE_ALGOLIA_SEARCH_KEY: ${{ secrets.VITE_ALGOLIA_SEARCH_KEY }}
           # Cloud Functions prod (région europe-west1)
           VITE_FUNCTIONS_BASE_URL: https://europe-west1-aurburundi-e2fe2.cloudfunctions.net
+          # Google OAuth client ID — public par nature (visible dans le bundle),
+          # sécurisé par "Authorized JavaScript origins" dans Google Cloud Console.
+          VITE_GOOGLE_CLIENT_ID: 180699203802-t4fhhqn6kkdv715j970b37n4lk0r2dbu.apps.googleusercontent.com
           # App config
           VITE_APP_NAME: Nunulia
           VITE_APP_ENV: production
