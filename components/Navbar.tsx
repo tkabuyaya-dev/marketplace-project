@@ -209,9 +209,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
             <button
               onClick={() => navigate(currentUser ? '/profile' : '/login')}
               className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-gray-900 font-black text-[13px] flex-shrink-0 active:scale-95 transition-transform"
-              aria-label={t('nav.account')}
+              aria-label={currentUser ? t('nav.account') : t('nav.login')}
             >
-              {currentUser?.name?.charAt(0)?.toUpperCase() || '?'}
+              {currentUser ? (
+                currentUser.name?.charAt(0)?.toUpperCase() || (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" />
+                  </svg>
+                )
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
@@ -222,6 +232,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         isOpen={isJeChercheOpen}
         onClose={() => setIsJeChercheOpen(false)}
       />
+
+      {/* ── Floating "Je Cherche" FAB — mobile only, sits above bottom nav ── */}
+      <button
+        onClick={() => setIsJeChercheOpen(true)}
+        aria-label="Je Cherche — Publier une demande"
+        className="md:hidden fixed left-1/2 -translate-x-1/2 z-[55] bottom-[calc(env(safe-area-inset-bottom)+36px)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-gold-500 text-gray-900 flex items-center justify-center shadow-[0_8px_24px_rgba(245,200,66,0.45)] active:scale-95 transition-transform ring-4 ring-white dark:ring-gray-900"
+      >
+        <span className="absolute inset-0 rounded-full bg-gold-400 opacity-30 animate-ping pointer-events-none" />
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} className="relative" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m-8-8h16" />
+        </svg>
+      </button>
 
       {/* ── Mobile Bottom Nav ── */}
       <nav className="md:hidden fixed bottom-0 w-full z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gold-900/30 pb-safe transition-all duration-500">
