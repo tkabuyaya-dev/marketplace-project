@@ -10,7 +10,7 @@ import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
 import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts, getProductsByIds } from '../services/firebase';
-import { getRecentlyViewedIds, getPopular } from '../services/recommendations';
+import { getRecentlyViewedIds, getPopular, getPersonalizedRecommendations } from '../services/recommendations';
 import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { prefetchProductImages } from '../utils/prefetch';
@@ -78,6 +78,7 @@ export const Home: React.FC = () => {
   const [boostedProducts, setBoostedProducts] = useState<Product[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [recommended, setRecommended] = useState<Product[]>([]);
 
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
@@ -269,6 +270,26 @@ export const Home: React.FC = () => {
     return () => { cancelled = true; };
   }, [isCountryReady]);
 
+  // Recommandations personnalisées — uniquement utilisateur connecté.
+  // Exclut les produits déjà dans "Vus récemment" pour éviter la redondance visuelle.
+  useEffect(() => {
+    if (!isCountryReady || !currentUser?.id) {
+      setRecommended([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const excludeIds = recentlyViewed.map(p => p.id);
+        const products = await getPersonalizedRecommendations(currentUser.id, excludeIds, 12);
+        if (!cancelled) setRecommended(products);
+      } catch {
+        /* silencieux — rail caché si erreur */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, isCountryReady, recentlyViewed]);
+
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
     setLoadingMore(true);
@@ -445,6 +466,19 @@ export const Home: React.FC = () => {
           products={recentlyViewed}
           loading={false}
           currentUserId={currentUser?.id}
+          likedMap={likedMap}
+          onProductClick={onProductClick}
+        />
+      )}
+
+      {/* Recommandé pour vous — connecté + assez d'historique (>= 4 produits) */}
+      {currentUser && recommended.length >= 4 && (
+        <ProductSection
+          title={t('home.sections.recommended')}
+          icon="✨"
+          products={recommended}
+          loading={false}
+          currentUserId={currentUser.id}
           likedMap={likedMap}
           onProductClick={onProductClick}
         />
