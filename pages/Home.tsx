@@ -9,7 +9,8 @@ import { ProductCardSkeleton } from '../components/Skeleton';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
-import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts } from '../services/firebase';
+import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts, getProductsByIds } from '../services/firebase';
+import { getRecentlyViewedIds } from '../services/recommendations';
 import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { prefetchProductImages } from '../utils/prefetch';
@@ -75,6 +76,7 @@ export const Home: React.FC = () => {
   const { countries } = useActiveCountries();
 
   const [boostedProducts, setBoostedProducts] = useState<Product[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
 
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
@@ -229,6 +231,28 @@ export const Home: React.FC = () => {
 
     loadData();
   }, [activeCategory, activeCountry, wholesaleMode, isCountryReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rails secondaires (Vus récemment, Populaires, Recommandés) — chargés en parallèle,
+  // n'attendent PAS le feed principal pour ne pas bloquer le LCP.
+  useEffect(() => {
+    if (!isCountryReady) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const ids = await getRecentlyViewedIds(currentUser?.id ?? null, 12);
+        if (cancelled || ids.length === 0) return;
+        const products = await getProductsByIds(ids);
+        if (cancelled) return;
+        // Préserver l'ordre des IDs (le plus récent en premier)
+        const indexById = new Map(ids.map((id, i) => [id, i]));
+        const ordered = [...products].sort((a, b) => (indexById.get(a.id) ?? 99) - (indexById.get(b.id) ?? 99));
+        setRecentlyViewed(ordered);
+      } catch {
+        /* silencieux — rail caché si erreur */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, isCountryReady]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
@@ -396,6 +420,19 @@ export const Home: React.FC = () => {
             {t('home.nearbyDisable')}
           </button>
         </div>
+      )}
+
+      {/* Vus récemment — re-engagement (caché si vide, pas de skeleton) */}
+      {recentlyViewed.length > 0 && (
+        <ProductSection
+          title={t('home.sections.recentlyViewed')}
+          icon="🕐"
+          products={recentlyViewed}
+          loading={false}
+          currentUserId={currentUser?.id}
+          likedMap={likedMap}
+          onProductClick={onProductClick}
+        />
       )}
 
       {/* Product Grid — Dernieres annonces */}

@@ -17,10 +17,10 @@ describe('Constants', () => {
     expect(PROVINCES_BURUNDI).toContain('Gitega');
   });
 
-  it('has 6 initial countries', () => {
-    expect(INITIAL_COUNTRIES).toHaveLength(6);
+  it('has 3 initial countries (Grands Lacs launch scope)', () => {
+    expect(INITIAL_COUNTRIES).toHaveLength(3);
     const codes = INITIAL_COUNTRIES.map(c => c.code);
-    expect(codes).toEqual(['BI', 'CD', 'RW', 'UG', 'TZ', 'KE']);
+    expect(codes).toEqual(['BI', 'CD', 'RW']);
   });
 
   it('subscription tiers are ordered by min', () => {

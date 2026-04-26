@@ -31,7 +31,7 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           {icon && <span className="text-sm leading-none">{icon}</span>}
-          <h3 className="text-sm font-bold text-white leading-none">{title}</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-none">{title}</h3>
         </div>
         {!loading && products.length > 0 && (
           <span className="text-[10px] text-gray-500 flex items-center gap-0.5 leading-none">
@@ -45,7 +45,7 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
           {[1, 2, 3, 4].map(n => (
             <div
               key={n}
-              className="w-[130px] flex-shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-gray-800 animate-pulse"
+              className="w-[130px] flex-shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
             />
           ))}
         </div>

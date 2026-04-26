@@ -32,6 +32,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}'],
+    exclude: ['node_modules/**', 'tests/rules/**', 'tests/e2e/**'],
     css: false,
     pool: 'forks',
     poolOptions: {

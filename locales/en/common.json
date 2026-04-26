@@ -39,7 +39,10 @@
       "sponsored": "Sponsored Products",
       "recent": "New Arrivals",
       "promoted": "Featured",
-      "categories": "Categories"
+      "categories": "Categories",
+      "recentlyViewed": "Recently viewed",
+      "popular": "Popular",
+      "recommended": "Recommended for you"
     },
     "empty": "No products found",
     "loadMore": "See more",

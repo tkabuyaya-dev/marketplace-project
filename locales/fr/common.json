@@ -39,7 +39,10 @@
       "sponsored": "Produits Sponsorisés",
       "recent": "Nouveautés",
       "promoted": "En vedette",
-      "categories": "Catégories"
+      "categories": "Catégories",
+      "recentlyViewed": "Vus récemment",
+      "popular": "Populaires",
+      "recommended": "Recommandé pour vous"
     },
     "empty": "Aucun produit trouvé",
     "loadMore": "Voir plus",
