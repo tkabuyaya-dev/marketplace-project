@@ -505,6 +505,11 @@ export const Home: React.FC = () => {
         </div>
       )}
 
+      {/* Rails de découverte — DO NOT REMOVE without UX review.
+          Le pattern "feed unique" convient à TikTok (consommation passive) mais pas à
+          une marketplace : l'acheteur en mode chasseur a besoin de plusieurs surfaces
+          d'entrée (re-engagement, perso, preuve sociale). */}
+
       {/* Vus récemment — re-engagement (caché si vide, pas de skeleton) */}
       {recentlyViewed.length > 0 && (
         <ProductSection
