@@ -38,6 +38,18 @@ const CACHE_TTL = 2 * 60 * 1000; // 2 minutes — then refresh in background
 let _lastCategory = 'all';
 let _lastWholesale = false;
 
+// Cache séparé pour les rails secondaires (indépendants des filtres catégorie/pays).
+// Invalidé sur changement d'utilisateur. Survit aux navigations Home → Detail → Home.
+interface RailsCache {
+  userId: string | null;
+  recentlyViewed: Product[];
+  popularProducts: Product[];
+  recommended: Product[];
+  ts: number;
+}
+let _railsCache: RailsCache | null = null;
+const RAILS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes — rails moins volatils que le feed
+
 // Interstitial cadence
 const JE_CHERCHE_AT = 6;   // one-shot insertion after the 6th product
 const VENDOR_EVERY = 10;   // featured-vendor card after every 10th product
@@ -76,9 +88,12 @@ export const Home: React.FC = () => {
   const { countries } = useActiveCountries();
 
   const [boostedProducts, setBoostedProducts] = useState<Product[]>([]);
-  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
-  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
-  const [recommended, setRecommended] = useState<Product[]>([]);
+
+  // Hydratation initiale des rails depuis le cache module-level si même userId.
+  const railsHydrate = _railsCache && _railsCache.userId === (currentUser?.id ?? null) ? _railsCache : null;
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>(railsHydrate?.recentlyViewed ?? []);
+  const [popularProducts, setPopularProducts] = useState<Product[]>(railsHydrate?.popularProducts ?? []);
+  const [recommended, setRecommended] = useState<Product[]>(railsHydrate?.recommended ?? []);
 
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
@@ -234,10 +249,26 @@ export const Home: React.FC = () => {
     loadData();
   }, [activeCategory, activeCountry, wholesaleMode, isCountryReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Helper: met à jour le cache module-level pour un rail donné. Préserve les autres rails.
+  const updateRailsCache = useCallback((patch: Partial<Omit<RailsCache, 'userId' | 'ts'>>) => {
+    const uid = currentUser?.id ?? null;
+    const base: RailsCache = _railsCache && _railsCache.userId === uid
+      ? _railsCache
+      : { userId: uid, recentlyViewed: [], popularProducts: [], recommended: [], ts: Date.now() };
+    _railsCache = { ...base, ...patch, userId: uid, ts: Date.now() };
+  }, [currentUser?.id]);
+
   // Rails secondaires (Vus récemment, Populaires, Recommandés) — chargés en parallèle,
   // n'attendent PAS le feed principal pour ne pas bloquer le LCP.
+  // Skip si cache frais (< RAILS_CACHE_TTL) pour éviter requêtes redondantes au mount.
   useEffect(() => {
     if (!isCountryReady) return;
+    const isFresh = _railsCache
+      && _railsCache.userId === (currentUser?.id ?? null)
+      && Date.now() - _railsCache.ts < RAILS_CACHE_TTL
+      && _railsCache.recentlyViewed.length > 0;
+    if (isFresh) return;
+
     let cancelled = false;
     (async () => {
       try {
@@ -249,26 +280,34 @@ export const Home: React.FC = () => {
         const indexById = new Map(ids.map((id, i) => [id, i]));
         const ordered = [...products].sort((a, b) => (indexById.get(a.id) ?? 99) - (indexById.get(b.id) ?? 99));
         setRecentlyViewed(ordered);
+        updateRailsCache({ recentlyViewed: ordered });
       } catch {
         /* silencieux — rail caché si erreur */
       }
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.id, isCountryReady]);
+  }, [currentUser?.id, isCountryReady, updateRailsCache]);
 
   useEffect(() => {
     if (!isCountryReady) return;
+    const isFresh = _railsCache
+      && Date.now() - _railsCache.ts < RAILS_CACHE_TTL
+      && _railsCache.popularProducts.length > 0;
+    if (isFresh) return;
+
     let cancelled = false;
     (async () => {
       try {
         const products = await getPopular(12);
-        if (!cancelled) setPopularProducts(products);
+        if (cancelled) return;
+        setPopularProducts(products);
+        updateRailsCache({ popularProducts: products });
       } catch {
         /* silencieux — rail caché si erreur */
       }
     })();
     return () => { cancelled = true; };
-  }, [isCountryReady]);
+  }, [isCountryReady, updateRailsCache]);
 
   // Recommandations personnalisées — uniquement utilisateur connecté.
   // Exclut les produits déjà dans "Vus récemment" pour éviter la redondance visuelle.
@@ -277,18 +316,26 @@ export const Home: React.FC = () => {
       setRecommended([]);
       return;
     }
+    const isFresh = _railsCache
+      && _railsCache.userId === currentUser.id
+      && Date.now() - _railsCache.ts < RAILS_CACHE_TTL
+      && _railsCache.recommended.length > 0;
+    if (isFresh) return;
+
     let cancelled = false;
     (async () => {
       try {
         const excludeIds = recentlyViewed.map(p => p.id);
         const products = await getPersonalizedRecommendations(currentUser.id, excludeIds, 12);
-        if (!cancelled) setRecommended(products);
+        if (cancelled) return;
+        setRecommended(products);
+        updateRailsCache({ recommended: products });
       } catch {
         /* silencieux — rail caché si erreur */
       }
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.id, isCountryReady, recentlyViewed]);
+  }, [currentUser?.id, isCountryReady, recentlyViewed, updateRailsCache]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
