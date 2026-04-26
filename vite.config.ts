@@ -19,7 +19,7 @@ function cssPreloadPlugin(): Plugin {
         const cssMatch = html.match(/<link rel="stylesheet"[^>]*href="([^"]+\.css)"[^>]*>/);
         if (!cssMatch) return html;
         const cssHref = cssMatch[1];
-        const preload = `<link rel="preload" as="style" href="${cssHref}" />`;
+        const preload = `<link rel="preload" as="style" href="${cssHref}" crossorigin />`;
         return html.replace('<head>', `<head>\n    ${preload}`);
       },
     },
