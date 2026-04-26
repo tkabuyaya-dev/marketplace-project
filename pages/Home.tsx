@@ -10,7 +10,7 @@ import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
 import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts, getProductsByIds } from '../services/firebase';
-import { getRecentlyViewedIds } from '../services/recommendations';
+import { getRecentlyViewedIds, getPopular } from '../services/recommendations';
 import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { prefetchProductImages } from '../utils/prefetch';
@@ -77,6 +77,7 @@ export const Home: React.FC = () => {
 
   const [boostedProducts, setBoostedProducts] = useState<Product[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
 
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
@@ -254,6 +255,20 @@ export const Home: React.FC = () => {
     return () => { cancelled = true; };
   }, [currentUser?.id, isCountryReady]);
 
+  useEffect(() => {
+    if (!isCountryReady) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const products = await getPopular(12);
+        if (!cancelled) setPopularProducts(products);
+      } catch {
+        /* silencieux — rail caché si erreur */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isCountryReady]);
+
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
     setLoadingMore(true);
@@ -428,6 +443,19 @@ export const Home: React.FC = () => {
           title={t('home.sections.recentlyViewed')}
           icon="🕐"
           products={recentlyViewed}
+          loading={false}
+          currentUserId={currentUser?.id}
+          likedMap={likedMap}
+          onProductClick={onProductClick}
+        />
+      )}
+
+      {/* Populaires — preuve sociale, toujours visible si données disponibles */}
+      {popularProducts.length > 0 && (
+        <ProductSection
+          title={t('home.sections.popular')}
+          icon="🔥"
+          products={popularProducts}
           loading={false}
           currentUserId={currentUser?.id}
           likedMap={likedMap}
