@@ -29,6 +29,7 @@ const ProductDetailPage = lazyRetry(() => import('./pages/ProductDetail'));
 const ShopProfilePage = lazyRetry(() => import('./pages/ShopProfile'));
 const SellerDashboardPage = lazyRetry(() => import('./pages/SellerDashboard'));
 const SellerRegistrationPage = lazyRetry(() => import('./pages/SellerRegistration'));
+const BecomeSellerLandingPage = lazyRetry(() => import('./pages/BecomeSellerLanding'));
 const AdminDashboardPage = lazyRetry(() => import('./pages/admin'));
 const LoginPage = lazyRetry(() => import('./pages/Login'));
 const ProfilePage = lazyRetry(() => import('./pages/Profile'));
@@ -103,6 +104,7 @@ export const router = createBrowserRouter([
       { path: 'shop/:shopSlug/product/:slugOrId', element: <SuspenseWrapper><ProductDetailPage /></SuspenseWrapper> },
       { path: 'dashboard', element: <SuspenseWrapper><SellerDashboardPage /></SuspenseWrapper> },
       { path: 'register-seller', element: <SuspenseWrapper><SellerRegistrationPage /></SuspenseWrapper> },
+      { path: 'devenir-vendeur', element: <SuspenseWrapper><BecomeSellerLandingPage /></SuspenseWrapper> },
       { path: 'admin', element: <SuspenseWrapper><AdminDashboardPage /></SuspenseWrapper> },
       { path: 'search', element: <SuspenseWrapper><SearchPage /></SuspenseWrapper> },
       { path: 'plans', element: <SuspenseWrapper><PlansPage /></SuspenseWrapper> },

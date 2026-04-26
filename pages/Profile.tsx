@@ -129,7 +129,7 @@ const Profile: React.FC = () => {
             </Button>
           )}
           {currentUser.role === 'buyer' && (
-            <Button className="w-full bg-gradient-to-r from-gold-400 to-gold-600 border-none text-gray-900 font-bold" onClick={() => navigate('/register-seller')}>
+            <Button className="w-full bg-gradient-to-r from-gold-400 to-gold-600 border-none text-gray-900 font-bold" onClick={() => navigate('/devenir-vendeur')}>
               {t('profile.becomeSeller')}
             </Button>
           )}

@@ -79,6 +79,12 @@ export const INITIAL_SUBSCRIPTION_TIERS: SubscriptionTier[] = [
 ];
 export const FREE_TIER_WARNING_AT = 3; // Show upgrade warning when reaching this count on free plan
 
+// --- OFFRE FONDATEURS (landing page /devenir-vendeur) ---
+// Total de places: 100. Mettre à jour cette valeur manuellement à mesure que les inscriptions arrivent.
+// TODO: brancher sur Firestore (collection config/foundersOffer) une fois la collection créée côté admin.
+export const FOUNDERS_SPOTS_TOTAL = 100;
+export const FOUNDERS_SPOTS_REMAINING = 67;
+
 // --- PAYMENT METHODS PAR PAYS ---
 export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
   bi: [
