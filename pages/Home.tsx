@@ -12,6 +12,7 @@ import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
 import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts, getProductsByIds } from '../services/firebase';
 import { getRecentlyViewedIds, getPopular, getPersonalizedRecommendations } from '../services/recommendations';
 import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
+import { pruneStaleSearches } from '../services/searchIdb';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { prefetchProductImages } from '../utils/prefetch';
 import { useAppContext } from '../contexts/AppContext';
@@ -115,7 +116,7 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(() => pruneStaleFeeds(), { timeout: 10000 });
+      requestIdleCallback(() => { pruneStaleFeeds(); pruneStaleSearches(); }, { timeout: 10000 });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

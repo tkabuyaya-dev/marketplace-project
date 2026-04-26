@@ -17,6 +17,8 @@
  */
 
 import { Product, User, SearchFilters } from "../types";
+import { readCache, writeCache } from "./sessionCache";
+import { getAutocompleteFromIDB, saveAutocompleteToIDB } from "./searchIdb";
 
 const env = import.meta.env;
 
@@ -323,8 +325,13 @@ export async function algoliaSearchSellers(
   }
 }
 
-// In-memory cache for autocomplete — avoids re-calling Algolia for the same prefix
+// Three-tier autocomplete cache:
+//   L1 = in-memory Map  (0ms,    dies on full page reload)
+//   L2 = sessionStorage (1-5ms,  survives reload, dies on tab close)
+//   L3 = IndexedDB      (5-15ms, survives tab close, TTL 6h — ./searchIdb.ts)
+// All three are populated on every successful Algolia call.
 const autocompleteCache = new Map<string, Product[]>();
+const SS_PREFIX_AC = "nun_ac_";
 
 /**
  * Lightweight autocomplete search — only the fields needed for the dropdown.
@@ -338,9 +345,26 @@ export async function algoliaAutocompleteProducts(
   if (!isConfigured) return [];
   if (queryText.trim().length < 2) return [];
 
-  // Return from cache if same query+country was already fetched this session
   const cacheKey = `${queryText.trim().toLowerCase()}|${countryId || ''}`;
-  if (autocompleteCache.has(cacheKey)) return autocompleteCache.get(cacheKey)!;
+
+  // L1 hit (in-memory)
+  const l1 = autocompleteCache.get(cacheKey);
+  if (l1) return l1;
+
+  // L2 hit (sessionStorage) — rehydrate L1 so subsequent calls stay 0-ms
+  const l2 = readCache<Product[]>(SS_PREFIX_AC, cacheKey);
+  if (l2) {
+    autocompleteCache.set(cacheKey, l2);
+    return l2;
+  }
+
+  // L3 hit (IndexedDB) — promote to L1+L2 so subsequent calls skip the async hop
+  const l3 = await getAutocompleteFromIDB(cacheKey);
+  if (l3) {
+    autocompleteCache.set(cacheKey, l3);
+    writeCache(SS_PREFIX_AC, cacheKey, l3);
+    return l3;
+  }
 
   try {
     const optionalFilters: string[] = [];
@@ -360,6 +384,8 @@ export async function algoliaAutocompleteProducts(
 
     const products = result.hits.map(hitToProduct);
     autocompleteCache.set(cacheKey, products);
+    writeCache(SS_PREFIX_AC, cacheKey, products);
+    void saveAutocompleteToIDB(cacheKey, products); // fire-and-forget
     return products;
   } catch {
     return [];

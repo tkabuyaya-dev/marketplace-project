@@ -21,6 +21,8 @@ import { useSearchParams } from 'react-router-dom';
 import { Product } from '../types';
 import { algoliaSearchProductsFull, ExtendedSearchFilters } from '../services/algolia';
 import { searchProducts } from '../services/firebase';
+import { readCache, writeCache } from '../services/sessionCache';
+import { getSearchResultsFromIDB, saveSearchResultsToIDB } from '../services/searchIdb';
 import { useAppContext } from '../contexts/AppContext';
 import { useAdaptiveDebounce } from './useAdaptiveDebounce';
 
@@ -62,11 +64,79 @@ const DEFAULT_FILTERS: SearchFiltersState = {
 
 const HITS_PER_PAGE = 20;
 
-// ── Simple in-memory cache ──
-const searchCache = new Map<string, { results: Product[]; total: number; pages: number; highlights: Map<string, Record<string, string>> }>();
+// ── Three-tier search cache ──
+// L1 = in-memory Map  (0ms,    dies on full page reload)
+// L2 = sessionStorage (1-5ms,  survives reload, dies on tab close)
+// L3 = IndexedDB      (5-15ms, survives tab close, TTL 6h — services/searchIdb.ts)
+//
+// Map<string,...> is not JSON-serializable. The L2 / L3 representation stores
+// highlights as an array of [key, value] pairs and rehydrates to a Map on read.
+interface CacheValue {
+  results: Product[];
+  total: number;
+  pages: number;
+  highlights: Map<string, Record<string, string>>;
+}
+interface CacheValueSerial {
+  results: Product[];
+  total: number;
+  pages: number;
+  highlightsArr: [string, Record<string, string>][];
+}
+const searchCache = new Map<string, CacheValue>();
+const SS_PREFIX_SR = 'nun_sr_';
 
 function cacheKey(query: string, filters: SearchFiltersState, page: number): string {
   return JSON.stringify({ q: query.trim().toLowerCase(), ...filters, page });
+}
+
+function deserializeCache(serial: CacheValueSerial): CacheValue {
+  return {
+    results: serial.results,
+    total: serial.total,
+    pages: serial.pages,
+    highlights: new Map(serial.highlightsArr),
+  };
+}
+
+async function readSearchCache(key: string): Promise<CacheValue | undefined> {
+  const l1 = searchCache.get(key);
+  if (l1) return l1;
+
+  const l2 = readCache<CacheValueSerial>(SS_PREFIX_SR, key);
+  if (l2) {
+    const value = deserializeCache(l2);
+    searchCache.set(key, value);
+    return value;
+  }
+
+  const l3 = await getSearchResultsFromIDB(key);
+  if (l3) {
+    const value = deserializeCache(l3);
+    searchCache.set(key, value);
+    // Promote to L2 so the next reload doesn't pay the IDB hop
+    writeCache<CacheValueSerial>(SS_PREFIX_SR, key, {
+      results: l3.results,
+      total: l3.total,
+      pages: l3.pages,
+      highlightsArr: l3.highlightsArr,
+    });
+    return value;
+  }
+
+  return undefined;
+}
+
+function writeSearchCache(key: string, value: CacheValue): void {
+  searchCache.set(key, value);
+  const serial: CacheValueSerial = {
+    results: value.results,
+    total: value.total,
+    pages: value.pages,
+    highlightsArr: Array.from(value.highlights.entries()),
+  };
+  writeCache<CacheValueSerial>(SS_PREFIX_SR, key, serial);
+  void saveSearchResultsToIDB(key, serial); // fire-and-forget L3 write
 }
 
 // ── Parse filters from URL search params ──
@@ -132,10 +202,12 @@ export function useSearch() {
   const executeSearch = useCallback(async (query: string, filters: SearchFiltersState, page: number, append: boolean) => {
     const requestId = ++abortRef.current;
 
-    // Check cache
+    // Check cache (L1 in-memory → L2 sessionStorage → L3 IndexedDB)
     const key = cacheKey(query, filters, page);
-    const cached = searchCache.get(key);
+    const cached = await readSearchCache(key);
     if (cached) {
+      // A newer request may have fired during the IDB await — bail out
+      if (abortRef.current !== requestId) return;
       setState(prev => ({
         ...prev,
         results: append ? [...prev.results, ...cached.results] : cached.results,
@@ -150,6 +222,10 @@ export function useSearch() {
       }));
       return;
     }
+
+    // A newer request may have fired during the IDB await — bail out before
+    // flipping isLoading on a stale request
+    if (abortRef.current !== requestId) return;
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -179,8 +255,8 @@ export function useSearch() {
       // Abort if a newer request was fired
       if (abortRef.current !== requestId) return;
 
-      // Cache result
-      searchCache.set(key, {
+      // Cache result (writes to both L1 and L2)
+      writeSearchCache(key, {
         results: result.products,
         total: result.totalHits,
         pages: result.totalPages,

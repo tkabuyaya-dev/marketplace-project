@@ -1,5 +1,7 @@
 /// <reference types="vitest/globals" />
 import '@testing-library/jest-dom/vitest';
+// Polyfill IndexedDB for jsdom (used by services/idb.ts and services/searchIdb.ts)
+import 'fake-indexeddb/auto';
 
 // Polyfill IntersectionObserver for jsdom
 class MockIntersectionObserver {
