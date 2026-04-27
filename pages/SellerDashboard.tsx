@@ -2144,7 +2144,17 @@ export const SellerDashboard: React.FC = () => {
                </span>
              </div>
              <LanguageSwitcher compact />
-             <button onClick={() => navigate('/')} className="text-gray-500 dark:text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-gray-900 dark:hover:text-white">✕</button>
+             <button
+               onClick={() => navigate('/')}
+               aria-label={t('dashboard.backToSite')}
+               title={t('dashboard.backToSite')}
+               className="flex items-center gap-1 min-h-[40px] px-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+             >
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                 <path d="M15 18l-6-6 6-6" />
+               </svg>
+               <span className="text-xs font-semibold">{t('dashboard.exitShort')}</span>
+             </button>
            </div>
          </div>
          {/* Onglets de navigation mobile — scroll horizontal */}
