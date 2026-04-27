@@ -43,9 +43,10 @@ const SkeletonCard = () => (
 );
 
 // ── Safe Algolia highlight renderer ──
-// Algolia wraps matched segments in <em>...</em>; everything else is HTML-entity-
-// escaped. We split on <em> tags and render each segment as text (React escapes
-// it automatically), promoting matches to <mark>. No dangerouslySetInnerHTML.
+// Algolia wraps matched segments using highlightPreTag/highlightPostTag from
+// services/algolia.ts (currently <mark>...</mark>). Everything else is
+// HTML-entity-escaped. We split on these tags and render each segment as
+// React text (auto-escaped), promoting matches to <mark>. No dangerouslySetInnerHTML.
 const HTML_ENTITIES: Record<string, string> = {
   '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#x27;': "'",
 };
@@ -53,10 +54,10 @@ const decodeEntities = (s: string) =>
   s.replace(/&(amp|lt|gt|quot|#39|#x27);/g, m => HTML_ENTITIES[m] ?? m);
 
 function renderHighlight(html: string): React.ReactNode {
-  const parts = html.split(/(<em>[\s\S]*?<\/em>)/g);
+  const parts = html.split(/(<mark>[\s\S]*?<\/mark>)/g);
   return parts.map((part, i) => {
-    if (part.startsWith('<em>') && part.endsWith('</em>')) {
-      return <mark key={i}>{decodeEntities(part.slice(4, -5))}</mark>;
+    if (part.startsWith('<mark>') && part.endsWith('</mark>')) {
+      return <mark key={i}>{decodeEntities(part.slice(6, -7))}</mark>;
     }
     return <React.Fragment key={i}>{decodeEntities(part)}</React.Fragment>;
   });
