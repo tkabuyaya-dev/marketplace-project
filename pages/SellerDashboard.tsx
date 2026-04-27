@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
@@ -23,7 +23,7 @@ import { ProductQualityScore } from '../components/ProductQualityScore';
 import { ProductPreview } from '../components/ProductPreview';
 import { RenewSubscriptionModal } from '../components/RenewSubscriptionModal';
 import { VerificationRequestModal } from '../components/VerificationRequestModal';
-import { useOfflineQueue } from '../hooks/useOfflineQueue';
+import { useOfflineQueue, type OfflineDraft, type SyncResult } from '../hooks/useOfflineQueue';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
@@ -43,8 +43,6 @@ export const SellerDashboard: React.FC = () => {
   }
   const { toast } = useToast();
   const { categories: firestoreCategories } = useCategories();
-  const { queue: offlineQueue, queueCount, addToQueue, removeFromQueue, syncing, setSyncing } = useOfflineQueue();
-  const isOnline = navigator.onLine;
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
@@ -69,7 +67,43 @@ export const SellerDashboard: React.FC = () => {
   const [boostingProduct, setBoostingProduct] = useState<Product | null>(null);
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
-  const [syncFailedIds, setSyncFailedIds] = useState<string[]>([]);
+
+  // ─── Offline draft sync ──────────────────────────────────────────────────────
+  // syncFn is invoked by useOfflineQueue once per due draft (after a real
+  // connectivity probe + per-draft backoff). Throwing here records the error on
+  // the draft and reschedules; returning normally removes it from the queue.
+  const syncOneDraft = useCallback(async (draft: OfflineDraft) => {
+    const files: File[] = [];
+    for (const dataUrl of draft.images) {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      files.push(new File([blob], `draft_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    }
+    const imageUrls = await uploadImages(files);
+    if (imageUrls.length === 0) throw new Error(t('dashboard.uploadError') || 'Échec upload images');
+    const draftBlurhash = files[0] ? await generateBlurhash(files[0]) : null;
+    await addProduct({ ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined });
+  }, [t]);
+
+  const handleSyncComplete = useCallback(async (result: SyncResult) => {
+    if (result.synced > 0) {
+      toast(t('dashboard.syncSuccess', { count: result.synced }), 'success');
+      try {
+        const data = await getSellerAllProducts(currentUser.id);
+        setMyProducts(data);
+      } catch { /* refresh non-critical */ }
+    }
+    if (result.failed > 0) {
+      toast(t('dashboard.syncPartialError', { count: result.failed }), 'error');
+    }
+  }, [currentUser.id, t, toast]);
+
+  const { queue: offlineQueue, queueCount, addToQueue, syncing, sync } = useOfflineQueue({
+    syncFn: syncOneDraft,
+    onSyncComplete: handleSyncComplete,
+  });
+
+  const failedDrafts = useMemo(() => offlineQueue.filter(d => d.lastError), [offlineQueue]);
 
   // Profile Editable State
   const [shopProfile, setShopProfile] = useState({
@@ -674,110 +708,59 @@ export const SellerDashboard: React.FC = () => {
     window.open(`https://wa.me/${supportNum.replace('+', '')}?text=${encodeURIComponent('Bonjour, je suis vendeur sur Nunulia et j\'ai besoin d\'aide.')}`, '_blank', 'noopener,noreferrer');
   };
 
-  // Sync offline queue when online
-  const handleSyncQueue = async () => {
-    if (syncing || !navigator.onLine || offlineQueue.length === 0) return;
-    setSyncing(true);
-    setSyncFailedIds([]);
-    let synced = 0;
-    const failed: string[] = [];
-    for (const draft of offlineQueue) {
-      try {
-        // Convert base64 previews to files for upload
-        const files: File[] = [];
-        for (const dataUrl of draft.images) {
-          const res = await fetch(dataUrl);
-          const blob = await res.blob();
-          files.push(new File([blob], `draft_${Date.now()}.jpg`, { type: 'image/jpeg' }));
-        }
-        const imageUrls = await uploadImages(files);
-        const draftBlurhash = files[0] ? await generateBlurhash(files[0]) : null;
-        await addProduct({ ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined });
-        removeFromQueue(draft.id);
-        synced++;
-      } catch (err) {
-        console.error('[OfflineSync] Failed:', draft.id, err);
-        failed.push(draft.id);
-      }
-    }
-    if (synced > 0) {
-      toast(t('dashboard.syncSuccess', { count: synced }), 'success');
-      const data = await getSellerAllProducts(currentUser.id);
-      setMyProducts(data);
-    }
-    if (failed.length > 0) {
-      setSyncFailedIds(failed);
-      toast(t('dashboard.syncPartialError', { count: failed.length }), 'error');
-    }
-    setSyncing(false);
-  };
-
-  // Auto-sync when coming back online
-  useEffect(() => {
-    const handler = () => {
-      if (offlineQueue.length > 0) handleSyncQueue();
-    };
-    window.addEventListener('online', handler);
-    return () => window.removeEventListener('online', handler);
-  }, [offlineQueue.length]);
-
   const renderOverview = () => (
     <div className="space-y-6 animate-fade-in">
-        {/* Offline Queue Banner */}
-        {(queueCount > 0 || syncFailedIds.length > 0) && (
+        {/* Offline Queue Banner — auto-syncs in background; manual button forces a retry. */}
+        {queueCount > 0 && (
           <div className={`border rounded-2xl p-4 space-y-3 ${
-            syncFailedIds.length > 0
+            failedDrafts.length > 0
               ? 'bg-red-500/10 border-red-500/30'
-              : navigator.onLine
-              ? 'bg-green-500/10 border-green-500/30'
-              : 'bg-orange-500/10 border-orange-500/30'
+              : 'bg-green-500/10 border-green-500/30'
           }`}>
             <div className="flex items-center gap-3">
               <span className="text-2xl">
-                {syncFailedIds.length > 0 ? '⚠️' : navigator.onLine ? '🔄' : '📦'}
+                {failedDrafts.length > 0 ? '⚠️' : syncing ? '🔄' : '📦'}
               </span>
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${
-                  syncFailedIds.length > 0 ? 'text-red-400' : navigator.onLine ? 'text-green-400' : 'text-orange-400'
+                  failedDrafts.length > 0 ? 'text-red-400' : 'text-green-400'
                 }`}>
-                  {syncFailedIds.length > 0
-                    ? t('dashboard.syncError', { count: syncFailedIds.length })
+                  {failedDrafts.length > 0
+                    ? t('dashboard.syncError', { count: failedDrafts.length })
                     : t('dashboard.offlineQueue', { count: queueCount })}
                 </p>
                 <p className="text-gray-500 text-xs">
-                  {syncFailedIds.length > 0
+                  {failedDrafts.length > 0
                     ? t('dashboard.syncErrorHint')
-                    : navigator.onLine
-                    ? t('dashboard.readyToSync')
+                    : syncing
+                    ? t('dashboard.syncing')
                     : t('dashboard.willSyncOnline')}
                 </p>
               </div>
-              {navigator.onLine && queueCount > 0 && (
-                <button
-                  onClick={handleSyncQueue}
-                  disabled={syncing}
-                  className={`text-xs px-4 py-2 border rounded-xl transition-colors disabled:opacity-50 ${
-                    syncFailedIds.length > 0
-                      ? 'text-red-400 border-red-500/30 hover:bg-red-500/10'
-                      : 'text-green-400 border-green-500/30 hover:bg-green-500/10'
-                  }`}
-                >
-                  {syncing
-                    ? t('dashboard.syncing')
-                    : syncFailedIds.length > 0
-                    ? t('dashboard.retrySync')
-                    : t('dashboard.syncNow')}
-                </button>
-              )}
+              <button
+                onClick={() => sync({ force: true })}
+                disabled={syncing}
+                className={`text-xs px-4 py-2 border rounded-xl transition-colors disabled:opacity-50 ${
+                  failedDrafts.length > 0
+                    ? 'text-red-400 border-red-500/30 hover:bg-red-500/10'
+                    : 'text-green-400 border-green-500/30 hover:bg-green-500/10'
+                }`}
+              >
+                {syncing
+                  ? t('dashboard.syncing')
+                  : failedDrafts.length > 0
+                  ? t('dashboard.retrySync')
+                  : t('dashboard.syncNow')}
+              </button>
             </div>
 
-            {/* Per-draft status rows */}
-            {offlineQueue.length > 0 && (
-              <div className="space-y-1.5 pl-9">
-                {offlineQueue.map(draft => {
-                  const hasFailed = syncFailedIds.includes(draft.id);
-                  return (
-                    <div key={draft.id} className="flex items-center gap-2">
+            {/* Per-draft status rows — surfaces lastError so the seller sees WHY */}
+            <div className="space-y-1.5 pl-9">
+              {offlineQueue.map(draft => {
+                const hasFailed = !!draft.lastError;
+                return (
+                  <div key={draft.id} className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-bold w-14 flex-shrink-0 ${hasFailed ? 'text-red-400' : 'text-gray-500'}`}>
                         {hasFailed ? t('dashboard.syncStatusFailed') : syncing ? t('dashboard.syncStatusPending') : t('dashboard.syncStatusWaiting')}
                       </span>
@@ -785,10 +768,15 @@ export const SellerDashboard: React.FC = () => {
                         {(draft.data.title as string | undefined) || t('dashboard.syncDraftNoTitle')}
                       </span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    {hasFailed && draft.lastError && (
+                      <span className="text-[10px] text-red-400/70 pl-16 truncate" title={draft.lastError}>
+                        {draft.lastError}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
