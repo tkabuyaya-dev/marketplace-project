@@ -332,6 +332,8 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
     sellerIsVerified: userData.isVerified || false,
     sellerVerificationTier: userData.verificationTier || (userData.isVerified ? 'identity' : 'none'),
     sellerWhatsapp:  userData.whatsapp || null,
+    sellerCommune:   userData.sellerDetails?.commune || null,
+    sellerProvince:  userData.sellerDetails?.province || null,
     countryId:       userData.sellerDetails?.countryId || null,
     isWholesale:     productData.isWholesale || false,
     minOrderQuantity: productData.minOrderQuantity || null,

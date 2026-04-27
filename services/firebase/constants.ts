@@ -131,7 +131,10 @@ export function docToProduct(docData: any, id: string): Product {
       role:      'seller',
       joinDate:  0,
       whatsapp:  docData.sellerWhatsapp,
-    },
+      sellerDetails: (docData.sellerCommune || docData.sellerProvince)
+        ? { commune: docData.sellerCommune || '', province: docData.sellerProvince || '' }
+        : undefined,
+    } as any,
     currency:    docData.currency || undefined,
     countryId:   docData.countryId || undefined,
     isPromoted:  docData.isPromoted || false,

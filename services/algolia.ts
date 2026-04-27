@@ -136,7 +136,10 @@ function hitToProduct(hit: AlgoliaHit): Product {
       verificationTier: hit.sellerVerificationTier || (hit.sellerIsVerified ? "identity" : "none"),
       role: "seller",
       joinDate: 0,
-    },
+      sellerDetails: (hit.sellerCommune || hit.sellerProvince)
+        ? { commune: hit.sellerCommune || "", province: hit.sellerProvince || "" }
+        : undefined,
+    } as any,
     isPromoted: hit.isSponsored || false,
     isSponsored: hit.isSponsored || false,
     status: "approved",
