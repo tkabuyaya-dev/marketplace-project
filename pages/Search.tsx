@@ -84,6 +84,7 @@ const ProductCard: React.FC<{
   const isNew = product.createdAt > thirtyDaysAgo;
   const currency = product.currency || getCountryCurrency(product.countryId);
   const flag = getCountryFlag(product.countryId);
+  const city = product.seller?.sellerDetails?.commune || '';
   const discount = product.originalPrice && product.originalPrice > product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : null;
@@ -188,6 +189,28 @@ const ProductCard: React.FC<{
         <p className="text-[10px] text-gray-500 dark:text-gray-600 truncate leading-none">
           {product.seller?.name || '—'}{flag && <span className="ml-1">{flag}</span>}
         </p>
+
+        {/* City — only renders when seller commune is denormalized on the product */}
+        {city && (
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 leading-none">
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0"
+              aria-hidden="true"
+            >
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span className="truncate">{city}</span>
+          </div>
+        )}
       </div>
     </button>
   );
