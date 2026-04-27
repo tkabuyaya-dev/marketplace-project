@@ -73,16 +73,39 @@ export const SellerDashboard: React.FC = () => {
   // connectivity probe + per-draft backoff). Throwing here records the error on
   // the draft and reschedules; returning normally removes it from the queue.
   const syncOneDraft = useCallback(async (draft: OfflineDraft) => {
-    const files: File[] = [];
-    for (const dataUrl of draft.images) {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      files.push(new File([blob], `draft_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    // Each stage is wrapped so the `lastError` surfaced in the UI tells the
+    // seller WHICH step actually failed — "Failed to fetch" alone could mean
+    // browser fetch, Cloudinary upload, or Firestore write.
+    let files: File[];
+    try {
+      files = [];
+      for (const dataUrl of draft.images) {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        files.push(new File([blob], `draft_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+      }
+    } catch (err: any) {
+      throw new Error(`Image illisible: ${err?.message || err}`);
     }
-    const imageUrls = await uploadImages(files);
+
+    let imageUrls: string[];
+    try {
+      imageUrls = await uploadImages(files);
+    } catch (err: any) {
+      throw new Error(`Upload Cloudinary: ${err?.message || err}`);
+    }
     if (imageUrls.length === 0) throw new Error(t('dashboard.uploadError') || 'Échec upload images');
-    const draftBlurhash = files[0] ? await generateBlurhash(files[0]) : null;
-    await addProduct({ ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined });
+
+    let draftBlurhash: string | null = null;
+    try {
+      draftBlurhash = files[0] ? await generateBlurhash(files[0]) : null;
+    } catch { /* blurhash is best-effort, never block sync */ }
+
+    try {
+      await addProduct({ ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined });
+    } catch (err: any) {
+      throw new Error(`Sauvegarde Firestore: ${err?.message || err}`);
+    }
   }, [t]);
 
   const handleSyncComplete = useCallback(async (result: SyncResult) => {
@@ -825,10 +848,14 @@ export const SellerDashboard: React.FC = () => {
                </div>
 
                <div className="mt-5 flex flex-wrap gap-2">
-                 <Button size="sm" variant="secondary" className="bg-gold-400 hover:bg-gold-300 border-gold-400 text-gray-900 dark:bg-white/10 dark:border-white/20 dark:hover:bg-white/20 dark:text-white" onClick={() => setActiveTab('add_product')}>
+                 {/* `!` prefix overrides the Button variant="secondary" defaults
+                     (bg-gray-800 + text-white) which otherwise paint the text the
+                     same colour as our custom backgrounds — the editShop button
+                     was rendering as a white-on-white blank pill. */}
+                 <Button size="sm" variant="secondary" className="!bg-gold-400 hover:!bg-gold-300 !border-gold-400 !text-gray-900 dark:!bg-white/10 dark:!border-white/20 dark:hover:!bg-white/20 dark:!text-white" onClick={() => setActiveTab('add_product')}>
                     {t('dashboard.addArticle')}
                  </Button>
-                 <Button size="sm" variant="secondary" className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/15 dark:text-white/80" onClick={() => setActiveTab('shop')}>
+                 <Button size="sm" variant="secondary" className="!bg-white !border-gray-200 hover:!bg-gray-50 !text-gray-700 dark:!bg-white/5 dark:!border-white/10 dark:hover:!bg-white/15 dark:!text-white/80" onClick={() => setActiveTab('shop')}>
                     {t('dashboard.editShop')}
                  </Button>
                </div>
