@@ -7,6 +7,8 @@ import {
   db, collection, addDoc, getDocs,
   query, where, orderBy, limit, serverTimestamp, COLLECTIONS,
 } from './constants';
+import { getFirebaseFunctions } from '../../firebase-config';
+import { httpsCallable } from 'firebase/functions';
 
 export type ActivityEntry = {
   productId: string;
@@ -99,42 +101,32 @@ export const getAlsoViewedProductIds = async (
 
 /**
  * Returns all activity events for a list of product IDs within the last 30 days.
- * Batches in groups of 30 (Firestore 'in' limit).
- * Client-side date filter to avoid needing a composite index.
+ *
+ * Routed through the `getMyProductsActivity` callable Cloud Function rather
+ * than a direct Firestore query: the userActivity rule restricts reads to the
+ * event's author (to keep viewer identity private), so a seller cannot read
+ * activity on their own products from the client. The Cloud Function runs as
+ * admin, validates ownership of every requested productId server-side, and
+ * returns only `{ productId, action, createdAt }` triples.
+ *
+ * Returns an empty array on any failure — the caller's UI degrades gracefully
+ * to product-level lifetime counters (`product.views`, `product.likesCount`).
  */
 export const getProductActivityLast30Days = async (
   productIds: string[]
 ): Promise<ActivityEntry[]> => {
-  if (!db || productIds.length === 0) return [];
-
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const results: ActivityEntry[] = [];
-
-  for (let i = 0; i < productIds.length; i += 30) {
-    const batch = productIds.slice(i, i + 30);
-    try {
-      const snap = await getDocs(
-        query(
-          collection(db, COLLECTIONS.USER_ACTIVITY),
-          where('productId', 'in', batch),
-          limit(500)
-        )
-      );
-      snap.docs.forEach(d => {
-        const data = d.data();
-        const ts: number = data.createdAt?.toMillis?.() ?? 0;
-        if (ts >= thirtyDaysAgo) {
-          results.push({
-            productId: data.productId as string,
-            action: data.action as ActivityAction,
-            createdAt: ts,
-          });
-        }
-      });
-    } catch (e) {
-      console.warn('[getProductActivityLast30Days] batch error:', e);
-    }
+  if (productIds.length === 0) return [];
+  try {
+    const fns = await getFirebaseFunctions();
+    if (!fns) return [];
+    const fn = httpsCallable<{ productIds: string[] }, { entries: ActivityEntry[] }>(
+      fns,
+      'getMyProductsActivity'
+    );
+    const res = await fn({ productIds });
+    return res.data?.entries || [];
+  } catch (e) {
+    console.warn('[getProductActivityLast30Days] callable failed:', e);
+    return [];
   }
-
-  return results;
 };
