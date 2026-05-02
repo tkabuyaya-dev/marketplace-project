@@ -73,6 +73,28 @@ export interface UseOfflineQueueOptions {
   onSyncComplete?: (result: SyncResult) => void;
 }
 
+/**
+ * Ask the browser to wake the SW when connectivity returns. Tag is shared
+ * across drafts — register-many = wake-up-once. Silent no-op on browsers
+ * without Background Sync (Safari, Firefox).
+ */
+async function registerBackgroundSync(): Promise<void> {
+  if (typeof navigator === 'undefined') return;
+  if (!('serviceWorker' in navigator)) return;
+  if (!('SyncManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    // The `sync` property is part of ServiceWorkerRegistration when
+    // Background Sync is supported but isn't in the default DOM lib types.
+    const swReg = reg as ServiceWorkerRegistration & {
+      sync?: { register: (tag: string) => Promise<void> };
+    };
+    await swReg.sync?.register('drafts-pending');
+  } catch {
+    // Permission denied / quota / not supported → fall back to in-page sync.
+  }
+}
+
 export function useOfflineQueue(options?: UseOfflineQueueOptions) {
   const userId = options?.userId;
   const [queue, setQueue] = useState<OfflineDraft[]>([]);
@@ -118,6 +140,13 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
     };
     await putDraft(draft);
     setQueue(prev => [...prev, draft]);
+
+    // Background Sync: ask the browser to wake our SW when real connectivity
+    // returns, even if this tab gets closed. The SW shows a notification
+    // pointing back to the dashboard, where the in-page sync sweep takes over.
+    // sync.register is idempotent for the same tag — many drafts → one wake-up.
+    void registerBackgroundSync();
+
     return draft.id;
   }, [userId]);
 

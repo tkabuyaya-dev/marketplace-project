@@ -150,6 +150,38 @@ export const SellerDashboard: React.FC = () => {
 
   const failedDrafts = useMemo(() => offlineQueue.filter(d => d.lastError), [offlineQueue]);
 
+  // ─── Background Sync handoff from the SW ────────────────────────────────
+  // The SW (public/sw-extras.js) shows a notification when connectivity
+  // returns. Tapping it focuses the app and posts NUNULIA_SYNC_DRAFTS — we
+  // run a sweep on receipt. We also honor ?syncDrafts=1 in the URL for the
+  // case where the SW had to open a brand-new tab.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'NUNULIA_SYNC_DRAFTS') {
+        sync({ force: true });
+      }
+    };
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', onMessage);
+    }
+    return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onMessage);
+      }
+    };
+  }, [sync]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('syncDrafts') === '1') {
+      sync({ force: true });
+      // Strip the query param so a refresh doesn't re-trigger.
+      navigate(location.pathname, { replace: true });
+    }
+    // Run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ─── Network quality (used for banner + adaptive compression) ────────────
   // 'slow' = slow-2g/2g OR Save Data on. We compress harder and warn the
   // seller in advance. 'fast'/'offline' use defaults.
@@ -451,6 +483,12 @@ export const SellerDashboard: React.FC = () => {
       resetForm();
       toast(t('dashboard.savedOffline'), 'success');
       setActiveTab('products');
+      // Ask for notification permission contextually — only the first time
+      // a seller queues offline. The browser respects the user's previous
+      // 'denied' answer; we never ask twice. Fire-and-forget.
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        try { void Notification.requestPermission(); } catch { /* old Safari */ }
+      }
       return true;
     };
 

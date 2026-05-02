@@ -71,6 +71,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/node_modules/**', 'sw.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // Inject our background-sync + notification handlers into the
+        // generated SW. Lets us add behaviors without migrating to
+        // injectManifest mode (which would require rewriting all the
+        // runtimeCaching rules below by hand).
+        importScripts: ['/sw-extras.js'],
         runtimeCaching: [
           // ── Cloudinary product images ──────────────────────────────────
           // CacheFirst: serve from cache instantly, network only on cache miss.
