@@ -26,6 +26,20 @@ const DB_VERSION = 1;
 const STORE      = 'drafts';
 const INDEX_USER = 'byUserId';
 
+/**
+ * Live status of a draft mid-sync. Persisted in IDB so a tab reload mid-sync
+ * surfaces "uploading photo 2 of 3" instead of restarting from "queued".
+ *
+ * Cleared (set to undefined) on terminal outcomes — success deletes the
+ * draft; failure replaces progress with `lastError`.
+ */
+export interface DraftProgress {
+  stage: 'queued' | 'uploading-images' | 'saving-doc';
+  /** Present during 'uploading-images'. 0 = not started; equals total when done. */
+  imagesUploaded?: number;
+  imagesTotal?: number;
+}
+
 export interface DraftRecord {
   id: string;
   userId: string;
@@ -36,6 +50,7 @@ export interface DraftRecord {
   attempts?: number;
   lastError?: string;
   nextAttemptAt?: number;
+  progress?: DraftProgress;
 }
 
 let _db: IDBDatabase | null = null;

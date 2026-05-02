@@ -73,7 +73,10 @@ export const SellerDashboard: React.FC = () => {
   // syncFn is invoked by useOfflineQueue once per due draft (after a real
   // connectivity probe + per-draft backoff). Throwing here records the error on
   // the draft and reschedules; returning normally removes it from the queue.
-  const syncOneDraft = useCallback(async (draft: OfflineDraft) => {
+  const syncOneDraft = useCallback(async (
+    draft: OfflineDraft,
+    report: (p: { stage: 'queued' | 'uploading-images' | 'saving-doc'; imagesUploaded?: number; imagesTotal?: number }) => void | Promise<void>,
+  ) => {
     // Each stage is wrapped so the `lastError` surfaced in the UI tells the
     // seller WHICH step actually failed — "Failed to fetch" alone could mean
     // Cloudinary upload or Firestore write.
@@ -87,7 +90,12 @@ export const SellerDashboard: React.FC = () => {
 
     let imageUrls: string[];
     try {
-      imageUrls = await uploadImages(files);
+      await report({ stage: 'uploading-images', imagesUploaded: 0, imagesTotal: files.length });
+      imageUrls = await uploadImages(files, {}, (uploaded, total) => {
+        // Fire-and-forget — the reporter persists to IDB. Awaiting per-image
+        // would serialize cloud uploads with disk writes; we don't need that.
+        void report({ stage: 'uploading-images', imagesUploaded: uploaded, imagesTotal: total });
+      });
     } catch (err: any) {
       throw new Error(`Upload Cloudinary: ${err?.message || err}`);
     }
@@ -99,6 +107,7 @@ export const SellerDashboard: React.FC = () => {
     } catch { /* blurhash is best-effort, never block sync */ }
 
     try {
+      await report({ stage: 'saving-doc' });
       // Use draft.id as the idempotency key — if the previous sync wrote the
       // doc but lost its response, addProduct() returns the existing doc
       // instead of creating a duplicate.
@@ -799,22 +808,57 @@ export const SellerDashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Per-draft status rows — surfaces lastError so the seller sees WHY */}
+            {/* Per-draft status rows — surface live progress AND lastError */}
             <div className="space-y-1.5 pl-9">
               {offlineQueue.map(draft => {
                 const hasFailed = !!draft.lastError;
+                const progress = draft.progress;
+                const isUploading = progress?.stage === 'uploading-images';
+                const isSaving = progress?.stage === 'saving-doc';
+                const isActive = isUploading || isSaving;
+                const uploaded = progress?.imagesUploaded ?? 0;
+                const total = progress?.imagesTotal ?? 0;
+                const pct = total > 0 ? Math.round((uploaded / total) * 100) : 0;
+
+                let statusLabel: string;
+                let statusColor: string;
+                if (hasFailed) {
+                  statusLabel = t('dashboard.syncStatusFailed');
+                  statusColor = 'text-red-400';
+                } else if (isUploading) {
+                  statusLabel = t('dashboard.syncStageUploading', { current: uploaded + 1, total }) || `Photo ${uploaded + 1}/${total}`;
+                  statusColor = 'text-blue-400';
+                } else if (isSaving) {
+                  statusLabel = t('dashboard.syncStageSaving') || 'Sauvegarde...';
+                  statusColor = 'text-blue-400';
+                } else if (syncing) {
+                  statusLabel = t('dashboard.syncStatusPending');
+                  statusColor = 'text-gray-400';
+                } else {
+                  statusLabel = t('dashboard.syncStatusWaiting');
+                  statusColor = 'text-gray-500';
+                }
+
                 return (
                   <div key={draft.id} className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold w-14 flex-shrink-0 ${hasFailed ? 'text-red-400' : 'text-gray-500'}`}>
-                        {hasFailed ? t('dashboard.syncStatusFailed') : syncing ? t('dashboard.syncStatusPending') : t('dashboard.syncStatusWaiting')}
+                      <span className={`text-[10px] font-bold w-20 flex-shrink-0 truncate ${statusColor}`} title={statusLabel}>
+                        {statusLabel}
                       </span>
-                      <span className="text-xs text-gray-400 truncate">
+                      <span className="text-xs text-gray-400 truncate flex-1">
                         {(draft.data.title as string | undefined) || t('dashboard.syncDraftNoTitle')}
                       </span>
                     </div>
+                    {isActive && total > 0 && (
+                      <div className="h-1 bg-gray-800/40 rounded-full overflow-hidden ml-[5.5rem] mt-0.5">
+                        <div
+                          className="h-full bg-blue-400 transition-all duration-300 ease-out"
+                          style={{ width: `${isSaving ? 100 : pct}%` }}
+                        />
+                      </div>
+                    )}
                     {hasFailed && draft.lastError && (
-                      <span className="text-[10px] text-red-400/70 pl-16 truncate" title={draft.lastError}>
+                      <span className="text-[10px] text-red-400/70 pl-[5.5rem] truncate" title={draft.lastError}>
                         {draft.lastError}
                       </span>
                     )}

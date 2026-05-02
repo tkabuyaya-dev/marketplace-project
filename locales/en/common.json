@@ -552,6 +552,8 @@
     "syncStatusFailed": "FAILED",
     "syncStatusPending": "In progress…",
     "syncStatusWaiting": "Waiting",
+    "syncStageUploading": "Photo {{current}}/{{total}}",
+    "syncStageSaving": "Saving…",
     "syncDraftNoTitle": "Untitled draft",
     "bulkSelect": "Select",
     "bulkCancel": "Cancel selection",

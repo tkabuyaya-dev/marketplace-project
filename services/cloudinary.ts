@@ -242,16 +242,23 @@ export const uploadImage = async (
 /**
  * Upload multiple images séquentiellement (1 à la fois sur mobile 2G/3G).
  * Le mode séquentiel évite de saturer la bande passante et réduit les timeouts.
+ *
+ * `onProgress(uploaded, total)` is called BEFORE each attempt and once after
+ * the final upload — gives the UI a live "photo X/N" indicator. Optional;
+ * existing callers don't need to change.
  */
 export const uploadImages = async (
   files: File[],
-  options: UploadOptions = {}
+  options: UploadOptions = {},
+  onProgress?: (uploaded: number, total: number) => void
 ): Promise<string[]> => {
   const results: string[] = [];
-  for (const file of files) {
-    const url = await uploadImage(file, options);
+  for (let i = 0; i < files.length; i++) {
+    onProgress?.(i, files.length);
+    const url = await uploadImage(files[i], options);
     results.push(url);
   }
+  onProgress?.(files.length, files.length);
   return results;
 };
 

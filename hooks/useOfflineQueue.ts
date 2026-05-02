@@ -30,7 +30,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Product } from '../types';
-import { getDraftsByUser, putDraft, deleteDraft, type DraftRecord } from '../services/draftsIdb';
+import { getDraftsByUser, putDraft, deleteDraft, type DraftRecord, type DraftProgress } from '../services/draftsIdb';
 import { probeConnectivity } from '../utils/connectivity';
 
 const POLL_INTERVAL_MS = 30_000;
@@ -39,6 +39,7 @@ const BACKOFF_SECONDS = [30, 60, 120, 240, 480, 900];
 const MAX_DRAFTS_PER_USER = 20;
 
 export type OfflineDraft = DraftRecord;
+export type { DraftProgress };
 
 export interface SyncResult {
   synced: number;
@@ -46,6 +47,13 @@ export interface SyncResult {
   /** Map of draftId → error message for everything that failed this run. */
   errors: Record<string, string>;
 }
+
+/**
+ * Reports a stage change for the currently-syncing draft.
+ * The hook persists the new progress to IDB and updates React state so the
+ * dashboard's per-draft row re-renders with the live status.
+ */
+export type ProgressReporter = (progress: DraftProgress) => void | Promise<void>;
 
 export interface UseOfflineQueueOptions {
   /**
@@ -57,9 +65,10 @@ export interface UseOfflineQueueOptions {
   /**
    * Callback invoked once per due draft. Should throw on failure (the hook
    * will record the error and schedule a retry); success removes the draft.
+   * Receives a `report` helper to emit stage updates that surface in the UI.
    * If unset, the hook stores drafts but never auto-syncs (manual mode).
    */
-  syncFn?: (draft: OfflineDraft) => Promise<void>;
+  syncFn?: (draft: OfflineDraft, report: ProgressReporter) => Promise<void>;
   /** Notified after each sync sweep — even if nothing was due. */
   onSyncComplete?: (result: SyncResult) => void;
 }
@@ -142,22 +151,36 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
       const next = draft.nextAttemptAt ?? 0;
       if (!force && next > now) continue;
 
+      // Per-draft progress reporter: persists each stage so a tab reload
+      // mid-sync surfaces the right "uploading 2/3" text instead of a stale
+      // "queued". `latest` carries the live draft so the next call sees the
+      // freshest state without re-reading IDB.
+      let latest: OfflineDraft = draft;
+      const report: ProgressReporter = async (progress) => {
+        latest = { ...latest, progress };
+        await putDraft(latest);
+        setQueue(prev => prev.map(d => d.id === draft.id ? latest : d));
+      };
+
       try {
-        await fn(draft);
+        await fn(draft, report);
         await deleteDraft(draft.id);
         setQueue(prev => prev.filter(d => d.id !== draft.id));
         synced++;
       } catch (err: any) {
-        const attempt = (draft.attempts ?? 0) + 1;
+        const attempt = (latest.attempts ?? 0) + 1;
         const delaySec = BACKOFF_SECONDS[Math.min(attempt - 1, BACKOFF_SECONDS.length - 1)];
         const message = err?.message ? String(err.message) : String(err);
         errors[draft.id] = message;
         failed++;
         const updated: OfflineDraft = {
-          ...draft,
+          ...latest,
           attempts: attempt,
           lastError: message,
           nextAttemptAt: Date.now() + delaySec * 1000,
+          // Clear in-progress stage on failure — the row will render the error,
+          // not a stale "uploading" indicator.
+          progress: undefined,
         };
         await putDraft(updated);
         setQueue(prev => prev.map(d => d.id === draft.id ? updated : d));
