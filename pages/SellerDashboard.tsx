@@ -25,6 +25,7 @@ import { ProductPreview } from '../components/ProductPreview';
 import { RenewSubscriptionModal } from '../components/RenewSubscriptionModal';
 import { VerificationRequestModal } from '../components/VerificationRequestModal';
 import { useOfflineQueue, type OfflineDraft, type SyncResult } from '../hooks/useOfflineQueue';
+import { useNetworkQuality } from '../hooks/useNetworkQuality';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
@@ -140,6 +141,16 @@ export const SellerDashboard: React.FC = () => {
   });
 
   const failedDrafts = useMemo(() => offlineQueue.filter(d => d.lastError), [offlineQueue]);
+
+  // ─── Network quality (used for banner + adaptive compression) ────────────
+  // 'slow' = slow-2g/2g OR Save Data on. We compress harder and warn the
+  // seller in advance. 'fast'/'offline' use defaults.
+  const networkQuality = useNetworkQuality();
+  const isSlowNetwork = networkQuality === 'slow';
+  const compressionOptions = useMemo(
+    () => isSlowNetwork ? { maxDimension: 900, quality: 0.70, webpQuality: 0.68 } : undefined,
+    [isSlowNetwork]
+  );
 
   // Profile Editable State
   const [shopProfile, setShopProfile] = useState({
@@ -301,10 +312,11 @@ export const SellerDashboard: React.FC = () => {
     // Show previews immediately (before compression)
     setImagePreviews(prev => [...prev, ...newPreviews]);
 
-    // Compress in background
+    // Compress in background — adaptive options on slow networks save more
+    // bytes upfront so the eventual upload has a fighting chance over 2G.
     setCompressing(true);
     try {
-      const compressed = await compressImages(newFiles);
+      const compressed = await compressImages(newFiles, undefined, compressionOptions);
       setImageFiles(prev => [...prev, ...compressed]);
     } catch {
       // Fallback to originals
@@ -312,7 +324,7 @@ export const SellerDashboard: React.FC = () => {
     } finally {
       setCompressing(false);
     }
-  }, [imageFiles.length]);
+  }, [imageFiles.length, compressionOptions]);
 
   const removeImage = (index: number) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
@@ -1425,6 +1437,20 @@ export const SellerDashboard: React.FC = () => {
               {/* Form Column */}
               <div className="flex-1 min-w-0">
                 <form onSubmit={handleAddProduct} className="space-y-6">
+                  {/* Slow-network heads-up — appears only on 2G/slow-2g/Save-Data.
+                      Tells the seller their submission will be safely queued
+                      and synced when the connection improves, instead of them
+                      watching a long upload bar and assuming a failure. */}
+                  {isSlowNetwork && (
+                    <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-amber-300">
+                      <span className="text-xl leading-none mt-0.5">📶</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">{t('dashboard.slowNetworkBanner')}</p>
+                        <p className="text-xs text-amber-300/80 mt-0.5">{t('dashboard.slowNetworkHint')}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quality Score */}
                   <ProductQualityScore score={productScore} />
 

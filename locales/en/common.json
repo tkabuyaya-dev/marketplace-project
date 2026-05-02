@@ -555,6 +555,8 @@
     "syncStageUploading": "Photo {{current}}/{{total}}",
     "syncStageSaving": "Saving…",
     "syncDraftNoTitle": "Untitled draft",
+    "slowNetworkBanner": "Slow connection detected",
+    "slowNetworkHint": "Your listing will be saved and published as soon as the connection improves. Photos are compressed more aggressively to save your data.",
     "bulkSelect": "Select",
     "bulkCancel": "Cancel selection",
     "bulkSelectAll": "Select all",
