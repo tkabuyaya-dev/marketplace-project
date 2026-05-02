@@ -9,7 +9,7 @@ import { ProductCardSkeleton } from '../components/Skeleton';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
-import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts, getProductsByIds } from '../services/firebase';
+import { getProducts, getProductsFromCache, getBanners, checkIsLikedBatch, getBoostedProducts, getProductsByIds, getSellerAllProducts } from '../services/firebase';
 import { getRecentlyViewedIds, getPopular, getPersonalizedRecommendations } from '../services/recommendations';
 import { getFeedFromIDB, saveFeedToIDB, pruneStaleFeeds } from '../services/idb';
 import { pruneStaleSearches } from '../services/searchIdb';
@@ -46,6 +46,8 @@ interface RailsCache {
   recentlyViewed: Product[];
   popularProducts: Product[];
   recommended: Product[];
+  /** Seller's own products (pending + approved), shown only on a seller's home view. */
+  sellerLatest: Product[];
   ts: number;
 }
 let _railsCache: RailsCache | null = null;
@@ -95,6 +97,7 @@ export const Home: React.FC = () => {
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>(railsHydrate?.recentlyViewed ?? []);
   const [popularProducts, setPopularProducts] = useState<Product[]>(railsHydrate?.popularProducts ?? []);
   const [recommended, setRecommended] = useState<Product[]>(railsHydrate?.recommended ?? []);
+  const [sellerLatest, setSellerLatest] = useState<Product[]>(railsHydrate?.sellerLatest ?? []);
 
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
@@ -255,7 +258,7 @@ export const Home: React.FC = () => {
     const uid = currentUser?.id ?? null;
     const base: RailsCache = _railsCache && _railsCache.userId === uid
       ? _railsCache
-      : { userId: uid, recentlyViewed: [], popularProducts: [], recommended: [], ts: Date.now() };
+      : { userId: uid, recentlyViewed: [], popularProducts: [], recommended: [], sellerLatest: [], ts: Date.now() };
     _railsCache = { ...base, ...patch, userId: uid, ts: Date.now() };
   }, [currentUser?.id]);
 
@@ -309,6 +312,38 @@ export const Home: React.FC = () => {
     })();
     return () => { cancelled = true; };
   }, [isCountryReady, updateRailsCache]);
+
+  // Rail "Vos derniers produits" — uniquement vendeur connecté. Donne au vendeur un retour
+  // visuel immédiat sur SA vue d'accueil (statut pending inclus pour qu'il voie son produit
+  // fraîchement publié sans attendre l'approbation admin). Aucun acheteur n'est impacté.
+  useEffect(() => {
+    if (!currentUser?.id || currentUser.role !== 'seller') {
+      setSellerLatest([]);
+      return;
+    }
+    const isFresh = _railsCache
+      && _railsCache.userId === currentUser.id
+      && Date.now() - _railsCache.ts < RAILS_CACHE_TTL
+      && _railsCache.sellerLatest.length > 0;
+    if (isFresh) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await getSellerAllProducts(currentUser.id);
+        if (cancelled) return;
+        const visible = all
+          .filter(p => p.status === 'pending' || p.status === 'approved')
+          .sort((a, b) => b.createdAt - a.createdAt)
+          .slice(0, 6);
+        setSellerLatest(visible);
+        updateRailsCache({ sellerLatest: visible });
+      } catch {
+        /* silencieux — rail caché si erreur */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, currentUser?.role, updateRailsCache]);
 
   // Recommandations personnalisées — uniquement utilisateur connecté.
   // Exclut les produits déjà dans "Vus récemment" pour éviter la redondance visuelle.
@@ -390,6 +425,21 @@ export const Home: React.FC = () => {
       <BannerCarousel
         banners={banners.length > 0 ? banners : undefined}
       />
+
+      {/* Vos derniers produits — visible uniquement aux vendeurs connectés.
+           Inclut les produits en `pending` pour donner au vendeur un retour immédiat
+           après publication, sans attendre l'approbation admin. */}
+      {currentUser?.role === 'seller' && sellerLatest.length > 0 && (
+        <ProductSection
+          title={t('home.sections.yourLatest')}
+          icon="🏪"
+          products={sellerLatest}
+          loading={false}
+          currentUserId={currentUser.id}
+          likedMap={likedMap}
+          onProductClick={onProductClick}
+        />
+      )}
 
       {/* Sponsored / Boosted Products */}
       {boostedProducts.length > 0 && (

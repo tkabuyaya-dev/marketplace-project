@@ -42,7 +42,8 @@
       "categories": "Categories",
       "recentlyViewed": "Recently viewed",
       "popular": "Popular",
-      "recommended": "Recommended for you"
+      "recommended": "Recommended for you",
+      "yourLatest": "Your latest products"
     },
     "empty": "No products found",
     "loadMore": "See more",
