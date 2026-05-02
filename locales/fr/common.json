@@ -557,6 +557,7 @@
     "syncDraftNoTitle": "Brouillon sans titre",
     "slowNetworkBanner": "Connexion lente détectée",
     "slowNetworkHint": "Votre annonce sera sauvegardée et publiée dès que la connexion s'améliore. Les photos sont compressées plus fortement pour économiser vos données.",
+    "inventoryStale": "Données du {{when}} — Reconnectez-vous pour rafraîchir",
     "bulkSelect": "Sélectionner",
     "bulkCancel": "Annuler la sélection",
     "bulkSelectAll": "Tout sélectionner",

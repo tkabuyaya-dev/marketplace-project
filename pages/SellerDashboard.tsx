@@ -26,6 +26,7 @@ import { RenewSubscriptionModal } from '../components/RenewSubscriptionModal';
 import { VerificationRequestModal } from '../components/VerificationRequestModal';
 import { useOfflineQueue, type OfflineDraft, type SyncResult } from '../hooks/useOfflineQueue';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
+import { getInventoryFromIDB, saveInventoryToIDB } from '../services/inventoryIdb';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
@@ -47,6 +48,13 @@ export const SellerDashboard: React.FC = () => {
   const { categories: firestoreCategories } = useCategories();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [myProducts, setMyProducts] = useState<Product[]>([]);
+  /** Timestamp (ms) of the last successful Firestore fetch. null = no fetch yet
+   *  this session; if myProducts is non-empty AND inventoryFreshAt is null,
+   *  we're rendering from the IDB cache (data is from a previous session). */
+  const [inventoryFreshAt, setInventoryFreshAt] = useState<number | null>(null);
+  /** Timestamp of the cached snapshot (when older than this session, drives
+   *  the "data from DD/MM HH:MM" staleness chip). */
+  const [inventoryCachedAt, setInventoryCachedAt] = useState<number | null>(null);
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | ProductStatus>('all');
@@ -233,16 +241,53 @@ export const SellerDashboard: React.FC = () => {
     });
   }, [sellerCountryId]);
 
+  // Stable ref so the cache-first hydrate doesn't overwrite fresh network
+  // data on a fast re-render.
+  const myProductsRef = useRef(myProducts);
+  useEffect(() => { myProductsRef.current = myProducts; }, [myProducts]);
+
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
-      const data = await getSellerAllProducts(currentUser.id);
-      setMyProducts(data);
-      const cats = await getCategories();
-      setCategoriesList(cats);
-      // Sync productCount with real active products
-      syncProductCount(currentUser.id);
+      // 1. Cache-first: hydrate from IDB instantly. On a cold reload offline,
+      //    the seller sees their inventory in <50ms instead of an empty list.
+      if (inventoryFreshAt === null) {
+        try {
+          const cached = await getInventoryFromIDB(currentUser.id);
+          if (!cancelled && cached && myProductsRef.current.length === 0) {
+            setMyProducts(cached.products);
+            setInventoryCachedAt(cached.ts);
+          }
+        } catch { /* IDB miss — proceed to network */ }
+      }
+
+      // 2. Network fetch. Failure here keeps the cached data on screen and
+      //    surfaces the staleness chip. We do NOT clear myProducts on error.
+      try {
+        const data = await getSellerAllProducts(currentUser.id);
+        if (cancelled) return;
+        setMyProducts(data);
+        setInventoryFreshAt(Date.now());
+        setInventoryCachedAt(null);
+        // Persist for next cold load. Fire-and-forget.
+        void saveInventoryToIDB(currentUser.id, data);
+      } catch (err) {
+        // Network/Firestore down — keep cached snapshot, log for diagnostics.
+        console.warn('[Dashboard] Inventory fetch failed, keeping cached snapshot', err);
+      }
+
+      try {
+        const cats = await getCategories();
+        if (!cancelled) setCategoriesList(cats);
+      } catch { /* categories non-critical for offline browsing */ }
+
+      // Sync productCount with real active products — best-effort, may fail offline
+      try { await syncProductCount(currentUser.id); } catch { /* noop */ }
     };
     load();
+    return () => { cancelled = true; };
+    // inventoryFreshAt intentionally omitted — only re-run on user/tab change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, activeTab]);
 
   // Real-time listener for subscription requests
@@ -2309,6 +2354,22 @@ export const SellerDashboard: React.FC = () => {
            {activeTab === 'analytics' && renderAnalytics()}
            {activeTab === 'products' && (
                <div className="space-y-4 animate-fade-in">
+                {/* Staleness banner — appears only when rendering from IDB cache
+                    because the network fetch failed (offline / Firestore down).
+                    Tells the seller WHY their list might not match what's in
+                    Firestore right now and offers an explicit refresh path. */}
+                {inventoryCachedAt !== null && inventoryFreshAt === null && (
+                  <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-xs">
+                    <span className="text-base leading-none">📡</span>
+                    <span className="flex-1 min-w-0">
+                      {t('dashboard.inventoryStale', {
+                        when: new Date(inventoryCachedAt).toLocaleString(undefined, {
+                          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                        }),
+                      })}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center gap-2">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.myInventory')}</h2>
                     <div className="flex items-center gap-2">
