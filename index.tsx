@@ -6,10 +6,12 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { initSentry } from './services/sentry';
 import { initAppCheck } from './firebase-config';
-import { migrateLocalStorage } from './utils/migrate-storage';
+import { migrateLocalStorage, dropLegacyOfflineQueue } from './utils/migrate-storage';
 
 // Migrate localStorage keys from AuraBuja → Nunulia (one-time, for existing users)
 migrateLocalStorage();
+// Offline draft queue moved to IndexedDB — drop the dead localStorage key.
+dropLegacyOfflineQueue();
 
 // Initialize Sentry after first user interaction (removes it from critical path).
 // Errors in the first ~5s before interaction are rare — this trade-off is worth

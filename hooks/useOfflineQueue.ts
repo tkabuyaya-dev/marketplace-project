@@ -4,6 +4,11 @@
  * Queues product drafts when the seller publishes without working connectivity,
  * then auto-syncs when connectivity is real (not just `navigator.onLine === true`).
  *
+ * Storage: drafts live in IndexedDB (services/draftsIdb.ts), scoped by userId
+ * via a `byUserId` index. The hook keeps an in-memory mirror as React state
+ * and writes through to IDB on every mutation. localStorage is no longer used
+ * for the queue — it cannot hold the image Blobs that drafts require.
+ *
  * Why a probe instead of `navigator.onLine`:
  *   On Burundian networks (2G/3G with intermittent drops, public Wi-Fi behind
  *   captive portals) `navigator.onLine` is `true` as soon as a network interface
@@ -25,25 +30,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Product } from '../types';
+import { getDraftsByUser, putDraft, deleteDraft, type DraftRecord } from '../services/draftsIdb';
+import { probeConnectivity } from '../utils/connectivity';
 
-const STORAGE_KEY = 'nunulia_offline_queue';
-const PROBE_URL = '/manifest.json';
-const PROBE_TIMEOUT_MS = 5000;
 const POLL_INTERVAL_MS = 30_000;
 const BACKOFF_SECONDS = [30, 60, 120, 240, 480, 900];
+/** Defensive cap to keep IDB usage bounded if a seller chains many offline submits. */
+const MAX_DRAFTS_PER_USER = 20;
 
-export interface OfflineDraft {
-  id: string;
-  data: Partial<Product>;
-  images: string[]; // base64 data URLs
-  createdAt: number;
-  /** Number of retry attempts so far; absent for fresh drafts. */
-  attempts?: number;
-  /** Last error message — surfaced in the dashboard banner. */
-  lastError?: string;
-  /** Earliest timestamp (ms) at which the next attempt is allowed. */
-  nextAttemptAt?: number;
-}
+export type OfflineDraft = DraftRecord;
 
 export interface SyncResult {
   synced: number;
@@ -54,6 +49,12 @@ export interface SyncResult {
 
 export interface UseOfflineQueueOptions {
   /**
+   * Owner of the queue. Required for load/persist — without it the hook is a
+   * no-op (no load, no persist, no sync). Switching userId reloads the queue
+   * for the new account.
+   */
+  userId?: string;
+  /**
    * Callback invoked once per due draft. Should throw on failure (the hook
    * will record the error and schedule a retry); success removes the draft.
    * If unset, the hook stores drafts but never auto-syncs (manual mode).
@@ -63,43 +64,9 @@ export interface UseOfflineQueueOptions {
   onSyncComplete?: (result: SyncResult) => void;
 }
 
-function loadQueue(): OfflineDraft[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveQueue(queue: OfflineDraft[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-  } catch (e) {
-    console.warn('[OfflineQueue] Storage full:', e);
-  }
-}
-
-/** HEAD ping a small same-origin asset to confirm real connectivity. */
-async function probeConnectivity(): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
-    const res = await fetch(`${PROBE_URL}?t=${Date.now()}`, {
-      method: 'HEAD',
-      cache: 'no-store',
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export function useOfflineQueue(options?: UseOfflineQueueOptions) {
-  const [queue, setQueue] = useState<OfflineDraft[]>(loadQueue);
+  const userId = options?.userId;
+  const [queue, setQueue] = useState<OfflineDraft[]>([]);
   const [syncing, setSyncing] = useState(false);
 
   // Refs so the scheduling effect always sees the freshest state without
@@ -114,29 +81,36 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
   useEffect(() => { syncFnRef.current = options?.syncFn; }, [options?.syncFn]);
   useEffect(() => { onCompleteRef.current = options?.onSyncComplete; }, [options?.onSyncComplete]);
 
-  // Persist queue changes
+  // Load drafts from IDB whenever userId changes (login, account switch).
   useEffect(() => {
-    saveQueue(queue);
-  }, [queue]);
+    if (!userId) {
+      setQueue([]);
+      return;
+    }
+    let cancelled = false;
+    getDraftsByUser(userId).then(drafts => {
+      if (!cancelled) setQueue(drafts);
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
 
-  const addToQueue = useCallback((data: Partial<Product>, images: string[]) => {
+  const addToQueue = useCallback(async (
+    data: Partial<Product>,
+    imageFiles: File[],
+  ): Promise<string | null> => {
+    if (!userId) return null;
+    if (queueRef.current.length >= MAX_DRAFTS_PER_USER) return null;
     const draft: OfflineDraft = {
       id: `draft_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      userId,
       data,
-      images,
+      images: imageFiles,
       createdAt: Date.now(),
     };
+    await putDraft(draft);
     setQueue(prev => [...prev, draft]);
     return draft.id;
-  }, []);
-
-  const removeFromQueue = useCallback((draftId: string) => {
-    setQueue(prev => prev.filter(d => d.id !== draftId));
-  }, []);
-
-  const clearQueue = useCallback(() => {
-    setQueue([]);
-  }, []);
+  }, [userId]);
 
   /**
    * Attempt to sync due drafts.
@@ -170,6 +144,7 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
 
       try {
         await fn(draft);
+        await deleteDraft(draft.id);
         setQueue(prev => prev.filter(d => d.id !== draft.id));
         synced++;
       } catch (err: any) {
@@ -178,10 +153,14 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
         const message = err?.message ? String(err.message) : String(err);
         errors[draft.id] = message;
         failed++;
-        setQueue(prev => prev.map(d => d.id === draft.id
-          ? { ...d, attempts: attempt, lastError: message, nextAttemptAt: Date.now() + delaySec * 1000 }
-          : d
-        ));
+        const updated: OfflineDraft = {
+          ...draft,
+          attempts: attempt,
+          lastError: message,
+          nextAttemptAt: Date.now() + delaySec * 1000,
+        };
+        await putDraft(updated);
+        setQueue(prev => prev.map(d => d.id === draft.id ? updated : d));
       }
     }
 
@@ -217,8 +196,6 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
     queueCount: queue.length,
     syncing,
     addToQueue,
-    removeFromQueue,
-    clearQueue,
     /** Manual trigger for the "Réessayer" button. */
     sync,
   };

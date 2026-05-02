@@ -5,7 +5,8 @@ import { Button } from '../components/Button';
 import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest, BoostRequest } from '../types';
 import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, editAndResubmitProduct, getActiveCurrencies, subscribeToMyRequests, getProductActivityLast30Days, ActivityEntry, MAX_RESUBMIT_ATTEMPTS, subscribeToMyBoostRequests, getBuyerRequestStats, canContactBuyer } from '../services/firebase';
 import { BoostProductModal } from '../components/BoostProductModal';
-import { uploadImages, uploadImage, getOptimizedUrl } from '../services/cloudinary';
+import { uploadImages, uploadImage, getOptimizedUrl, UploadError } from '../services/cloudinary';
+import { probeConnectivity } from '../utils/connectivity';
 import { generateBlurhash } from '../utils/blurhash';
 import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
 import { CITIES_BY_COUNTRY } from '../data/locations';
@@ -75,18 +76,14 @@ export const SellerDashboard: React.FC = () => {
   const syncOneDraft = useCallback(async (draft: OfflineDraft) => {
     // Each stage is wrapped so the `lastError` surfaced in the UI tells the
     // seller WHICH step actually failed — "Failed to fetch" alone could mean
-    // browser fetch, Cloudinary upload, or Firestore write.
-    let files: File[];
-    try {
-      files = [];
-      for (const dataUrl of draft.images) {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        files.push(new File([blob], `draft_${Date.now()}.jpg`, { type: 'image/jpeg' }));
-      }
-    } catch (err: any) {
-      throw new Error(`Image illisible: ${err?.message || err}`);
-    }
+    // Cloudinary upload or Firestore write.
+    // Blobs may be raw Blob (legacy) or File — Cloudinary upload needs a File
+    // (it reads .name for the form-data filename).
+    const files: File[] = draft.images.map((blob, i) =>
+      blob instanceof File
+        ? blob
+        : new File([blob], `draft_${draft.id}_${i}.jpg`, { type: blob.type || 'image/jpeg' })
+    );
 
     let imageUrls: string[];
     try {
@@ -122,6 +119,7 @@ export const SellerDashboard: React.FC = () => {
   }, [currentUser.id, t, toast]);
 
   const { queue: offlineQueue, queueCount, addToQueue, syncing, sync } = useOfflineQueue({
+    userId: currentUser.id,
     syncFn: syncOneDraft,
     onSyncComplete: handleSyncComplete,
   });
@@ -351,30 +349,51 @@ export const SellerDashboard: React.FC = () => {
       return;
     }
 
-    // Offline mode: save draft locally
-    if (!navigator.onLine) {
-      addToQueue({
-        title: title.trim(),
-        price: Number(price),
-        originalPrice: originalPrice ? Number(originalPrice) : undefined,
-        currency: productCurrency || undefined,
-        description: desc.trim(),
-        category,
-        subCategory,
-        isWholesale,
-        minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
-        wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
-      }, imagePreviews);
+    // Single source of truth for the product payload — used by online publish,
+    // offline queue, and the network-error fallback below.
+    const productData: Partial<Product> = {
+      title: title.trim(),
+      price: Number(price),
+      originalPrice: originalPrice ? Number(originalPrice) : undefined,
+      currency: productCurrency || undefined,
+      description: desc.trim(),
+      category,
+      subCategory,
+      isWholesale,
+      minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
+      wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
+    };
+
+    const resetForm = () => {
       setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
       setImageFiles([]); setImagePreviews([]);
       setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
+    };
+
+    const queueAsDraft = async (): Promise<boolean> => {
+      const draftId = await addToQueue(productData, imageFiles);
+      if (!draftId) {
+        setFormError(t('dashboard.publishError'));
+        return false;
+      }
+      resetForm();
       toast(t('dashboard.savedOffline'), 'success');
       setActiveTab('products');
-      return;
-    }
+      return true;
+    };
 
     setLoading(true);
     try {
+      // Probe real connectivity, not just navigator.onLine — that flag is
+      // unreliable on captive Wi-Fi and on Chrome DevTools' "Offline" preset
+      // when a service worker is active. The probe is ~100-300ms when online,
+      // and aborts in 5s when truly offline.
+      const online = await probeConnectivity();
+      if (!online) {
+        await queueAsDraft();
+        return;
+      }
+
       setUploadProgress(t('dashboard.uploadingImages'));
       const imageUrls = await uploadImages(imageFiles);
 
@@ -386,25 +405,12 @@ export const SellerDashboard: React.FC = () => {
 
       setUploadProgress(t('dashboard.savingProduct'));
       await addProduct({
-        title: title.trim(),
-        price: Number(price),
-        originalPrice: originalPrice ? Number(originalPrice) : undefined,
-        currency: productCurrency || undefined,
-        description: desc.trim(),
-        category,
-        subCategory,
+        ...productData,
         images: imageUrls,
         blurhash: blurhash || undefined,
-        isWholesale,
-        minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
-        wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
       });
 
-      // Reset form
-      setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
-      setImageFiles([]); setImagePreviews([]);
-      setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
-      setUploadProgress('');
+      resetForm();
 
       // Refresh products list
       const data = await getSellerAllProducts(currentUser.id);
@@ -414,6 +420,16 @@ export const SellerDashboard: React.FC = () => {
       setTimeout(() => toast(t('dashboard.searchDelayHint'), 'info'), 1800);
       setActiveTab('products');
     } catch (error: any) {
+      // Network/timeout failure during upload means we never reached Cloudinary
+      // — degrade gracefully into the offline queue rather than burning the
+      // seller's work on a "Réseau indisponible" alert.
+      const isOfflineish =
+        error instanceof UploadError &&
+        (error.kind === 'network' || error.kind === 'timeout');
+      if (isOfflineish) {
+        await queueAsDraft();
+        return;
+      }
       console.error('Erreur ajout produit:', error);
       setFormError(error?.message || t('dashboard.publishError'));
     } finally {

@@ -24,19 +24,28 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'im
 const MAX_SIZE_MB = 10;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
+/**
+ * Categories of upload failure. Callers branch on this to decide retry strategy
+ * — `network` and `timeout` mean "we never reached Cloudinary, the draft is
+ * safe to queue offline"; `server` and `validation` are not network-recoverable.
+ */
+export type UploadErrorKind = 'network' | 'timeout' | 'server' | 'validation' | 'unknown';
+
 export class UploadError extends Error {
-  constructor(message: string) {
+  readonly kind: UploadErrorKind;
+  constructor(message: string, kind: UploadErrorKind = 'unknown') {
     super(message);
     this.name = 'UploadError';
+    this.kind = kind;
   }
 }
 
 function validateFile(file: File): void {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new UploadError(`Format non supporté. Utilisez: JPG, PNG, WebP. (reçu: ${file.type})`);
+    throw new UploadError(`Format non supporté. Utilisez: JPG, PNG, WebP. (reçu: ${file.type})`, 'validation');
   }
   if (file.size > MAX_SIZE_BYTES) {
-    throw new UploadError(`Image trop lourde (max ${MAX_SIZE_MB}MB). Taille actuelle: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+    throw new UploadError(`Image trop lourde (max ${MAX_SIZE_MB}MB). Taille actuelle: ${(file.size / 1024 / 1024).toFixed(1)}MB`, 'validation');
   }
 }
 
@@ -194,7 +203,7 @@ export const uploadImage = async (
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         // Server-side error (4xx/5xx) — no point retrying
-        throw new UploadError(error.error?.message || `Échec upload (${response.status})`);
+        throw new UploadError(error.error?.message || `Échec upload (${response.status})`, 'server');
       }
 
       const data: UploadResult & { secure_url: string } = await response.json();
@@ -205,17 +214,19 @@ export const uploadImage = async (
 
       if (err.name === 'AbortError') {
         lastError = new UploadError(
-          `Connexion trop lente (timeout après 60s). Vérifiez votre réseau et réessayez.`
+          `Connexion trop lente (timeout après 60s). Vérifiez votre réseau et réessayez.`,
+          'timeout'
         );
       } else if (err instanceof UploadError) {
         // Server error — propagate immediately, no retry
         throw err;
       } else if (isNetworkError(err)) {
         lastError = new UploadError(
-          `Réseau indisponible. Vérifiez votre connexion internet.`
+          `Réseau indisponible. Vérifiez votre connexion internet.`,
+          'network'
         );
       } else {
-        lastError = new UploadError(err.message || 'Erreur inattendue lors de l\'upload.');
+        lastError = new UploadError(err.message || 'Erreur inattendue lors de l\'upload.', 'unknown');
         throw lastError; // Unknown error — don't retry
       }
 
