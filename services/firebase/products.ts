@@ -8,7 +8,7 @@ import {
 import { generateUniqueSlug } from '../../utils/slug';
 import { Timestamp } from 'firebase/firestore';
 import {
-  db, auth, collection, doc, addDoc, getDoc, getDocs, getDocsFromCache, updateDoc, deleteDoc,
+  db, auth, collection, doc, addDoc, setDoc, getDoc, getDocs, getDocsFromCache, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, increment,
   runTransaction, writeBatch, COLLECTIONS, PRODUCTS_PAGE_SIZE, MAX_SEARCH_RESULTS,
   docToProduct,
@@ -249,8 +249,53 @@ export const searchProducts = async (
 
 // ── Write ──
 
-export const addProduct = async (productData: Partial<Product>): Promise<Product> => {
+/**
+ * Optional knobs for `addProduct`.
+ *
+ * `idempotencyKey`:
+ *   When provided, the new product is written to `products/{idempotencyKey}`
+ *   via `setDoc` instead of `addDoc` with an auto-ID. The function first
+ *   checks if a doc with this ID already exists for the current seller — if
+ *   so, it returns the existing product without re-writing. This makes the
+ *   function safe to retry when a successful write's response is lost
+ *   (rare on flaky 2G/3G but high-severity: would create a duplicate).
+ *
+ *   The offline drafts queue uses `draft.id` as the key, so a draft that
+ *   wins-then-loses-its-ack stays single across retries. When omitted, the
+ *   original `addDoc` auto-ID behavior is preserved (online publish path).
+ */
+export interface AddProductOptions {
+  idempotencyKey?: string;
+}
+
+export const addProduct = async (
+  productData: Partial<Product>,
+  options?: AddProductOptions,
+): Promise<Product> => {
   if (!db || !auth?.currentUser) throw new Error('Non authentifié');
+
+  // ── Idempotent retry short-circuit ──────────────────────────────────────
+  // If a previous sync already wrote this draft (we have a key AND the doc
+  // exists under our sellerId), return it as success without re-writing.
+  // We don't run the rest of the validation (quota, burst) because the
+  // first-attempt already passed it server-side.
+  if (options?.idempotencyKey) {
+    const existingRef = doc(db, COLLECTIONS.PRODUCTS, options.idempotencyKey);
+    try {
+      const existingSnap = await getDoc(existingRef);
+      if (existingSnap.exists()) {
+        const data = existingSnap.data();
+        if (data?.sellerId === auth.currentUser.uid) {
+          return docToProduct(data, options.idempotencyKey);
+        }
+        // ID belongs to someone else — astronomically improbable UUID collision.
+        // Fall through and let the create attempt fail with a clear permission error.
+      }
+    } catch {
+      // Read failed (offline mid-sync, rules transient) — fall through to write
+      // attempt. setDoc will succeed if doc absent or fail clearly if it exists.
+    }
+  }
 
   const userSnap = await getDoc(doc(db, COLLECTIONS.USERS, auth.currentUser.uid));
   if (!userSnap.exists()) throw new Error('Profil introuvable');
@@ -343,16 +388,27 @@ export const addProduct = async (productData: Partial<Product>): Promise<Product
   };
 
   try {
-    const docRef = await withClaimsRetry(() =>
-      addDoc(collection(db!, COLLECTIONS.PRODUCTS), newProduct)
-    );
+    let resolvedId: string;
+    if (options?.idempotencyKey) {
+      // setDoc with deterministic ID — overwrite-by-key, no duplicate possible.
+      // Firestore rule `create` accepts client-set IDs; the seller's ownership
+      // and field validation rules are unaffected by the ID source.
+      const ref = doc(db!, COLLECTIONS.PRODUCTS, options.idempotencyKey);
+      await withClaimsRetry(() => setDoc(ref, newProduct));
+      resolvedId = options.idempotencyKey;
+    } else {
+      const docRef = await withClaimsRetry(() =>
+        addDoc(collection(db!, COLLECTIONS.PRODUCTS), newProduct)
+      );
+      resolvedId = docRef.id;
+    }
     await updateDoc(doc(db, COLLECTIONS.USERS, auth.currentUser.uid), {
       productCount: increment(1),
       lastProductCreatedAt: Date.now(),
     });
-    return docToProduct(newProduct, docRef.id);
+    return docToProduct(newProduct, resolvedId);
   } catch (err: any) {
-    console.error('[addProduct] Échec addDoc/updateDoc:', err.code, err.message);
+    console.error('[addProduct] Échec write/updateDoc:', err.code, err.message);
     throw err;
   }
 };

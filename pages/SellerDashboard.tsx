@@ -99,7 +99,13 @@ export const SellerDashboard: React.FC = () => {
     } catch { /* blurhash is best-effort, never block sync */ }
 
     try {
-      await addProduct({ ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined });
+      // Use draft.id as the idempotency key — if the previous sync wrote the
+      // doc but lost its response, addProduct() returns the existing doc
+      // instead of creating a duplicate.
+      await addProduct(
+        { ...draft.data, images: imageUrls, blurhash: draftBlurhash || undefined },
+        { idempotencyKey: draft.id },
+      );
     } catch (err: any) {
       throw new Error(`Sauvegarde Firestore: ${err?.message || err}`);
     }
