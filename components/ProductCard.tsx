@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Heart, MapPin, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
 import { CURRENCY, INITIAL_COUNTRIES } from '../constants';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
@@ -21,6 +22,14 @@ interface ProductCardProps {
 
 type BadgeKey = 'sponsored' | 'lowStock' | 'b2b' | 'new';
 
+// Pastel pill (light) + saturated pill (dark) — backward compat for pages still in dark mode
+const BADGE_STYLES: Record<BadgeKey, string> = {
+  sponsored: 'bg-amber-100/85 border border-amber-300/60 text-amber-700 dark:bg-amber-500/95 dark:text-white dark:border-transparent',
+  lowStock:  'bg-orange-100/85 border border-orange-300/60 text-orange-700 dark:bg-orange-500/95 dark:text-white dark:border-transparent',
+  b2b:       'bg-indigo-100/85 border border-indigo-300/50 text-indigo-700 dark:bg-indigo-500/95 dark:text-white dark:border-transparent',
+  new:       'bg-emerald-100/85 border border-emerald-300/50 text-emerald-700 dark:bg-emerald-500/95 dark:text-white dark:border-transparent',
+};
+
 export const ProductCard = memo<ProductCardProps>(({
   product,
   onClick,
@@ -32,6 +41,8 @@ export const ProductCard = memo<ProductCardProps>(({
   const cardRef = useRef<HTMLDivElement>(null);
   const [liked, setLiked] = useState(initialLiked ?? false);
   const [isVisible, setIsVisible] = useState(false);
+  // Captured at mount to keep render pure (cards unmount on navigation, so freshness is fine)
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -64,7 +75,6 @@ export const ProductCard = memo<ProductCardProps>(({
   const countryFlag   = INITIAL_COUNTRIES.find(c => c.id === product.countryId)?.flag || '';
   const city          = product.seller?.sellerDetails?.commune || '';
 
-  const now = Date.now();
   const isOnPromotion = product.discountPrice != null
     && product.promotionEnd != null
     && product.promotionEnd > now
@@ -88,11 +98,11 @@ export const ProductCard = memo<ProductCardProps>(({
   if (isNew)                ordered.push('new');
   const shownBadges = ordered.slice(0, 2);
 
-  const badgeStyle: Record<BadgeKey, { cls: string; label: string }> = {
-    sponsored: { cls: 'bg-amber-500/95 text-white',   label: t('product.sponsored', 'Sponsorisé') },
-    lowStock:  { cls: 'bg-orange-500/95 text-white',  label: t('product.lowStock',  'Stock limité') },
-    b2b:       { cls: 'bg-indigo-500/95 text-white',  label: 'B2B' },
-    new:       { cls: 'bg-emerald-500/95 text-white', label: t('product.new',       'Nouveau') },
+  const badgeLabel: Record<BadgeKey, string> = {
+    sponsored: t('product.sponsored', 'Sponsorisé'),
+    lowStock:  t('product.lowStock',  'Stock limité'),
+    b2b:       'B2B',
+    new:       t('product.new',       'Nouveau'),
   };
 
   const hasWhatsApp = !!product.seller?.whatsapp;
@@ -108,15 +118,41 @@ export const ProductCard = memo<ProductCardProps>(({
     );
   }, [product.seller?.whatsapp, product.title]);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
       ref={cardRef}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="group relative bg-white shadow-sm border border-gray-200 dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none rounded-xl overflow-hidden cursor-pointer transition-[border-color,transform,box-shadow] duration-300 hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-[2px] hover:shadow-md"
+      onKeyDown={handleKeyDown}
+      className="group relative bg-white shadow-sm border border-black/[0.06]
+                 dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none
+                 rounded-xl overflow-hidden cursor-pointer
+                 transition-all duration-200
+                 hover:border-gray-300 dark:hover:border-gray-700
+                 hover:-translate-y-[2px] hover:shadow-md
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-xl">
-        {isVisible && primaryImage ? (
+        {!isVisible ? (
+          <div className="absolute inset-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div
+              className="absolute inset-0 animate-shimmer"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%)',
+                willChange: 'transform',
+              }}
+            />
+          </div>
+        ) : primaryImage ? (
           <ProgressiveImage
             src={optimizedUrl}
             srcSet={srcSet || undefined}
@@ -128,14 +164,10 @@ export const ProductCard = memo<ProductCardProps>(({
             imgClassName="group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="absolute inset-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
-            <div
-              className="absolute inset-0 animate-shimmer"
-              style={{
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%)',
-                willChange: 'transform',
-              }}
-            />
+          <div className="absolute inset-0 flex items-center justify-center
+                          bg-gradient-to-br from-gray-100 to-gray-200
+                          dark:from-gray-800 dark:to-gray-900">
+            <ImageIcon size={36} className="text-gray-400 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
           </div>
         )}
 
@@ -144,35 +176,37 @@ export const ProductCard = memo<ProductCardProps>(({
             {shownBadges.map(key => (
               <span
                 key={key}
-                className={`${badgeStyle[key].cls} text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm`}
+                className={`${BADGE_STYLES[key]} text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm`}
               >
-                {badgeStyle[key].label}
+                {badgeLabel[key]}
               </span>
             ))}
           </div>
         )}
 
         <button
+          type="button"
           onClick={handleLike}
           aria-label={liked ? t('product.removeFromFavorites') : t('product.addToFavorites')}
-          className={`absolute top-1 right-1 w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 ${
-            liked ? 'bg-red-500/35 text-red-400' : 'bg-black/30 text-white hover:bg-black/50'
-          }`}
+          className={`absolute top-2 right-2 w-9 h-9 flex items-center justify-center rounded-full
+                      backdrop-blur-md transition-all duration-200 active:scale-90
+                      ${liked
+                        ? 'bg-red-500/30 text-red-500 dark:bg-red-500/35 dark:text-red-400'
+                        : 'bg-black/30 text-white hover:bg-black/50'}`}
         >
-          <svg width="16" height="16" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
+          <Heart size={16} fill={liked ? 'currentColor' : 'none'} strokeWidth={2} />
         </button>
 
         {imageCount > 1 && (
-          <span className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-0.5 rounded-full pointer-events-none">
+          <span className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white
+                           text-[10px] font-medium px-2 py-0.5 rounded-full pointer-events-none">
             1/{imageCount}
           </span>
         )}
 
         {distanceLabel && (
-          <span className="absolute bottom-2 left-2 bg-green-600/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none z-10">
+          <span className="absolute bottom-2 left-2 bg-emerald-600/90 backdrop-blur-sm text-white
+                           text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none z-10">
             {distanceLabel}
           </span>
         )}
@@ -181,7 +215,7 @@ export const ProductCard = memo<ProductCardProps>(({
       {/* Info */}
       <div className="p-2 space-y-1">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-lg font-bold text-gold-600 dark:text-gold-400 leading-tight">
+          <span className="text-lg font-bold leading-tight text-[#C47E00] dark:text-gold-400">
             {displayPrice.toLocaleString('fr-FR')} {currency}
           </span>
           {displayOriginalPrice && (
@@ -207,21 +241,7 @@ export const ProductCard = memo<ProductCardProps>(({
 
         {city && (
           <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-500">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-              aria-hidden="true"
-            >
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
+            <MapPin size={12} className="flex-shrink-0" strokeWidth={2} aria-hidden />
             <span className="truncate">{city}</span>
           </div>
         )}
@@ -230,6 +250,7 @@ export const ProductCard = memo<ProductCardProps>(({
       {/* WhatsApp pill — hidden entirely when seller has no WhatsApp */}
       {hasWhatsApp && (
         <button
+          type="button"
           onClick={handleWhatsApp}
           aria-label="Contacter sur WhatsApp"
           className="w-full h-8 flex items-center justify-center gap-1.5 rounded-b-xl transition-opacity hover:opacity-90"
