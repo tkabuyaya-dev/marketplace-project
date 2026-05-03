@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import {
+  ArrowLeft, Check, CheckCircle2, Clock, AlertTriangle, Info,
+  Phone, LayoutDashboard,
+} from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import {
   INITIAL_SUBSCRIPTION_TIERS, PAYMENT_METHODS, SUPPORT_WHATSAPP,
   DEFAULT_SUBSCRIPTION_PRICING, INITIAL_COUNTRIES,
 } from '../constants';
-import { TC } from '../constants';
 import {
   SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod,
 } from '../types';
@@ -18,6 +21,62 @@ import {
 } from '../services/firebase';
 
 type Step = 'plans' | 'payment' | 'confirmation' | 'done';
+
+// Couleur d'accent par méthode de paiement (le type PaymentMethod n'a que name/number/icon)
+function getMethodColor(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('lumicash')) return '#22c55e';
+  if (n.includes('ecocash')) return '#f59e0b';
+  if (n.includes('m-pesa') || n.includes('mpesa')) return '#16a34a';
+  if (n.includes('airtel')) return '#ef4444';
+  if (n.includes('orange')) return '#f97316';
+  if (n.includes('momo') || n.includes('mtn')) return '#eab308';
+  if (n.includes('banco') || n.includes('bcb')) return '#3b82f6';
+  return '#5C6370';
+}
+
+// SVG WhatsApp inline (pas dans lucide)
+const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="#25D366">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+  </svg>
+);
+
+function WhatsAppButton({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
+                 text-green-700 text-sm font-semibold no-underline
+                 bg-green-50 border border-green-200
+                 active:bg-green-100 transition-colors"
+    >
+      <WhatsAppIcon />
+      {label}
+    </a>
+  );
+}
+
+function StepDots({ step }: { step: Step }) {
+  const steps: Step[] = ['plans', 'payment', 'confirmation', 'done'];
+  const idx = steps.indexOf(step);
+  return (
+    <div className="flex items-center gap-1" aria-hidden>
+      {steps.map((_, i) => (
+        <div
+          key={i}
+          className="h-1 rounded-full transition-all duration-300"
+          style={{
+            width: i === idx ? 18 : 6,
+            background: i <= idx ? '#F5C842' : 'rgba(0,0,0,0.12)',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export const PlansPage: React.FC = () => {
   const { t } = useTranslation();
@@ -30,6 +89,8 @@ export const PlansPage: React.FC = () => {
   const [pricing, setPricing] = useState<SubscriptionPricing | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier | null>(null);
   const [transactionRef, setTransactionRef] = useState('');
+  const [refTouched, setRefTouched] = useState(false);
+  const [refFocused, setRefFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [myRequests, setMyRequests] = useState<SubscriptionRequest[]>([]);
@@ -40,7 +101,6 @@ export const PlansPage: React.FC = () => {
   const whatsappNumber = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
   const currentTierLabel = currentUser?.sellerDetails?.tierLabel || 'Gratuit';
 
-  // Paid tiers only (exclude free)
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
 
   useEffect(() => {
@@ -49,18 +109,15 @@ export const PlansPage: React.FC = () => {
       navigate('/');
       return;
     }
-
-    // Real-time listeners — always get fresh data, bypass persistentLocalCache
     const unsubTiers = subscribeToSubscriptionTiers(setTiers);
     const unsubPricing = subscribeToSubscriptionPricing(sellerCountryId, setPricing);
     const unsubRequests = subscribeToMyRequests(currentUser.id, setMyRequests);
-
     return () => {
       unsubTiers();
       unsubPricing();
       unsubRequests();
     };
-  }, [authReady, currentUser, sellerCountryId]);
+  }, [authReady, currentUser, sellerCountryId, navigate]);
 
   const getPrice = (tierId: string): number => {
     if (pricing?.prices[tierId] !== undefined) return pricing.prices[tierId];
@@ -74,16 +131,13 @@ export const PlansPage: React.FC = () => {
     return defaults.currency;
   };
 
-  const formatPrice = (amount: number) => {
-    return amount.toLocaleString() + ' ' + getCurrency();
-  };
+  const formatPrice = (amount: number) => `${amount.toLocaleString()} ${getCurrency()}`;
 
   const getMaxProducts = (tier: SubscriptionTier): number => {
     if (tier.max === null) return 99999;
     return tier.max;
   };
 
-  // Check if user has a pending request for this plan
   const hasPendingRequest = (planId: string) =>
     myRequests.some(r => r.planId === planId && (r.status === 'pending' || r.status === 'pending_validation'));
 
@@ -116,7 +170,7 @@ export const PlansPage: React.FC = () => {
       setCurrentRequestId(requestId);
       setStep('confirmation');
       toast(t('plans.requestCreated'), 'success');
-    } catch (err) {
+    } catch {
       toast(t('plans.requestCreateError'), 'error');
     } finally {
       setLoading(false);
@@ -124,16 +178,17 @@ export const PlansPage: React.FC = () => {
   };
 
   const handleConfirmPayment = async () => {
-    if (!currentRequestId || !transactionRef.trim()) {
+    const trimmed = transactionRef.trim();
+    if (!currentRequestId || trimmed.length < 4) {
       toast(t('plans.enterRef'), 'error');
       return;
     }
     setLoading(true);
     try {
-      await confirmPayment(currentRequestId, transactionRef.trim());
+      await confirmPayment(currentRequestId, trimmed);
       setStep('done');
       toast(t('plans.paymentConfirmed'), 'success');
-    } catch (err) {
+    } catch {
       toast(t('plans.paymentConfirmError'), 'error');
     } finally {
       setLoading(false);
@@ -141,130 +196,258 @@ export const PlansPage: React.FC = () => {
   };
 
   const whatsappMessage = selectedPlan
-    ? encodeURIComponent(t('plans.whatsappSubscribe', { plan: selectedPlan.label, country: country?.name || sellerCountryId, amount: formatPrice(getPrice(selectedPlan.id)), name: currentUser?.sellerDetails?.shopName || currentUser?.name }))
+    ? encodeURIComponent(t('plans.whatsappSubscribe', {
+        plan: selectedPlan.label,
+        country: country?.name || sellerCountryId,
+        amount: formatPrice(getPrice(selectedPlan.id)),
+        name: currentUser?.sellerDetails?.shopName || currentUser?.name,
+      }))
     : encodeURIComponent(t('plans.whatsappGeneric'));
+  const whatsappHref = `https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`;
 
   if (!currentUser) return null;
 
-  // ─── RENDER ───
+  const stepTitles: Record<Step, string> = {
+    plans: t('plans.choosePlan'),
+    payment: t('plans.headerPayment'),
+    confirmation: t('plans.confirmPayment'),
+    done: t('plans.requestSent'),
+  };
+  const showBackButton = step !== 'plans' && step !== 'done';
+  const handleBack = () => {
+    if (step === 'payment') setStep('plans');
+    else if (step === 'confirmation') setStep('payment');
+  };
+
+  // Validation ref pour étape confirmation
+  const refValid = transactionRef.trim().length >= 4;
+  const refShowError = refTouched && !refValid && transactionRef.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#F7F7F5] text-gray-900 dark:bg-gray-950 dark:text-white pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-gold-50 via-white to-gold-50 dark:from-gray-900 dark:via-gold-950 dark:to-gray-900 border-b border-gold-300 dark:border-gold-400/20">
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <button onClick={() => step === 'plans' ? navigate('/dashboard') : setStep('plans')} className="text-gold-700 dark:text-gold-400 text-sm mb-4 hover:underline">
-            &larr; {step === 'plans' ? t('plans.backToDashboard') : t('plans.backToPlans')}
+    <div className="min-h-screen flex flex-col bg-[#F7F8FA] pb-20">
+      {/* Header sticky-like (top of page, not fixed) */}
+      <div
+        className="flex items-center gap-2.5 px-4 py-3 bg-[#F7F8FA]"
+        style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}
+      >
+        {showBackButton ? (
+          <button
+            onClick={handleBack}
+            aria-label={t('plans.back')}
+            className="w-11 h-11 rounded-xl flex items-center justify-center
+                       bg-[#F0F1F4] border-none cursor-pointer flex-shrink-0
+                       active:bg-[#EAECF0] transition-colors"
+          >
+            <ArrowLeft size={18} color="#5C6370" />
           </button>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white">
-            {step === 'plans' && t('plans.choosePlan')}
-            {step === 'payment' && t('plans.paymentTitle', { plan: selectedPlan?.label })}
-            {step === 'confirmation' && t('plans.confirmPayment')}
-            {step === 'done' && t('plans.requestSent')}
+        ) : (
+          <button
+            onClick={() => navigate('/dashboard')}
+            aria-label={t('plans.backToDashboard')}
+            className="w-11 h-11 rounded-xl flex items-center justify-center
+                       bg-[#F0F1F4] border-none cursor-pointer flex-shrink-0
+                       active:bg-[#EAECF0] transition-colors"
+          >
+            <ArrowLeft size={18} color="#5C6370" />
+          </button>
+        )}
+
+        <div className="flex-1 min-w-0">
+          <h1 className="text-[17px] font-black tracking-tight leading-tight text-gray-900">
+            {stepTitles[step]}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            {step === 'plans' && t('plans.currentPlanInfo', { plan: currentTierLabel, flag: country?.flag, country: country?.name })}
-            {step === 'payment' && t('plans.amountInfo', { amount: selectedPlan ? formatPrice(getPrice(selectedPlan.id)) : '' })}
-            {step === 'confirmation' && t('plans.confirmHint')}
-            {step === 'done' && t('plans.requestProcessed')}
-          </p>
+          {step === 'plans' && (
+            <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1 flex-wrap">
+              <span>
+                {t('plans.currentBadge')} :{' '}
+                <strong className="text-emerald-600 font-bold">{currentTierLabel}</strong>
+              </span>
+              <span className="text-gray-300">·</span>
+              <span>{country?.flag} {country?.name}</span>
+            </p>
+          )}
+          {step !== 'plans' && selectedPlan && (
+            <p className="text-[11px] text-gray-400 mt-0.5">{selectedPlan.label}</p>
+          )}
         </div>
+
+        <StepDots step={step} />
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="flex-1">
 
-        {/* ─── STEP 1: Plan Selection ─── */}
+        {/* ─── STEP 1: Plans grid ─── */}
         {step === 'plans' && (
-          <div className="space-y-6">
-            {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="animate-fade-in">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 px-4 pt-5">
               {paidTiers.map((tier) => {
                 const price = getPrice(tier.id);
                 const isCurrentPlan = currentTierLabel === tier.label;
                 const isPending = hasPendingRequest(tier.id);
                 const isPopular = tier.id === 'pro';
+                const isDisabled = isCurrentPlan || isPending;
 
                 return (
                   <div
                     key={tier.id}
-                    className={`relative bg-white dark:bg-gray-900 border rounded-2xl p-6 flex flex-col transition-all hover:scale-[1.02] shadow-sm dark:shadow-none ${
-                      isPopular ? 'border-gold-400 shadow-lg shadow-gold-400/30 dark:shadow-gold-400/20' : 'border-gray-200 dark:border-gray-700/50 hover:border-gray-300 dark:hover:border-gray-600'
-                    } ${isCurrentPlan ? 'ring-2 ring-green-500/50' : ''}`}
+                    className="relative flex flex-col gap-2.5 rounded-2xl p-3.5 transition-transform duration-200"
+                    style={{
+                      background: isPopular ? '#FFFDF0' : '#FFFFFF',
+                      border: isPopular
+                        ? '1.5px solid rgba(245,200,66,0.45)'
+                        : isCurrentPlan
+                        ? '1.5px solid rgba(16,185,129,0.4)'
+                        : '1px solid rgba(0,0,0,0.07)',
+                      boxShadow: isPopular
+                        ? '0 6px 28px rgba(245,200,66,0.18), 0 2px 8px rgba(0,0,0,0.06)'
+                        : '0 1px 4px rgba(0,0,0,0.05)',
+                      transform: isPopular ? 'scale(1.03)' : 'scale(1)',
+                    }}
                   >
-                    {isPopular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold-400 text-gray-900 text-xs font-black px-3 py-1 rounded-full">
+                    {isPopular && !isCurrentPlan && (
+                      <div
+                        className="absolute -top-2.5 left-1/2 -translate-x-1/2
+                                   px-2.5 py-0.5 rounded-full whitespace-nowrap
+                                   text-[9px] font-black tracking-wider uppercase text-[#111318]"
+                        style={{
+                          background: 'linear-gradient(90deg,#F5C842,#E8A800)',
+                          boxShadow: '0 2px 8px rgba(245,200,66,0.4)',
+                        }}
+                      >
                         {t('plans.popularBadge')}
                       </div>
                     )}
-
                     {isCurrentPlan && (
-                      <div className="absolute -top-3 right-4 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2
+                                      px-2.5 py-0.5 rounded-full whitespace-nowrap
+                                      text-[9px] font-black tracking-wider uppercase text-emerald-600
+                                      bg-emerald-50 border border-emerald-200">
                         {t('plans.currentBadge')}
                       </div>
                     )}
 
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">{tier.label}</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-xs mb-4">
-                      {tier.max === null ? t('plans.unlimitedProducts') : t('plans.productRange', { min: tier.min, max: tier.max })}
-                    </p>
-
-                    <div className="mb-4">
-                      <span className="text-3xl font-black text-gold-700 dark:text-gold-400">{price.toLocaleString()}</span>
-                      <span className="text-gray-600 dark:text-gray-400 text-sm ml-1">{getCurrency()}{t('plans.perMonth')}</span>
+                    <div>
+                      <p
+                        className="text-[13px] font-black leading-tight tracking-tight"
+                        style={{ color: isPopular ? '#B07410' : '#111318' }}
+                      >
+                        {tier.label}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {tier.max === null
+                          ? t('plans.unlimitedProducts')
+                          : t('plans.productRange', { min: tier.min, max: tier.max })}
+                      </p>
                     </div>
 
-                    <ul className="space-y-2 mb-6 flex-1 text-sm text-gray-700 dark:text-gray-300">
-                      <li className="flex items-center gap-2">
-                        <span className="text-green-600 dark:text-green-400">&#10003;</span>
-                        {tier.max === null ? t('plans.featureUnlimited') : t('plans.featureUpTo', { max: tier.max })}
+                    <div className="flex items-baseline gap-1 -mt-0.5">
+                      <span
+                        className="text-lg font-black tracking-tight leading-none"
+                        style={{ color: isPopular ? '#C47E00' : '#111318' }}
+                      >
+                        {price.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] text-gray-400 font-medium">
+                        {getCurrency()}{t('plans.perMonth')}
+                      </span>
+                    </div>
+
+                    <ul className="flex flex-col gap-1.5">
+                      <li className="flex items-start gap-1.5">
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                          style={{ background: isPopular ? 'rgba(245,200,66,0.15)' : 'rgba(16,185,129,0.1)' }}
+                        >
+                          <Check size={9} color={isPopular ? '#C47E00' : '#059669'} strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                          {tier.max === null ? t('plans.featureUnlimited') : t('plans.featureUpTo', { max: tier.max })}
+                        </span>
                       </li>
-                      <li className="flex items-center gap-2">
-                        <span className="text-green-600 dark:text-green-400">&#10003;</span>
-                        {t('plans.featureVerified')}
+                      <li className="flex items-start gap-1.5">
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                          style={{ background: isPopular ? 'rgba(245,200,66,0.15)' : 'rgba(16,185,129,0.1)' }}
+                        >
+                          <Check size={9} color={isPopular ? '#C47E00' : '#059669'} strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                          {t('plans.featureVerified')}
+                        </span>
                       </li>
                       {tier.id === 'pro' && (
-                        <li className="flex items-center gap-2">
-                          <span className="text-green-600 dark:text-green-400">&#10003;</span>
-                          {t('plans.featureProBadge')}
+                        <li className="flex items-start gap-1.5">
+                          <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                               style={{ background: 'rgba(245,200,66,0.15)' }}>
+                            <Check size={9} color="#C47E00" strokeWidth={2.5} />
+                          </div>
+                          <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                            {t('plans.featureProBadge')}
+                          </span>
                         </li>
                       )}
                       {(tier.id === 'elite' || tier.id === 'unlimited') && (
                         <>
-                          <li className="flex items-center gap-2">
-                            <span className="text-green-600 dark:text-green-400">&#10003;</span>
-                            {t('plans.featureSearchPriority')}
+                          <li className="flex items-start gap-1.5">
+                            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                                 style={{ background: 'rgba(16,185,129,0.1)' }}>
+                              <Check size={9} color="#059669" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                              {t('plans.featureSearchPriority')}
+                            </span>
                           </li>
-                          <li className="flex items-center gap-2">
-                            <span className="text-green-600 dark:text-green-400">&#10003;</span>
-                            {t('plans.featurePrioritySupport')}
+                          <li className="flex items-start gap-1.5">
+                            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                                 style={{ background: 'rgba(16,185,129,0.1)' }}>
+                              <Check size={9} color="#059669" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                              {t('plans.featurePrioritySupport')}
+                            </span>
                           </li>
                         </>
                       )}
-                      {tier.requiresNif && (
-                        <li className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 text-xs">
-                          {t('plans.nifRequired')}
-                        </li>
-                      )}
                     </ul>
 
+                    {tier.requiresNif && (
+                      <div
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg"
+                        style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}
+                      >
+                        <AlertTriangle size={10} color="#ca8a04" />
+                        <span className="text-[9px] text-amber-600 font-semibold">
+                          {t('plans.nifRequired')}
+                        </span>
+                      </div>
+                    )}
+
                     {isPending ? (
-                      <button disabled className="w-full py-2.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-600/20 dark:text-yellow-400 text-sm font-bold rounded-xl border border-yellow-300 dark:border-yellow-600/30">
-                        {t('plans.pendingRequest')}
-                      </button>
-                    ) : isCurrentPlan ? (
-                      <button disabled className="w-full py-2.5 bg-green-100 text-green-700 dark:bg-green-600/20 dark:text-green-400 text-sm font-bold rounded-xl border border-green-300 dark:border-green-600/30">
-                        {t('plans.currentPlan')}
-                      </button>
+                      <div
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-bold"
+                        style={{
+                          background: 'rgba(59,130,246,0.08)',
+                          border: '1px solid rgba(59,130,246,0.2)',
+                          color: '#3b82f6',
+                        }}
+                      >
+                        <Clock size={11} />
+                        {t('plans.pendingShort')}
+                      </div>
                     ) : (
                       <button
-                        onClick={() => handleSelectPlan(tier)}
-                        className={`w-full py-2.5 text-sm font-bold rounded-xl transition-all ${
-                          isPopular
-                            ? 'bg-gold-400 text-gray-900 hover:bg-gold-300'
-                            : 'bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/20'
-                        }`}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => !isDisabled && handleSelectPlan(tier)}
+                        className="w-full py-2.5 rounded-xl text-[11px] font-black
+                                   transition-all duration-150 active:scale-95 disabled:cursor-default"
+                        style={{
+                          background: isDisabled ? '#F0F1F4' : isPopular ? '#F5C842' : '#F0F1F4',
+                          color: isDisabled ? '#BCC1CA' : isPopular ? '#111318' : '#5C6370',
+                          boxShadow: isPopular && !isDisabled ? '0 2px 8px rgba(245,200,66,0.3)' : 'none',
+                        }}
                       >
-                        {t('plans.choosePlanBtn')}
+                        {isCurrentPlan ? t('plans.currentPlan') : t('plans.chooseShort')}
                       </button>
                     )}
                   </div>
@@ -272,180 +455,317 @@ export const PlansPage: React.FC = () => {
               })}
             </div>
 
-            {/* Pending Requests */}
+            {/* Demandes en attente (sous la grille) */}
             {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').length > 0 && (
-              <div className="bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-500/30 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-yellow-700 dark:text-yellow-400 mb-3">{t('plans.pendingRequestsTitle')}</h3>
-                <div className="space-y-2">
-                  {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').map(req => (
-                    <div key={req.id} className="flex items-center justify-between bg-white dark:bg-black/20 border border-yellow-200 dark:border-transparent rounded-lg px-4 py-2 text-sm">
-                      <div>
-                        <span className="text-gray-900 dark:text-white font-bold">{req.planLabel}</span>
-                        <span className="text-gray-600 dark:text-gray-400 ml-2">{req.amount.toLocaleString()} {req.currency}</span>
+              <div className="px-4 mt-4">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                  {t('plans.pendingRequestsTitle')}
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').map(req => {
+                    const isPaymentPending = req.status === 'pending';
+                    return (
+                      <div
+                        key={req.id}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+                        style={{
+                          background: isPaymentPending ? 'rgba(249,115,22,0.07)' : 'rgba(59,130,246,0.07)',
+                          border: `1px solid ${isPaymentPending ? 'rgba(249,115,22,0.2)' : 'rgba(59,130,246,0.2)'}`,
+                        }}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{
+                            background: isPaymentPending ? '#f97316' : '#3b82f6',
+                            boxShadow: `0 0 6px ${isPaymentPending ? 'rgba(249,115,22,0.5)' : 'rgba(59,130,246,0.5)'}`,
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-800">{req.planLabel}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            {isPaymentPending ? t('plans.paymentPending') : t('plans.paymentVerification')}
+                          </p>
+                        </div>
+                        <span
+                          className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{
+                            color: isPaymentPending ? '#f97316' : '#3b82f6',
+                            background: isPaymentPending ? 'rgba(249,115,22,0.1)' : 'rgba(59,130,246,0.1)',
+                          }}
+                        >
+                          {isPaymentPending ? t('plans.pendingBadgePayment') : t('plans.pendingBadgeVerif')}
+                        </span>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        req.status === 'pending' ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
-                      }`}>
-                        {req.status === 'pending' ? t('plans.paymentPending') : t('plans.paymentVerification')}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* WhatsApp Fallback */}
-            <div className="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700/50 rounded-xl p-4 text-center shadow-sm dark:shadow-none">
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{t('plans.needHelp')}</p>
-              <a
-                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-500 transition-colors"
-              >
-                {t('plans.contactWhatsapp')}
-              </a>
+            {/* WhatsApp help card */}
+            <div className="px-4 mt-4">
+              <div className="p-3.5 rounded-2xl bg-white border border-black/[0.07] shadow-sm">
+                <p className="text-xs font-bold text-gray-800 mb-1">{t('plans.needHelp')}</p>
+                <p className="text-[11px] text-gray-400 mb-2.5 leading-snug">
+                  {t('plans.responseTime')}
+                </p>
+                <WhatsAppButton href={whatsappHref} label={t('plans.contactWhatsapp')} />
+              </div>
             </div>
+            <div className="h-5" />
           </div>
         )}
 
-        {/* ─── STEP 2: Payment Instructions ─── */}
+        {/* ─── STEP 2: Payment instructions ─── */}
         {step === 'payment' && selectedPlan && (
-          <div className="max-w-lg mx-auto space-y-6">
-            {/* Selected Plan Summary */}
-            <div className="bg-white border border-gold-400 dark:bg-gray-900 dark:border-gold-400/30 rounded-xl p-5 shadow-sm dark:shadow-none">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{selectedPlan.label}</h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    {selectedPlan.max === null ? t('plans.featureUnlimited') : t('plans.planSummary', { max: selectedPlan.max })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-gold-700 dark:text-gold-400">{formatPrice(getPrice(selectedPlan.id))}</p>
-                </div>
+          <div className="flex flex-col gap-3 p-4 animate-fade-in">
+            {/* Selected plan summary */}
+            <div
+              className="flex items-center gap-3 p-3.5 rounded-2xl"
+              style={{ background: 'rgba(245,200,66,0.07)', border: '1.5px solid rgba(245,200,66,0.3)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xl"
+                style={{ background: 'rgba(245,200,66,0.15)' }}
+                aria-hidden
+              >
+                📦
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                  {t('plans.selectedPlanLabel')}
+                </p>
+                <p className="text-[15px] font-black text-gray-900 tracking-tight leading-tight">
+                  {selectedPlan.label}
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  {selectedPlan.max === null
+                    ? t('plans.unlimitedProducts')
+                    : t('plans.productRange', { min: selectedPlan.min, max: selectedPlan.max })}
+                </p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-xl font-black tracking-tight leading-none" style={{ color: '#C47E00' }}>
+                  {getPrice(selectedPlan.id).toLocaleString()}
+                </p>
+                <p className="text-[10px] text-gray-400">{getCurrency()}{t('plans.perMonth')}</p>
               </div>
             </div>
 
-            {/* Payment Methods */}
-            <div className="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700/50 rounded-xl p-5 shadow-sm dark:shadow-none">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
-                {t('plans.paymentMethods', { flag: country?.flag, country: country?.name })}
-              </h3>
-              <div className="space-y-3">
-                {paymentMethods.map((method, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 dark:bg-black/30 rounded-lg px-4 py-3">
-                    <span className="text-xl">{method.icon}</span>
-                    <div className="flex-1">
-                      <p className="text-gray-900 dark:text-white font-bold text-sm">{method.name}</p>
-                      <p className="text-gold-700 dark:text-gold-400 text-xs font-mono">{method.number}</p>
+            {/* Payment methods */}
+            <div className="rounded-2xl overflow-hidden bg-white border border-black/[0.07] shadow-sm">
+              <div className="px-3.5 py-3 border-b border-black/[0.05]">
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                  {t('plans.paymentMethods', { flag: country?.flag, country: country?.name })}
+                </p>
+              </div>
+              {paymentMethods.map((m: PaymentMethod, i: number) => {
+                const color = getMethodColor(m.name);
+                return (
+                  <React.Fragment key={`${m.name}-${i}`}>
+                    {i > 0 && <div className="h-px ml-14" style={{ background: 'rgba(0,0,0,0.05)' }} />}
+                    <div className="flex items-center gap-3 px-3.5 py-2.5">
+                      <div
+                        className="w-[34px] h-[34px] rounded-[9px] flex-shrink-0 flex items-center justify-center"
+                        style={{ background: `${color}18`, border: `1px solid ${color}30` }}
+                        aria-hidden
+                      >
+                        <Phone size={14} color={color} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold text-gray-800">{m.name}</p>
+                        <p className="text-xs font-bold font-mono tracking-wider mt-0.5 break-all" style={{ color }}>
+                          {m.number}
+                        </p>
+                      </div>
                     </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Instructions */}
+            <div
+              className="p-3.5 rounded-2xl"
+              style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}
+            >
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Info size={12} color="#3b82f6" />
+                <p className="text-[11px] font-bold text-blue-500">{t('plans.instructions')}</p>
+              </div>
+              {[
+                t('plans.instructionDial'),
+                t('plans.instructionTransfer', { amount: formatPrice(getPrice(selectedPlan.id)) }),
+                t('plans.instructionKeepReceipt'),
+                t('plans.instructionClickCreate'),
+              ].map((s, i, arr) => (
+                <div key={i} className={`flex items-start gap-2.5 ${i < arr.length - 1 ? 'mb-2' : ''}`}>
+                  <div
+                    className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-black text-white"
+                    style={{ background: '#3b82f6' }}
+                  >
+                    {i + 1}
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-4 bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-500/20 rounded-lg p-3 text-xs text-blue-800 dark:text-blue-300">
-                <p className="font-bold mb-1">{t('plans.instructions')}</p>
-                <ol className="list-decimal ml-4 space-y-1">
-                  <li>
-                    <Trans
-                      i18nKey="plans.instruction1"
-                      values={{ amount: formatPrice(getPrice(selectedPlan.id)) }}
-                      components={{ strong: <strong /> }}
-                    />
-                  </li>
-                  <li>{t('plans.instruction2')}</li>
-                  <li>{t('plans.instruction3')}</li>
-                </ol>
-              </div>
+                  <p className="text-[11px] text-blue-500 leading-snug font-medium pt-0.5">{s}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={handleCreateRequest}
-                disabled={loading}
-                className="flex-1 py-3 bg-gold-400 text-gray-900 font-bold rounded-xl hover:bg-gold-300 transition-colors disabled:opacity-50"
-              >
-                {loading ? t('plans.creating') : t('plans.createRequest')}
-              </button>
-            </div>
-
-            <div className="text-center">
-              <a
-                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-700 dark:text-green-400 text-sm hover:underline"
-              >
-                {t('plans.needHelpWhatsapp')}
-              </a>
-            </div>
+            <button
+              type="button"
+              onClick={handleCreateRequest}
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl text-sm font-black text-[#111318] active:scale-[0.98]
+                         transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: '#F5C842', boxShadow: '0 3px 12px rgba(245,200,66,0.35)' }}
+            >
+              {loading ? t('plans.creating') : t('plans.createRequestShort')}
+            </button>
+            <WhatsAppButton href={whatsappHref} label={t('plans.needHelpWhatsapp')} />
           </div>
         )}
 
-        {/* ─── STEP 3: Confirm Transaction Ref ─── */}
-        {step === 'confirmation' && (
-          <div className="max-w-lg mx-auto space-y-6">
-            <div className="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700/50 rounded-xl p-5 shadow-sm dark:shadow-none">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">{t('plans.transactionRefTitle')}</h3>
+        {/* ─── STEP 3: Confirm transaction ref ─── */}
+        {step === 'confirmation' && selectedPlan && (
+          <div className="flex flex-col gap-3 p-4 animate-fade-in">
+            <div
+              className="flex items-center gap-2.5 p-3 rounded-xl"
+              style={{ background: 'rgba(245,200,66,0.06)', border: '1px solid rgba(245,200,66,0.2)' }}
+            >
+              <span className="text-xl flex-shrink-0" aria-hidden>🧾</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-gray-800">
+                  {selectedPlan.label} · {formatPrice(getPrice(selectedPlan.id))}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{t('plans.confirmHint')}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 border border-black/[0.07] shadow-sm">
+              <label htmlFor="tx-ref" className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                {t('plans.transactionRefTitle')}
+              </label>
               <input
+                id="tx-ref"
                 type="text"
                 value={transactionRef}
-                onChange={(e) => setTransactionRef(e.target.value)}
+                onChange={(e) => { setTransactionRef(e.target.value); setRefTouched(true); }}
+                onFocus={() => setRefFocused(true)}
+                onBlur={() => setRefFocused(false)}
                 placeholder={t('plans.transactionRefPlaceholder')}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 dark:bg-black/50 dark:border-gray-600 dark:text-white dark:placeholder-gray-500 rounded-xl focus:border-gold-400 focus:outline-none"
+                className="w-full px-3.5 py-3 rounded-xl text-sm font-semibold font-mono
+                           tracking-wider outline-none transition-all duration-200
+                           text-gray-900 placeholder-gray-300"
+                style={{
+                  background: '#FFFFFF',
+                  border: `1.5px solid ${refFocused ? '#F5C842' : refShowError ? '#ef4444' : 'rgba(0,0,0,0.12)'}`,
+                  boxShadow: refFocused ? '0 0 0 3px rgba(245,200,66,0.12)' : 'none',
+                }}
               />
-              <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
+              {refShowError && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <AlertTriangle size={11} color="#ef4444" />
+                  <p className="text-[11px] text-red-500">{t('plans.refTooShort')}</p>
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400 mt-2 leading-snug">
                 {t('plans.transactionRefHint')}
               </p>
             </div>
 
             <button
+              type="button"
+              disabled={!refValid || loading}
               onClick={handleConfirmPayment}
-              disabled={loading || !transactionRef.trim()}
-              className="w-full py-3 bg-gold-400 text-gray-900 font-bold rounded-xl hover:bg-gold-300 transition-colors disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl text-sm font-black transition-all duration-150
+                         active:scale-[0.98] disabled:cursor-not-allowed"
+              style={{
+                background: refValid && !loading ? '#F5C842' : '#D0D3DA',
+                color: refValid && !loading ? '#111318' : '#9EA5B0',
+                boxShadow: refValid && !loading ? '0 3px 12px rgba(245,200,66,0.35)' : 'none',
+              }}
             >
               {loading ? t('plans.sending') : t('plans.confirmPaymentBtn')}
             </button>
-
-            <p className="text-center text-gray-600 dark:text-gray-500 text-xs">
-              {t('plans.notPaidYet')}{' '}
-              <button onClick={() => setStep('payment')} className="text-gold-700 dark:text-gold-400 hover:underline">
-                {t('plans.viewPaymentInstructions')}
-              </button>
-            </p>
+            <button
+              type="button"
+              onClick={() => setStep('payment')}
+              className="text-xs text-gray-400 underline underline-offset-2 py-1.5 bg-transparent border-none cursor-pointer"
+            >
+              {t('plans.notPaidYet')} {t('plans.viewPaymentInstructions')}
+            </button>
           </div>
         )}
 
         {/* ─── STEP 4: Done ─── */}
-        {step === 'done' && (
-          <div className="max-w-lg mx-auto text-center space-y-6">
-            <div className="bg-green-50 border border-green-300 dark:bg-green-900/20 dark:border-green-500/30 rounded-2xl p-8">
-              <div className="text-5xl mb-4">&#9989;</div>
-              <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">{t('plans.successTitle')}</h2>
-              <p className="text-gray-700 dark:text-gray-400">
-                {t('plans.successMessage', { plan: selectedPlan?.label })}
-              </p>
-              <p className="text-gray-600 dark:text-gray-500 text-sm mt-3">
-                {t('plans.notificationHint')}
-              </p>
+        {step === 'done' && selectedPlan && (
+          <div className="flex flex-col gap-3.5 p-4 animate-fade-in">
+            <div
+              className="flex flex-col items-center text-center gap-3.5 px-5 py-8 rounded-2xl"
+              style={{
+                background: 'rgba(16,185,129,0.06)',
+                border: '1.5px solid rgba(16,185,129,0.25)',
+                boxShadow: '0 4px 24px rgba(16,185,129,0.08)',
+              }}
+            >
+              <div className="animate-check-pop">
+                <CheckCircle2 size={56} color="#10b981" strokeWidth={1.8} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-tight mb-1.5">
+                  {t('plans.successTitle')}
+                </h2>
+                <p className="text-[13px] text-gray-500 leading-relaxed max-w-[260px] mx-auto">
+                  {t('plans.successMessage', { plan: selectedPlan.label })}
+                </p>
+              </div>
+
+              {transactionRef && (
+                <div
+                  className="flex flex-col gap-0.5 w-full px-4 py-2.5 rounded-xl"
+                  style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.07)' }}
+                >
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                    {t('plans.refLabel')}
+                  </p>
+                  <p className="text-[13px] font-black font-mono tracking-wider break-all" style={{ color: '#C47E00' }}>
+                    {transactionRef}
+                  </p>
+                </div>
+              )}
+
+              <div
+                className="flex items-start gap-2 w-full px-3 py-2.5 rounded-xl text-left"
+                style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}
+              >
+                <Info size={13} color="#3b82f6" className="flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] text-blue-500 leading-snug font-medium">
+                  {t('plans.notificationHint')}
+                </p>
+              </div>
             </div>
 
-            <div className="flex gap-3 justify-center">
+            <div className="flex gap-2.5">
               <button
+                type="button"
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-2.5 bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/20 font-bold rounded-xl"
+                className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl
+                           text-sm font-semibold text-gray-500 bg-white border border-black/[0.07]
+                           active:bg-gray-50 transition-colors"
               >
-                {t('plans.backToDashboardBtn')}
+                <LayoutDashboard size={15} />
+                {t('plans.dashboardShort')}
               </button>
               <a
-                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${encodeURIComponent(`${t('plans.whatsappGeneric')} ${selectedPlan?.label} - Ref: ${transactionRef}`)}`}
+                href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-500"
+                className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl
+                           text-sm font-bold text-green-700 no-underline transition-colors"
+                style={{ background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)' }}
               >
-                {t('plans.contactViaWhatsapp')}
+                <WhatsAppIcon />
+                {t('plans.whatsappShort')}
               </a>
             </div>
           </div>

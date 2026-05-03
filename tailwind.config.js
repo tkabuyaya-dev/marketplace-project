@@ -40,6 +40,7 @@ export default {
         'slide-up': 'slideUp 0.4s ease-out',
         'card-in':  'cardIn 0.45s cubic-bezier(0.22,1,0.36,1) both',
         'shimmer':  'shimmer 1.8s infinite linear',
+        'check-pop': 'checkPop 500ms cubic-bezier(0.175,0.885,0.32,1.275) forwards',
       },
       keyframes: {
         fadeIn: {
@@ -57,6 +58,11 @@ export default {
         shimmer: {
           'from': { transform: 'translateX(-100%)' },
           'to':   { transform: 'translateX(200%)' },
+        },
+        checkPop: {
+          '0%':   { transform: 'scale(0)',   opacity: '0' },
+          '60%':  { transform: 'scale(1.2)', opacity: '1' },
+          '100%': { transform: 'scale(1)',   opacity: '1' },
         },
       },
       scale: {
@@ -84,7 +90,7 @@ export default {
     'bg-gold-400/10', 'bg-gold-400/8', 'bg-gold-600/5',
     'bg-blue-500/10', 'bg-rose-500/10', 'bg-green-500/10', 'bg-yellow-500/10', 'bg-red-500/10',
     // Animations
-    'animate-fade-in', 'animate-slide-up', 'animate-pulse', 'animate-card-in', 'animate-shimmer',
+    'animate-fade-in', 'animate-slide-up', 'animate-pulse', 'animate-card-in', 'animate-shimmer', 'animate-check-pop',
     // Scale
     'active:scale-[0.98]', 'active:scale-95',
     // Scrollbar
