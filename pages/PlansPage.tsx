@@ -149,20 +149,20 @@ export const PlansPage: React.FC = () => {
   // ─── RENDER ───
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-20">
+    <div className="min-h-screen bg-[#F7F7F5] text-gray-900 dark:bg-gray-950 dark:text-white pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-br from-gray-900 via-gold-950 to-gray-900 border-b border-gold-400/20">
+      <div className="bg-gradient-to-br from-gold-50 via-white to-gold-50 dark:from-gray-900 dark:via-gold-950 dark:to-gray-900 border-b border-gold-300 dark:border-gold-400/20">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          <button onClick={() => step === 'plans' ? navigate('/dashboard') : setStep('plans')} className="text-gold-400 text-sm mb-4 hover:underline">
+          <button onClick={() => step === 'plans' ? navigate('/dashboard') : setStep('plans')} className="text-gold-700 dark:text-gold-400 text-sm mb-4 hover:underline">
             &larr; {step === 'plans' ? t('plans.backToDashboard') : t('plans.backToPlans')}
           </button>
-          <h1 className="text-3xl font-black">
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white">
             {step === 'plans' && t('plans.choosePlan')}
             {step === 'payment' && t('plans.paymentTitle', { plan: selectedPlan?.label })}
             {step === 'confirmation' && t('plans.confirmPayment')}
             {step === 'done' && t('plans.requestSent')}
           </h1>
-          <p className="text-gray-400 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             {step === 'plans' && t('plans.currentPlanInfo', { plan: currentTierLabel, flag: country?.flag, country: country?.name })}
             {step === 'payment' && t('plans.amountInfo', { amount: selectedPlan ? formatPrice(getPrice(selectedPlan.id)) : '' })}
             {step === 'confirmation' && t('plans.confirmHint')}
@@ -187,8 +187,8 @@ export const PlansPage: React.FC = () => {
                 return (
                   <div
                     key={tier.id}
-                    className={`relative bg-gray-900 border rounded-2xl p-6 flex flex-col transition-all hover:scale-[1.02] ${
-                      isPopular ? 'border-gold-400 shadow-lg shadow-gold-400/20' : 'border-gray-700/50 hover:border-gray-600'
+                    className={`relative bg-white dark:bg-gray-900 border rounded-2xl p-6 flex flex-col transition-all hover:scale-[1.02] shadow-sm dark:shadow-none ${
+                      isPopular ? 'border-gold-400 shadow-lg shadow-gold-400/30 dark:shadow-gold-400/20' : 'border-gray-200 dark:border-gray-700/50 hover:border-gray-300 dark:hover:border-gray-600'
                     } ${isCurrentPlan ? 'ring-2 ring-green-500/50' : ''}`}
                   >
                     {isPopular && (
@@ -203,56 +203,56 @@ export const PlansPage: React.FC = () => {
                       </div>
                     )}
 
-                    <h3 className="text-lg font-black text-white mb-1">{tier.label}</h3>
-                    <p className="text-gray-400 text-xs mb-4">
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">{tier.label}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-xs mb-4">
                       {tier.max === null ? t('plans.unlimitedProducts') : t('plans.productRange', { min: tier.min, max: tier.max })}
                     </p>
 
                     <div className="mb-4">
-                      <span className="text-3xl font-black text-gold-400">{price.toLocaleString()}</span>
-                      <span className="text-gray-400 text-sm ml-1">{getCurrency()}{t('plans.perMonth')}</span>
+                      <span className="text-3xl font-black text-gold-700 dark:text-gold-400">{price.toLocaleString()}</span>
+                      <span className="text-gray-600 dark:text-gray-400 text-sm ml-1">{getCurrency()}{t('plans.perMonth')}</span>
                     </div>
 
-                    <ul className="space-y-2 mb-6 flex-1 text-sm text-gray-300">
+                    <ul className="space-y-2 mb-6 flex-1 text-sm text-gray-700 dark:text-gray-300">
                       <li className="flex items-center gap-2">
-                        <span className="text-green-400">&#10003;</span>
+                        <span className="text-green-600 dark:text-green-400">&#10003;</span>
                         {tier.max === null ? t('plans.featureUnlimited') : t('plans.featureUpTo', { max: tier.max })}
                       </li>
                       <li className="flex items-center gap-2">
-                        <span className="text-green-400">&#10003;</span>
+                        <span className="text-green-600 dark:text-green-400">&#10003;</span>
                         {t('plans.featureVerified')}
                       </li>
                       {tier.id === 'pro' && (
                         <li className="flex items-center gap-2">
-                          <span className="text-green-400">&#10003;</span>
+                          <span className="text-green-600 dark:text-green-400">&#10003;</span>
                           {t('plans.featureProBadge')}
                         </li>
                       )}
                       {(tier.id === 'elite' || tier.id === 'unlimited') && (
                         <>
                           <li className="flex items-center gap-2">
-                            <span className="text-green-400">&#10003;</span>
+                            <span className="text-green-600 dark:text-green-400">&#10003;</span>
                             {t('plans.featureSearchPriority')}
                           </li>
                           <li className="flex items-center gap-2">
-                            <span className="text-green-400">&#10003;</span>
+                            <span className="text-green-600 dark:text-green-400">&#10003;</span>
                             {t('plans.featurePrioritySupport')}
                           </li>
                         </>
                       )}
                       {tier.requiresNif && (
-                        <li className="flex items-center gap-2 text-yellow-400 text-xs">
+                        <li className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 text-xs">
                           {t('plans.nifRequired')}
                         </li>
                       )}
                     </ul>
 
                     {isPending ? (
-                      <button disabled className="w-full py-2.5 bg-yellow-600/20 text-yellow-400 text-sm font-bold rounded-xl border border-yellow-600/30">
+                      <button disabled className="w-full py-2.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-600/20 dark:text-yellow-400 text-sm font-bold rounded-xl border border-yellow-300 dark:border-yellow-600/30">
                         {t('plans.pendingRequest')}
                       </button>
                     ) : isCurrentPlan ? (
-                      <button disabled className="w-full py-2.5 bg-green-600/20 text-green-400 text-sm font-bold rounded-xl border border-green-600/30">
+                      <button disabled className="w-full py-2.5 bg-green-100 text-green-700 dark:bg-green-600/20 dark:text-green-400 text-sm font-bold rounded-xl border border-green-300 dark:border-green-600/30">
                         {t('plans.currentPlan')}
                       </button>
                     ) : (
@@ -261,7 +261,7 @@ export const PlansPage: React.FC = () => {
                         className={`w-full py-2.5 text-sm font-bold rounded-xl transition-all ${
                           isPopular
                             ? 'bg-gold-400 text-gray-900 hover:bg-gold-300'
-                            : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+                            : 'bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/20'
                         }`}
                       >
                         {t('plans.choosePlanBtn')}
@@ -274,17 +274,17 @@ export const PlansPage: React.FC = () => {
 
             {/* Pending Requests */}
             {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').length > 0 && (
-              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-yellow-400 mb-3">{t('plans.pendingRequestsTitle')}</h3>
+              <div className="bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-500/30 rounded-xl p-4">
+                <h3 className="text-sm font-bold text-yellow-700 dark:text-yellow-400 mb-3">{t('plans.pendingRequestsTitle')}</h3>
                 <div className="space-y-2">
                   {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').map(req => (
-                    <div key={req.id} className="flex items-center justify-between bg-black/20 rounded-lg px-4 py-2 text-sm">
+                    <div key={req.id} className="flex items-center justify-between bg-white dark:bg-black/20 border border-yellow-200 dark:border-transparent rounded-lg px-4 py-2 text-sm">
                       <div>
-                        <span className="text-white font-bold">{req.planLabel}</span>
-                        <span className="text-gray-400 ml-2">{req.amount.toLocaleString()} {req.currency}</span>
+                        <span className="text-gray-900 dark:text-white font-bold">{req.planLabel}</span>
+                        <span className="text-gray-600 dark:text-gray-400 ml-2">{req.amount.toLocaleString()} {req.currency}</span>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        req.status === 'pending' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'
+                        req.status === 'pending' ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
                       }`}>
                         {req.status === 'pending' ? t('plans.paymentPending') : t('plans.paymentVerification')}
                       </span>
@@ -295,8 +295,8 @@ export const PlansPage: React.FC = () => {
             )}
 
             {/* WhatsApp Fallback */}
-            <div className="bg-gray-900 border border-gray-700/50 rounded-xl p-4 text-center">
-              <p className="text-gray-400 text-sm mb-2">{t('plans.needHelp')}</p>
+            <div className="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700/50 rounded-xl p-4 text-center shadow-sm dark:shadow-none">
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{t('plans.needHelp')}</p>
               <a
                 href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`}
                 target="_blank"
@@ -313,38 +313,38 @@ export const PlansPage: React.FC = () => {
         {step === 'payment' && selectedPlan && (
           <div className="max-w-lg mx-auto space-y-6">
             {/* Selected Plan Summary */}
-            <div className="bg-gray-900 border border-gold-400/30 rounded-xl p-5">
+            <div className="bg-white border border-gold-400 dark:bg-gray-900 dark:border-gold-400/30 rounded-xl p-5 shadow-sm dark:shadow-none">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-bold text-white">{selectedPlan.label}</h3>
-                  <p className="text-gray-400 text-sm">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{selectedPlan.label}</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
                     {selectedPlan.max === null ? t('plans.featureUnlimited') : t('plans.planSummary', { max: selectedPlan.max })}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-black text-gold-400">{formatPrice(getPrice(selectedPlan.id))}</p>
+                  <p className="text-2xl font-black text-gold-700 dark:text-gold-400">{formatPrice(getPrice(selectedPlan.id))}</p>
                 </div>
               </div>
             </div>
 
             {/* Payment Methods */}
-            <div className="bg-gray-900 border border-gray-700/50 rounded-xl p-5">
-              <h3 className="text-sm font-bold text-white mb-4">
+            <div className="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700/50 rounded-xl p-5 shadow-sm dark:shadow-none">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
                 {t('plans.paymentMethods', { flag: country?.flag, country: country?.name })}
               </h3>
               <div className="space-y-3">
                 {paymentMethods.map((method, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-black/30 rounded-lg px-4 py-3">
+                  <div key={i} className="flex items-center gap-3 bg-gray-50 dark:bg-black/30 rounded-lg px-4 py-3">
                     <span className="text-xl">{method.icon}</span>
                     <div className="flex-1">
-                      <p className="text-white font-bold text-sm">{method.name}</p>
-                      <p className="text-gold-400 text-xs font-mono">{method.number}</p>
+                      <p className="text-gray-900 dark:text-white font-bold text-sm">{method.name}</p>
+                      <p className="text-gold-700 dark:text-gold-400 text-xs font-mono">{method.number}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 bg-blue-900/20 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
+              <div className="mt-4 bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-500/20 rounded-lg p-3 text-xs text-blue-800 dark:text-blue-300">
                 <p className="font-bold mb-1">{t('plans.instructions')}</p>
                 <ol className="list-decimal ml-4 space-y-1">
                   <li>
@@ -376,7 +376,7 @@ export const PlansPage: React.FC = () => {
                 href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-400 text-sm hover:underline"
+                className="text-green-700 dark:text-green-400 text-sm hover:underline"
               >
                 {t('plans.needHelpWhatsapp')}
               </a>
@@ -387,16 +387,16 @@ export const PlansPage: React.FC = () => {
         {/* ─── STEP 3: Confirm Transaction Ref ─── */}
         {step === 'confirmation' && (
           <div className="max-w-lg mx-auto space-y-6">
-            <div className="bg-gray-900 border border-gray-700/50 rounded-xl p-5">
-              <h3 className="text-sm font-bold text-white mb-4">{t('plans.transactionRefTitle')}</h3>
+            <div className="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700/50 rounded-xl p-5 shadow-sm dark:shadow-none">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">{t('plans.transactionRefTitle')}</h3>
               <input
                 type="text"
                 value={transactionRef}
                 onChange={(e) => setTransactionRef(e.target.value)}
                 placeholder={t('plans.transactionRefPlaceholder')}
-                className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-400 focus:outline-none"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 dark:bg-black/50 dark:border-gray-600 dark:text-white dark:placeholder-gray-500 rounded-xl focus:border-gold-400 focus:outline-none"
               />
-              <p className="text-gray-500 text-xs mt-2">
+              <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
                 {t('plans.transactionRefHint')}
               </p>
             </div>
@@ -409,9 +409,9 @@ export const PlansPage: React.FC = () => {
               {loading ? t('plans.sending') : t('plans.confirmPaymentBtn')}
             </button>
 
-            <p className="text-center text-gray-500 text-xs">
+            <p className="text-center text-gray-600 dark:text-gray-500 text-xs">
               {t('plans.notPaidYet')}{' '}
-              <button onClick={() => setStep('payment')} className="text-gold-400 hover:underline">
+              <button onClick={() => setStep('payment')} className="text-gold-700 dark:text-gold-400 hover:underline">
                 {t('plans.viewPaymentInstructions')}
               </button>
             </p>
@@ -421,13 +421,13 @@ export const PlansPage: React.FC = () => {
         {/* ─── STEP 4: Done ─── */}
         {step === 'done' && (
           <div className="max-w-lg mx-auto text-center space-y-6">
-            <div className="bg-green-900/20 border border-green-500/30 rounded-2xl p-8">
+            <div className="bg-green-50 border border-green-300 dark:bg-green-900/20 dark:border-green-500/30 rounded-2xl p-8">
               <div className="text-5xl mb-4">&#9989;</div>
-              <h2 className="text-xl font-black text-white mb-2">{t('plans.successTitle')}</h2>
-              <p className="text-gray-400">
+              <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">{t('plans.successTitle')}</h2>
+              <p className="text-gray-700 dark:text-gray-400">
                 {t('plans.successMessage', { plan: selectedPlan?.label })}
               </p>
-              <p className="text-gray-500 text-sm mt-3">
+              <p className="text-gray-600 dark:text-gray-500 text-sm mt-3">
                 {t('plans.notificationHint')}
               </p>
             </div>
@@ -435,7 +435,7 @@ export const PlansPage: React.FC = () => {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-2.5 bg-white/10 text-white font-bold rounded-xl border border-white/20 hover:bg-white/20"
+                className="px-6 py-2.5 bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/20 font-bold rounded-xl"
               >
                 {t('plans.backToDashboardBtn')}
               </button>

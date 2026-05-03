@@ -38,43 +38,43 @@ const RequestCard: React.FC<{
   const daysLeft = Math.ceil((request.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4 hover:border-gray-600 transition-all duration-200">
+    <div className="bg-white border border-gray-200 dark:bg-gray-800/50 dark:border-gray-700/50 rounded-2xl p-4 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 shadow-sm dark:shadow-none">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-xs bg-gold-400/10 text-gold-400 border border-gold-400/20 px-2 py-0.5 rounded-full font-bold">
+            <span className="text-xs bg-gold-100 text-gold-700 border border-gold-200 dark:bg-gold-400/10 dark:text-gold-400 dark:border-gold-400/20 px-2 py-0.5 rounded-full font-bold">
               🔍 {t('requests.card.seeking')}
             </span>
             {request.category && (
-              <span className="text-xs bg-gray-700/60 text-gray-400 px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-gray-100 text-gray-700 dark:bg-gray-700/60 dark:text-gray-400 px-2 py-0.5 rounded-full">
                 {request.category}
               </span>
             )}
           </div>
-          <h3 className="font-bold text-white text-base leading-tight">{request.title}</h3>
+          <h3 className="font-bold text-gray-900 dark:text-white text-base leading-tight">{request.title}</h3>
           {request.description && (
-            <p className="text-sm text-gray-400 mt-1 line-clamp-2">{request.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{request.description}</p>
           )}
         </div>
         {request.imageUrl && (
           <img
             src={request.imageUrl}
             alt=""
-            className="w-14 h-14 rounded-xl object-cover shrink-0 bg-gray-700"
+            className="w-14 h-14 rounded-xl object-cover shrink-0 bg-gray-100 dark:bg-gray-700"
           />
         )}
       </div>
 
       {/* Meta */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-xs text-gray-500 dark:text-gray-500">
         <span>📍 {country?.flag} {request.city}, {request.province}</span>
         {request.budget && (
           <span>💰 {request.budget.toLocaleString()} {request.budgetCurrency}</span>
         )}
         <span>⏱ {timeAgo}</span>
         {daysLeft <= 2 && (
-          <span className="text-orange-400 font-bold">⚠ {t('requests.card.expiresIn', { days: daysLeft })}</span>
+          <span className="text-orange-600 dark:text-orange-400 font-bold">⚠ {t('requests.card.expiresIn', { days: daysLeft })}</span>
         )}
       </div>
 
@@ -89,12 +89,12 @@ const RequestCard: React.FC<{
         </button>
       ) : (
         <div className="space-y-2">
-          <div className="w-full py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-center text-gray-500 font-mono tracking-widest select-none">
+          <div className="w-full py-2.5 bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-xl text-sm text-center text-gray-500 dark:text-gray-500 font-mono tracking-widest select-none">
             {maskedPhone}
           </div>
           <button
             onClick={onUpgrade}
-            className="w-full flex items-center justify-center gap-2 py-2 border border-gold-400/30 text-gold-400 text-xs font-bold rounded-xl hover:bg-gold-400/10 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 border border-gold-400/40 dark:border-gold-400/30 text-gold-700 dark:text-gold-400 text-xs font-bold rounded-xl hover:bg-gold-400/10 transition-colors"
           >
             🔒 {t('requests.card.upgradeToPro')}
           </button>
@@ -182,30 +182,30 @@ export const BuyerRequestsPage: React.FC = () => {
   const handleUpgrade = () => navigate('/plans');
 
   return (
-    <div className="min-h-screen bg-gray-950 pt-20 pb-24 px-4">
+    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 pt-20 pb-24 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-1">
-            <h1 className="text-2xl font-black text-white">{t('requests.pageTitle')}</h1>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white">{t('requests.pageTitle')}</h1>
             {!eligible && (
               <button
                 onClick={handleUpgrade}
-                className="text-xs px-3 py-1.5 bg-gold-400/10 border border-gold-400/30 text-gold-400 rounded-xl font-bold hover:bg-gold-400/20 transition-colors"
+                className="text-xs px-3 py-1.5 bg-gold-100 border border-gold-300 text-gold-700 dark:bg-gold-400/10 dark:border-gold-400/30 dark:text-gold-400 rounded-xl font-bold hover:bg-gold-200 dark:hover:bg-gold-400/20 transition-colors"
               >
                 🔓 {t('requests.unlockContact')}
               </button>
             )}
           </div>
-          <p className="text-sm text-gray-500">{t('requests.pageSubtitle')}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-500">{t('requests.pageSubtitle')}</p>
 
           {/* Plan info banner for non-eligible */}
           {!eligible && (
-            <div className="mt-3 bg-gray-800/50 border border-gold-400/20 rounded-xl px-4 py-3 flex items-center gap-3">
+            <div className="mt-3 bg-white border border-gold-300 dark:bg-gray-800/50 dark:border-gold-400/20 rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm dark:shadow-none">
               <span className="text-2xl">🔒</span>
               <div>
-                <p className="text-sm font-bold text-white">{t('requests.planGate.title')}</p>
-                <p className="text-xs text-gray-400">{t('requests.planGate.subtitle')}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{t('requests.planGate.title')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('requests.planGate.subtitle')}</p>
               </div>
               <button
                 onClick={handleUpgrade}
@@ -222,7 +222,7 @@ export const BuyerRequestsPage: React.FC = () => {
           <select
             value={filterCountry}
             onChange={e => { setFilterCountry(e.target.value); setFilterCity(''); }}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer"
+            className="bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none cursor-pointer"
           >
             <option value="">{t('requests.filters.allCountries')}</option>
             {INITIAL_COUNTRIES.filter(c => c.isActive).map(c => (
@@ -234,7 +234,7 @@ export const BuyerRequestsPage: React.FC = () => {
             value={filterCity}
             onChange={e => setFilterCity(e.target.value)}
             disabled={!filterCountry}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer disabled:opacity-40"
+            className="bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none cursor-pointer disabled:opacity-40"
           >
             <option value="">{t('requests.filters.allCities')}</option>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
@@ -243,7 +243,7 @@ export const BuyerRequestsPage: React.FC = () => {
           <select
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-300 outline-none cursor-pointer"
+            className="bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none cursor-pointer"
           >
             <option value="">{t('requests.filters.allCategories')}</option>
             {INITIAL_CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -254,14 +254,14 @@ export const BuyerRequestsPage: React.FC = () => {
         {loading && requests.length === 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-4 animate-pulse h-44" />
+              <div key={i} className="bg-white border border-gray-200 dark:bg-gray-800/50 dark:border-gray-700/50 rounded-2xl p-4 animate-pulse h-44" />
             ))}
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">📭</div>
-            <p className="text-lg font-bold text-white mb-2">{t('requests.empty.title')}</p>
-            <p className="text-sm text-gray-500">{t('requests.empty.subtitle')}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">{t('requests.empty.title')}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-500">{t('requests.empty.subtitle')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -286,7 +286,7 @@ export const BuyerRequestsPage: React.FC = () => {
             <button
               onClick={() => load(false)}
               disabled={loading}
-              className="px-6 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 hover:bg-gray-700 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl text-sm transition-colors disabled:opacity-50"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin inline-block" />
