@@ -153,16 +153,18 @@ export const ProductCard = memo<ProductCardProps>(({
             />
           </div>
         ) : primaryImage ? (
-          <ProgressiveImage
-            src={optimizedUrl}
-            srcSet={srcSet || undefined}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            alt={product.title}
-            blurhash={product.blurhash}
-            originalUrl={primaryImage}
-            className="absolute inset-0"
-            imgClassName="group-hover:scale-105 transition-transform duration-500"
-          />
+          <div className="absolute inset-0">
+            <ProgressiveImage
+              src={optimizedUrl}
+              srcSet={srcSet || undefined}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              alt={product.title}
+              blurhash={product.blurhash}
+              originalUrl={primaryImage}
+              className="w-full h-full"
+              imgClassName="group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center
                           bg-gradient-to-br from-gray-100 to-gray-200
