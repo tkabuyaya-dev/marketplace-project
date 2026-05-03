@@ -58,9 +58,19 @@ export const BoostProductModal: React.FC<Props> = ({
   // Subscribe to real-time pricing while modal is open
   useEffect(() => {
     if (!isOpen) return;
-    setStep('payment');
     setTransactionRef('');
-    setRequestId(null);
+
+    // If vendor closed the modal before entering their ref, resume at confirm step
+    const resumable = existingRequests.find(
+      r => r.productId === product.id && r.status === 'pending' && !r.transactionRef
+    );
+    if (resumable) {
+      setRequestId(resumable.id);
+      setStep('confirm');
+    } else {
+      setRequestId(null);
+      setStep('payment');
+    }
 
     const unsub = subscribeToBoostPricing(sellerCountryId, setPricing);
     return unsub;

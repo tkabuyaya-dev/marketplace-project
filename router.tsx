@@ -38,6 +38,7 @@ const PlansPage = lazyRetry(() => import('./pages/PlansPage'));
 const SearchPage = lazyRetry(() => import('./pages/Search'));
 const CGUPage = lazyRetry(() => import('./pages/legal/CGU'));
 const PrivacyPolicyPage = lazyRetry(() => import('./pages/legal/PrivacyPolicy'));
+const SafetyTipsPage = lazyRetry(() => import('./pages/legal/SafetyTips'));
 const BuyerRequestsPage = lazyRetry(() => import('./pages/BuyerRequests'));
 const AuthGooglePage = lazyRetry(() => import('./pages/AuthGoogle'));
 
@@ -113,6 +114,7 @@ export const router = createBrowserRouter([
       { path: 'login', element: <SuspenseWrapper><LoginPage /></SuspenseWrapper> },
       { path: 'cgu', element: <SuspenseWrapper><CGUPage /></SuspenseWrapper> },
       { path: 'politique-confidentialite', element: <SuspenseWrapper><PrivacyPolicyPage /></SuspenseWrapper> },
+      { path: 'securite', element: <SuspenseWrapper><SafetyTipsPage /></SuspenseWrapper> },
       { path: 'demandes', element: <SuspenseWrapper><BuyerRequestsPage /></SuspenseWrapper> },
       { path: 'auth-google', element: <SuspenseWrapper><AuthGooglePage /></SuspenseWrapper> },
       { path: '*', element: <Navigate to="/" replace /> },

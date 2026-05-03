@@ -538,6 +538,7 @@
     "subDays": "days",
     "subUsage": "Usage",
     "subPendingRequest": "Request being processed...",
+    "subCompleteRequest": "Complete my payment request",
     "subRenew": "Renew my subscription",
     "subChangePlan": "Change plan",
     "subUpgrade": "Upgrade plan",
@@ -1283,7 +1284,8 @@
     "dashboardShort": "Dashboard",
     "whatsappShort": "WhatsApp",
     "pendingBadgePayment": "Payment",
-    "pendingBadgeVerif": "Verif."
+    "pendingBadgeVerif": "Verif.",
+    "tapToEnterRef": "Tap to enter your reference"
   },
   "share": {
     "share": "Share",

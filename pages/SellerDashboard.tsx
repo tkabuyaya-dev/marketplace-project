@@ -1199,8 +1199,19 @@ export const SellerDashboard: React.FC = () => {
           {/* CTA button */}
           <div>
             {(() => {
-              const hasPendingRequest = subRequests.some(r => r.status === 'pending' || r.status === 'pending_validation');
-              if (hasPendingRequest) {
+              const resumable = subRequests.find(r => r.status === 'pending' && !r.transactionRef);
+              if (resumable) {
+                return (
+                  <button
+                    onClick={() => navigate('/plans')}
+                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-900 text-xs font-bold rounded-xl transition-colors"
+                  >
+                    {t('dashboard.subCompleteRequest', 'Compléter ma demande de paiement')}
+                  </button>
+                );
+              }
+              const awaitingValidation = subRequests.some(r => r.status === 'pending_validation');
+              if (awaitingValidation) {
                 return (
                   <button disabled className="w-full py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
                     <span className="w-3 h-3 border-2 border-gray-400 dark:border-gray-500 border-t-gray-700 dark:border-t-gray-300 rounded-full animate-spin" />

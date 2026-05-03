@@ -70,9 +70,19 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   // Subscribe to dynamic tiers & pricing only while the modal is open
   useEffect(() => {
     if (!isOpen) return;
-    setStep('payment');
     setTransactionRef('');
-    setRequestId(null);
+
+    // If vendor closed the modal before entering their ref, resume at confirm step
+    const resumable = tier
+      ? existingRequests.find(r => r.planId === tier.id && r.status === 'pending' && !r.transactionRef)
+      : undefined;
+    if (resumable) {
+      setRequestId(resumable.id);
+      setStep('confirm');
+    } else {
+      setRequestId(null);
+      setStep('payment');
+    }
 
     const unsubTiers = subscribeToSubscriptionTiers(setTiers);
     const unsubPricing = subscribeToSubscriptionPricing(sellerCountryId, setPricing);

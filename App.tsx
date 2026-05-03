@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { ConsentBanner } from './components/ConsentBanner';
@@ -37,7 +37,7 @@ const App: React.FC = () => {
   }
 
   // Pages without the main Navbar (dashboard/admin have their own nav)
-  const hideNavbar = ['/login', '/auth-google', '/register-seller', '/devenir-vendeur', '/dashboard', '/admin', '/cgu', '/politique-confidentialite'].includes(location.pathname)
+  const hideNavbar = ['/login', '/auth-google', '/register-seller', '/devenir-vendeur', '/dashboard', '/admin', '/cgu', '/politique-confidentialite', '/securite'].includes(location.pathname)
     || location.pathname.startsWith('/product/')
     || location.pathname.startsWith('/shop/');
 
@@ -67,6 +67,8 @@ const App: React.FC = () => {
 
       <PWAInstallPrompt />
       <ConsentBanner />
+
+      <ScrollRestoration getKey={(loc) => loc.pathname} />
     </div>
   );
 };

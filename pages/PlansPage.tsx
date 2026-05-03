@@ -142,6 +142,16 @@ export const PlansPage: React.FC = () => {
     myRequests.some(r => r.planId === planId && (r.status === 'pending' || r.status === 'pending_validation'));
 
   const handleSelectPlan = (tier: SubscriptionTier) => {
+    // Request submitted but vendor closed page before entering ref → resume at confirmation
+    const resumable = myRequests.find(
+      r => r.planId === tier.id && r.status === 'pending' && !r.transactionRef
+    );
+    if (resumable) {
+      setSelectedPlan(tier);
+      setCurrentRequestId(resumable.id);
+      setStep('confirmation');
+      return;
+    }
     if (hasPendingRequest(tier.id)) {
       toast(t('plans.alreadyPending'), 'error');
       return;
@@ -464,10 +474,23 @@ export const PlansPage: React.FC = () => {
                 <div className="flex flex-col gap-1.5">
                   {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').map(req => {
                     const isPaymentPending = req.status === 'pending';
+                    const canResume = isPaymentPending && !req.transactionRef;
+                    const reqTier = canResume ? tiers.find(tt => tt.id === req.planId) : undefined;
+                    const handleResume = () => {
+                      if (!reqTier) return;
+                      setSelectedPlan(reqTier);
+                      setCurrentRequestId(req.id);
+                      setStep('confirmation');
+                    };
+                    const Wrapper = (canResume && reqTier ? 'button' : 'div') as React.ElementType;
                     return (
-                      <div
+                      <Wrapper
                         key={req.id}
-                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+                        type={canResume && reqTier ? 'button' : undefined}
+                        onClick={canResume && reqTier ? handleResume : undefined}
+                        className={`w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl ${
+                          canResume && reqTier ? 'hover:brightness-95 active:scale-[0.99] transition-all' : ''
+                        }`}
                         style={{
                           background: isPaymentPending ? 'rgba(249,115,22,0.07)' : 'rgba(59,130,246,0.07)',
                           border: `1px solid ${isPaymentPending ? 'rgba(249,115,22,0.2)' : 'rgba(59,130,246,0.2)'}`,
@@ -483,7 +506,9 @@ export const PlansPage: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-gray-800">{req.planLabel}</p>
                           <p className="text-[10px] text-gray-400 mt-0.5">
-                            {isPaymentPending ? t('plans.paymentPending') : t('plans.paymentVerification')}
+                            {canResume
+                              ? t('plans.tapToEnterRef', 'Touchez pour saisir votre référence')
+                              : isPaymentPending ? t('plans.paymentPending') : t('plans.paymentVerification')}
                           </p>
                         </div>
                         <span
@@ -495,7 +520,7 @@ export const PlansPage: React.FC = () => {
                         >
                           {isPaymentPending ? t('plans.pendingBadgePayment') : t('plans.pendingBadgeVerif')}
                         </span>
-                      </div>
+                      </Wrapper>
                     );
                   })}
                 </div>
