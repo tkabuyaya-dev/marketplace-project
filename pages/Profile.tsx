@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   User as UserIcon, Globe, Bell, Shield, HelpCircle, LogOut,
   ChevronRight, Check, Camera, CreditCard, Store, Zap, FileText,
-  Trash2, Sun, Moon,
+  Trash2, Sun, Moon, Languages,
 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -284,6 +284,69 @@ const LogoutSheet: React.FC<{ open: boolean; onConfirm: () => void; onCancel: ()
 };
 
 // ─────────────────────────────────────────────────────────────
+// SELECTOR SHEET — reusable bottom sheet for single-choice options
+// ─────────────────────────────────────────────────────────────
+interface SelectorOption {
+  value: string;
+  label: string;
+  flag?: string;
+}
+
+const SelectorSheet: React.FC<{
+  open: boolean;
+  title: string;
+  options: SelectorOption[];
+  value: string;
+  onSelect: (v: string) => void;
+  onClose: () => void;
+}> = ({ open, title, options, value, onSelect, onClose }) => {
+  const { t } = useTranslation();
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end bg-black/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="w-full rounded-t-3xl px-5 pt-5 pb-9 shadow-[0_-8px_32px_rgba(0,0,0,0.12)] bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700/60 animate-slide-up max-h-[80vh] overflow-y-auto"
+      >
+        <div className="w-9 h-1 rounded-full mx-auto mb-5 bg-gray-200 dark:bg-gray-700" />
+        <p className="text-[17px] font-bold mb-4 text-gray-900 dark:text-gray-100">{title}</p>
+        <div className="flex flex-col gap-1">
+          {options.map(opt => {
+            const active = value === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onSelect(opt.value); onClose(); }}
+                className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left transition-colors duration-150 ${
+                  active
+                    ? 'bg-amber-50 border border-amber-300 dark:bg-amber-400/10 dark:border-amber-400/30'
+                    : 'border border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                {opt.flag && <span className="text-[18px] shrink-0" aria-hidden>{opt.flag}</span>}
+                <span className="flex-1 text-[14px] font-medium text-gray-900 dark:text-gray-100">{opt.label}</span>
+                {active && <Check size={16} className="text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2.5} />}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full mt-3 py-3 rounded-xl text-[14px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+        >
+          {t('profile.cancel')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
 // EDIT INFO SHEET — bottom sheet replacing the old inline edit
 // ─────────────────────────────────────────────────────────────
 const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }> = ({ open, user, onClose }) => {
@@ -384,6 +447,8 @@ const Profile: React.FC = () => {
 
   const [editOpen, setEditOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [countrySheetOpen, setCountrySheetOpen] = useState(false);
+  const [langSheetOpen, setLangSheetOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   // Capture "now" once at mount via the lazy initializer — keeps render pure
   // (Date.now() in useMemo body would still be flagged as impure by the React
@@ -398,8 +463,9 @@ const Profile: React.FC = () => {
   const isBuyer = currentUser.role === 'buyer';
 
   const country = INITIAL_COUNTRIES.find(c => c.id === activeCountry);
-  const langLabel = (i18n.language || 'fr').toUpperCase().slice(0, 2);
-  const countryLabel = country ? `${country.flag} ${country.name}` : t('search.allCountries');
+  const currentLang = (i18n.language || 'fr').slice(0, 2).toLowerCase();
+  const langLabel = currentLang === 'en' ? 'English' : 'Français';
+  const countryLabel = country ? `${country.flag} ${country.name}` : t('profile.allCountries');
 
   const joinYear = currentUser.joinDate
     ? new Date(currentUser.joinDate).getFullYear()
@@ -485,14 +551,15 @@ const Profile: React.FC = () => {
         />
         <MenuItem
           icon={<Globe size={17} />}
-          label={t('profile.countryAndLang')}
-          sub={`${countryLabel} · ${langLabel}`}
-          onClick={() => {
-            // Cycle pays Burundi → RDC → Rwanda → Tous
-            const ids = ['', ...INITIAL_COUNTRIES.filter(c => c.isActive).map(c => c.id)];
-            const idx = ids.indexOf(activeCountry);
-            setActiveCountry(ids[(idx + 1) % ids.length]);
-          }}
+          label={t('profile.country')}
+          sub={countryLabel}
+          onClick={() => setCountrySheetOpen(true)}
+        />
+        <MenuItem
+          icon={<Languages size={17} />}
+          label={t('profile.language')}
+          sub={langLabel}
+          onClick={() => setLangSheetOpen(true)}
         />
         {(isSeller || isAdmin) && (
           <MenuItem
@@ -581,6 +648,30 @@ const Profile: React.FC = () => {
 
       {/* ── SHEETS / MODALS ── */}
       <EditInfoSheet open={editOpen} user={currentUser} onClose={() => setEditOpen(false)} />
+      <SelectorSheet
+        open={countrySheetOpen}
+        title={t('profile.country')}
+        options={[
+          { value: '', label: t('profile.allCountries'), flag: '🌍' },
+          ...INITIAL_COUNTRIES
+            .filter(c => c.isActive)
+            .map(c => ({ value: c.id, label: c.name, flag: c.flag })),
+        ]}
+        value={activeCountry}
+        onSelect={setActiveCountry}
+        onClose={() => setCountrySheetOpen(false)}
+      />
+      <SelectorSheet
+        open={langSheetOpen}
+        title={t('profile.language')}
+        options={[
+          { value: 'fr', label: 'Français', flag: '🇫🇷' },
+          { value: 'en', label: 'English', flag: '🇬🇧' },
+        ]}
+        value={currentLang}
+        onSelect={(v) => i18n.changeLanguage(v)}
+        onClose={() => setLangSheetOpen(false)}
+      />
       <LogoutSheet
         open={logoutOpen}
         onConfirm={() => { setLogoutOpen(false); handleLogout(); }}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TC } from '../constants';
@@ -7,55 +7,64 @@ import { ProductCard } from '../components/ProductCard';
 import { getProductsByIds } from '../services/firebase';
 import { db, collection, getDocs, query, where, COLLECTIONS } from '../services/firebase/constants';
 import { useAppContext } from '../contexts/AppContext';
+import { useToast } from '../components/Toast';
 
 export const Favorites: React.FC = () => {
   const { currentUser } = useAppContext();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toast } = useToast();
   const tc = TC;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
-  const loadFavorites = useCallback(async () => {
+  useEffect(() => {
     if (!currentUser) {
       setLoading(false);
       return;
     }
 
+    let cancelled = false;
     setLoading(true);
-    try {
-      const likesQuery = query(
-        collection(db, COLLECTIONS.LIKES),
-        where('userId', '==', currentUser.id)
-      );
-      const likesSnap = await getDocs(likesQuery);
-      const likedProductIds = likesSnap.docs.map(d => d.data().productId);
 
-      if (likedProductIds.length === 0) {
-        setProducts([]);
-        setLikedMap({});
-        setLoading(false);
-        return;
+    (async () => {
+      try {
+        const likesQuery = query(
+          collection(db, COLLECTIONS.LIKES),
+          where('userId', '==', currentUser.id)
+        );
+        const likesSnap = await getDocs(likesQuery);
+        if (cancelled) return;
+        const likedProductIds = likesSnap.docs.map(d => d.data().productId);
+
+        if (likedProductIds.length === 0) {
+          setProducts([]);
+          setLikedMap({});
+          setLoading(false);
+          return;
+        }
+
+        const fetchedProducts = await getProductsByIds(likedProductIds);
+        if (cancelled) return;
+        setProducts(fetchedProducts);
+
+        // All products on this page are liked
+        const map: Record<string, boolean> = {};
+        fetchedProducts.forEach(p => { map[p.id] = true; });
+        setLikedMap(map);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[Favorites] Error loading favorites:', error);
+        toast(t('favorites.loadError'), 'error');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
+    })();
 
-      const fetchedProducts = await getProductsByIds(likedProductIds);
-      setProducts(fetchedProducts);
-
-      // All products on this page are liked
-      const map: Record<string, boolean> = {};
-      fetchedProducts.forEach(p => { map[p.id] = true; });
-      setLikedMap(map);
-    } catch (error) {
-      console.error('[Favorites] Error loading favorites:', error);
-    }
-    setLoading(false);
-  }, [currentUser]);
-
-  useEffect(() => {
-    loadFavorites();
-  }, [loadFavorites]);
+    return () => { cancelled = true; };
+  }, [currentUser, toast, t]);
 
   const onProductClick = (product: Product) => {
     navigate(`/product/${product.slug || product.id}`, { state: { product } });

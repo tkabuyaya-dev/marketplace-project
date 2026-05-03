@@ -286,7 +286,9 @@
     "deleteAccountAuthError": "Échec de la vérification Google",
     "deleteAccountError": "Une erreur est survenue. Réessaie dans quelques instants ou contacte le support.",
     "personalInfo": "Informations personnelles",
-    "countryAndLang": "Pays et langue",
+    "country": "Pays",
+    "language": "Langue",
+    "allCountries": "Tous les pays",
     "mySubscription": "Mon abonnement",
     "myShop": "Ma boutique",
     "shopWithCount": "{{shopName}} · {{count}} annonces",
@@ -328,6 +330,7 @@
     "loginRequired": "Connectez-vous",
     "loginSubtitle": "Connectez-vous pour voir vos produits favoris et ne rien manquer.",
     "loginBtn": "Se connecter",
+    "loadError": "Impossible de charger vos favoris. Réessayez dans un instant.",
     "productCount": "{{count}} produit",
     "productCount_plural": "{{count}} produits"
   },

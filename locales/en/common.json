@@ -286,7 +286,9 @@
     "deleteAccountAuthError": "Google verification failed",
     "deleteAccountError": "An error occurred. Please try again or contact support.",
     "personalInfo": "Personal information",
-    "countryAndLang": "Country and language",
+    "country": "Country",
+    "language": "Language",
+    "allCountries": "All countries",
     "mySubscription": "My subscription",
     "myShop": "My shop",
     "shopWithCount": "{{shopName}} · {{count}} listings",
@@ -328,6 +330,7 @@
     "loginRequired": "Sign in",
     "loginSubtitle": "Sign in to see your favorite products and never miss a thing.",
     "loginBtn": "Sign in",
+    "loadError": "Couldn't load your favorites. Please try again in a moment.",
     "productCount": "{{count}} product",
     "productCount_plural": "{{count}} products"
   },
