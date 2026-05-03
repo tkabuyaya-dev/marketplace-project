@@ -1,0 +1,119 @@
+/* nunulia-tokens.css
+   SOURCE : Claude Design — référence design system.
+   Les valeurs ont été reportées dans tailwind.config.js + index.css.
+   Utiliser comme spec à jour des tokens (ne pas importer directement).
+*/
+
+:root {
+  /* ── GOLD ── */
+  --gold-300:          #fce86a;
+  --gold-400:          #F5C842;   /* CTA background */
+  --gold-500:          #E8A920;
+  --gold-600:          #D4941A;   /* CTA active */
+  --gold-700:          #C47E00;   /* texte gold sur fond clair — WCAG AA 4.8:1 */
+  --gold-800:          #B07410;   /* texte gold sur fond blanc — WCAG AA 5.6:1 */
+
+  /* ── BACKGROUNDS ── */
+  --bg-app:            #F7F8FA;   /* fond racine */
+  --bg-surface:        #FFFFFF;   /* cartes, navbar */
+  --bg-elevated:       #F0F1F4;   /* inputs, zones secondaires */
+  --bg-hover:          #F4F5F7;
+  --bg-pressed:        #EAECF0;
+
+  /* ── BORDERS ── */
+  --border-default:    rgba(0, 0, 0, 0.07);
+  --border-subtle:     rgba(0, 0, 0, 0.05);
+  --border-brand:      rgba(245, 200, 66, 0.4);
+
+  /* ── TEXT ── */
+  --text-primary:      #111318;   /* WCAG AAA sur --bg-surface */
+  --text-secondary:    #5C6370;   /* WCAG AA  sur --bg-surface */
+  --text-muted:        #9EA5B0;   /* WCAG AA large (3:1) sur --bg-surface */
+  --text-disabled:     #BCC1CA;
+  --text-gold:         #C47E00;   /* gold WCAG AA sur fond clair */
+
+  /* ── SHADOWS ── */
+  --shadow-sm:         0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md:         0 2px 12px rgba(0,0,0,0.07);
+  --shadow-lg:         0 4px 20px rgba(0,0,0,0.10);
+  --shadow-gold:       0 2px 8px  rgba(245,200,66,0.35);
+  --shadow-nav:        0 -2px 12px rgba(0,0,0,0.06);
+
+  /* ── NAV ── */
+  --nav-bg:            rgba(255,255,255,0.97);
+  --nav-border:        rgba(228,230,234,1);
+
+  /* ── SEMANTIC ── */
+  --color-success:     #10b981;
+  --color-warning:     #f59e0b;
+  --color-danger:      #ef4444;
+  --color-info:        #3b82f6;
+  --color-b2b:         #6366f1;
+
+  /* ── RADII ── */
+  --radius-sm:   2px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-3xl:  24px;
+  --radius-full: 9999px;
+
+  /* ── SPACING (multiples de 4) ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+
+  /* ── TYPOGRAPHY ── */
+  --font-sans:        'Inter', system-ui, -apple-system, sans-serif;
+
+  --text-micro:    11px;   /* plancher absolu */
+  --text-caption:  12px;
+  --text-body:     14px;
+  --text-h2:       17px;
+  --text-h1:       22px;
+  --text-display:  28px;
+
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-black:    900;
+
+  /* ── ANIMATION ── */
+  --duration-fast:   150ms;
+  --duration-base:   200ms;
+  --duration-slow:   260ms;
+  --ease-out:        cubic-bezier(0.0, 0.0, 0.2, 1);
+}
+
+/* ── DARK MODE ── */
+html.dark {
+  --bg-app:            #111318;
+  --bg-surface:        #111827;
+  --bg-elevated:       #1f2937;
+  --bg-hover:          #1f2937;
+  --bg-pressed:        #374151;
+
+  --border-default:    rgba(55,65,81,0.5);
+  --border-subtle:     rgba(31,41,55,0.8);
+
+  --text-primary:      #F3F4F6;
+  --text-secondary:    #9CA3AF;
+  --text-muted:        #6B7280;
+  --text-disabled:     #4B5563;
+  --text-gold:         #F5C842;   /* or plein OK sur fond sombre */
+
+  --shadow-sm:         0 1px 2px  rgba(0,0,0,0.3);
+  --shadow-md:         0 2px 8px  rgba(0,0,0,0.4);
+  --shadow-lg:         0 4px 20px rgba(0,0,0,0.5);
+  --shadow-nav:        0 -2px 12px rgba(0,0,0,0.3);
+
+  --nav-bg:            rgba(17,24,39,0.97);
+  --nav-border:        rgba(61,40,0,0.3);
+}
