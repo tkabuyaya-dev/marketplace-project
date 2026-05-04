@@ -294,8 +294,11 @@ export const PlansPage: React.FC = () => {
                 const price = getPrice(tier.id);
                 const isCurrentPlan = currentTierLabel === tier.label;
                 const isPending = hasPendingRequest(tier.id);
+                const isResumable = myRequests.some(
+                  r => r.planId === tier.id && r.status === 'pending' && !r.transactionRef
+                );
                 const isPopular = tier.id === 'pro';
-                const isDisabled = isCurrentPlan || isPending;
+                const isDisabled = isCurrentPlan || (isPending && !isResumable);
 
                 return (
                   <div
@@ -432,7 +435,22 @@ export const PlansPage: React.FC = () => {
                       </div>
                     )}
 
-                    {isPending ? (
+                    {isResumable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPlan(tier)}
+                        className="w-full py-2.5 rounded-xl text-[11px] font-black
+                                   transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5"
+                        style={{
+                          background: 'rgba(249,115,22,0.1)',
+                          border: '1px solid rgba(249,115,22,0.3)',
+                          color: '#ea580c',
+                        }}
+                      >
+                        <Clock size={11} />
+                        {t('plans.resumeShort', 'Reprendre')}
+                      </button>
+                    ) : isPending ? (
                       <div
                         className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-bold"
                         style={{

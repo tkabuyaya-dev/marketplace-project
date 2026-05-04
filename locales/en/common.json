@@ -1285,7 +1285,8 @@
     "whatsappShort": "WhatsApp",
     "pendingBadgePayment": "Payment",
     "pendingBadgeVerif": "Verif.",
-    "tapToEnterRef": "Tap to enter your reference"
+    "tapToEnterRef": "Tap to enter your reference",
+    "resumeShort": "Resume"
   },
   "share": {
     "share": "Share",
