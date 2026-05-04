@@ -54,7 +54,10 @@ export interface SellerDetails {
   maxProducts?: number;
   tierLabel?: string;
   subscriptionExpiresAt?: number;    // timestamp — 30-day expiration for paid tiers
-  reminderSentForExpiry?: number;    // equals subscriptionExpiresAt when J-3 reminder was sent (dedup guard)
+  reminderSentForExpiry?: number;    // legacy J-3 dedup guard (kept in sync with reminderSentJ3 for backward compat)
+  reminderSentJ7?: number;           // equals subscriptionExpiresAt when J-7 reminder was sent
+  reminderSentJ3?: number;           // equals subscriptionExpiresAt when J-3 reminder was sent
+  reminderSentJ1?: number;           // equals subscriptionExpiresAt when J-1 reminder was sent
 }
 
 export interface User {

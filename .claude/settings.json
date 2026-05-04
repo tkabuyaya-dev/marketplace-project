@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh run *)",
+      "Bash(command -v gh.exe)",
+      "Bash(powershell -Command \"gh run list --limit 3 --branch main 2>&1\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npx eslint *)",
+      "Bash(git stash *)",
+      "Bash(npm ls *)",
+      "Bash(echo \"tsc=$?\")",
+      "Bash(echo \"eslint=$?\")",
+      "Bash(git remote *)"
+    ]
+  }
+}

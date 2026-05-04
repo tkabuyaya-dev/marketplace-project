@@ -13,12 +13,11 @@ import {
 } from '../../constants';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc,
-  query, where, orderBy, limit, serverTimestamp, onSnapshot,
+  query, where, orderBy, limit, serverTimestamp, onSnapshot, runTransaction,
   COLLECTIONS,
   Unsubscribe,
 } from './constants';
 import { createNotification } from './notifications';
-import { updateUserSubscription } from './users';
 
 // ── Create Subscription Request ──
 
@@ -83,92 +82,147 @@ export const getAllSubscriptionRequests = async (
 
 // ── Confirm Payment (Seller submits transaction ref) ──
 
+/**
+ * Confirms a payment by attaching the transaction reference (and optionally
+ * a Cloudinary proof URL) to the request.
+ *
+ * Idempotency: wrapped in a transaction that only writes if the request is
+ * still in `pending` state. A second click does not duplicate writes — it
+ * either no-ops (if already submitted with same ref) or throws (if a different
+ * ref is submitted on the same request, which would mean tampering).
+ *
+ * Trim is applied here so the value stored matches what the admin will see.
+ */
 export const confirmPayment = async (
   requestId: string,
   transactionRef: string,
+  proofUrl?: string | null,
 ): Promise<void> => {
   if (!db) return;
 
-  await updateDoc(doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId), {
-    status: 'pending_validation',
-    transactionRef,
-    updatedAt: Date.now(),
+  const trimmedRef = transactionRef.trim();
+  if (trimmedRef.length < 4) throw new Error('Référence trop courte');
+
+  const requestRef = doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId);
+  const normalizedProof: string | null =
+    typeof proofUrl === 'string' && proofUrl.trim().length > 0 ? proofUrl.trim() : null;
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(requestRef);
+    if (!snap.exists()) throw new Error('Demande introuvable');
+
+    const data = snap.data() as SubscriptionRequest;
+
+    // Already submitted with the same ref → no-op (idempotent on retry/double-click)
+    if (
+      data.status === 'pending_validation' &&
+      data.transactionRef === trimmedRef &&
+      (data.proofUrl ?? null) === normalizedProof
+    ) {
+      return;
+    }
+
+    // Already moved past pending → cannot mutate
+    if (data.status !== 'pending') {
+      throw new Error('Cette demande ne peut plus être modifiée');
+    }
+
+    tx.update(requestRef, {
+      status: 'pending_validation',
+      transactionRef: trimmedRef,
+      proofUrl: normalizedProof,
+      updatedAt: Date.now(),
+    });
   });
 };
 
 // ── Approve Request (Admin) ──
 
+/**
+ * Approves a subscription request atomically.
+ *
+ * All Firestore writes (request status, user subscription, expiration) happen
+ * in a single transaction. If any write fails the entire operation rolls back,
+ * preventing partial state (e.g. tier upgraded but expiration not set).
+ *
+ * Idempotency: throws if the request is already approved/rejected.
+ *
+ * Notification is sent AFTER the transaction commits (notifications are
+ * non-critical and should not block the financial operation).
+ */
 export const approveSubscriptionRequest = async (
   requestId: string,
   adminId: string,
 ): Promise<void> => {
   if (!db) return;
 
-  const reqDoc = await getDoc(doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId));
-  if (!reqDoc.exists()) throw new Error('Demande introuvable');
-
-  const request = { id: reqDoc.id, ...reqDoc.data() } as SubscriptionRequest;
+  const requestRef = doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId);
   const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
 
-  // Update request
-  await updateDoc(doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId), {
-    status: 'approved',
-    approvedBy: adminId,
-    expiresAt,
-    updatedAt: Date.now(),
+  // Capture data needed for the post-commit notification
+  let notifPayload: { userId: string; planLabel: string; maxProducts: number } | null = null;
+
+  await runTransaction(db, async (tx) => {
+    const reqSnap = await tx.get(requestRef);
+    if (!reqSnap.exists()) throw new Error('Demande introuvable');
+
+    const request = { id: reqSnap.id, ...reqSnap.data() } as SubscriptionRequest;
+
+    // Idempotency guard — never re-approve a finalized request
+    if (request.status === 'approved') throw new Error('Demande déjà approuvée');
+    if (request.status === 'rejected') throw new Error('Demande déjà refusée');
+
+    const userRef = doc(db!, COLLECTIONS.USERS, request.userId);
+
+    // 1. Mark request approved
+    tx.update(requestRef, {
+      status: 'approved',
+      approvedBy: adminId,
+      expiresAt,
+      updatedAt: Date.now(),
+    });
+
+    // 2. Activate subscription + set expiration on user (single write).
+    //    All reminder dedup guards are reset so the next cycle can fire fresh
+    //    J-7/J-3/J-1 notifications.
+    tx.update(userRef, {
+      'sellerDetails.maxProducts': request.maxProducts,
+      'sellerDetails.tierLabel': request.planLabel,
+      'sellerDetails.subscriptionExpiresAt': expiresAt,
+      'sellerDetails.reminderSentForExpiry': null, // legacy guard
+      'sellerDetails.reminderSentJ7': null,
+      'sellerDetails.reminderSentJ3': null,
+      'sellerDetails.reminderSentJ1': null,
+    });
+
+    notifPayload = {
+      userId: request.userId,
+      planLabel: request.planLabel,
+      maxProducts: request.maxProducts,
+    };
   });
 
-  // Activate subscription on user
-  await updateUserSubscription(request.userId, {
-    maxProducts: request.maxProducts,
-    tierLabel: request.planLabel,
-  });
-
-  // Set expiration
-  await updateDoc(doc(db, COLLECTIONS.USERS, request.userId), {
-    'sellerDetails.subscriptionExpiresAt': expiresAt,
-  });
-
-  // Notify seller
-  await createNotification({
-    userId: request.userId,
-    type: 'subscription_change',
-    title: 'Abonnement activé !',
-    body: `Votre plan "${request.planLabel}" est maintenant actif pour 30 jours (${request.maxProducts >= 99999 ? 'produits illimités' : request.maxProducts + ' produits max'}).`,
-    read: false,
-    createdAt: Date.now(),
-  });
+  // Post-commit: notification (non-critical, best-effort)
+  if (notifPayload) {
+    const { userId, planLabel, maxProducts } = notifPayload;
+    try {
+      await createNotification({
+        userId,
+        type: 'subscription_change',
+        title: 'Abonnement activé !',
+        body: `Votre plan "${planLabel}" est maintenant actif pour 30 jours (${maxProducts >= 99999 ? 'produits illimités' : maxProducts + ' produits max'}).`,
+        read: false,
+        createdAt: Date.now(),
+      });
+    } catch (err) {
+      console.warn('[approveSubscriptionRequest] Notification failed (subscription still active):', err);
+    }
+  }
 };
 
-// ── Reject Request (Admin) ──
-
-export const rejectSubscriptionRequest = async (
-  requestId: string,
-  reason: string,
-): Promise<void> => {
-  if (!db) return;
-
-  const reqDoc = await getDoc(doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId));
-  if (!reqDoc.exists()) throw new Error('Demande introuvable');
-
-  const request = { id: reqDoc.id, ...reqDoc.data() } as SubscriptionRequest;
-
-  await updateDoc(doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId), {
-    status: 'rejected',
-    rejectionReason: reason,
-    updatedAt: Date.now(),
-  });
-
-  // Notify seller
-  await createNotification({
-    userId: request.userId,
-    type: 'subscription_change',
-    title: 'Demande d\'abonnement refusée',
-    body: `Votre demande pour le plan "${request.planLabel}" a été refusée. Raison : ${reason}`,
-    read: false,
-    createdAt: Date.now(),
-  });
-};
+// NOTE: rejectSubscriptionRequest moved to Cloud Function `rejectSubscription`
+// (functions/src/reject-subscription.ts). Audit logs require admin SDK writes,
+// which clients cannot perform — see firestore.rules `auditLogs` (write: false).
 
 // ── Get Subscription Pricing for a country ──
 

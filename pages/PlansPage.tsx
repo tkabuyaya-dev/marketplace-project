@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Check, CheckCircle2, Clock, AlertTriangle, Info,
-  Phone, LayoutDashboard,
+  Phone, LayoutDashboard, Camera, X as XIcon,
 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
@@ -19,6 +19,7 @@ import {
   subscribeToSubscriptionPricing, subscribeToSubscriptionTiers,
   subscribeToMyRequests,
 } from '../services/firebase';
+import { uploadImage, UploadError } from '../services/cloudinary';
 
 type Step = 'plans' | 'payment' | 'confirmation' | 'done';
 
@@ -94,6 +95,10 @@ export const PlansPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [myRequests, setMyRequests] = useState<SubscriptionRequest[]>([]);
+  // Optional payment proof (Cloudinary URL after upload). Sellers can attach a
+  // screenshot of the operator SMS to speed up admin validation.
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [proofUploading, setProofUploading] = useState(false);
 
   const sellerCountryId = currentUser?.sellerDetails?.countryId || 'bi';
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
@@ -102,6 +107,24 @@ export const PlansPage: React.FC = () => {
   const currentTierLabel = currentUser?.sellerDetails?.tierLabel || 'Gratuit';
 
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
+
+  // Resolve the seller's currently-held paid tier (matched by label, since admin
+  // can override with custom labels — see RenewSubscriptionModal for same logic)
+  const currentPaidTier = useMemo(
+    () => paidTiers.find(t => t.label === currentTierLabel) ?? null,
+    [paidTiers, currentTierLabel]
+  );
+
+  // Days remaining on the active paid plan (null = no paid plan / no expiration set)
+  const subscriptionExpiresAt = currentUser?.sellerDetails?.subscriptionExpiresAt;
+  const daysRemaining = useMemo(() => {
+    if (!subscriptionExpiresAt) return null;
+    const diffMs = subscriptionExpiresAt - Date.now();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  }, [subscriptionExpiresAt]);
+  const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 7;
+  const isExpired = daysRemaining === 0;
 
   useEffect(() => {
     if (!authReady) return;
@@ -142,6 +165,11 @@ export const PlansPage: React.FC = () => {
     myRequests.some(r => r.planId === planId && (r.status === 'pending' || r.status === 'pending_validation'));
 
   const handleSelectPlan = (tier: SubscriptionTier) => {
+    // Reset payment-proof state when switching plans (avoids cross-contamination)
+    setProofUrl(null);
+    setTransactionRef('');
+    setRefTouched(false);
+
     // Request submitted but vendor closed page before entering ref → resume at confirmation
     const resumable = myRequests.find(
       r => r.planId === tier.id && r.status === 'pending' && !r.transactionRef
@@ -195,7 +223,7 @@ export const PlansPage: React.FC = () => {
     }
     setLoading(true);
     try {
-      await confirmPayment(currentRequestId, trimmed);
+      await confirmPayment(currentRequestId, trimmed, proofUrl);
       setStep('done');
       toast(t('plans.paymentConfirmed'), 'success');
     } catch {
@@ -203,6 +231,27 @@ export const PlansPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProofUpload = async (file: File) => {
+    setProofUploading(true);
+    try {
+      const url = await uploadImage(file, { folder: 'aurabuja-app-2026/payment-proofs' });
+      setProofUrl(url);
+      toast(t('plans.proofUploaded', 'Preuve ajoutée'), 'success');
+    } catch (err) {
+      const msg = err instanceof UploadError ? err.message : t('plans.proofUploadError', 'Échec de l\'envoi de la preuve');
+      toast(msg, 'error');
+    } finally {
+      setProofUploading(false);
+    }
+  };
+
+  const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleProofUpload(file);
+    // Reset so the same file can be re-selected after a remove
+    e.target.value = '';
   };
 
   const whatsappMessage = selectedPlan
@@ -289,6 +338,103 @@ export const PlansPage: React.FC = () => {
         {/* ─── STEP 1: Plans grid ─── */}
         {step === 'plans' && (
           <div className="animate-fade-in">
+            {/* One-click renewal card — visible only when a paid plan is active and resolvable */}
+            {currentPaidTier && (
+              <div className="px-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan(currentPaidTier)}
+                  disabled={hasPendingRequest(currentPaidTier.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl
+                             text-left transition-all duration-150 active:scale-[0.99]
+                             disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'linear-gradient(90deg,#FFFDF0 0%,#FFF6D6 100%)',
+                    border: '1.5px solid rgba(245,200,66,0.45)',
+                    boxShadow: '0 4px 18px rgba(245,200,66,0.18)',
+                  }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(245,200,66,0.2)' }}
+                    aria-hidden
+                  >
+                    <Clock size={18} color="#C47E00" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                      {t('plans.renewNowLabel', 'Renouveler en 1 clic')}
+                    </p>
+                    <p className="text-[14px] font-black text-gray-900 leading-tight">
+                      {currentPaidTier.label}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      {hasPendingRequest(currentPaidTier.id)
+                        ? t('plans.alreadyPending')
+                        : t('plans.tapToRenew', 'Touchez pour renouveler 30 jours')}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[16px] font-black tracking-tight" style={{ color: '#C47E00' }}>
+                      {getPrice(currentPaidTier.id).toLocaleString()}
+                    </p>
+                    <p className="text-[9px] text-gray-500">{getCurrency()}{t('plans.perMonth')}</p>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Days-remaining banner — visible only when a paid plan is active or just expired */}
+            {daysRemaining !== null && (
+              <div className="px-4 pt-4">
+                <div
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+                  style={{
+                    background: isExpired
+                      ? 'rgba(239,68,68,0.07)'
+                      : isExpiringSoon
+                      ? 'rgba(249,115,22,0.07)'
+                      : 'rgba(16,185,129,0.06)',
+                    border: `1px solid ${
+                      isExpired
+                        ? 'rgba(239,68,68,0.25)'
+                        : isExpiringSoon
+                        ? 'rgba(249,115,22,0.25)'
+                        : 'rgba(16,185,129,0.2)'
+                    }`,
+                  }}
+                >
+                  <Clock
+                    size={14}
+                    color={isExpired ? '#ef4444' : isExpiringSoon ? '#f97316' : '#10b981'}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-[12px] font-bold leading-tight"
+                      style={{
+                        color: isExpired ? '#dc2626' : isExpiringSoon ? '#ea580c' : '#059669',
+                      }}
+                    >
+                      {isExpired
+                        ? t('plans.expiredToday', 'Votre abonnement a expiré')
+                        : t('plans.daysRemaining', '{{count}} jour(s) restant(s)', { count: daysRemaining })}
+                    </p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      {isExpired
+                        ? t('plans.renewToReactivate', 'Renouvelez pour réactiver vos produits')
+                        : isExpiringSoon
+                        ? t('plans.renewBeforeExpiry', 'Renouvelez avant la date d\'expiration')
+                        : t('plans.activeUntil', 'Plan actif — {{date}}', {
+                            date: new Date(subscriptionExpiresAt!).toLocaleDateString('fr-FR', {
+                              day: '2-digit', month: 'short', year: 'numeric',
+                            }),
+                          })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 px-4 pt-5">
               {paidTiers.map((tier) => {
                 const price = getPrice(tier.id);
@@ -713,6 +859,64 @@ export const PlansPage: React.FC = () => {
               )}
               <p className="text-[11px] text-gray-400 mt-2 leading-snug">
                 {t('plans.transactionRefHint')}
+              </p>
+            </div>
+
+            {/* Optional payment proof — accelerates admin validation */}
+            <div className="bg-white rounded-2xl p-4 border border-black/[0.07] shadow-sm">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                {t('plans.proofTitle', 'Preuve de paiement (facultatif)')}
+              </p>
+
+              {proofUrl ? (
+                <div className="relative">
+                  <img
+                    src={proofUrl}
+                    alt={t('plans.proofAlt', 'Preuve de paiement')}
+                    className="w-full max-h-48 object-contain rounded-xl bg-gray-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setProofUrl(null)}
+                    aria-label={t('plans.proofRemove', 'Retirer')}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center active:bg-black/80"
+                  >
+                    <XIcon size={14} />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="proof-upload"
+                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                    proofUploading
+                      ? 'bg-gray-100 text-gray-400 cursor-wait'
+                      : 'bg-blue-50 text-blue-600 border border-blue-200 active:bg-blue-100'
+                  }`}
+                >
+                  {proofUploading ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                      {t('plans.proofUploading', 'Envoi en cours…')}
+                    </>
+                  ) : (
+                    <>
+                      <Camera size={14} />
+                      {t('plans.proofPick', 'Joindre une capture du SMS')}
+                    </>
+                  )}
+                </label>
+              )}
+              <input
+                id="proof-upload"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleProofChange}
+                disabled={proofUploading}
+                className="hidden"
+              />
+              <p className="text-[10px] text-gray-400 mt-2 leading-snug">
+                {t('plans.proofHint', 'Une capture d\'écran du SMS Lumicash/Ecocash accélère la validation par notre équipe.')}
               </p>
             </div>
 

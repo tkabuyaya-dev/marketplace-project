@@ -56,7 +56,10 @@ export interface BannersProps extends AdminSharedProps {
   setBanners: React.Dispatch<React.SetStateAction<BannerData[]>>;
 }
 
-export interface SubscriptionsProps extends AdminSharedProps {}
+export interface SubscriptionsProps extends AdminSharedProps {
+  /** All users — used for the active sellers / expiration dashboard panel */
+  users: User[];
+}
 
 export interface UsersProps extends AdminSharedProps {
   users: User[];

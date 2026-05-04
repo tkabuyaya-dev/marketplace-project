@@ -72,6 +72,7 @@ export { getAlgoliaUsage, getDailyStats, triggerFirestoreBackup } from "./monito
 export { expireSellers } from "./expire-sellers.js";
 export { deleteProducts } from "./delete-products.js";
 export { approveRenewal } from "./approve-renewal.js";
+export { rejectSubscription } from "./reject-subscription.js";
 
 // One-shot backfill: verificationTier migration for existing users
 export { backfillVerificationTier } from "./backfill-verification-tier.js";

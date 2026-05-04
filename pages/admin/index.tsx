@@ -223,7 +223,7 @@ export const AdminDashboard: React.FC = () => {
             <Banners {...sharedProps} banners={banners} categories={categories} setBanners={setBanners} />
           )}
           {activeTab === 'subs' && (
-            <Subscriptions {...sharedProps} />
+            <Subscriptions {...sharedProps} users={users} />
           )}
           {activeTab === 'users' && (
             <Users {...sharedProps} users={users} countries={countries} setUsers={setUsers} onContactUser={onContactUser} />

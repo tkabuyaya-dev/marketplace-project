@@ -3,23 +3,34 @@
  *
  * POST /approveRenewal
  * Authorization: Bearer <Firebase ID Token> (admin role required)
- * Body (JSON): { vendorId: string }
+ * Body (JSON): {
+ *   vendorId: string,
+ *   requestId?: string,    // links the audit log to the source request
+ *   verifiedVia?: string,  // payment method the admin verified against (Lumicash, M-Pesa, …)
+ * }
  *
- * - Sets seller: status → "active", subscriptionExpiry → now + 30 days
+ * - Sets seller: status → "active", sellerDetails.subscriptionExpiresAt → now + 30 days
+ * - Writes an audit log AS SOON AS the seller mutation succeeds (before product
+ *   reactivation) — so a failure on the product batch never leaves the
+ *   approval untraced.
  * - Sets all their inactive products: status → "active", removes deleteAt
  *
  * Returns: { success: boolean, message: string, count: number }
  *
  * Called by the admin dashboard when an admin approves a manual payment.
  * Auth: Firebase ID token (verified server-side, admin role checked in Firestore)
+ *
+ * NOTE: writes sellerDetails.subscriptionExpiresAt (number ms) — single source
+ * of truth shared with expireSellers, checkSubscriptions cron, and frontend.
  */
 
 import { onRequest } from "firebase-functions/v2/https";
-import { Timestamp, FieldValue } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { getDb, getAuth } from "./admin.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 450;
+const AUDIT_LOGS_COLLECTION = "auditLogs";
 
 export const approveRenewal = onRequest(
   {
@@ -34,6 +45,8 @@ export const approveRenewal = onRequest(
       res.status(401).json({ success: false, message: "Missing authorization token", count: 0 });
       return;
     }
+    let adminUid = "";
+    let adminEmail = "";
     try {
       const adminAuth = await getAuth();
       const decoded = await adminAuth.verifyIdToken(idToken);
@@ -44,6 +57,8 @@ export const approveRenewal = onRequest(
         res.status(403).json({ success: false, message: "Forbidden: admin role required", count: 0 });
         return;
       }
+      adminUid = decoded.uid;
+      adminEmail = decoded.email ?? callerSnap.data()?.email ?? "";
     } catch (authErr: any) {
       console.warn("[approveRenewal] Token verification failed:", authErr?.message);
       res.status(401).json({ success: false, message: "Invalid or expired token", count: 0 });
@@ -58,6 +73,11 @@ export const approveRenewal = onRequest(
 
     // ── Parse body ──
     const vendorId: string | undefined = req.body?.vendorId;
+    const requestId: string | undefined =
+      typeof req.body?.requestId === "string" ? req.body.requestId : undefined;
+    const verifiedViaRaw: string | undefined =
+      typeof req.body?.verifiedVia === "string" ? req.body.verifiedVia.trim() : undefined;
+    const verifiedVia = verifiedViaRaw && verifiedViaRaw.length > 0 ? verifiedViaRaw : null;
     if (!vendorId || typeof vendorId !== "string") {
       res.status(400).json({
         success: false,
@@ -83,16 +103,50 @@ export const approveRenewal = onRequest(
       return;
     }
 
-    const subscriptionExpiry = Timestamp.fromMillis(Date.now() + THIRTY_DAYS_MS);
+    const subscriptionExpiresAt = Date.now() + THIRTY_DAYS_MS;
 
     // ── Reactivate seller ──
+    // Writes sellerDetails.subscriptionExpiresAt (number ms) — same field used by
+    // expireSellers and checkSubscriptions cron. The legacy `subscriptionExpiry`
+    // (Timestamp) field is no longer written; existing values become orphaned.
     await sellerRef.update({
       status: "active",
-      subscriptionExpiry,
+      "sellerDetails.subscriptionExpiresAt": subscriptionExpiresAt,
+      "sellerDetails.reminderSentForExpiry": null, // legacy guard
+      "sellerDetails.reminderSentJ7": null,
+      "sellerDetails.reminderSentJ3": null,
+      "sellerDetails.reminderSentJ1": null,
     });
     console.log(
-      `[approveRenewal] Seller ${vendorId} → active, subscriptionExpiry: ${subscriptionExpiry.toDate().toISOString()}`
+      `[approveRenewal] Seller ${vendorId} → active, subscriptionExpiresAt: ${new Date(subscriptionExpiresAt).toISOString()}`
     );
+
+    // ── Audit log (BEFORE product reactivation, so a product-batch failure
+    //    never leaves an untraced approval). Best-effort: a write failure
+    //    here must not roll back the seller renewal.
+    const sellerData = sellerSnap.data() ?? {};
+    const sellerDetails = sellerData.sellerDetails ?? {};
+    try {
+      await db.collection(AUDIT_LOGS_COLLECTION).add({
+        action: "subscription_approved",
+        entityType: "subscription",
+        entityId: requestId ?? vendorId,
+        adminId: adminUid,
+        adminEmail,
+        previousValue: null,
+        newValue: {
+          vendorId,
+          requestId: requestId ?? null,
+          tierLabel: sellerDetails.tierLabel ?? null,
+          maxProducts: sellerDetails.maxProducts ?? null,
+          subscriptionExpiresAt,
+          verifiedVia, // payment method admin checked against (Lumicash, M-Pesa, …)
+        },
+        timestamp: Date.now(),
+      });
+    } catch (auditErr: any) {
+      console.warn("[approveRenewal] Audit log write failed:", auditErr?.message);
+    }
 
     // ── Reactivate their inactive products (remove deleteAt) ──
     const productsSnap = await db

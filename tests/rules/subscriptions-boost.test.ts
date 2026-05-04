@@ -100,6 +100,30 @@ describe('/subscriptionRequests — confirmation paiement', () => {
     );
   });
 
+  it('vendeur peut joindre une preuve de paiement Cloudinary lors de la confirmation', async () => {
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      updateDoc(doc(db, 'subscriptionRequests', 'sub-001'), {
+        status: 'pending_validation',
+        transactionRef: 'TXN-12345',
+        proofUrl: 'https://res.cloudinary.com/demo/image/upload/v1/payment-proof.jpg',
+        updatedAt: now + 1000,
+      })
+    );
+  });
+
+  it('vendeur ne peut PAS écrire un champ non-autorisé en plus (ex: amount)', async () => {
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      updateDoc(doc(db, 'subscriptionRequests', 'sub-001'), {
+        status: 'pending_validation',
+        transactionRef: 'TXN-12345',
+        amount: 1, // forbidden — not in affectedKeys allowlist
+        updatedAt: now + 1000,
+      })
+    );
+  });
+
   it('vendeur ne peut PAS passer directement à approved', async () => {
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
     await expectPermissionDenied(

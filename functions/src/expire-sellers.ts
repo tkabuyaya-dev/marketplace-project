@@ -4,7 +4,7 @@
  * POST /expireSellers
  * Authorization: Bearer NUNULIA_SECRET_TOKEN
  *
- * Finds sellers with subscriptionExpiry < now AND status == "active".
+ * Finds sellers with sellerDetails.subscriptionExpiresAt < now AND status == "active".
  * - Sets the seller document: status → "inactive"
  * - Sets their active products: status → "inactive", deleteAt → now + 14 days
  *
@@ -12,6 +12,9 @@
  *
  * Designed to be called by an external cron scheduler (e.g. Cloud Scheduler
  * calling the HTTPS URL) once per day.
+ *
+ * NOTE: uses sellerDetails.subscriptionExpiresAt (number ms) — single source of
+ * truth shared with the frontend, checkSubscriptions cron, and admin console.
  */
 
 import { onRequest } from "firebase-functions/v2/https";
@@ -39,14 +42,16 @@ export const expireSellers = onRequest(
 
     try {
     const db = await getDb();
-    const now = Timestamp.now();
-    const deleteAt = Timestamp.fromMillis(Date.now() + FOURTEEN_DAYS_MS);
+    const nowMs = Date.now();
+    const deleteAt = Timestamp.fromMillis(nowMs + FOURTEEN_DAYS_MS);
 
     // ── Query expired active sellers ──
+    // Single-field range query on sellerDetails.subscriptionExpiresAt (number ms).
+    // The status == "active" guard is applied in code to stay within Firestore's
+    // single-field auto-index (avoids needing a composite index).
     const sellersSnap = await db
       .collection("users")
-      .where("status", "==", "active")
-      .where("subscriptionExpiry", "<", now)
+      .where("sellerDetails.subscriptionExpiresAt", "<", nowMs)
       .get();
 
     if (sellersSnap.empty) {
@@ -60,6 +65,11 @@ export const expireSellers = onRequest(
 
     for (const sellerDoc of sellersSnap.docs) {
       const sellerId = sellerDoc.id;
+      const data = sellerDoc.data();
+
+      // Skip non-active sellers (suspended, already inactive, etc.)
+      // Filtered in code rather than query to avoid composite index requirement.
+      if (data.status && data.status !== "active") continue;
 
       // Mark seller inactive
       await sellerDoc.ref.update({ status: "inactive" });
