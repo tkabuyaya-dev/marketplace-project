@@ -12,7 +12,7 @@ import {
   DEFAULT_SUBSCRIPTION_PRICING, INITIAL_COUNTRIES,
 } from '../constants';
 import {
-  SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod,
+  SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod, SubscriptionPeriod,
 } from '../types';
 import {
   createSubscriptionRequest, confirmPayment,
@@ -99,6 +99,7 @@ export const PlansPage: React.FC = () => {
   // screenshot of the operator SMS to speed up admin validation.
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
+  const [period, setPeriod] = useState<SubscriptionPeriod>('1m');
 
   const sellerCountryId = currentUser?.sellerDetails?.countryId || 'bi';
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
@@ -156,6 +157,18 @@ export const PlansPage: React.FC = () => {
 
   const formatPrice = (amount: number) => `${amount.toLocaleString()} ${getCurrency()}`;
 
+  // Returns the total price for a given plan + period (with discount applied)
+  const getPeriodPrice = (tierId: string, p: SubscriptionPeriod): number => {
+    const base = getPrice(tierId);
+    if (p === '3m')  return Math.round(base * 3 * 0.9);
+    if (p === '12m') return Math.round(base * 12 * 0.75);
+    return base; // 1m — no discount
+  };
+
+  const periodMultiplier = (p: SubscriptionPeriod) => (p === '12m' ? 12 : p === '3m' ? 3 : 1);
+  const periodDiscount   = (p: SubscriptionPeriod) => (p === '12m' ? '-25%' : p === '3m' ? '-10%' : null);
+  const periodSuffix     = (p: SubscriptionPeriod) => (p === '12m' ? '/an' : p === '3m' ? '/trim.' : '/mois');
+
   const getMaxProducts = (tier: SubscriptionTier): number => {
     if (tier.max === null) return 99999;
     return tier.max;
@@ -198,12 +211,13 @@ export const PlansPage: React.FC = () => {
         countryId: sellerCountryId,
         planId: selectedPlan.id,
         planLabel: selectedPlan.label,
-        amount: getPrice(selectedPlan.id),
+        amount: getPeriodPrice(selectedPlan.id, period),
         currency: getCurrency(),
         status: 'pending',
         transactionRef: null,
         proofUrl: null,
         maxProducts: getMaxProducts(selectedPlan),
+        period,
       });
       setCurrentRequestId(requestId);
       setStep('confirmation');
@@ -435,9 +449,39 @@ export const PlansPage: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 px-4 pt-5">
+            {/* Sélecteur de période */}
+            <div className="flex items-center gap-1.5 px-4 pt-5 pb-1">
+              {(['1m', '3m', '12m'] as SubscriptionPeriod[]).map(p => {
+                const discount = periodDiscount(p);
+                const isActive = period === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPeriod(p)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all"
+                    style={{
+                      background: isActive ? '#111318' : 'rgba(0,0,0,0.04)',
+                      color: isActive ? '#fff' : '#5C6370',
+                      border: isActive ? '1px solid #111318' : '1px solid transparent',
+                    }}
+                  >
+                    {p === '1m' ? t('plans.period1m', 'Mensuel')
+                      : p === '3m' ? t('plans.period3m', 'Trimestriel')
+                      : t('plans.period12m', 'Annuel')}
+                    {discount && (
+                      <span className="text-[9px] font-black px-1 rounded" style={{ background: '#22c55e', color: '#fff' }}>
+                        {discount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 px-4 pt-3">
               {paidTiers.map((tier) => {
-                const price = getPrice(tier.id);
+                const price = getPeriodPrice(tier.id, period);
                 const isCurrentPlan = currentTierLabel === tier.label;
                 const isPending = hasPendingRequest(tier.id);
                 const isResumable = myRequests.some(
@@ -499,16 +543,23 @@ export const PlansPage: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="flex items-baseline gap-1 -mt-0.5">
-                      <span
-                        className="text-lg font-black tracking-tight leading-none"
-                        style={{ color: isPopular ? '#C47E00' : '#111318' }}
-                      >
-                        {price.toLocaleString()}
-                      </span>
-                      <span className="text-[9px] text-gray-400 font-medium">
-                        {getCurrency()}{t('plans.perMonth')}
-                      </span>
+                    <div className="flex flex-col gap-0.5 -mt-0.5">
+                      <div className="flex items-baseline gap-1">
+                        <span
+                          className="text-lg font-black tracking-tight leading-none"
+                          style={{ color: isPopular ? '#C47E00' : '#111318' }}
+                        >
+                          {price.toLocaleString()}
+                        </span>
+                        <span className="text-[9px] text-gray-400 font-medium">
+                          {getCurrency()}{periodSuffix(period)}
+                        </span>
+                      </div>
+                      {period !== '1m' && (
+                        <p className="text-[9px] text-gray-400">
+                          ≈ {getPrice(tier.id).toLocaleString()} {getCurrency()}{t('plans.perMonth')}
+                        </p>
+                      )}
                     </div>
 
                     <ul className="flex flex-col gap-1.5">
@@ -690,6 +741,40 @@ export const PlansPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Dernier reçu approuvé */}
+            {(() => {
+              const lastApproved = myRequests.find(r => r.status === 'approved' && r.receiptUrl);
+              if (!lastApproved?.receiptUrl) return null;
+              return (
+                <div className="px-4 mt-4">
+                  <a
+                    href={lastApproved.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white border border-black/[0.07] shadow-sm hover:brightness-95 active:scale-[0.99] transition-all"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-gray-800">{t('plans.receiptReady', 'Reçu disponible')}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{lastApproved.planLabel}</p>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-300 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="8 17 12 21 16 17"/>
+                      <line x1="12" y1="3" x2="12" y2="21"/>
+                    </svg>
+                  </a>
+                </div>
+              );
+            })()}
 
             {/* WhatsApp help card */}
             <div className="px-4 mt-4">

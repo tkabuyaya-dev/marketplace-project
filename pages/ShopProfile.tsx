@@ -189,6 +189,16 @@ const ShopProfile: React.FC = () => {
         </div>
       </div>
 
+      {/* Grace phase notice (phase 2 = some products hidden) */}
+      {seller.sellerDetails?.downgradePhase === 2 && (
+        <div className="max-w-7xl mx-auto px-4 mb-4">
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
+            <span>⏳</span>
+            <span>{t('shop.gracePh2Notice', 'Certains produits sont temporairement masqués. La boutique sera pleinement disponible après renouvellement.')}</span>
+          </div>
+        </div>
+      )}
+
       {/* Google Maps */}
       {seller.sellerDetails?.gps?.lat && seller.sellerDetails?.gps?.lng && (
         <div className="max-w-7xl mx-auto px-4 mb-10">

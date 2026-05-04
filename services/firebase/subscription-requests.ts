@@ -6,8 +6,20 @@
  */
 
 import {
-  SubscriptionRequest, SubscriptionRequestStatus, SubscriptionPricing,
+  SubscriptionRequest, SubscriptionRequestStatus, SubscriptionPricing, SubscriptionPeriod,
 } from '../../types';
+
+function periodToDurationMs(period?: SubscriptionPeriod | string): number {
+  if (period === '3m')  return 90  * 24 * 60 * 60 * 1000;
+  if (period === '12m') return 365 * 24 * 60 * 60 * 1000;
+  return 30 * 24 * 60 * 60 * 1000; // default 1m
+}
+
+function periodLabel(period?: SubscriptionPeriod | string): string {
+  if (period === '3m')  return '3 mois';
+  if (period === '12m') return '12 mois';
+  return '30 jours';
+}
 import {
   DEFAULT_SUBSCRIPTION_PRICING,
 } from '../../constants';
@@ -157,10 +169,9 @@ export const approveSubscriptionRequest = async (
   if (!db) return;
 
   const requestRef = doc(db, COLLECTIONS.SUBSCRIPTION_REQUESTS, requestId);
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
 
   // Capture data needed for the post-commit notification
-  let notifPayload: { userId: string; planLabel: string; maxProducts: number } | null = null;
+  let notifPayload: { userId: string; planLabel: string; maxProducts: number; period?: SubscriptionPeriod } | null = null;
 
   await runTransaction(db, async (tx) => {
     const reqSnap = await tx.get(requestRef);
@@ -172,6 +183,7 @@ export const approveSubscriptionRequest = async (
     if (request.status === 'approved') throw new Error('Demande déjà approuvée');
     if (request.status === 'rejected') throw new Error('Demande déjà refusée');
 
+    const expiresAt = Date.now() + periodToDurationMs(request.period);
     const userRef = doc(db!, COLLECTIONS.USERS, request.userId);
 
     // 1. Mark request approved
@@ -193,24 +205,27 @@ export const approveSubscriptionRequest = async (
       'sellerDetails.reminderSentJ7': null,
       'sellerDetails.reminderSentJ3': null,
       'sellerDetails.reminderSentJ1': null,
+      'sellerDetails.gracePhaseSince': null,
+      'sellerDetails.downgradePhase': null,
     });
 
     notifPayload = {
       userId: request.userId,
       planLabel: request.planLabel,
       maxProducts: request.maxProducts,
+      period: request.period,
     };
   });
 
   // Post-commit: notification (non-critical, best-effort)
   if (notifPayload) {
-    const { userId, planLabel, maxProducts } = notifPayload;
+    const { userId, planLabel, maxProducts, period } = notifPayload;
     try {
       await createNotification({
         userId,
         type: 'subscription_change',
         title: 'Abonnement activé !',
-        body: `Votre plan "${planLabel}" est maintenant actif pour 30 jours (${maxProducts >= 99999 ? 'produits illimités' : maxProducts + ' produits max'}).`,
+        body: `Votre plan "${planLabel}" est maintenant actif pour ${periodLabel(period)} (${maxProducts >= 99999 ? 'produits illimités' : maxProducts + ' produits max'}).`,
         read: false,
         createdAt: Date.now(),
       });
@@ -263,6 +278,15 @@ export const subscribeToSubscriptionPricing = (
   }, () => {
     callback(fallback);
   });
+};
+
+/** Admin: persist updated pricing for a country (overwrites entire document) */
+export const updateSubscriptionPricing = async (
+  countryId: string,
+  pricing: SubscriptionPricing,
+): Promise<void> => {
+  if (!db) throw new Error('Firebase non initialisé');
+  await setDoc(doc(db, COLLECTIONS.SUBSCRIPTION_PRICING, countryId), pricing);
 };
 
 // ── Subscribe to Seller's Requests (real-time) ──

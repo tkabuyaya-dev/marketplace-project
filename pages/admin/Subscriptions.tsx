@@ -4,8 +4,9 @@ import { useToast } from '../../components/Toast';
 import { SubscriptionRequest, User } from '../../types';
 import {
   getAllSubscriptionRequests, approveSubscriptionRequest,
+  getSubscriptionPricing, updateSubscriptionPricing,
 } from '../../services/firebase';
-import { INITIAL_COUNTRIES, PAYMENT_METHODS } from '../../constants';
+import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS } from '../../constants';
 import { auth } from '../../firebase-config';
 import type { SubscriptionsProps } from './types';
 
@@ -44,6 +45,13 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
   const [verifiedMethod, setVerifiedMethod] = useState<string>('');
   const [approving, setApproving] = useState(false);
 
+  // Pricing editor
+  type PricingDraft = Record<string, Record<string, string>>; // countryId → tierId → price string
+  const [pricingDraft, setPricingDraft] = useState<PricingDraft>({});
+  const [pricingCurrency, setPricingCurrency] = useState<Record<string, string>>({});
+  const [pricingLoaded, setPricingLoaded] = useState(false);
+  const [savingPricing, setSavingPricing] = useState<string | null>(null);
+
   // Bulk approve (selection in the validation queue)
   const [selectedRequestIds, setSelectedRequestIds] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -58,6 +66,21 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
   useEffect(() => {
     loadSubRequests();
+  }, []);
+
+  useEffect(() => {
+    const paidTierIds = INITIAL_SUBSCRIPTION_TIERS.filter(t => t.id !== 'free').map(t => t.id);
+    Promise.all(INITIAL_COUNTRIES.map(c => getSubscriptionPricing(c.id))).then(results => {
+      const draft: PricingDraft = {};
+      const currencies: Record<string, string> = {};
+      INITIAL_COUNTRIES.forEach((c, i) => {
+        draft[c.id] = Object.fromEntries(paidTierIds.map(tid => [tid, String(results[i].prices[tid] ?? 0)]));
+        currencies[c.id] = results[i].currency;
+      });
+      setPricingDraft(draft);
+      setPricingCurrency(currencies);
+      setPricingLoaded(true);
+    }).catch(() => setPricingLoaded(true));
   }, []);
 
   // ─── KPIs ──────────────────────────────────────────────────────────────────
@@ -242,6 +265,89 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       ltvByCurrency,
     };
   }, [selectedVendorId, vendorRequests]);
+
+  // ─── Analytics (R21) ──────────────────────────────────────────────────────
+  const analytics = useMemo(() => {
+    const now = Date.now();
+    const since30d = now - THIRTY_DAYS_MS;
+
+    const approved   = allSubRequests.filter(r => r.status === 'approved');
+    const rejected   = allSubRequests.filter(r => r.status === 'rejected');
+    const validated  = allSubRequests.filter(r => r.status === 'approved' || r.status === 'rejected');
+
+    // MRR breakdown by country and tier (last 30 days)
+    const approved30d = approved.filter(r => r.updatedAt >= since30d);
+    const mrrByCountry: Record<string, { currency: string; amount: number }> = {};
+    const mrrByTier: Record<string, { currency: string; amount: number }> = {};
+    for (const r of approved30d) {
+      mrrByCountry[r.countryId] = {
+        currency: r.currency,
+        amount: (mrrByCountry[r.countryId]?.amount ?? 0) + r.amount,
+      };
+      mrrByTier[r.planLabel] = {
+        currency: r.currency,
+        amount: (mrrByTier[r.planLabel]?.amount ?? 0) + r.amount,
+      };
+    }
+
+    // Conversion rate: approved / (approved + rejected)
+    const conversionRate = validated.length > 0
+      ? Math.round((approved.length / validated.length) * 100)
+      : null;
+
+    // Churn proxy: sellers who expired AND have no recent approval in last 30 days
+    const paidSellers = users.filter(u =>
+      u.role === 'seller' && (u.sellerDetails?.maxProducts ?? 0) > 5
+    );
+    const churned30d = paidSellers.filter(u => {
+      const exp = u.sellerDetails?.subscriptionExpiresAt;
+      if (!exp) return false;
+      if (exp > now) return false; // still active
+      // Expired in last 30 days with no renewal
+      if (exp < now - THIRTY_DAYS_MS) return false; // expired >30d ago, out of window
+      const renewed = approved.some(r => r.userId === u.id && r.updatedAt >= exp);
+      return !renewed;
+    }).length;
+    const churnRate = paidSellers.length > 0
+      ? Math.round((churned30d / paidSellers.length) * 100)
+      : null;
+
+    // SLA: median admin response time (pending_validation createdAt → approved updatedAt)
+    // We approximate using createdAt as submission time (we don't store submission timestamp separately)
+    const slaTimes = approved
+      .filter(r => r.updatedAt && r.createdAt)
+      .map(r => r.updatedAt - r.createdAt);
+    let medianSlaHours: number | null = null;
+    if (slaTimes.length > 0) {
+      slaTimes.sort((a, b) => a - b);
+      const mid = Math.floor(slaTimes.length / 2);
+      const medianMs = slaTimes.length % 2 === 0
+        ? (slaTimes[mid - 1] + slaTimes[mid]) / 2
+        : slaTimes[mid];
+      medianSlaHours = Math.round(medianMs / (1000 * 60 * 60));
+    }
+
+    return { mrrByCountry, mrrByTier, conversionRate, churnRate, churned30d, medianSlaHours, approved30dCount: approved30d.length };
+  }, [allSubRequests, users]);
+
+  const handleSavePricing = async (countryId: string) => {
+    const draft = pricingDraft[countryId];
+    if (!draft) return;
+    setSavingPricing(countryId);
+    try {
+      const prices: Record<string, number> = {};
+      for (const [tid, val] of Object.entries(draft)) {
+        const n = parseInt(val, 10);
+        if (!isNaN(n) && n >= 0) prices[tid] = n;
+      }
+      await updateSubscriptionPricing(countryId, { prices, currency: pricingCurrency[countryId] ?? 'BIF' });
+      toast(t('admin.pricingSaved', 'Tarifs sauvegardés'), 'success');
+    } catch {
+      toast(t('admin.pricingSaveError', 'Erreur lors de la sauvegarde'), 'error');
+    } finally {
+      setSavingPricing(null);
+    }
+  };
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
@@ -579,7 +685,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       {/* ════════════════════ SECTION 2 — File de validation ════════════════════ */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-white">
+          <h3 className="text-base font-bold text-white flex-1">
             {t('admin.subQueueTitle', 'File de validation')}
           </h3>
           {kpis.submitted + kpis.pending > 0 && (
@@ -587,6 +693,38 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
               {kpis.submitted + kpis.pending}
             </span>
           )}
+          <button
+            onClick={() => {
+              const headers = ['Date', 'Vendeur', 'Plan', 'Montant', 'Devise', 'Ref. transaction', 'Statut', 'Pays'];
+              const rows = subRequests.map(r => [
+                formatDate(r.createdAt),
+                r.sellerName,
+                r.planLabel,
+                r.amount.toString(),
+                r.currency,
+                r.transactionRef ?? '',
+                r.status,
+                r.countryId,
+              ]);
+              const csv = [headers, ...rows]
+                .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+              const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `nunulia-abonnements-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-bold rounded-lg transition-colors"
+            title={t('admin.exportCsvTitle', 'Exporter en CSV')}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/>
+            </svg>
+            CSV
+          </button>
         </div>
 
         {/* Status filters */}
@@ -860,6 +998,177 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
             })}
           </div>
         )}
+      </section>
+
+      {/* ════════════════════ SECTION 4 — Tarification par pays ════════════════════ */}
+      <section className="space-y-3">
+        <h2 className="text-white text-base font-black px-1">
+          {t('admin.pricingTitle', 'Tarification par pays')}
+        </h2>
+        {!pricingLoaded ? (
+          <div className="text-xs text-gray-500 px-1">{t('admin.pricingLoading', 'Chargement…')}</div>
+        ) : (
+          <div className="space-y-3">
+            {INITIAL_COUNTRIES.map(country => {
+              const draft = pricingDraft[country.id] ?? {};
+              const currency = pricingCurrency[country.id] ?? '';
+              const paidTiers = INITIAL_SUBSCRIPTION_TIERS.filter(t => t.id !== 'free');
+              return (
+                <div key={country.id} className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-bold text-white">{country.flag} {country.name}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={currency}
+                        onChange={e => setPricingCurrency(p => ({ ...p, [country.id]: e.target.value }))}
+                        className="w-14 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-xs text-white text-center outline-none focus:border-blue-500"
+                        maxLength={4}
+                        title={t('admin.pricingCurrencyLabel', 'Devise')}
+                      />
+                      <button
+                        onClick={() => handleSavePricing(country.id)}
+                        disabled={savingPricing === country.id}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
+                      >
+                        {savingPricing === country.id ? '…' : t('admin.pricingSaveBtn', 'Sauvegarder')}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {paidTiers.map(tier => (
+                      <div key={tier.id}>
+                        <label className="text-[10px] text-gray-400 block mb-1">{tier.label}</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            value={draft[tier.id] ?? '0'}
+                            onChange={e => setPricingDraft(p => ({
+                              ...p,
+                              [country.id]: { ...(p[country.id] ?? {}), [tier.id]: e.target.value },
+                            }))}
+                            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500"
+                          />
+                          <span className="text-[10px] text-gray-500 whitespace-nowrap">{currency}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ════════════════════ SECTION 5 — Analytics ════════════════════ */}
+      <section className="space-y-3">
+        <h2 className="text-white text-base font-black px-1">
+          {t('admin.analyticsTitle', 'Analytics &amp; Métriques')}
+        </h2>
+
+        {/* ── Row 1: Conversion + Churn + SLA ── */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+              {t('admin.analyticsConversion', 'Conversion')}
+            </p>
+            <p className="text-xl font-black text-white">
+              {analytics.conversionRate !== null ? `${analytics.conversionRate}%` : '—'}
+            </p>
+            <p className="text-[10px] text-gray-500 mt-0.5">
+              {t('admin.analyticsConversionSub', 'demandes approuvées')}
+            </p>
+          </div>
+          <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+              {t('admin.analyticsChurn', 'Churn 30j')}
+            </p>
+            <p className="text-xl font-black text-white">
+              {analytics.churnRate !== null ? `${analytics.churnRate}%` : '—'}
+            </p>
+            <p className="text-[10px] text-gray-500 mt-0.5">
+              {analytics.churned30d} {t('admin.analyticsChurnSub', 'non-renouvelés')}
+            </p>
+          </div>
+          <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+              {t('admin.analyticsSla', 'SLA Médian')}
+            </p>
+            <p className="text-xl font-black text-white">
+              {analytics.medianSlaHours !== null
+                ? analytics.medianSlaHours < 24
+                  ? `${analytics.medianSlaHours}h`
+                  : `${Math.round(analytics.medianSlaHours / 24)}j`
+                : '—'}
+            </p>
+            <p className="text-[10px] text-gray-500 mt-0.5">
+              {t('admin.analyticsSlaSub', 'délai approbation')}
+            </p>
+          </div>
+        </div>
+
+        {/* ── MRR par pays ── */}
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            {t('admin.analyticsMrrByCountry', 'MRR 30j par pays')}
+            <span className="ml-2 text-gray-600 font-normal normal-case text-[10px]">
+              ({analytics.approved30dCount} {t('admin.analyticsApprovals', 'approbations')})
+            </span>
+          </p>
+          {Object.keys(analytics.mrrByCountry).length === 0 ? (
+            <p className="text-xs text-gray-600">{t('admin.analyticsNoData', 'Aucune donnée sur 30j')}</p>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(analytics.mrrByCountry).map(([countryId, { currency, amount }]) => {
+                const flag = INITIAL_COUNTRIES.find(c => c.id === countryId)?.flag || '';
+                const maxAmount = Math.max(...Object.values(analytics.mrrByCountry).map(v => v.amount));
+                const pct = maxAmount > 0 ? Math.round((amount / maxAmount) * 100) : 0;
+                return (
+                  <div key={countryId}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-300 font-medium">{flag} {countryId.toUpperCase()}</span>
+                      <span className="text-xs text-white font-black">{amount.toLocaleString()} {currency}</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── MRR par tier ── */}
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            {t('admin.analyticsMrrByTier', 'MRR 30j par plan')}
+          </p>
+          {Object.keys(analytics.mrrByTier).length === 0 ? (
+            <p className="text-xs text-gray-600">{t('admin.analyticsNoData', 'Aucune donnée sur 30j')}</p>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(analytics.mrrByTier)
+                .sort(([, a], [, b]) => b.amount - a.amount)
+                .map(([tier, { currency, amount }]) => {
+                  const maxAmount = Math.max(...Object.values(analytics.mrrByTier).map(v => v.amount));
+                  const pct = maxAmount > 0 ? Math.round((amount / maxAmount) * 100) : 0;
+                  return (
+                    <div key={tier}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-300 font-medium">{tier}</span>
+                        <span className="text-xs text-white font-black">{amount.toLocaleString()} {currency}</span>
+                      </div>
+                      <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ════════════════════ Bulk Selection Bar ════════════════════ */}
@@ -1236,6 +1545,20 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                           <p className="text-[10px] text-red-400 mt-1">
                             {req.rejectionReason}
                           </p>
+                        )}
+                        {req.status === 'approved' && req.receiptUrl && (
+                          <a
+                            href={req.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+                          >
+                            <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            {t('admin.viewReceipt', 'Reçu PDF')}
+                          </a>
                         )}
                       </div>
                     ))}

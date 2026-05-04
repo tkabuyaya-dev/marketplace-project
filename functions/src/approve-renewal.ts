@@ -27,15 +27,27 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { getDb, getAuth } from "./admin.js";
+import { buildReceiptPdf, uploadPdfToCloudinary } from "./generate-receipt.js";
+import {
+  CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET,
+} from "./config.js";
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 450;
+
+function periodToDurationMs(period?: string): number {
+  if (period === '3m')  return 90  * 24 * 60 * 60 * 1000;
+  if (period === '12m') return 365 * 24 * 60 * 60 * 1000;
+  return 30 * 24 * 60 * 60 * 1000; // default 1m
+}
 const AUDIT_LOGS_COLLECTION = "auditLogs";
 
 export const approveRenewal = onRequest(
   {
     maxInstances: 5,
     region: "europe-west1",
+    secrets: [CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET],
   },
   async (req, res) => {
     // ── Auth check: verify Firebase ID token + admin role ──
@@ -103,7 +115,13 @@ export const approveRenewal = onRequest(
       return;
     }
 
-    const subscriptionExpiresAt = Date.now() + THIRTY_DAYS_MS;
+    // ── Fetch subscription request to read period (3m / 12m / default 1m) ──
+    let reqData: Record<string, any> = {};
+    if (requestId) {
+      const reqSnap = await db.collection("subscriptionRequests").doc(requestId).get();
+      if (reqSnap.exists) reqData = reqSnap.data() ?? {};
+    }
+    const subscriptionExpiresAt = Date.now() + periodToDurationMs(reqData.period);
 
     // ── Reactivate seller ──
     // Writes sellerDetails.subscriptionExpiresAt (number ms) — same field used by
@@ -116,6 +134,8 @@ export const approveRenewal = onRequest(
       "sellerDetails.reminderSentJ7": null,
       "sellerDetails.reminderSentJ3": null,
       "sellerDetails.reminderSentJ1": null,
+      "sellerDetails.gracePhaseSince": null,
+      "sellerDetails.downgradePhase": null,
     });
     console.log(
       `[approveRenewal] Seller ${vendorId} → active, subscriptionExpiresAt: ${new Date(subscriptionExpiresAt).toISOString()}`
@@ -146,6 +166,56 @@ export const approveRenewal = onRequest(
       });
     } catch (auditErr: any) {
       console.warn("[approveRenewal] Audit log write failed:", auditErr?.message);
+    }
+
+    // ── Generate PDF receipt + notify seller (best-effort, non-blocking) ──
+    if (requestId) {
+      try {
+        // reqData already fetched above for period resolution
+
+        const pdfBytes = await buildReceiptPdf({
+          receiptId:      requestId.slice(-8).toUpperCase(),
+          vendorId,
+          sellerName:     reqData.sellerName ?? sellerData.sellerDetails?.shopName ?? vendorId,
+          sellerEmail:    adminEmail ? undefined : undefined, // seller email not in scope here
+          planLabel:      reqData.planLabel ?? sellerDetails.tierLabel ?? "Abonnement",
+          countryId:      reqData.countryId ?? sellerData.countryId ?? "bi",
+          currency:       reqData.currency ?? "BIF",
+          amount:         reqData.amount ?? 0,
+          transactionRef: reqData.transactionRef ?? null,
+          verifiedVia:    verifiedVia,
+          approvedAt:     Date.now(),
+          expiresAt:      subscriptionExpiresAt,
+        });
+
+        const publicId  = `receipt_${vendorId}_${Date.now()}`;
+        const receiptUrl = await uploadPdfToCloudinary(
+          pdfBytes,
+          publicId,
+          CLOUDINARY_CLOUD_NAME.value(),
+          CLOUDINARY_API_KEY.value(),
+          CLOUDINARY_API_SECRET.value(),
+        );
+
+        // Persist URL on the subscription request
+        await db.collection("subscriptionRequests").doc(requestId).update({ receiptUrl });
+
+        // In-app notification for the seller
+        await db.collection("notifications").add({
+          userId:    vendorId,
+          type:      "subscription_receipt",
+          title:     "Recu d'abonnement disponible",
+          body:      `Votre abonnement ${reqData.planLabel ?? "NUNULIA"} est actif. Telechargez votre recu.`,
+          read:      false,
+          createdAt: Date.now(),
+          data:      { receiptUrl },
+        });
+
+        console.log(`[approveRenewal] Receipt generated and stored for request ${requestId}: ${receiptUrl}`);
+      } catch (receiptErr: any) {
+        // Non-blocking — PDF failure must never fail the approval
+        console.warn("[approveRenewal] Receipt generation failed:", receiptErr?.message);
+      }
     }
 
     // ── Reactivate their inactive products (remove deleteAt) ──

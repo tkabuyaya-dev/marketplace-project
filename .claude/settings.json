@@ -10,7 +10,8 @@
       "Bash(npm ls *)",
       "Bash(echo \"tsc=$?\")",
       "Bash(echo \"eslint=$?\")",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(firebase --version)"
     ]
   }
 }

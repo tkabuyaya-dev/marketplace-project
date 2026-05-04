@@ -58,6 +58,8 @@ export interface SellerDetails {
   reminderSentJ7?: number;           // equals subscriptionExpiresAt when J-7 reminder was sent
   reminderSentJ3?: number;           // equals subscriptionExpiresAt when J-3 reminder was sent
   reminderSentJ1?: number;           // equals subscriptionExpiresAt when J-1 reminder was sent
+  gracePhaseSince?: number;          // ms timestamp when downgrade phase 1 started (expiry date)
+  downgradePhase?: 1 | 2 | 3;       // 1=J0-J3 products visible / 2=J3-J14 top-5 / 3=deletion scheduled
 }
 
 export interface User {
@@ -237,6 +239,7 @@ export interface SearchFilters {
 }
 
 // ─── Subscription Requests ───
+export type SubscriptionPeriod = '1m' | '3m' | '12m';
 export type SubscriptionRequestStatus = 'pending' | 'pending_validation' | 'approved' | 'rejected';
 
 export interface SubscriptionRequest {
@@ -257,6 +260,8 @@ export interface SubscriptionRequest {
   expiresAt: number | null;
   rejectionReason: string | null;
   maxProducts: number;
+  receiptUrl?: string | null;
+  period?: SubscriptionPeriod;
 }
 
 export interface PaymentMethod {

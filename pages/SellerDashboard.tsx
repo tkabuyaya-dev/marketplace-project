@@ -365,6 +365,15 @@ export const SellerDashboard: React.FC = () => {
   });
   const { currentTier, isExpired, isPaidTier, daysRemaining, isLimitReached, progressPercentage } = subStatus;
 
+  // Grace-phase downgrade (R19)
+  const downgradePhase = currentUser.sellerDetails?.downgradePhase;
+  const gracePhaseSince = currentUser.sellerDetails?.gracePhaseSince;
+  const isInGrace = !!downgradePhase && downgradePhase < 3 && !!gracePhaseSince;
+  const graceDaysElapsed = gracePhaseSince ? Math.floor((Date.now() - gracePhaseSince) / (1000 * 60 * 60 * 24)) : 0;
+  const graceDaysLeft = isInGrace
+    ? (downgradePhase === 1 ? Math.max(0, 3 - graceDaysElapsed) : Math.max(0, 14 - graceDaysElapsed))
+    : 0;
+
   // Warning flags
   const showUpgradeWarning = currentTier.id === 'free' && currentCount >= FREE_TIER_WARNING_AT;
   const showExpirationWarning = isPaidTier && daysRemaining !== null && daysRemaining <= 7 && !isExpired;
@@ -1023,8 +1032,35 @@ export const SellerDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* Expiration Alert */}
-        {isExpired && isPaidTier && (
+        {/* Grace phase banner (R19) — replaces simple "Expired" alert */}
+        {isExpired && isPaidTier && isInGrace && (
+          <div className={`border rounded-xl p-4 flex items-start gap-3 ${
+            downgradePhase === 1
+              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/30'
+              : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-500/30'
+          }`}>
+            <span className="text-2xl">{downgradePhase === 1 ? '⏳' : '⚠️'}</span>
+            <div className="flex-1">
+              <p className={`text-sm font-bold ${downgradePhase === 1 ? 'text-amber-700 dark:text-amber-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                {downgradePhase === 1
+                  ? t('dashboard.gracePh1Title', 'Période de grâce — encore {{days}} jour(s)', { days: graceDaysLeft })
+                  : t('dashboard.gracePh2Title', 'Produits limités — encore {{days}} jour(s) avant suppression', { days: graceDaysLeft })}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                {downgradePhase === 1
+                  ? t('dashboard.gracePh1Body', 'Vos produits restent visibles. Renouvelez maintenant pour éviter leur masquage.')
+                  : t('dashboard.gracePh2Body', 'Seuls 5 de vos produits sont encore visibles. Renouvelez pour les réactiver tous.')}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => setShowRenewModal(true)} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Expiration Alert (no grace phase) */}
+        {isExpired && isPaidTier && !isInGrace && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-xl p-4 flex items-start gap-3">
             <span className="text-2xl">🚨</span>
             <div className="flex-1">
