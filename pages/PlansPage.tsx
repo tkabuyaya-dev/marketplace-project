@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Check, CheckCircle2, Clock, AlertTriangle, Info,
-  Phone, LayoutDashboard, Camera, X as XIcon,
+  Phone, LayoutDashboard, Camera, Image as ImageIcon, X as XIcon,
 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
@@ -969,30 +969,32 @@ export const PlansPage: React.FC = () => {
                     <XIcon size={14} />
                   </button>
                 </div>
+              ) : proofUploading ? (
+                <div className="flex items-center justify-center gap-2 py-3.5 text-xs text-blue-500 font-bold">
+                  <span className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                  {t('plans.proofUploading', 'Envoi en cours…')}
+                </div>
               ) : (
-                <label
-                  htmlFor="proof-upload"
-                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                    proofUploading
-                      ? 'bg-gray-100 text-gray-400 cursor-wait'
-                      : 'bg-blue-50 text-blue-600 border border-blue-200 active:bg-blue-100'
-                  }`}
-                >
-                  {proofUploading ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-                      {t('plans.proofUploading', 'Envoi en cours…')}
-                    </>
-                  ) : (
-                    <>
-                      <Camera size={14} />
-                      {t('plans.proofPick', 'Joindre une capture du SMS')}
-                    </>
-                  )}
-                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label
+                    htmlFor="proof-camera"
+                    className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl text-xs font-bold cursor-pointer bg-blue-50 text-blue-600 border border-blue-200 active:bg-blue-100 transition-colors select-none"
+                  >
+                    <Camera size={18} />
+                    <span>{t('plans.proofCamera', 'Prendre une photo')}</span>
+                  </label>
+                  <label
+                    htmlFor="proof-gallery"
+                    className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl text-xs font-bold cursor-pointer bg-gray-50 text-gray-600 border border-gray-200 active:bg-gray-100 transition-colors select-none"
+                  >
+                    <ImageIcon size={18} />
+                    <span>{t('plans.proofGallery', 'Depuis la galerie')}</span>
+                  </label>
+                </div>
               )}
+              {/* Camera: ouvre directement l'appareil photo */}
               <input
-                id="proof-upload"
+                id="proof-camera"
                 type="file"
                 accept="image/*"
                 capture="environment"
@@ -1000,8 +1002,17 @@ export const PlansPage: React.FC = () => {
                 disabled={proofUploading}
                 className="hidden"
               />
+              {/* Gallery: ouvre le sélecteur de fichiers / photos existantes */}
+              <input
+                id="proof-gallery"
+                type="file"
+                accept="image/*"
+                onChange={handleProofChange}
+                disabled={proofUploading}
+                className="hidden"
+              />
               <p className="text-[10px] text-gray-400 mt-2 leading-snug">
-                {t('plans.proofHint', 'Une capture d\'écran du SMS Lumicash/Ecocash accélère la validation par notre équipe.')}
+                {t('plans.proofHint', 'Prenez une photo du SMS ou choisissez une capture déjà dans votre galerie. Cela accélère la validation.')}
               </p>
             </div>
 
