@@ -32,6 +32,9 @@ const isConfigured = !!(ALGOLIA_APP_ID && ALGOLIA_SEARCH_KEY);
 // Algolia REST API URL (no SDK needed — smaller bundle)
 const ALGOLIA_BASE = `https://${ALGOLIA_APP_ID}-dsn.algolia.net`;
 
+// Backend Cloud Functions base URL — used for Redis-cached search proxy
+const FUNCTIONS_BASE = env.VITE_FUNCTIONS_BASE_URL || "";
+
 interface AlgoliaSearchParams {
   query: string;
   hitsPerPage?: number;
@@ -312,7 +315,7 @@ export async function algoliaSearchSellers(
   maxResults: number = 10
 ): Promise<User[] | null> {
   if (!isConfigured) return null;
-  if (queryText.trim().length < 1) return [];
+  if (queryText.trim().length < 2) return [];
 
   try {
     const result = await algoliaSearch(SELLERS_INDEX, {
@@ -393,6 +396,134 @@ export async function algoliaAutocompleteProducts(
   } catch {
     return [];
   }
+}
+
+/**
+ * Backend-proxied full search (Redis-cached, shared across all users).
+ *
+ * Calls the `cachedSearch` Cloud Function which checks Redis first, then
+ * falls through to Algolia only on a cache miss. This means 50 users
+ * searching the same term within 20 minutes = 1 Algolia operation instead
+ * of 50.
+ *
+ * Returns the same shape as algoliaSearchProductsFull so the caller can use
+ * either interchangeably. Returns null if the backend is unreachable or times
+ * out — the caller must fall back to algoliaSearchProductsFull in that case.
+ *
+ * Timeout: 6 seconds (same as recommendations.ts).
+ */
+export async function backendSearchProducts(
+  queryText: string,
+  filters?: ExtendedSearchFilters,
+  page = 0,
+  hitsPerPage = 20,
+): Promise<{
+  products: Product[];
+  totalHits: number;
+  totalPages: number;
+  page: number;
+  queryID?: string;
+  highlightResults: Map<string, Record<string, string>>;
+} | null> {
+  if (!FUNCTIONS_BASE) return null;
+  if (queryText.trim().length < 2) return null;
+
+  const params = new URLSearchParams();
+  params.set("q",     queryText.trim());
+  params.set("limit", String(Math.min(hitsPerPage, 30)));
+  if (page > 0) params.set("page", String(page));
+
+  if (filters?.category)       params.set("category",    filters.category);
+  if (filters?.countryId)      params.set("countryId",   filters.countryId);
+  if (filters?.sellerProvince) params.set("province",    filters.sellerProvince);
+  if (filters?.isNew)          params.set("isNew",       "true");
+  if (filters?.minPrice !== undefined) params.set("minPrice", String(filters.minPrice));
+  if (filters?.maxPrice !== undefined) params.set("maxPrice", String(filters.maxPrice));
+  if (filters?.sort && filters.sort !== "relevance") params.set("sort", filters.sort);
+  // userCountry is the soft-boost country (only when no hard countryId filter)
+  if (filters?.userCountry && !filters.countryId) params.set("userCountry", filters.userCountry);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const res = await fetch(`${FUNCTIONS_BASE}/cachedSearch?${params.toString()}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const meta = data.meta ?? {};
+
+    // Rehydrate highlights dict → Map (mirrors the shape useSearch expects)
+    const highlightResults = new Map<string, Record<string, string>>();
+    if (meta.highlights && typeof meta.highlights === "object") {
+      for (const [id, fields] of Object.entries(meta.highlights as Record<string, Record<string, string>>)) {
+        highlightResults.set(id, fields);
+      }
+    }
+
+    return {
+      products:       (data.products ?? []).map(backendHitToProduct),
+      totalHits:      meta.totalHits  ?? (data.products?.length ?? 0),
+      totalPages:     meta.totalPages ?? 1,
+      page:           meta.page       ?? page,
+      queryID:        meta.queryID,
+      highlightResults,
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof DOMException && err.name === "AbortError") {
+      console.debug("[Algolia] Backend search timeout — falling back to direct Algolia");
+    } else {
+      console.debug("[Algolia] Backend search error — falling back to direct Algolia", err);
+    }
+    return null;
+  }
+}
+
+/**
+ * Map a product object returned by the `cachedSearch` backend into the
+ * frontend Product type. The backend returns a flat shape (no nested seller
+ * object) so we reconstruct the seller sub-object here.
+ */
+function backendHitToProduct(hit: Record<string, any>): Product {
+  return {
+    id:            hit.id,
+    slug:          hit.slug          ?? "",
+    title:         hit.title         ?? "",
+    price:         hit.price         ?? 0,
+    originalPrice: hit.originalPrice ?? undefined,
+    description:   "",
+    images:        hit.images        ?? [],
+    category:      hit.category      ?? "",
+    subCategory:   hit.subCategory   ?? undefined,
+    tags:          hit.tags          ?? [],
+    rating:        hit.rating        ?? 0,
+    reviews:       hit.reviews       ?? 0,
+    seller: {
+      id:                 hit.sellerId         ?? "",
+      name:               hit.sellerName       ?? "Vendeur",
+      email:              "",
+      avatar:             "",
+      isVerified:         hit.sellerIsVerified ?? false,
+      verificationTier:   hit.sellerIsVerified ? "identity" : "none",
+      role:               "seller",
+      joinDate:           0,
+    } as any,
+    isPromoted:    hit.isSponsored   ?? false,
+    isSponsored:   hit.isSponsored   ?? false,
+    status:        "approved",
+    views:         hit.views         ?? 0,
+    likesCount:    hit.likesCount    ?? 0,
+    reports:       0,
+    createdAt:     hit.createdAt     ?? Date.now(),
+    stockQuantity: hit.stockQuantity ?? undefined,
+    discountPrice: hit.discountPrice ?? undefined,
+    countryId:     hit.countryId     ?? undefined,
+    currency:      hit.currency      ?? undefined,
+  } as Product;
 }
 
 /**

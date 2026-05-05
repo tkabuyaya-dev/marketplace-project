@@ -19,7 +19,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Product } from '../types';
-import { algoliaSearchProductsFull, ExtendedSearchFilters } from '../services/algolia';
+import { algoliaSearchProductsFull, backendSearchProducts, ExtendedSearchFilters } from '../services/algolia';
 import { searchProducts } from '../services/firebase';
 import { readCache, writeCache } from '../services/sessionCache';
 import { getSearchResultsFromIDB, saveSearchResultsToIDB } from '../services/searchIdb';
@@ -245,12 +245,12 @@ export function useSearch() {
         userCountry: !filters.country && activeCountry ? activeCountry : undefined,
       };
 
-      const result = await algoliaSearchProductsFull(
-        query.trim(),
-        algoliaFilters,
-        page,
-        HITS_PER_PAGE,
-      );
+      // Backend-first: try the Redis-cached proxy (shared across all users).
+      // A cache HIT = 0 Algolia operations consumed.
+      // Returns null on timeout / unavailability → falls through to direct Algolia.
+      const result =
+        (await backendSearchProducts(query.trim(), algoliaFilters, page, HITS_PER_PAGE))
+        ?? await algoliaSearchProductsFull(query.trim(), algoliaFilters, page, HITS_PER_PAGE);
 
       // Abort if a newer request was fired
       if (abortRef.current !== requestId) return;

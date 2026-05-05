@@ -36,7 +36,7 @@ export const CACHE_TTL = {
   TRENDING: 5 * 60,         // 5 minutes
   RECOMMENDATIONS: 15 * 60, // 15 minutes
   POPULAR: 10 * 60,         // 10 minutes
-  SEARCH_RESULTS: 5 * 60,   // 5 minutes
+  SEARCH_RESULTS: 20 * 60,  // 20 minutes (shared Redis cache — product catalog stable)
 } as const;
 
 // CORS: restrict to known origins (Firebase Hosting + local dev)
