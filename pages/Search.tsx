@@ -16,7 +16,7 @@ import { INITIAL_COUNTRIES } from '../constants';
 import { CITIES_BY_COUNTRY } from '../data/locations';
 import { Product } from '../types';
 import { addToSearchHistory, getSearchHistory, getPopularSearches, removeFromSearchHistory, getLocalSuggestions } from '../services/popular-searches';
-import { algoliaSearchProductsFull, algoliaAutocompleteProducts } from '../services/algolia';
+import { algoliaAutocompleteProducts } from '../services/algolia';
 import { trackSearchClick } from '../services/algolia-insights';
 import { useAppContext } from '../contexts/AppContext';
 import { JeChercheBlock } from '../components/JeCherche/JeChercheBlock';
@@ -250,6 +250,10 @@ const SearchPage: React.FC = () => {
   const autocompleteAbort = useRef(0);
   const activeCountryRef = useRef(activeCountry);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  // Prevents the autocomplete from firing an Algolia call on initial page load
+  // when inputValue is pre-filled from the URL (?q=soulier). Algolia only fires
+  // once the user actively types — local suggestions still show immediately.
+  const hasUserTyped = useRef(false);
 
   useEffect(() => { activeCountryRef.current = activeCountry; }, [activeCountry]);
 
@@ -284,8 +288,11 @@ const SearchPage: React.FC = () => {
     setShowSuggestions(local.length > 0);
     setSelectedSuggestionIdx(-1);
 
-    // Layer 2: Lightweight Algolia autocomplete (2+ chars, 800ms debounce for slow typists)
-    if (inputValue.length >= 2) {
+    // Layer 2: Algolia autocomplete — only after the user has actively typed.
+    // Skipped on initial mount when inputValue is pre-filled from URL params
+    // (e.g. navigating to /search?q=soulier): local suggestions are shown
+    // instantly, and Algolia is hit only when the user refines the query.
+    if (inputValue.length >= 2 && hasUserTyped.current) {
       const timer = setTimeout(async () => {
         try {
           const products = await algoliaAutocompleteProducts(inputValue, activeCountryRef.current || undefined);
