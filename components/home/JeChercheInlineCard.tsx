@@ -14,31 +14,45 @@ export const JeChercheInlineCard: React.FC = () => {
   };
 
   return (
-    <button
-      type="button"
-      onClick={open}
-      className="col-span-full w-full text-left rounded-xl overflow-hidden bg-gradient-to-r from-gold-500 to-gold-400 text-gray-950 px-4 py-4 flex items-center gap-3 shadow-sm hover:shadow-lg hover:-translate-y-[1px] transition-all"
+    <div
+      className="col-span-full"
+      style={{ padding: '4px 0' }}
     >
-      <span
-        aria-hidden="true"
-        className="flex-shrink-0 w-11 h-11 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center"
+      <div
+        className="flex items-center gap-3.5 p-4 rounded-2xl"
+        style={{
+          background: 'linear-gradient(135deg,#FFF8E7 0%,#FFF3D0 100%)',
+          border: '1px solid rgba(245,200,66,0.3)',
+          boxShadow: '0 2px 12px rgba(245,200,66,0.15)',
+        }}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-          <circle cx="11" cy="11" r="7" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="m20 20-3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold leading-snug">
-          {t('home.jeCherche.title', 'Vous ne trouvez pas ce que vous cherchez ?')}
-        </p>
-        <p className="text-xs leading-snug opacity-90 mt-0.5">
-          {t('home.jeCherche.subtitle', 'Postez votre demande — les vendeurs vous répondent')}
-        </p>
+        <div
+          className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl"
+          style={{ background: 'rgba(245,200,66,0.25)' }}
+        >
+          🔍
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[14px] font-black text-[#111318] tracking-tight leading-tight m-0">
+            {t('home.jeCherche.title', 'Vous cherchez quelque chose ?')}
+          </h3>
+          <p className="text-[11px] text-[#5C6370] leading-snug mt-0.5">
+            {t('home.jeCherche.subtitle', 'Postez votre demande, les vendeurs vous contactent')}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={open}
+          className="flex-shrink-0 px-3.5 py-2.5 rounded-full text-[11px] font-black
+                     text-[#111318] cursor-pointer border-none active:scale-95 transition-transform"
+          style={{
+            background: '#F5C842',
+            boxShadow: '0 2px 8px rgba(245,200,66,0.4)',
+          }}
+        >
+          {t('home.jeCherche.cta', 'Poster')}
+        </button>
       </div>
-      <span className="flex-shrink-0 bg-gray-950 text-gold-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-        {t('home.jeCherche.cta', 'Publier ma demande')}
-      </span>
-    </button>
+    </div>
   );
 };

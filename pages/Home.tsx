@@ -420,7 +420,7 @@ export const Home: React.FC = () => {
   }, [displayProducts]);
 
   return (
-    <div className="pb-24 pt-safe-header md:pt-24 px-3 max-w-7xl mx-auto space-y-3">
+    <div className="pb-24 pt-safe-header md:pt-24 px-3 max-w-7xl mx-auto space-y-5 bg-[#F7F8FA] min-h-full">
       {/* Banner Carousel */}
       <BannerCarousel
         banners={banners.length > 0 ? banners : undefined}
@@ -455,8 +455,8 @@ export const Home: React.FC = () => {
       )}
 
       {/* Categories */}
-      <div className="overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
-        <div className="flex gap-1.5">
+      <div className="overflow-x-auto pb-1 -mx-3 px-3" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-2">
           {/* Bouton "Près de moi" */}
           <button
             onClick={() => {
@@ -468,16 +468,18 @@ export const Home: React.FC = () => {
                 setNearbyMode(false);
               }
             }}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
-              nearbyMode
-                ? 'bg-green-600 border-green-500 text-white'
-                : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
-            }`}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold"
+            style={{
+              background: nearbyMode ? '#10B981' : '#FFFFFF',
+              color: nearbyMode ? '#FFFFFF' : '#5C6370',
+              border: nearbyMode ? 'none' : '1px solid rgba(0,0,0,0.08)',
+              boxShadow: nearbyMode ? '0 2px 8px rgba(16,185,129,0.35)' : '0 1px 3px rgba(0,0,0,0.05)',
+            }}
           >
             {geoLoading ? (
-              <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+              <span className="w-3 h-3 border-2 border-current/40 border-t-current rounded-full animate-spin" />
             ) : (
-              <span className="text-xs">📍</span>
+              <span className="text-[13px]">📍</span>
             )}
             {t('home.nearMe')}
           </button>
@@ -488,26 +490,30 @@ export const Home: React.FC = () => {
               setWholesaleMode(!wholesaleMode);
               if (!wholesaleMode) setActiveCategory('all');
             }}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
-              wholesaleMode
-                ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
-            }`}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold"
+            style={{
+              background: wholesaleMode ? '#6366F1' : '#FFFFFF',
+              color: wholesaleMode ? '#FFFFFF' : '#5C6370',
+              border: wholesaleMode ? 'none' : '1px solid rgba(0,0,0,0.08)',
+              boxShadow: wholesaleMode ? '0 2px 8px rgba(99,102,241,0.35)' : '0 1px 3px rgba(0,0,0,0.05)',
+            }}
           >
-            <span className="text-xs">🏭</span>
+            <span className="text-[13px]">🏭</span>
             {t('home.wholesale')}
           </button>
 
           {/* Bouton "Tout" */}
           <button
             onClick={() => { setActiveCategory('all'); setNearbyMode(false); }}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
-              activeCategory === 'all' && !nearbyMode
-                ? `${tc.bg400} ${tc.border400} text-gray-900 shadow-sm shadow-gold-400/30`
-                : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
-            }`}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold"
+            style={{
+              background: activeCategory === 'all' && !nearbyMode ? '#F5C842' : '#FFFFFF',
+              color: activeCategory === 'all' && !nearbyMode ? '#111318' : '#5C6370',
+              border: activeCategory === 'all' && !nearbyMode ? 'none' : '1px solid rgba(0,0,0,0.08)',
+              boxShadow: activeCategory === 'all' && !nearbyMode ? '0 2px 8px rgba(245,200,66,0.35)' : '0 1px 3px rgba(0,0,0,0.05)',
+            }}
           >
-            <span className="text-xs">🔍</span>
+            <span className="text-[13px]">🔍</span>
             {t('home.all')}
           </button>
 
@@ -515,13 +521,15 @@ export const Home: React.FC = () => {
             <button
               key={cat.id}
               onClick={() => { setActiveCategory(cat.id); setNearbyMode(false); }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap transition-all border text-xs font-medium ${
-                activeCategory === cat.id
-                  ? `${tc.bg400} ${tc.border400} text-gray-900 shadow-sm shadow-gold-400/30`
-                  : 'bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-white'
-              }`}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold"
+              style={{
+                background: activeCategory === cat.id ? '#F5C842' : '#FFFFFF',
+                color: activeCategory === cat.id ? '#111318' : '#5C6370',
+                border: activeCategory === cat.id ? 'none' : '1px solid rgba(0,0,0,0.08)',
+                boxShadow: activeCategory === cat.id ? '0 2px 8px rgba(245,200,66,0.35)' : '0 1px 3px rgba(0,0,0,0.05)',
+              }}
             >
-              <span className="text-xs">{cat.icon}</span>
+              {cat.icon && <span className="text-[13px]">{cat.icon}</span>}
               {cat.name}
             </button>
           ))}
@@ -530,13 +538,19 @@ export const Home: React.FC = () => {
 
       {/* B2B wholesale banner */}
       {wholesaleMode && (
-        <div className="bg-indigo-50 border border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/30 rounded-xl p-2 flex items-center gap-2">
+        <div
+          className="rounded-xl p-3 flex items-center gap-2"
+          style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)' }}
+        >
           <span className="text-base">🏭</span>
           <div className="flex-1 min-w-0">
-            <p className="text-indigo-700 dark:text-indigo-400 font-semibold text-xs leading-tight">{t('home.wholesaleActive')}</p>
-            <p className="text-indigo-600/70 dark:text-indigo-400/60 text-[10px] leading-tight">{t('home.wholesaleHint')}</p>
+            <p className="text-indigo-700 font-semibold text-xs leading-tight">{t('home.wholesaleActive')}</p>
+            <p className="text-indigo-600/70 text-[10px] leading-tight">{t('home.wholesaleHint')}</p>
           </div>
-          <button onClick={() => setWholesaleMode(false)} className="text-indigo-600/70 hover:text-indigo-700 dark:text-indigo-400/60 dark:hover:text-white text-[10px] px-2 py-0.5 border border-indigo-200 dark:border-indigo-500/30 rounded-lg flex-shrink-0">
+          <button
+            onClick={() => setWholesaleMode(false)}
+            className="text-indigo-600/70 hover:text-indigo-700 text-[10px] px-2 py-0.5 border border-indigo-200 rounded-lg flex-shrink-0 bg-transparent"
+          >
             {t('home.nearbyDisable')}
           </button>
         </div>
@@ -544,13 +558,19 @@ export const Home: React.FC = () => {
 
       {/* Nearby mode banner */}
       {nearbyMode && (
-        <div className="bg-green-50 border border-green-200 dark:bg-green-500/10 dark:border-green-500/30 rounded-xl p-2 flex items-center gap-2">
+        <div
+          className="rounded-xl p-3 flex items-center gap-2"
+          style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)' }}
+        >
           <span className="text-base">📍</span>
           <div className="flex-1 min-w-0">
-            <p className="text-green-700 dark:text-green-400 font-semibold text-xs leading-tight">{t('home.nearbyActive')}</p>
-            <p className="text-green-600/70 dark:text-green-400/60 text-[10px] leading-tight">{position ? t('home.nearbyHint') : t('home.nearbyWaiting')}</p>
+            <p className="text-green-700 font-semibold text-xs leading-tight">{t('home.nearbyActive')}</p>
+            <p className="text-green-600/70 text-[10px] leading-tight">{position ? t('home.nearbyHint') : t('home.nearbyWaiting')}</p>
           </div>
-          <button onClick={() => setNearbyMode(false)} className="text-green-600/70 hover:text-green-700 dark:text-green-400/60 dark:hover:text-white text-[10px] px-2 py-0.5 border border-green-200 dark:border-green-500/30 rounded-lg flex-shrink-0">
+          <button
+            onClick={() => setNearbyMode(false)}
+            className="text-green-600/70 hover:text-green-700 text-[10px] px-2 py-0.5 border border-green-200 rounded-lg flex-shrink-0 bg-transparent"
+          >
             {t('home.nearbyDisable')}
           </button>
         </div>
@@ -602,9 +622,12 @@ export const Home: React.FC = () => {
 
       {/* Product Grid — Dernieres annonces */}
       <div>
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-sm">{wholesaleMode ? '🏭' : nearbyMode ? '📍' : '🛒'}</span>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between mb-3">
+          <h3
+            className="text-[17px] font-black text-[#111318] tracking-tight"
+            style={{ fontFamily: "'Inter Display', Inter, sans-serif" }}
+          >
+            <span className="mr-1.5">{wholesaleMode ? '🏭' : nearbyMode ? '📍' : '🛒'}</span>
             {wholesaleMode ? t('home.wholesale') : nearbyMode ? t('home.nearMe') : t('home.latestListings')}
           </h3>
         </div>
@@ -679,11 +702,12 @@ export const Home: React.FC = () => {
 
       {/* Bouton Charger plus (pagination) */}
       {hasMore && !loading && (
-        <div className="text-center">
+        <div className="text-center pt-1">
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-6 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 rounded-full text-xs transition-colors disabled:opacity-50"
+            className="px-6 py-2.5 bg-white rounded-xl text-[13px] font-semibold text-[#5C6370] transition-colors disabled:opacity-50"
+            style={{ border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
           >
             {loadingMore ? t('home.loading') : t('home.loadMore')}
           </button>
@@ -691,17 +715,17 @@ export const Home: React.FC = () => {
       )}
 
       {/* Footer legal */}
-      <div className="text-center py-4 border-t border-gray-200 dark:border-gray-800/50">
-        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-500">
-          <Link to="/cgu" className="hover:text-amber-700 dark:hover:text-amber-400 hover:underline transition-colors">
+      <div className="text-center py-4" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <div className="flex items-center justify-center gap-2 text-xs text-[#9EA5B0]">
+          <Link to="/cgu" className="hover:text-[#C47E00] hover:underline transition-colors">
             Conditions d'utilisation
           </Link>
-          <span className="text-gray-400 dark:text-gray-700">&middot;</span>
-          <Link to="/politique-confidentialite" className="hover:text-amber-700 dark:hover:text-amber-400 hover:underline transition-colors">
+          <span className="text-[#BCC1CA]">&middot;</span>
+          <Link to="/politique-confidentialite" className="hover:text-[#C47E00] hover:underline transition-colors">
             Politique de confidentialité
           </Link>
         </div>
-        <p className="text-[10px] text-gray-400 dark:text-gray-700 mt-1.5">&copy; 2026 NUNULIA</p>
+        <p className="text-[10px] text-[#BCC1CA] mt-1.5">&copy; 2026 NUNULIA</p>
       </div>
     </div>
   );

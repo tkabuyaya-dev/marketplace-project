@@ -195,7 +195,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         })}
       </div>
 
-      {/* Dots indicator */}
+      {/* Dots indicator — gold expanding pill */}
       {count > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
           {activeBanners.map((_, i) => (
@@ -203,11 +203,12 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
               key={i}
               onClick={() => { goTo(i); resetInterval(); }}
               aria-label={`Slide ${i + 1}`}
-              className="h-1.5 w-6 rounded-full origin-left transition-[transform,opacity] duration-300"
+              className="border-none cursor-pointer p-0 transition-all duration-200"
               style={{
-                transform: i === current ? 'scaleX(1)' : 'scaleX(0.25)',
-                opacity: i === current ? 1 : 0.4,
-                backgroundColor: 'white',
+                width: i === current ? 20 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: i === current ? '#F5C842' : 'rgba(255,255,255,0.55)',
               }}
             />
           ))}
