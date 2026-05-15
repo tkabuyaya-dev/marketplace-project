@@ -37,9 +37,10 @@ const App: React.FC = () => {
   }
 
   // Pages without the main Navbar (dashboard/admin have their own nav)
-  const hideNavbar = ['/login', '/auth-google', '/register-seller', '/devenir-vendeur', '/dashboard', '/admin', '/cgu', '/politique-confidentialite', '/securite'].includes(location.pathname)
+  const hideNavbar = ['/login', '/auth-google', '/register-seller', '/devenir-vendeur', '/dashboard', '/admin', '/cgu', '/politique-confidentialite', '/securite', '/search'].includes(location.pathname)
     || location.pathname.startsWith('/product/')
-    || location.pathname.startsWith('/shop/');
+    || location.pathname.startsWith('/shop/')
+    || location.pathname.startsWith('/search');
 
   return (
     <div className="min-h-screen bg-[#F7F7F5] text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans selection:bg-gold-400/30">

@@ -1,52 +1,49 @@
 /**
- * NUNULIA — Search Page
+ * NUNULIA — Search Page (redesign)
  *
- * Full-featured search with Algolia: filters sidebar, responsive grid,
- * URL-synced state, infinite scroll, skeleton loading.
+ * Route: /search  (Navbar is hidden — this page owns its own header)
+ *
+ * Design tokens: light-only — zero dark: classes
+ *   bg app       #F7F8FA
+ *   cta gold     #F5C842
+ *   gold text    #C47E00
+ *   card         #FFFFFF
+ *   primary      #111318
+ *   secondary    #5C6370
+ *   muted        #9EA5B0
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import {
+  ArrowLeft, Search, Mic, X, SlidersHorizontal, ChevronDown,
+  Heart, Star, Eye, BadgeCheck, Clock, Flame,
+} from 'lucide-react';
 import { useSearch, SearchFiltersState } from '../hooks/useSearch';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 import { useCategories } from '../hooks/useCategories';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { INITIAL_COUNTRIES } from '../constants';
-import { CITIES_BY_COUNTRY } from '../data/locations';
-import { Product } from '../types';
-import { addToSearchHistory, getSearchHistory, getPopularSearches, removeFromSearchHistory, getLocalSuggestions } from '../services/popular-searches';
+import { Product, Category } from '../types';
+import { Country } from '../types';
+import {
+  addToSearchHistory, getSearchHistory, getPopularSearches,
+  removeFromSearchHistory, getLocalSuggestions,
+} from '../services/popular-searches';
 import { algoliaAutocompleteProducts } from '../services/algolia';
 import { trackSearchClick } from '../services/algolia-insights';
 import { useAppContext } from '../contexts/AppContext';
 import { JeChercheBlock } from '../components/JeCherche/JeChercheBlock';
 
-// ── Skeleton Card — matches AliExpress two-zone layout ──
-const SkeletonCard = () => (
-  <div className="rounded-xl overflow-hidden bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800/60 animate-pulse">
-    {/* Image zone */}
-    <div className="aspect-square bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
-      <div className="absolute inset-0" style={{
-        background: 'linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.04) 50%, transparent 75%)',
-        backgroundSize: '200% 100%',
-        animation: 'shimmer 1.8s infinite linear',
-      }} />
-    </div>
-    {/* Info zone */}
-    <div className="p-2.5 space-y-2">
-      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-full" />
-      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-3/5" />
-      <div className="h-3 bg-gray-200/70 dark:bg-gray-700/60 rounded-full w-2/5 mt-1" />
-      <div className="h-2 bg-gray-100/70 dark:bg-gray-800/60 rounded-full w-1/2" />
-    </div>
-  </div>
-);
+/* ─────────────────────────────────────────────────────────────────────────────
+ * UTILS
+ * ───────────────────────────────────────────────────────────────────────────── */
 
-// ── Safe Algolia highlight renderer ──
-// Algolia wraps matched segments using highlightPreTag/highlightPostTag from
-// services/algolia.ts (currently <mark>...</mark>). Everything else is
-// HTML-entity-escaped. We split on these tags and render each segment as
-// React text (auto-escaped), promoting matches to <mark>. No dangerouslySetInnerHTML.
+function formatViews(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'k';
+  return String(n);
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#x27;': "'",
 };
@@ -63,7 +60,6 @@ function renderHighlight(html: string): React.ReactNode {
   });
 }
 
-// ── Country flag helper ──
 function getCountryFlag(countryId?: string): string {
   if (!countryId) return '';
   return INITIAL_COUNTRIES.find(c => c.id === countryId)?.flag || '';
@@ -74,231 +70,936 @@ function getCountryCurrency(countryId?: string): string {
   return INITIAL_COUNTRIES.find(c => c.id === countryId)?.currency || '';
 }
 
-// ── Product Card — AliExpress-style marketplace card ──
-const ProductCard: React.FC<{
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ACTIVE FILTER CHIPS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+interface ActiveChip {
+  id: string;
+  label: string;
+}
+
+function buildActiveChips(
+  filters: SearchFiltersState,
+  categories: Category[],
+  countries: Country[],
+): ActiveChip[] {
+  const chips: ActiveChip[] = [];
+
+  if (filters.category) {
+    const cat = categories.find(c => c.id === filters.category);
+    chips.push({ id: 'category', label: cat?.name || filters.category });
+  }
+  if (filters.country) {
+    const c = countries.find(x => x.id === filters.country);
+    const flag = getCountryFlag(filters.country);
+    chips.push({ id: 'country', label: `${flag} ${c?.name || filters.country}` });
+  }
+  if (filters.province) {
+    chips.push({ id: 'province', label: filters.province });
+  }
+  if (filters.minPrice !== null || filters.maxPrice !== null) {
+    const min = filters.minPrice?.toLocaleString('fr-FR') ?? '0';
+    const max = filters.maxPrice?.toLocaleString('fr-FR') ?? '…';
+    chips.push({ id: 'price', label: `${min} – ${max}` });
+  }
+  if (filters.isNew) {
+    chips.push({ id: 'isNew', label: 'Nouveautés' });
+  }
+  return chips;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SKELETON CARD
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const SkeletonCard: React.FC = () => (
+  <div className="bg-white rounded-2xl overflow-hidden animate-pulse"
+    style={{ border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+    <div style={{ paddingTop: '75%', background: '#F0F1F4', position: 'relative' }} />
+    <div className="p-2.5 space-y-2">
+      <div className="h-3 rounded-full bg-[#F0F1F4] w-4/5" />
+      <div className="h-3 rounded-full bg-[#F0F1F4] w-3/5" />
+      <div className="h-3 rounded-full bg-[#E4E6EA] w-2/5 mt-1" />
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * STICKY HEADER
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+interface StickyHeaderProps {
+  inputValue: string;
+  onInputChange: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onBack: () => void;
+  focused: boolean;
+  onFocus: () => void;
+  onBlur: () => void;
+  inputRef: React.RefObject<HTMLInputElement>;
+  activeChips: ActiveChip[];
+  onRemoveChip: (id: string) => void;
+}
+
+const StickyHeader: React.FC<StickyHeaderProps> = ({
+  inputValue, onInputChange, onSubmit, onBack,
+  focused, onFocus, onBlur, inputRef,
+  activeChips, onRemoveChip,
+}) => (
+  <header
+    className="sticky top-0 z-30 bg-white"
+    style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingTop: 'env(safe-area-inset-top, 0px)' }}
+  >
+    <form onSubmit={onSubmit} className="flex items-center gap-2 px-3 pt-3 pb-2.5">
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Retour"
+        className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full active:bg-black/5 transition-colors"
+      >
+        <ArrowLeft size={22} color="#111318" strokeWidth={2.25} />
+      </button>
+
+      <div
+        className="flex-1 flex items-center gap-2 h-11 rounded-full px-4"
+        style={{
+          background: focused ? '#FFFFFF' : '#F0F1F4',
+          border: focused ? '1.5px solid #F5C842' : '1.5px solid transparent',
+          boxShadow: focused ? '0 0 0 4px rgba(245,200,66,0.18)' : 'none',
+          transition: 'all 180ms ease-out',
+        }}
+      >
+        <Search size={18} color={focused ? '#C47E00' : '#9EA5B0'} strokeWidth={2.25} />
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={e => onInputChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder="Rechercher sur Nunulia…"
+          className="flex-1 bg-transparent border-none outline-none text-[14px] font-medium text-[#111318] placeholder:text-[#9EA5B0] min-w-0"
+        />
+        {inputValue && (
+          <button
+            type="button"
+            onClick={() => onInputChange('')}
+            aria-label="Effacer"
+            className="w-6 h-6 rounded-full flex items-center justify-center bg-[#E4E6EA] flex-shrink-0"
+          >
+            <X size={12} color="#5C6370" strokeWidth={2.5} />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Recherche vocale"
+          className="w-7 h-7 flex items-center justify-center rounded-full flex-shrink-0 active:bg-black/5"
+        >
+          <Mic size={17} color="#C47E00" strokeWidth={2.25} />
+        </button>
+      </div>
+    </form>
+
+    {activeChips.length > 0 && (
+      <div
+        className="flex gap-1.5 overflow-x-auto pl-3 pr-3 pb-2.5"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {activeChips.map(chip => (
+          <button
+            key={chip.id}
+            type="button"
+            onClick={() => onRemoveChip(chip.id)}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1.5 rounded-full cursor-pointer transition-colors"
+            style={{ background: '#FEF3C2', border: '1px solid rgba(245,200,66,0.45)' }}
+          >
+            <span className="text-[12px] font-bold text-[#7A4F00] tracking-tight">{chip.label}</span>
+            <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: '#F5C842' }}>
+              <X size={9} color="#111318" strokeWidth={3} />
+            </span>
+          </button>
+        ))}
+      </div>
+    )}
+  </header>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SORT / FILTER BAR
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const SORT_LABELS: Record<SearchFiltersState['sortBy'], string> = {
+  relevance: 'Pertinence',
+  newest: 'Plus récent',
+  price_asc: 'Prix ↑',
+  price_desc: 'Prix ↓',
+};
+
+interface SortFilterBarProps {
+  count: number;
+  filterCount: number;
+  sortBy: SearchFiltersState['sortBy'];
+  onOpenFilters: () => void;
+  onCycleSort: () => void;
+}
+
+const SortFilterBar: React.FC<SortFilterBarProps> = ({
+  count, filterCount, sortBy, onOpenFilters, onCycleSort,
+}) => (
+  <div className="flex items-center justify-between px-3 pt-3 pb-2.5">
+    <p className="text-[14px] font-black text-[#111318] tracking-tight m-0">
+      <span style={{ color: '#C47E00' }}>{count.toLocaleString('fr-FR')}</span>
+      <span className="text-[#5C6370] font-bold ml-1">résultats</span>
+    </p>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onCycleSort}
+        className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-white cursor-pointer active:scale-95 transition-transform"
+        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+      >
+        <span className="text-[12px] font-bold text-[#111318] tracking-tight">
+          {SORT_LABELS[sortBy]}
+        </span>
+        <ChevronDown size={14} color="#5C6370" strokeWidth={2.5} />
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenFilters}
+        className="relative flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white cursor-pointer active:scale-95 transition-transform"
+        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+      >
+        <SlidersHorizontal size={14} color="#C47E00" strokeWidth={2.5} />
+        <span className="text-[12px] font-bold text-[#111318] tracking-tight">Filtres</span>
+        {filterCount > 0 && (
+          <span
+            className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full inline-flex items-center justify-center text-[10px] font-black text-[#111318]"
+            style={{ background: '#F5C842' }}
+          >
+            {filterCount}
+          </span>
+        )}
+      </button>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SEARCH RESULT CARD
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const SearchResultCard: React.FC<{
   product: Product;
   highlight?: Record<string, string>;
   onClick: () => void;
   index?: number;
 }> = ({ product, highlight, onClick, index = 0 }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [liked, setLiked] = useState(false);
+
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const isNew = product.createdAt > thirtyDaysAgo;
   const currency = product.currency || getCountryCurrency(product.countryId);
-  const flag = getCountryFlag(product.countryId);
-  const city = product.seller?.sellerDetails?.commune || '';
   const discount = product.originalPrice && product.originalPrice > product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : null;
   const animDelay = Math.min((index % 20) * 45, 450);
   const stars = Math.min(5, Math.max(0, Math.round(product.rating || 0)));
-  const reviewCount = product.reviews || 0;
+  const views = product.views || 0;
+
+  // Badge: promo > sponsored/boosted > new
+  let badgeBg = '';
+  let badgeColor = '';
+  let badgeLabel = '';
+  if (discount) {
+    badgeBg = '#EF4444'; badgeColor = '#FFFFFF'; badgeLabel = `-${discount}%`;
+  } else if (product.isSponsored || product.isBoosted) {
+    badgeBg = '#F5C842'; badgeColor = '#111318'; badgeLabel = 'TOP';
+  } else if (isNew) {
+    badgeBg = '#10B981'; badgeColor = '#FFFFFF'; badgeLabel = 'NOUVEAU';
+  }
+
+  const sellerInitial = (product.seller?.name?.[0] || '?').toUpperCase();
 
   return (
-    <button
+    <article
       onClick={onClick}
-      style={{ animationDelay: `${animDelay}ms` }}
-      className={[
-        'group w-full text-left overflow-hidden rounded-xl',
-        'animate-card-in bg-white border border-gray-200 shadow-sm',
-        'hover:border-gray-300 hover:shadow-md hover:-translate-y-px',
-        'dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none',
-        'dark:hover:border-gray-600/80 dark:hover:shadow-xl',
-        'transition-[border-color,box-shadow,transform] duration-300 ease-out',
-        product.isSponsored ? 'ring-1 ring-amber-400/30 hover:ring-amber-400/60 dark:ring-amber-400/20 dark:hover:ring-amber-400/40' : '',
-      ].filter(Boolean).join(' ')}
+      className="flex flex-col bg-white overflow-hidden cursor-pointer transition-transform active:scale-[0.98]"
+      style={{
+        borderRadius: 16,
+        border: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        animationDelay: `${animDelay}ms`,
+      }}
     >
-      {/* ── Image zone ── */}
-      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800">
+      {/* Image — 4:3 */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{
+          paddingTop: '75%',
+          background: 'linear-gradient(135deg, #F0F1F4 0%, #E4E6EA 100%)',
+          borderRadius: '16px 16px 0 0',
+        }}
+      >
         {product.images?.[0] ? (
           <img
             src={getOptimizedUrl(product.images[0], 320)}
             alt={product.title}
+            onLoad={() => setImgLoaded(true)}
             loading={index < 6 ? 'eager' : 'lazy'}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
+            style={{ opacity: imgLoaded ? 1 : 0 }}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-700 text-4xl">📦</div>
-        )}
-
-        {/* Discount badge — top-left */}
-        {discount && (
-          <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-black px-1.5 py-[3px] rounded-sm leading-tight z-10 shadow-sm">
-            -{discount}%
-          </span>
-        )}
-
-        {/* Sponsored — top-right */}
-        {product.isSponsored && (
-          <span className="absolute top-1.5 right-1.5 bg-amber-400/90 backdrop-blur-sm text-gray-900 text-[8px] font-black px-1.5 py-[3px] rounded-sm leading-tight z-10 tracking-widest">
-            AD
-          </span>
-        )}
-
-        {/* New badge — top-right (when not sponsored) */}
-        {isNew && !product.isSponsored && (
-          <span className="absolute top-1.5 right-1.5 bg-emerald-500/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-[3px] rounded-sm leading-tight z-10">
-            NEW
-          </span>
-        )}
-      </div>
-
-      {/* ── Info zone ── */}
-      <div className="p-2.5 space-y-1">
-        {/* Title */}
-        {highlight?.title ? (
-          <p className="text-[12px] text-gray-900 dark:text-gray-200 leading-snug line-clamp-2 [&>mark]:bg-amber-400/30 [&>mark]:text-amber-800 dark:[&>mark]:text-amber-200 [&>mark]:rounded-sm">
-            {renderHighlight(highlight.title)}
-          </p>
-        ) : (
-          <p className="text-[12px] text-gray-900 dark:text-gray-200 leading-snug line-clamp-2">{product.title}</p>
-        )}
-
-        {/* Stars + review count */}
-        {reviewCount > 0 && (
-          <div className="flex items-center gap-1">
-            <div className="flex items-center gap-px">
-              {[1, 2, 3, 4, 5].map(n => (
-                <svg key={n} width="9" height="9" viewBox="0 0 24 24"
-                  fill={n <= stars ? '#f59e0b' : 'none'}
-                  stroke={n <= stars ? '#f59e0b' : '#9ca3af'}
-                  strokeWidth="2"
-                >
-                  <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-                </svg>
-              ))}
-            </div>
-            <span className="text-[10px] text-gray-500 leading-none">
-              {reviewCount >= 1000 ? `${(reviewCount / 1000).toFixed(1)}K` : reviewCount}
-            </span>
+          <div className="absolute inset-0 flex items-center justify-center text-[#9EA5B0] text-3xl">
+            📦
           </div>
         )}
 
-        {/* Price row */}
-        <div className="flex items-baseline gap-1 flex-wrap">
-          <span className="text-[14px] font-bold text-gold-600 dark:text-gold-400 leading-none">
-            {product.price?.toLocaleString()}
+        {/* Badge TL */}
+        {badgeLabel && (
+          <span
+            className="absolute top-2 left-2 px-2 py-1 rounded-md text-[9px] font-black tracking-wider leading-none"
+            style={{ background: badgeBg, color: badgeColor, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
+          >
+            {badgeLabel}
           </span>
-          <span className="text-[10px] text-gray-500 font-medium">{currency}</span>
+        )}
+
+        {/* Heart TR */}
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); setLiked(l => !l); }}
+          aria-label="Favori"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white flex items-center justify-center border-none transition-transform active:scale-90"
+          style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.12)' }}
+        >
+          <Heart
+            size={15}
+            color={liked ? '#EF4444' : '#5C6370'}
+            fill={liked ? '#EF4444' : 'none'}
+            strokeWidth={2}
+          />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-col px-2.5 py-2.5 gap-1.5">
+        {/* Price */}
+        <div className="flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-[15px] font-black tracking-tight leading-none" style={{ color: '#C47E00' }}>
+            {product.price?.toLocaleString('fr-FR')}&nbsp;{currency}
+          </span>
           {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-[10px] text-gray-400 dark:text-gray-600 line-through ml-auto">
-              {product.originalPrice.toLocaleString()}
+            <span className="text-[10px] font-medium text-[#9EA5B0] line-through leading-none">
+              {product.originalPrice.toLocaleString('fr-FR')}&nbsp;{currency}
             </span>
           )}
         </div>
 
-        {/* Seller + flag */}
-        <p className="text-[10px] text-gray-500 dark:text-gray-600 truncate leading-none">
-          {product.seller?.name || '—'}{flag && <span className="ml-1">{flag}</span>}
+        {/* Title */}
+        <p
+          className="text-[12px] font-semibold text-[#111318] leading-snug overflow-hidden m-0 [&>mark]:bg-amber-200/60 [&>mark]:text-amber-900 [&>mark]:rounded-sm"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            minHeight: 32,
+          }}
+        >
+          {highlight?.title ? renderHighlight(highlight.title) : product.title}
         </p>
 
-        {/* City — only renders when seller commune is denormalized on the product */}
-        {city && (
-          <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 leading-none">
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-              aria-hidden="true"
-            >
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            <span className="truncate">{city}</span>
+        {/* Seller */}
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {product.seller?.avatar ? (
+            <img
+              src={product.seller.avatar}
+              alt=""
+              className="w-4 h-4 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white"
+              style={{ background: '#C47E00' }}>
+              {sellerInitial}
+            </div>
+          )}
+          <span className="text-[10px] font-medium text-[#5C6370] truncate min-w-0 flex-1">
+            {product.seller?.name || '—'}
+          </span>
+          {product.seller?.isVerified && (
+            <BadgeCheck size={11} color="#10B981" fill="#10B981" strokeWidth={2.5} />
+          )}
+        </div>
+
+        {/* Footer — rating + views */}
+        <div
+          className="flex items-center justify-between mt-1 pt-1.5"
+          style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}
+        >
+          <div className="flex items-center gap-0.5">
+            <Star size={11} color="#F5C842" fill="#F5C842" strokeWidth={0} />
+            <span className="text-[10px] font-bold text-[#111318]">{stars > 0 ? stars : '—'}</span>
           </div>
-        )}
+          <div className="flex items-center gap-0.5">
+            <Eye size={11} color="#9EA5B0" strokeWidth={2} />
+            <span className="text-[10px] font-medium text-[#9EA5B0]">{formatViews(views)}</span>
+          </div>
+        </div>
       </div>
-    </button>
+    </article>
   );
 };
 
-// ── Main Search Page ──
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SHEET SECTION + TOGGLE + DUAL RANGE SLIDER
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const SheetSection: React.FC<{ title?: string; badge?: string; children: React.ReactNode }> = ({
+  title, badge, children,
+}) => (
+  <section className="py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+    {title && (
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-[13px] font-black text-[#111318] tracking-tight m-0">{title}</h4>
+        {badge && <span className="text-[11px] font-bold" style={{ color: '#C47E00' }}>{badge}</span>}
+      </div>
+    )}
+    {children}
+  </section>
+);
+
+const Toggle: React.FC<{ value: boolean; onChange: (v: boolean) => void }> = ({ value, onChange }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={value}
+    onClick={() => onChange(!value)}
+    className="relative w-11 h-6 rounded-full border-none cursor-pointer transition-colors duration-200"
+    style={{ background: value ? '#F5C842' : '#D8DBE0' }}
+  >
+    <span
+      className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200"
+      style={{ left: value ? 22 : 2, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
+    />
+  </button>
+);
+
+const DualRangeSlider: React.FC<{
+  min: number; max: number; step: number;
+  minValue: number; maxValue: number;
+  onChange: (lo: number, hi: number) => void;
+}> = ({ min, max, step, minValue, maxValue, onChange }) => {
+  const lowPct = ((minValue - min) / (max - min)) * 100;
+  const highPct = ((maxValue - min) / (max - min)) * 100;
+
+  return (
+    <div className="relative pt-3 pb-2">
+      <div className="relative h-1.5 rounded-full" style={{ background: '#E4E6EA' }}>
+        <div
+          className="absolute h-full rounded-full"
+          style={{ left: `${lowPct}%`, right: `${100 - highPct}%`, background: '#F5C842' }}
+        />
+      </div>
+
+      <input
+        type="range" min={min} max={max} step={step} value={minValue}
+        onChange={e => onChange(Math.min(Number(e.target.value), maxValue - step), maxValue)}
+        className="dual-range-input" style={{ zIndex: 2 }}
+      />
+      <input
+        type="range" min={min} max={max} step={step} value={maxValue}
+        onChange={e => onChange(minValue, Math.max(Number(e.target.value), minValue + step))}
+        className="dual-range-input" style={{ zIndex: 3 }}
+      />
+
+      <div className="flex items-center justify-between mt-3">
+        <span className="text-[11px] font-bold text-[#5C6370]">{minValue.toLocaleString('fr-FR')}</span>
+        <span className="text-[11px] font-bold text-[#5C6370]">{maxValue.toLocaleString('fr-FR')}+</span>
+      </div>
+
+      <style>{`
+        .dual-range-input {
+          position: absolute; top: 6px; left: 0; right: 0;
+          width: 100%; height: 24px;
+          background: transparent;
+          -webkit-appearance: none; appearance: none;
+          pointer-events: none;
+        }
+        .dual-range-input::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 20px; height: 20px; border-radius: 50%;
+          background: #F5C842; border: 3px solid #FFFFFF;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+          cursor: pointer; pointer-events: auto;
+        }
+        .dual-range-input::-moz-range-thumb {
+          width: 20px; height: 20px; border-radius: 50%;
+          background: #F5C842; border: 3px solid #FFFFFF;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+          cursor: pointer; pointer-events: auto;
+        }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to   { transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FILTER SHEET
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+interface FilterSheetProps {
+  open: boolean;
+  filters: SearchFiltersState;
+  onFilterChange: <K extends keyof SearchFiltersState>(key: K, value: SearchFiltersState[K]) => void;
+  onReset: () => void;
+  onClose: () => void;
+  resultsCount: number;
+  countries: Country[];
+  categories: Category[];
+  verifiedOnly: boolean;
+  onVerifiedChange: (v: boolean) => void;
+}
+
+const FilterSheet: React.FC<FilterSheetProps> = ({
+  open, filters, onFilterChange, onReset, onClose,
+  resultsCount, countries, categories, verifiedOnly, onVerifiedChange,
+}) => {
+  if (!open) return null;
+
+  // Local price state so slider doesn't fire Algolia on every drag
+  const [localMin, setLocalMin] = useState(filters.minPrice ?? 0);
+  const [localMax, setLocalMax] = useState(filters.maxPrice ?? 500000);
+
+  const handleApply = () => {
+    onFilterChange('minPrice', localMin === 0 ? null : localMin);
+    onFilterChange('maxPrice', localMax === 500000 ? null : localMax);
+    onClose();
+  };
+
+  const handleReset = () => {
+    setLocalMin(0);
+    setLocalMax(500000);
+    onReset();
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex flex-col justify-end"
+      style={{ background: 'rgba(17,19,24,0.45)', backdropFilter: 'blur(2px)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="bg-white flex flex-col"
+        style={{
+          borderRadius: '20px 20px 0 0',
+          maxHeight: '88%',
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.18)',
+          animation: 'slideUp 280ms cubic-bezier(0.32,0.72,0,1) both',
+        }}
+      >
+        {/* Handle */}
+        <div className="flex flex-col items-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(0,0,0,0.15)' }} />
+        </div>
+
+        {/* Title row */}
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
+          <h3 className="text-[18px] font-black text-[#111318] tracking-tight m-0">Filtres</h3>
+          <button
+            type="button" onClick={onClose} aria-label="Fermer"
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-[#F0F1F4] border-none cursor-pointer active:scale-90 transition-transform"
+          >
+            <X size={16} color="#111318" strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 pb-5" style={{ scrollbarWidth: 'thin' }}>
+          {/* Catégorie */}
+          <SheetSection title="Catégorie">
+            <div className="flex flex-wrap gap-1.5">
+              {[{ id: null, name: 'Tout' }, ...categories].map(cat => {
+                const active = filters.category === (cat.id ?? null);
+                return (
+                  <button
+                    key={cat.id ?? '__all__'}
+                    type="button"
+                    onClick={() => onFilterChange('category', cat.id ?? null)}
+                    className="h-8 px-3 rounded-full border-none cursor-pointer transition-all"
+                    style={{
+                      background: active ? '#F5C842' : '#FFFFFF',
+                      border: active ? 'none' : '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: active ? '0 2px 6px rgba(245,200,66,0.35)' : 'none',
+                    }}
+                  >
+                    <span
+                      className="text-[12px] tracking-tight"
+                      style={{ color: active ? '#111318' : '#5C6370', fontWeight: active ? 800 : 600 }}
+                    >
+                      {('icon' in cat && cat.icon) ? `${cat.icon} ` : ''}{cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </SheetSection>
+
+          {/* Prix */}
+          <SheetSection
+            title="Prix"
+            badge={`${localMin.toLocaleString('fr-FR')} – ${localMax.toLocaleString('fr-FR')}`}
+          >
+            <DualRangeSlider
+              min={0} max={500000} step={5000}
+              minValue={localMin} maxValue={localMax}
+              onChange={(lo, hi) => { setLocalMin(lo); setLocalMax(hi); }}
+            />
+          </SheetSection>
+
+          {/* Localisation */}
+          <SheetSection title="Localisation">
+            <div className="flex gap-2 flex-wrap">
+              {countries.map(c => {
+                const active = filters.country === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => onFilterChange('country', active ? null : c.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl border-none cursor-pointer transition-all min-w-[80px]"
+                    style={{
+                      background: active ? '#FFF8E0' : '#FFFFFF',
+                      border: active ? '1.5px solid #F5C842' : '1.5px solid rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <span className="text-[18px]">{c.flag}</span>
+                    <span
+                      className="text-[12px] tracking-tight"
+                      style={{ color: active ? '#111318' : '#5C6370', fontWeight: active ? 800 : 600 }}
+                    >
+                      {c.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </SheetSection>
+
+          {/* Vendeur vérifié */}
+          <SheetSection>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[14px] font-bold text-[#111318] tracking-tight">Vendeur vérifié uniquement</span>
+                <span className="text-[11px] text-[#9EA5B0] mt-0.5">Boutiques authentifiées par Nunulia</span>
+              </div>
+              <Toggle value={verifiedOnly} onChange={onVerifiedChange} />
+            </div>
+          </SheetSection>
+
+          {/* Type / condition */}
+          <SheetSection title="Type">
+            <div className="flex p-1 rounded-full" style={{ background: '#F0F1F4' }}>
+              {(['Tout', 'Nouveau'] as const).map(opt => {
+                const isNewOpt = opt === 'Nouveau';
+                const active = isNewOpt ? filters.isNew : !filters.isNew;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => onFilterChange('isNew', isNewOpt)}
+                    className="flex-1 h-9 rounded-full border-none cursor-pointer transition-all"
+                    style={{
+                      background: active ? '#FFFFFF' : 'transparent',
+                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.10)' : 'none',
+                    }}
+                  >
+                    <span
+                      className="text-[12px] tracking-tight"
+                      style={{ color: active ? '#111318' : '#5C6370', fontWeight: active ? 800 : 600 }}
+                    >
+                      {opt}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </SheetSection>
+
+          <div className="h-2" />
+        </div>
+
+        {/* Fixed bottom */}
+        <div
+          className="flex gap-2 px-4 py-3"
+          style={{
+            background: '#FFFFFF',
+            borderTop: '1px solid rgba(0,0,0,0.06)',
+            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+          }}
+        >
+          <button
+            type="button" onClick={handleReset}
+            className="h-12 px-5 rounded-full bg-transparent cursor-pointer active:scale-95 transition-transform"
+            style={{ border: '1.5px solid rgba(0,0,0,0.10)' }}
+          >
+            <span className="text-[14px] font-bold text-[#111318] tracking-tight">Réinitialiser</span>
+          </button>
+          <button
+            type="button" onClick={handleApply}
+            className="flex-1 h-12 rounded-full border-none cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ background: '#F5C842', boxShadow: '0 4px 14px rgba(245,200,66,0.45)' }}
+          >
+            <span className="text-[14px] font-black text-[#111318] tracking-tight">
+              Voir {resultsCount.toLocaleString('fr-FR')} résultats
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SUGGESTIONS PANEL
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+interface SuggestionsPanelProps {
+  recent: string[];
+  trending: string[];
+  onSelect: (term: string) => void;
+  onRemoveRecent: (term: string) => void;
+  onClearAll: () => void;
+  // Autocomplete list (typed suggestions)
+  typedSuggestions?: string[];
+  autoProducts?: Product[];
+  inputValue?: string;
+}
+
+const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
+  recent, trending, onSelect, onRemoveRecent, onClearAll,
+  typedSuggestions = [], autoProducts = [], inputValue = '',
+}) => {
+  // If user has typed something, show autocomplete list
+  if (inputValue.trim().length >= 1 && (typedSuggestions.length > 0 || autoProducts.length > 0)) {
+    return (
+      <div className="px-4 pt-2 pb-12 bg-white">
+        {typedSuggestions.map(term => (
+          <button
+            key={term}
+            type="button"
+            onClick={() => onSelect(term)}
+            className="flex items-center gap-3 w-full py-3 px-1 rounded-lg active:bg-black/5 transition-colors text-left"
+          >
+            <Search size={15} color="#9EA5B0" strokeWidth={2} />
+            <span className="flex-1 text-[14px] font-medium text-[#111318]">{term}</span>
+          </button>
+        ))}
+        {autoProducts.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onSelect(p.title)}
+            className="flex items-center gap-3 w-full py-2.5 px-1 rounded-lg active:bg-black/5 transition-colors text-left"
+          >
+            {p.images?.[0] ? (
+              <img
+                src={getOptimizedUrl(p.images[0], 48)}
+                alt=""
+                className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-lg bg-[#F0F1F4] flex-shrink-0" />
+            )}
+            <span className="flex-1 text-[13px] font-medium text-[#111318] line-clamp-1">{p.title}</span>
+            <span className="text-[12px] font-bold flex-shrink-0" style={{ color: '#C47E00' }}>
+              {p.price?.toLocaleString('fr-FR')}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // Otherwise show recent + trending
+  return (
+    <div className="px-4 pt-4 pb-12">
+      {recent.length > 0 && (
+        <section className="mb-7">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-[10px] font-black uppercase tracking-[.08em] m-0" style={{ color: '#9EA5B0' }}>
+              Recherches récentes
+            </h4>
+            <button
+              type="button" onClick={onClearAll}
+              className="bg-transparent border-none cursor-pointer p-1 -mr-1"
+            >
+              <span className="text-[11px] font-bold" style={{ color: '#C47E00' }}>Tout effacer</span>
+            </button>
+          </div>
+
+          <ul className="flex flex-col gap-0.5 list-none m-0 p-0">
+            {recent.map(term => (
+              <li
+                key={term}
+                className="flex items-center gap-3 py-2.5 px-1 cursor-pointer rounded-lg active:bg-black/5 transition-colors"
+                onClick={() => onSelect(term)}
+              >
+                <Clock size={16} color="#9EA5B0" strokeWidth={2} />
+                <span className="flex-1 text-[14px] font-medium text-[#111318]">{term}</span>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); onRemoveRecent(term); }}
+                  aria-label={`Supprimer ${term}`}
+                  className="w-7 h-7 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer active:bg-black/5"
+                >
+                  <X size={14} color="#9EA5B0" strokeWidth={2.25} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {trending.length > 0 && (
+        <section>
+          <div className="flex items-center gap-1.5 mb-3">
+            <Flame size={14} color="#EF4444" fill="#EF4444" strokeWidth={0} />
+            <h4 className="text-[10px] font-black uppercase tracking-[.08em] m-0" style={{ color: '#9EA5B0' }}>
+              Tendances
+            </h4>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {trending.map((tag, i) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onSelect(tag)}
+                className="inline-flex items-center gap-1 h-8 px-3 rounded-full bg-white cursor-pointer transition-transform active:scale-95"
+                style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+              >
+                {i < 3 && <span className="text-[11px]">🔥</span>}
+                <span className="text-[12px] font-semibold text-[#111318] tracking-tight">{tag}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * EMPTY STATE
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const EmptyState: React.FC<{ query: string; onPostRequest?: () => void }> = ({ query, onPostRequest }) => (
+  <div className="flex flex-col items-center text-center px-6 pt-12 pb-8">
+    <div
+      className="relative w-32 h-32 rounded-full flex items-center justify-center mb-6"
+      style={{
+        background: 'radial-gradient(circle at 30% 30%, #FEF3C2 0%, #FCE7A6 45%, #F5C842 100%)',
+        boxShadow: '0 12px 32px rgba(245,200,66,0.30)',
+      }}
+    >
+      <span className="absolute w-2 h-2 rounded-full" style={{ top: 8, right: 16, background: '#F5C842', boxShadow: '0 0 0 4px rgba(245,200,66,0.18)' }} />
+      <span className="absolute w-1.5 h-1.5 rounded-full" style={{ bottom: 12, left: 14, background: '#C47E00' }} />
+      <Search size={48} color="#7A4F00" strokeWidth={2.25} />
+    </div>
+
+    <h2 className="text-[20px] font-black text-[#111318] tracking-tight m-0 mb-2">
+      Aucun résultat pour<br />
+      <span style={{ color: '#C47E00' }}>«&nbsp;{query}&nbsp;»</span>
+    </h2>
+    <p className="text-[13px] font-medium text-[#5C6370] leading-relaxed max-w-[260px] m-0 mb-7">
+      Essayez avec d'autres mots ou postez une demande — les vendeurs vous contacteront.
+    </p>
+
+    <button
+      type="button"
+      onClick={onPostRequest}
+      className="flex items-center gap-2 h-12 px-6 rounded-full border-none cursor-pointer active:scale-[0.97] transition-transform"
+      style={{ background: '#F5C842', boxShadow: '0 6px 18px rgba(245,200,66,0.50)' }}
+    >
+      <span className="text-[16px]">🔍</span>
+      <span className="text-[14px] font-black text-[#111318] tracking-tight">Poster une demande Je Cherche</span>
+    </button>
+
+    <p className="text-[11px] font-medium text-[#9EA5B0] mt-5 max-w-[260px]">
+      Plus de <span className="font-bold text-[#5C6370]">4 200 vendeurs</span> reçoivent votre demande sur WhatsApp.
+    </p>
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * MAIN SEARCH PAGE
+ * ───────────────────────────────────────────────────────────────────────────── */
+
 const SearchPage: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { countries } = useActiveCountries();
   const { categories } = useCategories();
   const { activeCountry } = useAppContext();
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [gridDensity, setGridDensity] = useState<'comfortable' | 'compact'>('comfortable');
-  const openJeChercheForm = () => window.dispatchEvent(new CustomEvent('open-je-cherche'));
 
   const {
     query, filters, results, isLoading, hasMore,
-    totalCount, error, highlightResults, queryID,
+    totalCount, highlightResults, queryID,
     setQuery, setFilter, resetFilters, loadMore,
   } = useSearch();
 
-  // Local input state — decoupled from useSearch to prevent per-keystroke Algolia calls.
-  // Algolia only fires when user presses Enter or selects a suggestion.
+  // Local input state — decoupled from Algolia
   const [inputValue, setInputValue] = useState(query);
+  const [focused, setFocused] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // ── Suggestions state ──
+  // Suggestions
   const [recentSearches, setRecentSearches] = useState<string[]>(() => getSearchHistory().slice(0, 5));
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [autoProducts, setAutoProducts] = useState<Product[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState(-1);
   const autocompleteAbort = useRef(0);
   const activeCountryRef = useRef(activeCountry);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
-  // Prevents the autocomplete from firing an Algolia call on initial page load
-  // when inputValue is pre-filled from the URL (?q=soulier). Algolia only fires
-  // once the user actively types — local suggestions still show immediately.
   const hasUserTyped = useRef(false);
 
   useEffect(() => { activeCountryRef.current = activeCountry; }, [activeCountry]);
 
-  // Focus input on mount
+  // Focus input on mount only if no pre-filled query (avoid mobile keyboard pop on nav)
   useEffect(() => {
-    inputRef.current?.focus();
+    if (!query) {
+      inputRef.current?.focus();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close suggestions on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  // ── Autocomplete: local suggestions only (lightweight, no Algolia per-keystroke) ──
+  // Autocomplete
   useEffect(() => {
     const requestId = ++autocompleteAbort.current;
     if (inputValue.length < 1) {
       setSuggestions([]);
       setAutoProducts([]);
-      setShowSuggestions(false);
       return;
     }
-    // Layer 1: Instant local suggestions (free — no Algolia call)
     const local = getLocalSuggestions(inputValue);
     setSuggestions(local);
-    setShowSuggestions(local.length > 0);
-    setSelectedSuggestionIdx(-1);
 
-    // Layer 2: Algolia autocomplete — only after the user has actively typed.
-    // Skipped on initial mount when inputValue is pre-filled from URL params
-    // (e.g. navigating to /search?q=soulier): local suggestions are shown
-    // instantly, and Algolia is hit only when the user refines the query.
     if (inputValue.length >= 2 && hasUserTyped.current) {
       const timer = setTimeout(async () => {
         try {
           const products = await algoliaAutocompleteProducts(inputValue, activeCountryRef.current || undefined);
           if (autocompleteAbort.current !== requestId) return;
           setAutoProducts(products);
-          if (products.length > 0 || local.length > 0) setShowSuggestions(true);
         } catch { /* silent */ }
       }, 800);
       return () => clearTimeout(timer);
@@ -310,9 +1011,11 @@ const SearchPage: React.FC = () => {
   const handleSelectSuggestion = useCallback((term: string) => {
     setInputValue(term);
     setQuery(term);
-    setShowSuggestions(false);
+    setFocused(false);
     addToSearchHistory(term);
     setRecentSearches(getSearchHistory().slice(0, 5));
+    setSuggestions([]);
+    setAutoProducts([]);
   }, [setQuery]);
 
   const handleRemoveRecent = useCallback((term: string) => {
@@ -320,19 +1023,10 @@ const SearchPage: React.FC = () => {
     setRecentSearches(prev => prev.filter(t => t !== term));
   }, []);
 
-  // Highlight matching text in suggestions
-  const highlightMatch = useCallback((text: string, matchQuery: string) => {
-    if (!matchQuery) return <span>{text}</span>;
-    const idx = text.toLowerCase().indexOf(matchQuery.toLowerCase());
-    if (idx === -1) return <span>{text}</span>;
-    return (
-      <>
-        <span>{text.slice(0, idx)}</span>
-        <span className="text-gray-900 dark:text-white font-bold">{text.slice(idx, idx + matchQuery.length)}</span>
-        <span>{text.slice(idx + matchQuery.length)}</span>
-      </>
-    );
-  }, []);
+  const handleClearAllRecent = useCallback(() => {
+    recentSearches.forEach(t => removeFromSearchHistory(t));
+    setRecentSearches([]);
+  }, [recentSearches]);
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -347,7 +1041,6 @@ const SearchPage: React.FC = () => {
 
   const handleProductClick = useCallback((product: Product, position: number) => {
     if (query.trim()) addToSearchHistory(query.trim());
-    // Track click for Algolia analytics
     trackSearchClick(product.id, queryID, position);
     navigate(`/product/${product.slug || product.id}`, { state: { product } });
   }, [navigate, query, queryID]);
@@ -360,309 +1053,86 @@ const SearchPage: React.FC = () => {
       setRecentSearches(getSearchHistory().slice(0, 5));
       setQuery(term);
     }
-    setShowSuggestions(false);
+    setFocused(false);
+    setSuggestions([]);
+    setAutoProducts([]);
   }, [inputValue, setQuery]);
 
-  const activeFilterCount = [
-    filters.country,
-    filters.province,
-    filters.isNew,
-    filters.category,
-    filters.minPrice !== null,
-    filters.maxPrice !== null,
-  ].filter(Boolean).length;
+  // Active filter chips
+  const activeChips = buildActiveChips(filters, categories, countries);
+  const activeFilterCount = activeChips.length;
 
-  // ── Filter Sidebar Content (shared desktop/mobile) ──
-  const renderFilters = () => (
-    <div className="space-y-6">
-      {/* Pays — dropdown, défaut = Tous */}
-      <div>
-        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">{t('search.countryLabel')}</h4>
-        <select
-          value={filters.country ?? ''}
-          onChange={e => {
-            const val = e.target.value || null;
-            setFilter('country', val);
-            setFilter('province', null); // reset city when country changes
-          }}
-          className="w-full bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm outline-none cursor-pointer focus:border-gold-400/50"
-        >
-          <option value="">{t('search.allCountries')}</option>
-          {countries.map(c => (
-            <option key={c.id} value={c.id}>{c.flag} {c.name}</option>
-          ))}
-        </select>
-      </div>
+  const handleRemoveChip = useCallback((id: string) => {
+    if (id === 'category') setFilter('category', null);
+    else if (id === 'country') { setFilter('country', null); setFilter('province', null); }
+    else if (id === 'province') setFilter('province', null);
+    else if (id === 'price') { setFilter('minPrice', null); setFilter('maxPrice', null); }
+    else if (id === 'isNew') setFilter('isNew', false);
+  }, [setFilter]);
 
-      {/* Ville — dropdown cascadant, visible uniquement quand un pays est sélectionné */}
-      {filters.country && CITIES_BY_COUNTRY[filters.country] && (
-        <div>
-          <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Ville</h4>
-          <select
-            value={filters.province ?? ''}
-            onChange={e => setFilter('province', e.target.value || null)}
-            className="w-full bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm outline-none cursor-pointer focus:border-gold-400/50"
-          >
-            <option value="">Toutes les villes</option>
-            {CITIES_BY_COUNTRY[filters.country].map(city => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </select>
-        </div>
-      )}
+  // Sort cycle
+  const SORT_CYCLE: SearchFiltersState['sortBy'][] = ['relevance', 'newest', 'price_asc', 'price_desc'];
+  const handleCycleSort = useCallback(() => {
+    const idx = SORT_CYCLE.indexOf(filters.sortBy);
+    const next = SORT_CYCLE[(idx + 1) % SORT_CYCLE.length];
+    setFilter('sortBy', next);
+  }, [filters.sortBy, setFilter]);
 
-      {/* Novelty */}
-      <div>
-        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t('search.newest')}</h4>
-        <button
-          onClick={() => setFilter('isNew', !filters.isNew)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full text-left ${
-            filters.isNew ? 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 font-bold' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-          }`}
-        >
-          <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-            filters.isNew ? 'bg-green-500 border-green-500' : 'border-gray-400 dark:border-gray-600'
-          }`}>
-            {filters.isNew && <span className="text-white text-[10px]">&#10003;</span>}
-          </span>
-          {t('search.newOnly')}
-        </button>
-      </div>
+  const openJeChercheForm = () => window.dispatchEvent(new CustomEvent('open-je-cherche'));
 
-      {/* Category */}
-      <div>
-        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t('search.category')}</h4>
-        <div className="space-y-1 max-h-48 overflow-y-auto">
-          <button
-            onClick={() => setFilter('category', null)}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-              !filters.category
-                ? 'bg-gold-400/15 text-gold-700 dark:bg-gold-400/10 dark:text-gold-400 font-bold'
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-            }`}
-          >
-            {t('search.allCategories')}
-          </button>
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setFilter('category', filters.category === cat.id ? null : cat.id)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                filters.category === cat.id ? 'bg-gold-400/15 text-gold-700 dark:bg-gold-400/10 dark:text-gold-400 font-bold' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-              }`}
-            >
-              {cat.icon && <span className="mr-1">{cat.icon}</span>}
-              {cat.name || cat.id}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Price Range */}
-      <div>
-        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t('search.priceRange')}</h4>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            placeholder={t('search.min')}
-            value={filters.minPrice ?? ''}
-            onChange={e => setFilter('minPrice', e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-white border border-gray-200 text-gray-900 placeholder-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:border-gold-400/50 outline-none"
-          />
-          <input
-            type="number"
-            placeholder={t('search.max')}
-            value={filters.maxPrice ?? ''}
-            onChange={e => setFilter('maxPrice', e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-white border border-gray-200 text-gray-900 placeholder-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:border-gold-400/50 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Reset */}
-      {activeFilterCount > 0 && (
-        <button
-          onClick={resetFilters}
-          className="w-full py-2 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-300 dark:border-red-500/20 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/5 transition-colors"
-        >
-          {t('search.resetFilters')}
-        </button>
-      )}
-    </div>
+  // Show suggestions panel when: focused with no typed text, OR typing suggestions exist
+  const showSuggestionsPanel = focused && (
+    inputValue.trim().length === 0 ||
+    suggestions.length > 0 ||
+    autoProducts.length > 0
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 pt-safe-header md:pt-24 pb-24 md:pb-8 px-4 md:px-8">
-      {/* Toolbar: results count + sort + actions */}
-      <div className="max-w-7xl mx-auto mb-4 space-y-2">
-        {/* Row 1: count (left) + Je Cherche desktop + sort (right) */}
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-gray-600 dark:text-gray-400 flex-1 min-w-0 truncate">
-            {isLoading && results.length === 0
-              ? t('search.searching')
-              : totalCount > 0
-              ? `${totalCount.toLocaleString()} ${t('search.results')}${query.trim() ? ` ${t('search.forQuery')} "${query.trim()}"` : ''}`
-              : query.trim()
-              ? `${t('search.noResults')} "${query.trim()}"`
-              : t('search.recentProducts')
-            }
-          </p>
+    <div className="relative flex flex-col min-h-screen bg-[#F7F8FA]">
+      <StickyHeader
+        inputValue={inputValue}
+        onInputChange={v => { setInputValue(v); hasUserTyped.current = true; }}
+        onSubmit={handleSearch}
+        onBack={() => navigate(-1)}
+        focused={focused}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          // Delay to allow click events on suggestions to fire first
+          setTimeout(() => setFocused(false), 150);
+        }}
+        inputRef={inputRef}
+        activeChips={focused ? [] : activeChips}
+        onRemoveChip={handleRemoveChip}
+      />
 
-          {/* Sort Dropdown */}
-          <select
-            value={filters.sortBy}
-            onChange={e => setFilter('sortBy', e.target.value as SearchFiltersState['sortBy'])}
-            className="shrink-0 px-3 py-2 bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl text-sm outline-none cursor-pointer"
-          >
-            <option value="relevance">{t('search.sortRelevance')}</option>
-            <option value="newest">{t('search.sortNewest')}</option>
-            <option value="price_asc">{t('search.sortPriceAsc')}</option>
-            <option value="price_desc">{t('search.sortPriceDesc')}</option>
-          </select>
-
-          {/* Grid density toggle — desktop only */}
-          <div className="hidden md:flex items-center bg-white border border-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-xl overflow-hidden shrink-0">
-            <button
-              onClick={() => setGridDensity('comfortable')}
-              title="Vue confortable"
-              className={`p-2 transition-colors ${gridDensity === 'comfortable' ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              {/* 2×2 grid icon */}
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <rect x="0.5" y="0.5" width="6.5" height="6.5" rx="1.5"/>
-                <rect x="9" y="0.5" width="6.5" height="6.5" rx="1.5"/>
-                <rect x="0.5" y="9" width="6.5" height="6.5" rx="1.5"/>
-                <rect x="9" y="9" width="6.5" height="6.5" rx="1.5"/>
-              </svg>
-            </button>
-            <button
-              onClick={() => setGridDensity('compact')}
-              title="Vue compacte"
-              className={`p-2 transition-colors ${gridDensity === 'compact' ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-            >
-              {/* 3×3 grid icon */}
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <rect x="0" y="0" width="4.2" height="4.2" rx="1"/>
-                <rect x="5.9" y="0" width="4.2" height="4.2" rx="1"/>
-                <rect x="11.8" y="0" width="4.2" height="4.2" rx="1"/>
-                <rect x="0" y="5.9" width="4.2" height="4.2" rx="1"/>
-                <rect x="5.9" y="5.9" width="4.2" height="4.2" rx="1"/>
-                <rect x="11.8" y="5.9" width="4.2" height="4.2" rx="1"/>
-                <rect x="0" y="11.8" width="4.2" height="4.2" rx="1"/>
-                <rect x="5.9" y="11.8" width="4.2" height="4.2" rx="1"/>
-                <rect x="11.8" y="11.8" width="4.2" height="4.2" rx="1"/>
-              </svg>
-            </button>
+      <main className="flex-1">
+        {showSuggestionsPanel ? (
+          <SuggestionsPanel
+            recent={recentSearches}
+            trending={getPopularSearches()}
+            onSelect={handleSelectSuggestion}
+            onRemoveRecent={handleRemoveRecent}
+            onClearAll={handleClearAllRecent}
+            typedSuggestions={suggestions}
+            autoProducts={autoProducts}
+            inputValue={inputValue}
+          />
+        ) : isLoading && results.length === 0 ? (
+          <div className="grid grid-cols-2 gap-2 px-3 pt-3 pb-6">
+            {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
-        </div>
-
-        {/* Row 2: mobile only — Filtres + Reset (when filters active) */}
-        <div className="flex items-center gap-2 md:hidden">
-          <button
-            onClick={() => setShowMobileFilters(true)}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 rounded-xl text-sm"
-          >
-            <span>&#9776;</span> {t('search.filters')}
-            {activeFilterCount > 0 && (
-              <span className="bg-gold-400 text-gray-900 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-          {activeFilterCount > 0 && (
-            <button
-              onClick={resetFilters}
-              className="px-3 min-h-[44px] text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
-              aria-label={t('search.resetFilters')}
-            >
-              &#10005;
-            </button>
-          )}
-        </div>
-
-        {/* Mobile category chip rail — horizontal scroll, matches reference Home.html spec */}
-        <div className="md:hidden -mx-4 px-4">
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
-            <button
-              onClick={() => setFilter('category', null)}
-              className={[
-                'flex-shrink-0 h-9 px-3 rounded-full text-[13px] transition-all',
-                !filters.category
-                  ? 'bg-gold-400 text-gray-900 font-bold shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
-                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-medium',
-              ].join(' ')}
-            >
-              {t('search.allCategories')}
-            </button>
-            {categories.map(cat => {
-              const on = filters.category === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setFilter('category', on ? null : cat.id)}
-                  className={[
-                    'flex-shrink-0 h-9 px-3 rounded-full text-[13px] transition-all flex items-center gap-1.5',
-                    on
-                      ? 'bg-gold-400 text-gray-900 font-bold shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
-                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-medium',
-                  ].join(' ')}
-                >
-                  {cat.icon && <span className="text-[15px] leading-none">{cat.icon}</span>}
-                  <span>{cat.name || cat.id}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Layout */}
-      <div className="max-w-7xl mx-auto flex gap-6">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:block w-64 flex-shrink-0">
-          <div className="sticky top-24 bg-white border border-gray-200 dark:bg-gray-800/30 dark:border-gray-700/50 rounded-2xl p-4 shadow-sm dark:shadow-none">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">{t('search.filters')}</h3>
-            {renderFilters()}
-          </div>
-        </aside>
-
-        {/* Results Grid */}
-        <div className="flex-1 min-w-0">
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-500/30 rounded-xl p-4 mb-4 text-center">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              <button
-                onClick={() => setQuery(query)}
-                className="mt-2 text-xs text-red-700 dark:text-red-300 underline"
-              >
-                {t('search.retry')}
-              </button>
-            </div>
-          )}
-
-          {/* Loading Skeletons */}
-          {isLoading && results.length === 0 && (
-            <div className={`grid gap-2 ${
-              gridDensity === 'comfortable'
-                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-                : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
-            }`}>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          )}
-
-          {/* Results */}
-          {results.length > 0 && (
-            <div className={`grid gap-2 ${
-              gridDensity === 'comfortable'
-                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-                : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
-            }`}>
+        ) : results.length > 0 ? (
+          <>
+            <SortFilterBar
+              count={totalCount}
+              filterCount={activeFilterCount}
+              sortBy={filters.sortBy}
+              onOpenFilters={() => setShowFilterSheet(true)}
+              onCycleSort={handleCycleSort}
+            />
+            <div className="grid grid-cols-2 gap-2 px-3 pb-6">
               {results.map((product, index) => (
-                <ProductCard
+                <SearchResultCard
                   key={product.id}
                   product={product}
                   highlight={highlightResults.get(product.id)}
@@ -671,135 +1141,53 @@ const SearchPage: React.FC = () => {
                 />
               ))}
             </div>
-          )}
 
-          {/* Recent & Popular Searches (empty query state) */}
-          {!isLoading && !query.trim() && results.length === 0 && (
-            <div className="space-y-8 py-4">
-              {recentSearches.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-bold text-gray-600 dark:text-gray-500 uppercase tracking-wider mb-3">{t('search.recentSearches')}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {recentSearches.map((term, i) => (
-                      <div key={i} className="flex items-center min-h-[44px] gap-1 bg-white border border-gray-200 dark:bg-gray-800/60 dark:border-gray-700/50 rounded-full">
-                        <button
-                          onClick={() => handleSelectSuggestion(term)}
-                          className="pl-3 pr-1 py-1.5 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-                        >
-                          {term}
-                        </button>
-                        <button
-                          onClick={() => handleRemoveRecent(term)}
-                          className="pr-2 py-1.5 text-gray-400 hover:text-red-600 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
-                        >
-                          &#10005;
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div>
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t('search.popularSearches')}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {getPopularSearches().map((term, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSelectSuggestion(term)}
-                      className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 dark:text-gray-400 dark:bg-gray-800/40 dark:border-gray-700/50 dark:hover:bg-gray-800 dark:hover:text-white dark:hover:border-gray-600 rounded-full transition-all"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
+            {/* Je Cherche — few results */}
+            {!isLoading && results.length < 4 && query.trim() && (
+              <JeChercheBlock query={query.trim()} mode="few_results" onOpen={openJeChercheForm} />
+            )}
+
+            {/* Infinite scroll sentinel */}
+            {hasMore && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isLoading && (
+                  <div className="w-6 h-6 border-2 border-[#F5C842] border-t-transparent rounded-full animate-spin" />
+                )}
               </div>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!isLoading && results.length === 0 && !error && query.trim() && (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">&#128270;</div>
-              <p className="text-lg text-gray-900 dark:text-gray-300 font-bold mb-2">
-                {t('search.noResults')} &ldquo;{query.trim()}&rdquo;
-              </p>
-              <p className="text-sm text-gray-500 mb-4">{t('search.tryDifferent')}</p>
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={resetFilters}
-                  className="px-4 py-2 bg-gold-400/15 border border-gold-400/40 text-gold-700 dark:bg-gold-400/10 dark:border-gold-400/30 dark:text-gold-400 rounded-xl text-sm font-bold hover:bg-gold-400/25 dark:hover:bg-gold-400/20 transition-colors"
-                >
-                  {t('search.clearAllFilters')}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Je Cherche — 0 results */}
-          {!isLoading && results.length === 0 && !error && query.trim() && (
-            <JeChercheBlock
-              query={query.trim()}
-              mode="no_results"
-              onOpen={openJeChercheForm}
+            )}
+          </>
+        ) : query.trim() ? (
+          <>
+            <EmptyState
+              query={query}
+              onPostRequest={() => window.dispatchEvent(new CustomEvent('open-je-cherche'))}
             />
-          )}
-
-          {/* Je Cherche — few results (1–3) */}
-          {!isLoading && results.length > 0 && results.length < 4 && query.trim() && (
-            <JeChercheBlock
-              query={query.trim()}
-              mode="few_results"
-              onOpen={openJeChercheForm}
-            />
-          )}
-
-          {/* Load More / Infinite scroll sentinel */}
-          {hasMore && (
-            <div ref={loadMoreRef} className="flex justify-center py-8">
-              {isLoading ? (
-                <div className="w-6 h-6 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <button
-                  onClick={loadMore}
-                  className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl text-sm transition-colors"
-                >
-                  {t('search.loadMore')}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile Filter Bottom Sheet */}
-      {showMobileFilters && (
-        <div className="md:hidden fixed inset-0 z-[60]">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowMobileFilters(false)}
+            <JeChercheBlock query={query.trim()} mode="no_results" onOpen={openJeChercheForm} />
+          </>
+        ) : (
+          /* Empty query — show recent/popular */
+          <SuggestionsPanel
+            recent={recentSearches}
+            trending={getPopularSearches()}
+            onSelect={handleSelectSuggestion}
+            onRemoveRecent={handleRemoveRecent}
+            onClearAll={handleClearAllRecent}
           />
-          {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700 rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto animate-slide-up">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('search.filters')}</h3>
-              <button
-                onClick={() => setShowMobileFilters(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-              >
-                &#10005;
-              </button>
-            </div>
-            {renderFilters()}
-            <button
-              onClick={() => setShowMobileFilters(false)}
-              className="w-full mt-6 py-3 bg-gold-400 text-gray-900 font-bold rounded-xl"
-            >
-              {t('search.applyFilters')}
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </main>
+
+      <FilterSheet
+        open={showFilterSheet}
+        filters={filters}
+        onFilterChange={setFilter}
+        onReset={resetFilters}
+        onClose={() => setShowFilterSheet(false)}
+        resultsCount={totalCount}
+        countries={countries}
+        categories={categories}
+        verifiedOnly={verifiedOnly}
+        onVerifiedChange={setVerifiedOnly}
+      />
     </div>
   );
 };
