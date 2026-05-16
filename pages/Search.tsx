@@ -70,6 +70,11 @@ function getCountryCurrency(countryId?: string): string {
   return INITIAL_COUNTRIES.find(c => c.id === countryId)?.currency || '';
 }
 
+function getCountryName(countryId?: string): string {
+  if (!countryId) return '';
+  return INITIAL_COUNTRIES.find(c => c.id === countryId)?.name || '';
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * ACTIVE FILTER CHIPS
  * ───────────────────────────────────────────────────────────────────────────── */
@@ -434,12 +439,16 @@ const SearchResultCard: React.FC<{
           )}
         </div>
 
-        {/* Localisation — ville + pays */}
+        {/* Localisation — ville prioritaire, pays en fallback */}
         {(() => {
-          const province = product.seller?.sellerDetails?.province;
-          const countryId = product.countryId || product.seller?.sellerDetails?.countryId;
+          const sd = product.seller?.sellerDetails;
+          // commune et province contiennent tous deux la ville (ex: "Bujumbura")
+          // pour les vendeurs récents ; pour les anciens, les deux peuvent être vides.
+          const city = sd?.commune || sd?.province || '';
+          const countryId = product.countryId || sd?.countryId;
           const flag = getCountryFlag(countryId);
-          if (!province && !flag) return null;
+          const countryName = getCountryName(countryId);
+          if (!city && !flag) return null;
           return (
             <div className="flex items-center gap-1 mt-0.5">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9EA5B0" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -447,7 +456,10 @@ const SearchResultCard: React.FC<{
                 <circle cx="12" cy="9" r="2.5"/>
               </svg>
               <span className="text-[10px] text-[#9EA5B0] truncate">
-                {[province, flag].filter(Boolean).join(' · ')}
+                {city
+                  ? `${city}${flag ? ' ' + flag : ''}`
+                  : `${countryName}${flag ? ' ' + flag : flag}`
+                }
               </span>
             </div>
           );
