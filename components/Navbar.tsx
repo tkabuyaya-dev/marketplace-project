@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { User, Product } from '../types';
@@ -6,10 +6,11 @@ import { THEME } from '../constants';
 import { NotificationBell } from './NotificationBell';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { SearchOverlay } from './SearchOverlay';
-import { JeChercheForm } from './JeCherche/JeChercheForm';
 import { CountrySwitcher } from './CountrySwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { useRotatingPlaceholder } from '../hooks/useRotatingPlaceholder';
+
+const openJeCherche = () => window.dispatchEvent(new CustomEvent('open-je-cherche'));
 
 interface NavbarProps {
   currentUser: User | null;
@@ -22,8 +23,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
   const location = useLocation();
   const { t } = useTranslation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isJeChercheOpen, setIsJeChercheOpen] = useState(false);
-
   // Rotating placeholder — terms defined in locale files (nav.searchTerms)
   // useMemo keeps the array reference stable so the hook's interval never resets
   const searchTerms = useMemo(
@@ -32,13 +31,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
     [t],
   );
   const { term: rotatingTerm, visible: termVisible } = useRotatingPlaceholder(searchTerms);
-
-  // Allow other pages (e.g. Search results JeChercheBlock) to open the form via a custom event
-  useEffect(() => {
-    const handler = () => setIsJeChercheOpen(true);
-    window.addEventListener('open-je-cherche', handler);
-    return () => window.removeEventListener('open-je-cherche', handler);
-  }, []);
 
   const handleProductClick = (product: Product) => {
     setIsSearchOpen(false);
@@ -130,7 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         <div className="flex items-center gap-4">
           {/* Je Cherche — desktop */}
           <button
-            onClick={() => setIsJeChercheOpen(true)}
+            onClick={openJeCherche}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-gold-400 text-gray-900 text-sm font-bold shadow-[0_0_12px_rgba(251,191,36,0.35)] hover:shadow-[0_0_20px_rgba(251,191,36,0.55)] hover:scale-105 transition-all duration-200"
           >
             <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -227,15 +219,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         </div>
       </div>
 
-      {/* Je Cherche Form — global modal, opened from header button or JeChercheBlock */}
-      <JeChercheForm
-        isOpen={isJeChercheOpen}
-        onClose={() => setIsJeChercheOpen(false)}
-      />
-
       {/* ── Floating "Je Cherche" FAB — mobile only, sits above bottom nav ── */}
       <button
-        onClick={() => setIsJeChercheOpen(true)}
+        onClick={openJeCherche}
         aria-label="Je Cherche — Publier une demande"
         className="md:hidden fixed left-1/2 -translate-x-1/2 z-[55] bottom-[calc(env(safe-area-inset-bottom)+36px)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-gold-500 text-gray-900 flex items-center justify-center shadow-[0_8px_24px_rgba(245,200,66,0.45)] active:scale-95 transition-transform ring-4 ring-white dark:ring-gray-900"
       >

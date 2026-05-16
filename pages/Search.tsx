@@ -434,6 +434,25 @@ const SearchResultCard: React.FC<{
           )}
         </div>
 
+        {/* Localisation — ville + pays */}
+        {(() => {
+          const province = product.seller?.sellerDetails?.province;
+          const countryId = product.countryId || product.seller?.sellerDetails?.countryId;
+          const flag = getCountryFlag(countryId);
+          if (!province && !flag) return null;
+          return (
+            <div className="flex items-center gap-1 mt-0.5">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9EA5B0" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+              </svg>
+              <span className="text-[10px] text-[#9EA5B0] truncate">
+                {[province, flag].filter(Boolean).join(' · ')}
+              </span>
+            </div>
+          );
+        })()}
+
         {/* Footer — rating + views */}
         <div
           className="flex items-center justify-between mt-1 pt-1.5"

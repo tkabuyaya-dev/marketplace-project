@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { ConsentBanner } from './components/ConsentBanner';
 import { BackgroundLoader } from './components/BackgroundLoader';
 import { useAppContext } from './contexts/AppContext';
+import { JeChercheForm } from './components/JeCherche/JeChercheForm';
 /** Écran de chargement affiché pendant les transitions auth (login/logout/init) */
 const AuthLoadingScreen: React.FC<{ message?: string }> = ({ message }) => (
   <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col items-center justify-center gap-4">
@@ -28,6 +29,14 @@ const App: React.FC = () => {
     loginLoading,
   } = useAppContext();
   const location = useLocation();
+  const [jeChercheOpen, setJeChercheOpen] = useState(false);
+
+  // Écoute globale du CustomEvent — fonctionne même quand la Navbar est cachée
+  useEffect(() => {
+    const handler = () => setJeChercheOpen(true);
+    window.addEventListener('open-je-cherche', handler);
+    return () => window.removeEventListener('open-je-cherche', handler);
+  }, []);
 
   // Bloque UNIQUEMENT pendant les transitions login/logout (popup Google ouvert).
   // PAS pendant l'init Firebase (authReady) — ça bloquerait le rendu 1-5s sur 4G lente
@@ -65,6 +74,9 @@ const App: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Je Cherche — modal global accessible depuis toutes les pages */}
+      <JeChercheForm isOpen={jeChercheOpen} onClose={() => setJeChercheOpen(false)} />
 
       <PWAInstallPrompt />
       <ConsentBanner />
