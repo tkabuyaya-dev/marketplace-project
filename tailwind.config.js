@@ -28,6 +28,24 @@ export default {
           900: '#664409',
           950: '#3D2805',
         },
+        // Seller Dashboard design tokens (light-only design system)
+        canvas:  '#F7F8FA',
+        ink:     '#111318',
+        ink2:    '#5C6370',
+        muted:   '#9EA5B0',
+        goldHov: '#E8A800',
+        goldDeep:'#B07410',
+        wa:      '#25D366',
+      },
+      borderRadius: {
+        card:  '16px',
+        input: '12px',
+        modal: '24px',
+      },
+      boxShadow: {
+        card:      '0 2px 8px rgba(0,0,0,0.05)',
+        cardHover: '0 6px 18px rgba(0,0,0,0.07)',
+        gold:      '0 4px 20px rgba(245,200,66,0.45)',
       },
       fontFamily: {
         sans: ['Inter', 'Inter Fallback', 'system-ui', '-apple-system', 'sans-serif'],
@@ -41,6 +59,8 @@ export default {
         'card-in':  'cardIn 0.45s cubic-bezier(0.22,1,0.36,1) both',
         'shimmer':  'shimmer 1.8s infinite linear',
         'check-pop': 'checkPop 500ms cubic-bezier(0.175,0.885,0.32,1.275) forwards',
+        'fadein':     'fadein 0.2s ease-out',
+        'pulse-ring': 'pulseRing 2s infinite',
       },
       keyframes: {
         fadeIn: {
@@ -63,6 +83,14 @@ export default {
           '0%':   { transform: 'scale(0)',   opacity: '0' },
           '60%':  { transform: 'scale(1.2)', opacity: '1' },
           '100%': { transform: 'scale(1)',   opacity: '1' },
+        },
+        fadein: {
+          '0%':   { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        pulseRing: {
+          '0%,100%': { boxShadow: '0 0 0 0 rgba(245,200,66,0.35)' },
+          '50%':     { boxShadow: '0 0 0 8px rgba(245,200,66,0)' },
         },
       },
       scale: {
@@ -91,6 +119,10 @@ export default {
     'bg-blue-500/10', 'bg-rose-500/10', 'bg-green-500/10', 'bg-yellow-500/10', 'bg-red-500/10',
     // Animations
     'animate-fade-in', 'animate-slide-up', 'animate-pulse', 'animate-card-in', 'animate-shimmer', 'animate-check-pop',
+    'animate-fadein', 'animate-pulse-ring',
+    // Seller Dashboard design tokens
+    'rounded-card', 'shadow-card', 'shadow-cardHover', 'shadow-gold',
+    'bg-canvas', 'text-ink', 'text-ink2', 'text-muted',
     // Scale
     'active:scale-[0.98]', 'active:scale-95',
     // Scrollbar

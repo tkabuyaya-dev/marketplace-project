@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import {
+  LayoutGrid, Package, BarChart2, Zap, ShoppingCart, Palette, ShieldCheck,
+  Plus, RefreshCw, Lock, Sparkles, Crown, Camera, Check, Eye, ChevronDown,
+  Clock, Upload, X, Menu, MapPin, ArrowRight, ArrowUp, ArrowDown, Trash2,
+  Star, MoreHorizontal, Wifi, BadgeCheck,
+} from 'lucide-react';
 import { Button } from '../components/Button';
 import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest, BoostRequest } from '../types';
 import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, editAndResubmitProduct, getActiveCurrencies, subscribeToMyRequests, getProductActivityLast30Days, ActivityEntry, MAX_RESUBMIT_ATTEMPTS, subscribeToMyBoostRequests, getBuyerRequestStats, canContactBuyer } from '../services/firebase';
@@ -816,47 +822,126 @@ export const SellerDashboard: React.FC = () => {
       }
   };
 
-  // --- SUB-COMPONENTS ---
+  // --- SUB-COMPONENTS (design system: light-only) ---
 
-  const SidebarItem = ({ id, icon, label, count, gold }: { id: Tab, icon: string, label: string, count?: number, gold?: boolean }) => (
-      <button
-        onClick={() => setActiveTab(id)}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
-            activeTab === id
-            ? gold ? 'bg-gradient-to-r from-amber-500 to-gold-500 text-white shadow-lg shadow-amber-200/50 dark:shadow-amber-900/50' : 'bg-gold-400 text-gray-900 shadow-[0_4px_12px_rgba(245,200,66,0.35)]'
-            : gold ? 'text-gold-700 dark:text-gold-400 hover:bg-gold-400/10 border border-gold-400/30 dark:border-gold-400/20' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-        }`}
-      >
-          <div className="flex items-center gap-3">
-              <span className={`text-xl ${activeTab === id ? 'scale-110' : 'group-hover:scale-110'} transition-transform`}>{icon}</span>
-              <span className="font-medium text-sm">{label}</span>
-          </div>
-          {count !== undefined && (
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                activeTab === id
-                  ? gold ? 'bg-white/20 text-white' : 'bg-gray-900/15 text-gray-900'
-                  : gold
-                  ? 'bg-gold-400/20 text-gold-700 dark:text-gold-400 border border-gold-400/30'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-              }`}>
-                  {count}
-              </span>
-          )}
-      </button>
+  /** WhatsApp glyph — kept as inline SVG (no lucide equivalent). */
+  const WhatsAppIcon = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M20.5 3.5A11 11 0 003.4 17l-1.4 5 5.1-1.3A11 11 0 1020.5 3.5zm-8.5 18a9.4 9.4 0 01-4.8-1.3l-.3-.2-3 .8.8-2.9-.2-.3a9.5 9.5 0 1115.5-7.4 9.5 9.5 0 01-8 11.3zm5.4-7.1c-.3-.1-1.8-.9-2-1s-.5-.1-.7.1-.8 1-1 1.2-.4.2-.7 0a7.8 7.8 0 01-2.3-1.4 8.7 8.7 0 01-1.6-2c-.2-.3 0-.5.1-.6l.5-.6.3-.5a.5.5 0 000-.5l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 00-.9.4 3.7 3.7 0 00-1.1 2.7 6.4 6.4 0 001.3 3.4 14.7 14.7 0 005.7 5 19 19 0 001.9.7 4.6 4.6 0 002.1.1 3.4 3.4 0 002.2-1.5 2.8 2.8 0 00.2-1.5c-.1-.1-.3-.2-.6-.4z" />
+    </svg>
   );
 
-  const StatCard = ({ title, value, sub, trend, color }: any) => (
-      <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-300 dark:hover:border-gray-600 transition-colors shadow-sm dark:shadow-none">
-          <div className={`absolute top-0 right-0 w-24 h-24 bg-${color}-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-opacity group-hover:opacity-100`}></div>
-          <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-          <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-1">{value}</h3>
-          <div className="flex items-center gap-2 text-xs">
-              <span className={`text-${color === 'red' ? 'red' : 'green'}-600 dark:text-${color === 'red' ? 'red' : 'green'}-400 font-bold bg-${color === 'red' ? 'red' : 'green'}-500/10 px-1.5 py-0.5 rounded`}>
-                  {trend}
-              </span>
-              <span className="text-gray-500">{sub}</span>
-          </div>
+  /** Auto-coloured progress bar (thresholds: 50/80/95). */
+  const Progress = ({ value, height = 6 }: { value: number; height?: number }) => {
+    const v = Math.max(0, Math.min(100, value));
+    let color = '#10B981';
+    if (v >= 95) color = '#EF4444';
+    else if (v >= 80) color = '#F97316';
+    else if (v >= 50) color = '#F5C842';
+    return (
+      <div className="w-full rounded-full bg-black/[0.06] overflow-hidden" style={{ height }}>
+        <div className="h-full rounded-full" style={{ width: v + '%', background: color, transition: 'width 700ms ease-out' }} />
       </div>
+    );
+  };
+
+  /** Tier label pill. */
+  const TierBadge = ({ label }: { label: string }) => {
+    const key = label.toLowerCase();
+    let bg = '#F4F5F7', fg = '#5C6370';
+    if (key.includes('starter')) { bg = '#EFF6FF'; fg = '#1D4ED8'; }
+    else if (key.includes('pro')) { bg = '#FFFBEB'; fg = '#92400E'; }
+    else if (key.includes('elite') || key.includes('premium')) { bg = '#FEF3C7'; fg = '#78350F'; }
+    else if (key.includes('illim') || key.includes('unlimited')) { bg = '#EEF2FF'; fg = '#3730A3'; }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] font-semibold leading-none" style={{ background: bg, color: fg }}>
+        {label}
+      </span>
+    );
+  };
+
+  /** Sidebar / drawer nav item — gold active pill, optional badge. */
+  const NavItem = ({ id, icon: IconCmp, label, count, gold, onAfter }: {
+    id: Tab; icon: React.ComponentType<{ size?: number }>; label: string; count?: number; gold?: boolean; onAfter?: () => void;
+  }) => {
+    const active = activeTab === id;
+    let cls = 'group flex items-center gap-3 px-3 h-11 rounded-[12px] text-[13.5px] font-semibold transition active:scale-[0.97] transition-transform w-full text-left ';
+    let style: React.CSSProperties | undefined;
+    if (active) {
+      cls += 'text-ink';
+      style = { background: '#F5C842', boxShadow: '0 4px 14px rgba(245,200,66,0.40), inset 0 1px 0 rgba(255,255,255,0.4)' };
+    } else if (gold) {
+      cls += 'text-goldDeep';
+      style = { background: 'linear-gradient(135deg, rgba(245,200,66,0.10), rgba(245,200,66,0.04))', border: '1px solid rgba(245,200,66,0.25)' };
+    } else {
+      cls += 'text-ink2 hover:bg-[rgba(245,200,66,0.08)] hover:text-ink';
+    }
+    return (
+      <button onClick={() => { setActiveTab(id); onAfter?.(); }} className={cls} style={style}>
+        <span className="shrink-0"><IconCmp size={18} /></span>
+        <span className="flex-1 truncate">{label}</span>
+        {typeof count === 'number' && count > 0 && (
+          <span className={`px-1.5 min-w-[20px] h-[20px] rounded-full text-[11px] font-bold inline-flex items-center justify-center ${
+            active ? 'bg-black/15 text-ink' : (gold ? 'bg-gold-400 text-ink' : 'bg-ink/10 text-ink')
+          }`}>{count}</span>
+        )}
+      </button>
+    );
+  };
+
+  /** Mobile chip rail item. */
+  const Chip = ({ id, label, count, gold }: { id: Tab; label: string; count?: number; gold?: boolean }) => {
+    const active = activeTab === id;
+    return (
+      <button
+        onClick={() => setActiveTab(id)}
+        className={`inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[13px] font-semibold whitespace-nowrap transition active:scale-[0.97] transition-transform ${
+          active
+            ? (gold ? 'bg-gold-400 text-ink shadow-gold' : 'bg-ink text-white')
+            : 'bg-white text-ink2 border border-black/[0.08] hover:bg-canvas'
+        }`}
+      >
+        {label}
+        {typeof count === 'number' && count > 0 && (
+          <span className={`px-1.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold inline-flex items-center justify-center ${active ? 'bg-black/15 text-ink' : 'bg-ink/10 text-ink'}`}>
+            {count}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  /** Stat card — title / big value / trend pill. */
+  const StatCard = ({ label, value, sub, trend, trendDir = 'up', gold }: {
+    label: string; value: React.ReactNode; sub?: string; trend?: string; trendDir?: 'up' | 'down'; gold?: boolean;
+  }) => (
+    <div
+      className={`bg-white rounded-card border shadow-card hover:-translate-y-px hover:shadow-cardHover transition-all p-4 sm:p-5 ${gold ? 'border-gold-400/40' : 'border-black/[0.07]'}`}
+      style={gold ? { background: 'linear-gradient(135deg,#FFFDF4,#FFF3D0)', borderColor: 'rgba(245,200,66,0.35)' } : undefined}
+    >
+      <div className="text-[12px] font-semibold text-ink2 uppercase tracking-wide">{label}</div>
+      <div className="mt-2 flex items-end gap-2">
+        <div className="text-[28px] sm:text-[32px] font-black leading-none text-ink">{value}</div>
+        {trend && (
+          <div className={`flex items-center gap-0.5 text-[12px] font-semibold mb-0.5 ${trendDir === 'up' ? 'text-emerald-600' : 'text-red-500'}`}>
+            {trendDir === 'up' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+            {trend}
+          </div>
+        )}
+      </div>
+      {sub && <div className="mt-1 text-[12.5px] text-ink2">{sub}</div>}
+    </div>
+  );
+
+  /** Section heading. */
+  const SectionTitle = ({ children, sub, right }: { children: React.ReactNode; sub?: string; right?: React.ReactNode }) => (
+    <div className="flex items-end justify-between gap-4 mb-3">
+      <div>
+        <h2 className="text-[15px] font-black tracking-tight text-ink">{children}</h2>
+        {sub && <div className="text-[12.5px] text-ink2 mt-0.5">{sub}</div>}
+      </div>
+      {right}
+    </div>
   );
 
   // --- VIEWS ---
@@ -866,194 +951,247 @@ export const SellerDashboard: React.FC = () => {
     window.open(`https://wa.me/${supportNum.replace('+', '')}?text=${encodeURIComponent('Bonjour, je suis vendeur sur Nunulia et j\'ai besoin d\'aide.')}`, '_blank', 'noopener,noreferrer');
   };
 
-  const renderOverview = () => (
-    <div className="space-y-6 animate-fade-in">
+  const renderOverview = () => {
+    const firstName = currentUser.name.split(' ')[0];
+    const totalViews = myProducts.reduce((sum, p) => sum + (p.views || 0), 0);
+    const activeCount = myProducts.filter(p => p.status === 'approved').length;
+    const pendingCount = myProducts.filter(p => p.status === 'pending').length;
+    const tierMaxLabel = currentTier.max === null ? '∞' : currentTier.max;
+    const resumable = subRequests.find(r => r.status === 'pending' && !r.transactionRef);
+    const awaitingValidation = subRequests.some(r => r.status === 'pending_validation');
+    const topByViews = [...myProducts]
+      .filter(p => p.status === 'approved' && (p.views || 0) > 0)
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 4);
+
+    return (
+    <div className="space-y-5 animate-fadein">
         {/* Offline Queue Banner — auto-syncs in background; manual button forces a retry. */}
         {queueCount > 0 && (
-          <div className={`border rounded-2xl p-4 space-y-3 ${
-            failedDrafts.length > 0
-              ? 'bg-red-500/10 border-red-500/30'
-              : 'bg-green-500/10 border-green-500/30'
-          }`}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">
-                {failedDrafts.length > 0 ? '⚠️' : syncing ? '🔄' : '📦'}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${
-                  failedDrafts.length > 0 ? 'text-red-400' : 'text-green-400'
-                }`}>
-                  {failedDrafts.length > 0
-                    ? t('dashboard.syncError', { count: failedDrafts.length })
-                    : t('dashboard.offlineQueue', { count: queueCount })}
-                </p>
-                <p className="text-gray-500 text-xs">
-                  {failedDrafts.length > 0
-                    ? t('dashboard.syncErrorHint')
-                    : syncing
-                    ? t('dashboard.syncing')
-                    : t('dashboard.willSyncOnline')}
-                </p>
-              </div>
-              <button
-                onClick={() => sync({ force: true })}
-                disabled={syncing}
-                className={`text-xs px-4 py-2 border rounded-xl transition-colors disabled:opacity-50 ${
-                  failedDrafts.length > 0
-                    ? 'text-red-400 border-red-500/30 hover:bg-red-500/10'
-                    : 'text-green-400 border-green-500/30 hover:bg-green-500/10'
-                }`}
-              >
-                {syncing
-                  ? t('dashboard.syncing')
-                  : failedDrafts.length > 0
-                  ? t('dashboard.retrySync')
-                  : t('dashboard.syncNow')}
-              </button>
-            </div>
-
-            {/* Per-draft status rows — surface live progress AND lastError */}
-            <div className="space-y-1.5 pl-9">
-              {offlineQueue.map(draft => {
-                const hasFailed = !!draft.lastError;
-                const progress = draft.progress;
-                const isUploading = progress?.stage === 'uploading-images';
-                const isSaving = progress?.stage === 'saving-doc';
-                const isActive = isUploading || isSaving;
-                const uploaded = progress?.imagesUploaded ?? 0;
-                const total = progress?.imagesTotal ?? 0;
-                const pct = total > 0 ? Math.round((uploaded / total) * 100) : 0;
-
-                let statusLabel: string;
-                let statusColor: string;
-                if (hasFailed) {
-                  statusLabel = t('dashboard.syncStatusFailed');
-                  statusColor = 'text-red-400';
-                } else if (isUploading) {
-                  statusLabel = t('dashboard.syncStageUploading', { current: uploaded + 1, total }) || `Photo ${uploaded + 1}/${total}`;
-                  statusColor = 'text-blue-400';
-                } else if (isSaving) {
-                  statusLabel = t('dashboard.syncStageSaving') || 'Sauvegarde...';
-                  statusColor = 'text-blue-400';
-                } else if (syncing) {
-                  statusLabel = t('dashboard.syncStatusPending');
-                  statusColor = 'text-gray-400';
-                } else {
-                  statusLabel = t('dashboard.syncStatusWaiting');
-                  statusColor = 'text-gray-500';
-                }
-
-                return (
-                  <div key={draft.id} className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold w-20 flex-shrink-0 truncate ${statusColor}`} title={statusLabel}>
-                        {statusLabel}
-                      </span>
-                      <span className="text-xs text-gray-400 truncate flex-1">
-                        {(draft.data.title as string | undefined) || t('dashboard.syncDraftNoTitle')}
-                      </span>
-                    </div>
-                    {isActive && total > 0 && (
-                      <div className="h-1 bg-gray-800/40 rounded-full overflow-hidden ml-[5.5rem] mt-0.5">
-                        <div
-                          className="h-full bg-blue-400 transition-all duration-300 ease-out"
-                          style={{ width: `${isSaving ? 100 : pct}%` }}
-                        />
+          <div
+            className="rounded-card border overflow-hidden"
+            style={{
+              background: failedDrafts.length > 0
+                ? 'linear-gradient(135deg,#FEF2F2 0%, #FEE2E2 100%)'
+                : 'linear-gradient(135deg,#FFF7E6 0%, #FFEFD2 100%)',
+              borderColor: failedDrafts.length > 0 ? 'rgba(239,68,68,0.25)' : 'rgba(217,119,6,0.25)',
+            }}
+          >
+            <div className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: failedDrafts.length > 0 ? '#FECACA' : '#FDE68A', color: failedDrafts.length > 0 ? '#B91C1C' : '#B45309' }}
+                >
+                  {failedDrafts.length > 0 ? <X size={16} /> : <Upload size={16} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <div className={`text-[14px] font-black ${failedDrafts.length > 0 ? 'text-red-800' : 'text-amber-900'}`}>
+                        {failedDrafts.length > 0
+                          ? t('dashboard.syncError', { count: failedDrafts.length })
+                          : t('dashboard.offlineQueue', { count: queueCount })}
                       </div>
-                    )}
-                    {hasFailed && draft.lastError && (
-                      <span className="text-[10px] text-red-400/70 pl-[5.5rem] truncate" title={draft.lastError}>
-                        {draft.lastError}
-                      </span>
-                    )}
+                      <div className={`text-[12.5px] mt-0.5 ${failedDrafts.length > 0 ? 'text-red-700/80' : 'text-amber-800/80'}`}>
+                        {failedDrafts.length > 0
+                          ? t('dashboard.syncErrorHint')
+                          : syncing
+                          ? t('dashboard.syncing')
+                          : t('dashboard.willSyncOnline')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => sync({ force: true })}
+                      disabled={syncing}
+                      className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov disabled:opacity-50"
+                      style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+                    >
+                      <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                      {syncing ? t('dashboard.syncing') : failedDrafts.length > 0 ? t('dashboard.retrySync') : t('dashboard.syncNow')}
+                    </button>
                   </div>
-                );
-              })}
+
+                  {/* Per-draft status rows — surface live progress AND lastError */}
+                  <div className="mt-3 space-y-2.5">
+                    {offlineQueue.map(draft => {
+                      const hasFailed = !!draft.lastError;
+                      const progress = draft.progress;
+                      const isUploading = progress?.stage === 'uploading-images';
+                      const isSaving = progress?.stage === 'saving-doc';
+                      const isActive = isUploading || isSaving;
+                      const uploaded = progress?.imagesUploaded ?? 0;
+                      const total = progress?.imagesTotal ?? 0;
+                      const pct = total > 0 ? Math.round((uploaded / total) * 100) : 0;
+
+                      let statusLabel: string;
+                      if (hasFailed) statusLabel = t('dashboard.syncStatusFailed');
+                      else if (isUploading) statusLabel = t('dashboard.syncStageUploading', { current: uploaded + 1, total }) || `Photo ${uploaded + 1}/${total}`;
+                      else if (isSaving) statusLabel = t('dashboard.syncStageSaving') || 'Sauvegarde...';
+                      else if (syncing) statusLabel = t('dashboard.syncStatusPending');
+                      else statusLabel = t('dashboard.syncStatusWaiting');
+
+                      return (
+                        <div key={draft.id}>
+                          <div className="flex items-center justify-between mb-1 gap-2">
+                            <span className={`text-[12.5px] font-semibold truncate ${hasFailed ? 'text-red-800' : 'text-amber-900'}`}>
+                              {(draft.data.title as string | undefined) || t('dashboard.syncDraftNoTitle')}
+                            </span>
+                            <span className={`text-[11px] font-bold shrink-0 ${hasFailed ? 'text-red-600' : 'text-amber-800'}`} title={statusLabel}>
+                              {statusLabel}
+                            </span>
+                          </div>
+                          <div className={`h-1.5 rounded-full overflow-hidden ${hasFailed ? 'bg-red-200/70' : 'bg-amber-200/70'}`}>
+                            <div
+                              className="h-full transition-all duration-300 ease-out"
+                              style={{ width: `${isActive && total > 0 ? (isSaving ? 100 : pct) : hasFailed ? 100 : 0}%`, background: hasFailed ? '#DC2626' : '#D97706' }}
+                            />
+                          </div>
+                          {hasFailed && draft.lastError && (
+                            <span className="block mt-1 text-[10.5px] text-red-600/80 truncate" title={draft.lastError}>
+                              {draft.lastError}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-br from-amber-50 via-white to-white dark:from-blue-900 dark:via-indigo-900 dark:to-purple-900 rounded-2xl p-6 border border-gray-200 dark:border-blue-800/50 shadow-sm dark:shadow-none relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(245,200,66,0.18),transparent_50%)] dark:bg-[radial-gradient(circle_at_30%_-20%,rgba(59,130,246,0.3),transparent_50%)]"></div>
-            <div className="relative z-10">
-               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                 <div>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">
+        {/* Welcome Banner / Hero */}
+        <div
+          className="bg-white rounded-card border shadow-card overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#FFFDF4 0%, #FFF8E1 50%, #FFFFFF 100%)', borderColor: 'rgba(245,200,66,0.25)' }}
+        >
+          <div className="p-5 sm:p-7">
+            <div className="flex flex-col md:flex-row md:items-start gap-5 md:gap-6">
+              <div className="flex items-start gap-4 flex-1 min-w-0">
+                <div className="shrink-0">
+                  {currentUser.avatar ? (
+                    <img
+                      src={getOptimizedUrl(currentUser.avatar, 112)}
+                      alt=""
+                      className="w-14 h-14 rounded-full object-cover"
+                      style={{ boxShadow: '0 0 0 2.5px #F5C842, 0 2px 8px rgba(0,0,0,0.08)' }}
+                    />
+                  ) : (
+                    <div
+                      className="w-14 h-14 rounded-full inline-flex items-center justify-center font-black text-[22px]"
+                      style={{ background: '#FFE8B0', color: '#7A4B00', boxShadow: '0 0 0 2.5px #F5C842, 0 2px 8px rgba(0,0,0,0.08)' }}
+                    >
+                      {(currentUser.sellerDetails?.shopName || currentUser.name).slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-[22px] sm:text-[26px] font-black tracking-tight leading-tight text-ink">
                       {currentUser.sellerDetails?.shopName || currentUser.name}
-                    </h2>
-                    <p className="text-gray-600 dark:text-blue-200/80 text-sm flex items-center gap-2">
-                      {currentUser.isVerified && <span className="text-green-600 dark:text-green-400">{t('dashboard.verified')}</span>}
-                      {!hasNif && <span className="text-yellow-600 dark:text-yellow-400">{t('dashboard.noNif')}</span>}
+                    </h1>
+                    {currentUser.isVerified && (
+                      <span className="inline-flex items-center gap-1 px-1.5 h-[22px] rounded-full bg-emerald-500/10 text-emerald-600 text-[11.5px] font-semibold">
+                        <Check size={11} /> {t('dashboard.verified')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white border border-black/[0.07] text-[11.5px] font-semibold text-ink2">
                       {currentUser.sellerDetails?.sellerType === 'shop' && `🏪 ${t('dashboard.shopType')}`}
                       {currentUser.sellerDetails?.sellerType === 'street' && `🚶 ${t('dashboard.streetType')}`}
-                      {currentUser.sellerDetails?.sellerType === 'online' && `🌐 ${t('dashboard.onlineType')}`}
-                    </p>
-                 </div>
-
-                 {/* Subscription Widget */}
-                 <div className="bg-white/80 dark:bg-black/30 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-white/10 min-w-[220px]">
-                    <div className="flex justify-between items-center text-xs mb-2">
-                        <span className="text-gray-700 dark:text-blue-200 font-bold">{currentTier.label}</span>
-                        <span className={`${isLimitReached ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'} font-bold`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
-                    </div>
-                    <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full origin-left transition-transform duration-700 ${
-                            isLimitReached ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
-                            progressPercentage > 80 ? 'bg-gradient-to-r from-yellow-600 to-orange-400 shadow-[0_0_6px_rgba(234,179,8,0.3)]' :
-                            progressPercentage > 50 ? 'bg-gradient-to-r from-gold-400 to-gold-600' :
-                            'bg-gradient-to-r from-emerald-500 to-blue-400'
-                          }`}
-                          style={{ transform: `scaleX(${(currentTier.max === null ? 100 : Math.min(progressPercentage, 100)) / 100})` }}
-                        ></div>
-                    </div>
-                    {isLimitReached && <p className="text-[10px] text-red-600 dark:text-red-300 mt-1.5">{t('dashboard.limitReached')}. <button onClick={() => navigate('/plans')} className="underline text-gold-600 dark:text-gold-400 bg-transparent border-none cursor-pointer p-0">{t('dashboard.upgradePlan')}</button></p>}
-                    {daysRemaining !== null && isPaidTier && !isExpired && (
-                      <p className={`text-[10px] mt-1.5 font-medium ${daysRemaining <= 7 ? 'text-red-600 dark:text-red-300' : daysRemaining <= 15 ? 'text-yellow-600 dark:text-yellow-300' : 'text-green-600 dark:text-green-300'}`}>
-                        {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
-                      </p>
+                      {(!currentUser.sellerDetails?.sellerType || currentUser.sellerDetails?.sellerType === 'online') && `🌐 ${t('dashboard.onlineType')}`}
+                    </span>
+                    {(currentUser.sellerDetails?.commune || currentUser.sellerDetails?.province) && (
+                      <span className="text-[12.5px] text-ink2 inline-flex items-center gap-1">
+                        <MapPin size={12} /> {[currentUser.sellerDetails?.commune, currentUser.sellerDetails?.province].filter(Boolean).join(', ')}
+                      </span>
                     )}
-                 </div>
-               </div>
+                    {!hasNif && (
+                      <span className="text-[12px] font-semibold text-yellow-600">{t('dashboard.noNif')}</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[13.5px] text-ink2 leading-relaxed max-w-[48ch]">
+                    {t('dashboard.welcomeGreeting', { name: firstName, defaultValue: `Bonjour ${firstName} — voici l'état de votre boutique aujourd'hui.` })}
+                  </p>
+                </div>
+              </div>
 
-               <div className="mt-5 flex flex-wrap gap-2">
-                 {/* `!` prefix overrides the Button variant="secondary" defaults
-                     (bg-gray-800 + text-white) which otherwise paint the text the
-                     same colour as our custom backgrounds — the editShop button
-                     was rendering as a white-on-white blank pill. */}
-                 <Button size="sm" variant="secondary" className="!bg-gold-400 hover:!bg-gold-300 !border-gold-400 !text-gray-900 dark:!bg-white/10 dark:!border-white/20 dark:hover:!bg-white/20 dark:!text-white" onClick={() => setActiveTab('add_product')}>
-                    {t('dashboard.addArticle')}
-                 </Button>
-                 <Button size="sm" variant="secondary" className="!bg-white !border-gray-200 hover:!bg-gray-50 !text-gray-700 dark:!bg-white/5 dark:!border-white/10 dark:hover:!bg-white/15 dark:!text-white/80" onClick={() => setActiveTab('shop')}>
-                    {t('dashboard.editShop')}
-                 </Button>
-               </div>
+              {/* Subscription mini card */}
+              <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-4 w-full md:w-[300px] shrink-0" style={{ background: 'rgba(255,255,255,0.85)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <TierBadge label={currentTier.label} />
+                    <span className="text-[12px] font-semibold text-ink2">{t('dashboard.mySubscription')}</span>
+                  </div>
+                  {daysRemaining !== null && isPaidTier && !isExpired && (
+                    <span className="text-[11.5px] font-bold text-ink2">{daysRemaining} j</span>
+                  )}
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className={`text-[22px] font-black tabular-nums leading-none ${isLimitReached ? 'text-red-500' : 'text-ink'}`}>
+                    {currentCount}<span className="text-ink2 font-semibold">/{tierMaxLabel}</span>
+                  </div>
+                  <div className="text-[11.5px] text-ink2 mb-0.5">{t('dashboard.statProducts')}</div>
+                </div>
+                <div className="mt-2">
+                  <Progress value={currentTier.max === null ? 100 : Math.min(progressPercentage, 100)} />
+                </div>
+                <button
+                  onClick={() => (isExpired ? setShowRenewModal(true) : navigate('/plans'))}
+                  className="mt-3 w-full h-9 rounded-input bg-ink text-white text-[12.5px] font-semibold active:scale-[0.97] transition-transform hover:bg-black inline-flex items-center justify-center gap-1.5"
+                >
+                  {isExpired ? t('dashboard.subRenew') : isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')} <ArrowRight size={12} />
+                </button>
+              </div>
             </div>
+
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <button
+                onClick={() => setActiveTab('add_product')}
+                className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov"
+                style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+              >
+                <Plus size={16} /> {t('dashboard.addArticle')}
+              </button>
+              <button
+                onClick={() => setActiveTab('shop')}
+                className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-white text-ink font-semibold text-[14px] border border-black/[0.08] active:scale-[0.97] transition-transform hover:bg-canvas"
+              >
+                <Palette size={16} /> {t('dashboard.editShop')}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Grace phase banner (R19) — replaces simple "Expired" alert */}
         {isExpired && isPaidTier && isInGrace && (
-          <div className={`border rounded-xl p-4 flex items-start gap-3 ${
-            downgradePhase === 1
-              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/30'
-              : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-500/30'
-          }`}>
-            <span className="text-2xl">{downgradePhase === 1 ? '⏳' : '⚠️'}</span>
+          <div
+            className="rounded-card border p-4 flex items-start gap-3"
+            style={{
+              background: downgradePhase === 1 ? 'linear-gradient(135deg,#FFFBE6,#FFFFFF)' : 'linear-gradient(135deg,#FFF3E0,#FFFFFF)',
+              borderColor: downgradePhase === 1 ? 'rgba(217,119,6,0.25)' : 'rgba(234,88,12,0.25)',
+            }}
+          >
+            <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-amber-700">
+              <Clock size={16} />
+            </div>
             <div className="flex-1">
-              <p className={`text-sm font-bold ${downgradePhase === 1 ? 'text-amber-700 dark:text-amber-400' : 'text-orange-700 dark:text-orange-400'}`}>
+              <p className={`text-[14px] font-black ${downgradePhase === 1 ? 'text-amber-900' : 'text-orange-800'}`}>
                 {downgradePhase === 1
                   ? t('dashboard.gracePh1Title', 'Période de grâce — encore {{days}} jour(s)', { days: graceDaysLeft })
                   : t('dashboard.gracePh2Title', 'Produits limités — encore {{days}} jour(s) avant suppression', { days: graceDaysLeft })}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-[12.5px] text-ink2 mt-1">
                 {downgradePhase === 1
                   ? t('dashboard.gracePh1Body', 'Vos produits restent visibles. Renouvelez maintenant pour éviter leur masquage.')
                   : t('dashboard.gracePh2Body', 'Seuls 5 de vos produits sont encore visibles. Renouvelez pour les réactiver tous.')}
               </p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setShowRenewModal(true)} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setShowRenewModal(true)} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1061,14 +1199,16 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Expiration Alert (no grace phase) */}
         {isExpired && isPaidTier && !isInGrace && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-2xl">🚨</span>
+          <div className="rounded-card border p-4 flex items-start gap-3" style={{ background: 'linear-gradient(135deg,#FEF2F2,#FFFFFF)', borderColor: 'rgba(239,68,68,0.25)' }}>
+            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0 text-red-600">
+              <X size={16} />
+            </div>
             <div className="flex-1">
-              <p className="text-sm text-red-700 dark:text-red-400 font-bold">{t('dashboard.subscriptionExpired')}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.expiredLimitMessage')}</p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setShowRenewModal(true)} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.renewPlan')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+              <p className="text-[14px] text-red-800 font-black">{t('dashboard.subscriptionExpired')}</p>
+              <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.expiredLimitMessage')}</p>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setShowRenewModal(true)} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1076,16 +1216,24 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Expiration Warning (< 7 days, urgent at <= 3 days) */}
         {showExpirationWarning && (
-          <div className={`${showUrgentWarning ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/30' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-500/30'} border rounded-xl p-4 flex items-start gap-3`}>
-            <span className="text-2xl">{showUrgentWarning ? '&#9888;' : '&#9200;'}</span>
+          <div
+            className="rounded-card border p-4 flex items-start gap-3"
+            style={{
+              background: showUrgentWarning ? 'linear-gradient(135deg,#FEF2F2,#FFFFFF)' : 'linear-gradient(135deg,#FFFBE6,#FFFFFF)',
+              borderColor: showUrgentWarning ? 'rgba(239,68,68,0.25)' : 'rgba(217,119,6,0.25)',
+            }}
+          >
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${showUrgentWarning ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'}`}>
+              <Clock size={16} />
+            </div>
             <div className="flex-1">
-              <p className={`text-sm font-bold ${showUrgentWarning ? 'text-red-700 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+              <p className={`text-[14px] font-black ${showUrgentWarning ? 'text-red-800' : 'text-amber-900'}`}>
                 {showUrgentWarning ? 'URGENT — ' : ''}{t('dashboard.expiresIn', { days: daysRemaining })}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.renewMessage')}</p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setShowRenewModal(true)} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-gray-900 hover:bg-gold-300'}`}>{t('dashboard.renewNow')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+              <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.renewMessage')}</p>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setShowRenewModal(true)} className={`px-3.5 h-9 rounded-input text-[12.5px] font-bold active:scale-[0.97] transition-transform ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-ink hover:bg-goldHov'}`}>{t('dashboard.renewNow')}</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1093,112 +1241,96 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Upgrade Warning (free plan, 3+ products) */}
         {showUpgradeWarning && !isExpired && (
-          <div className="bg-gold-50 dark:bg-gold-400/5 border border-gold-200 dark:border-gold-400/30 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-2xl">&#128640;</span>
+          <div className="rounded-card border p-4 flex items-start gap-3" style={{ background: 'linear-gradient(135deg,#FFFDF4,#FFF3D0)', borderColor: 'rgba(245,200,66,0.30)' }}>
+            <div className="w-9 h-9 rounded-full bg-gold-400/20 flex items-center justify-center shrink-0 text-goldDeep">
+              <Sparkles size={16} />
+            </div>
             <div className="flex-1">
-              <p className="text-sm text-gold-700 dark:text-gold-400 font-bold">{t('dashboard.upgradeTitle')}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => navigate('/plans')} className="px-3 py-1.5 bg-gold-400 text-gray-900 text-xs font-bold rounded-lg hover:bg-gold-300">{t('dashboard.viewPlans')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg">WhatsApp</a>
+              <p className="text-[14px] text-goldDeep font-black">{t('dashboard.upgradeTitle')}</p>
+              <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => navigate('/plans')} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.viewPlans')}</button>
+                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard title={t('dashboard.statProducts')} value={myProducts.length} trend={`${myProducts.filter(p => p.status === 'approved').length} ${t('dashboard.active')}`} sub={t('dashboard.published')} color="blue" />
-            <StatCard title={t('dashboard.statTotalViews')} value={myProducts.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} trend="👁" sub={t('dashboard.allListings')} color="blue" />
-            <StatCard title={t('dashboard.statTotalLikes')} value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} trend="❤️" sub={t('dashboard.allListings')} color="red" />
-            <StatCard title={t('dashboard.statPending')} value={myProducts.filter(p => p.status === 'pending').length} trend="⏳" sub={t('dashboard.adminValidation')} color="yellow" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            <StatCard label={t('dashboard.statProducts')} value={activeCount} sub={t('dashboard.published')} trend={String(myProducts.length)} />
+            <StatCard label={t('dashboard.statTotalViews')} value={totalViews.toLocaleString('fr-FR')} sub={t('dashboard.allListings')} />
+            <StatCard label={t('dashboard.statTotalLikes')} value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} sub={t('dashboard.allListings')} />
+            <StatCard label={t('dashboard.statPending')} value={pendingCount} sub={t('dashboard.adminValidation')} gold />
         </div>
 
         {/* ── Buyer Requests Feature Banner ── */}
         <div
-          onClick={() => setActiveTab('requests')}
-          className="cursor-pointer relative overflow-hidden rounded-2xl border border-gold-400/40 bg-gradient-to-br from-amber-50 via-white to-white dark:from-amber-950/60 dark:via-gray-900 dark:to-gray-900 hover:border-gold-400/70 transition-all duration-300 group shadow-sm dark:shadow-none"
+          className="rounded-card border shadow-card overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#FFFDF4 0%, #FFF3D0 100%)', borderColor: 'rgba(245,200,66,0.30)' }}
         >
-          {/* Background glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.18),transparent_60%)] pointer-events-none" />
-          <div className="relative z-10 p-5">
-            <div className="flex items-start justify-between gap-4">
-              {/* Left: icon + title */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/30 to-gold-600/20 border border-gold-400/30 flex items-center justify-center text-2xl shrink-0">
-                  🛒
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-black text-gray-900 dark:text-white text-base">{t('dashboard.buyerRequestsCardTitle')}</h3>
-                    {requestStats && requestStats.todayCount > 0 && (
-                      <span className="text-[11px] bg-gold-400/20 text-gold-700 dark:text-gold-400 border border-gold-400/40 px-2 py-0.5 rounded-full font-bold animate-pulse shrink-0">
-                        +{requestStats.todayCount} {t('dashboard.buyerRequestsToday')}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">{t('dashboard.buyerRequestsCardDesc')}</p>
-                </div>
+          <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center gap-5">
+            <div className="flex-1">
+              <div
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
+                style={{ background: 'rgba(245,200,66,0.20)', color: '#92400E' }}
+              >
+                <Star size={11} /> {t('dashboard.opportunityBadge', { defaultValue: 'Opportunité' })}
               </div>
-              {/* Right: arrow */}
-              <span className="text-gold-500/70 dark:text-gold-400/50 group-hover:text-gold-600 dark:group-hover:text-gold-400 group-hover:translate-x-1 transition-all text-xl shrink-0 mt-1">→</span>
+              <h3 className="mt-2 text-[20px] sm:text-[22px] font-black tracking-tight leading-snug text-ink">
+                {t('dashboard.buyerRequestsCardTitle')}
+              </h3>
+              <p className="mt-1.5 text-[13.5px] text-ink2 max-w-[56ch]">{t('dashboard.buyerRequestsCardDesc')}</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[
+                  t('dashboard.buyerRequestsFeat1'),
+                  t('dashboard.buyerRequestsFeat2'),
+                  t('dashboard.buyerRequestsFeat3'),
+                ].map(label => (
+                  <span key={label} className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink2 bg-white border border-black/[0.07] px-2.5 py-1 rounded-full">
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
-
-            {/* Feature pills */}
-            <div className="flex flex-wrap gap-2 mt-4 mb-4">
-              {[
-                { icon: '📍', label: t('dashboard.buyerRequestsFeat1') },
-                { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
-                { icon: '🔓', label: t('dashboard.buyerRequestsFeat3') },
-              ].map(f => (
-                <span key={f.label} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-400 bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 px-2.5 py-1 rounded-full">
-                  <span>{f.icon}</span>
-                  {f.label}
-                </span>
-              ))}
-            </div>
-
-            {/* CTA */}
             <button
-              onClick={e => { e.stopPropagation(); navigate('/demandes'); }}
-              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-amber-200/50 dark:shadow-amber-900/30"
+              onClick={() => setActiveTab('requests')}
+              className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov w-full md:w-auto md:px-5"
+              style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
             >
-              🔍 {t('dashboard.viewAllRequests')}
+              {requestStats && requestStats.todayCount > 0
+                ? `+${requestStats.todayCount} ${t('dashboard.buyerRequestsToday')}`
+                : t('dashboard.viewAllRequests')}
+              <ArrowRight size={16} />
             </button>
           </div>
         </div>
 
         {/* ── My Subscription Card ── */}
-        <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.mySubscription')}</h3>
+        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-4">
+          <SectionTitle>{t('dashboard.mySubscription')}</SectionTitle>
 
           {/* Current plan info */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
-                isPaidTier && !isExpired
-                  ? 'bg-gold-400/20 text-gold-700 dark:text-gold-400'
-                  : isExpired
-                  ? 'bg-red-500/20 text-red-600 dark:text-red-400'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+              <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${
+                isPaidTier && !isExpired ? 'bg-gold-400/20 text-goldDeep'
+                  : isExpired ? 'bg-red-500/15 text-red-600'
+                  : 'bg-canvas text-ink2'
               }`}>
-                {isPaidTier && !isExpired ? '★' : isExpired ? '!' : '○'}
+                {isPaidTier && !isExpired ? <Crown size={18} /> : isExpired ? <X size={18} /> : <Star size={18} />}
               </div>
               <div>
-                <p className="text-gray-900 dark:text-white font-bold text-sm">{currentTier.label}</p>
-                <p className="text-gray-500 text-xs">
-                  {currentTier.max === null
-                    ? t('dashboard.subUnlimited')
-                    : t('dashboard.subProductLimit', { max: currentTier.max })}
+                <p className="text-ink font-black text-[14px]">{currentTier.label}</p>
+                <p className="text-ink2 text-[12px]">
+                  {currentTier.max === null ? t('dashboard.subUnlimited') : t('dashboard.subProductLimit', { max: currentTier.max })}
                 </p>
               </div>
             </div>
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-              isExpired
-                ? 'bg-red-500/20 text-red-600 dark:text-red-400'
-                : isPaidTier
-                ? 'bg-green-500/20 text-green-700 dark:text-green-400'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            <span className={`text-[11.5px] font-bold px-2.5 py-1 rounded-full ${
+              isExpired ? 'bg-red-500/15 text-red-600'
+                : isPaidTier ? 'bg-emerald-500/15 text-emerald-600'
+                : 'bg-canvas text-ink2'
             }`}>
               {isExpired ? t('dashboard.subExpired') : isPaidTier ? t('dashboard.subActive') : t('dashboard.subFree')}
             </span>
@@ -1206,9 +1338,9 @@ export const SellerDashboard: React.FC = () => {
 
           {/* Expiration details (paid tier only) */}
           {isPaidTier && !isExpired && daysRemaining !== null && (
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.subExpiresOn')}</span>
-              <span className={`text-xs font-bold ${daysRemaining <= 7 ? 'text-red-600 dark:text-red-400' : daysRemaining <= 15 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
+            <div className="bg-canvas rounded-input p-3 flex items-center justify-between">
+              <span className="text-[12px] text-ink2">{t('dashboard.subExpiresOn')}</span>
+              <span className={`text-[12px] font-bold ${daysRemaining <= 7 ? 'text-red-600' : daysRemaining <= 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
                 {currentUser.sellerDetails?.subscriptionExpiresAt
                   ? new Date(currentUser.sellerDetails.subscriptionExpiresAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
                   : '—'} ({daysRemaining} {t('dashboard.subDays')})
@@ -1218,91 +1350,75 @@ export const SellerDashboard: React.FC = () => {
 
           {/* Usage bar */}
           <div>
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-gray-600 dark:text-gray-400">{t('dashboard.subUsage')}</span>
-              <span className={`font-bold ${isLimitReached ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{currentCount} / {currentTier.max === null ? '∞' : currentTier.max}</span>
+            <div className="flex justify-between text-[12px] mb-1.5">
+              <span className="text-ink2">{t('dashboard.subUsage')}</span>
+              <span className={`font-bold ${isLimitReached ? 'text-red-600' : 'text-ink'}`}>{currentCount} / {tierMaxLabel}</span>
             </div>
-            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full origin-left transition-transform duration-500 ${
-                  isLimitReached ? 'bg-red-500' : progressPercentage > 80 ? 'bg-yellow-500' : 'bg-emerald-500'
-                }`}
-                style={{ transform: `scaleX(${(currentTier.max === null ? 100 : Math.min(progressPercentage, 100)) / 100})` }}
-              />
-            </div>
+            <Progress value={currentTier.max === null ? 100 : Math.min(progressPercentage, 100)} />
           </div>
 
           {/* CTA button */}
           <div>
-            {(() => {
-              const resumable = subRequests.find(r => r.status === 'pending' && !r.transactionRef);
-              if (resumable) {
-                return (
-                  <button
-                    onClick={() => navigate('/plans')}
-                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-900 text-xs font-bold rounded-xl transition-colors"
-                  >
-                    {t('dashboard.subCompleteRequest', 'Compléter ma demande de paiement')}
-                  </button>
-                );
-              }
-              const awaitingValidation = subRequests.some(r => r.status === 'pending_validation');
-              if (awaitingValidation) {
-                return (
-                  <button disabled className="w-full py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
-                    <span className="w-3 h-3 border-2 border-gray-400 dark:border-gray-500 border-t-gray-700 dark:border-t-gray-300 rounded-full animate-spin" />
-                    {t('dashboard.subPendingRequest')}
-                  </button>
-                );
-              }
-              if (isExpired) {
-                return <button onClick={() => setShowRenewModal(true)} className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-colors">{t('dashboard.subRenew')}</button>;
-              }
-              return <button onClick={() => navigate('/plans')} className="w-full py-2.5 bg-gold-400/10 border border-gold-400/30 text-gold-400 hover:bg-gold-400/20 text-xs font-bold rounded-xl transition-colors">{isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')}</button>;
-            })()}
+            {resumable ? (
+              <button
+                onClick={() => navigate('/plans')}
+                className="w-full h-11 rounded-input bg-gold-400 hover:bg-goldHov text-ink text-[13px] font-bold active:scale-[0.97] transition-transform"
+              >
+                {t('dashboard.subCompleteRequest', 'Compléter ma demande de paiement')}
+              </button>
+            ) : awaitingValidation ? (
+              <button disabled className="w-full h-11 rounded-input bg-canvas text-ink2 text-[13px] font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                <span className="w-3 h-3 border-2 border-muted border-t-ink2 rounded-full animate-spin" />
+                {t('dashboard.subPendingRequest')}
+              </button>
+            ) : isExpired ? (
+              <button onClick={() => setShowRenewModal(true)} className="w-full h-11 rounded-input bg-red-600 hover:bg-red-500 text-white text-[13px] font-bold active:scale-[0.97] transition-transform">{t('dashboard.subRenew')}</button>
+            ) : (
+              <button onClick={() => navigate('/plans')} className="w-full h-11 rounded-input bg-ink hover:bg-black text-white text-[13px] font-bold active:scale-[0.97] transition-transform">{isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')}</button>
+            )}
           </div>
 
           {/* Request history */}
           {subRequests.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-gray-600 dark:text-gray-500 uppercase tracking-wider mb-2">{t('dashboard.subHistory')}</p>
+              <p className="text-[11px] font-bold text-ink2 uppercase tracking-wider mb-2">{t('dashboard.subHistory')}</p>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {subRequests.slice(0, 5).map(req => (
-                  <div key={req.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2.5 text-xs">
+                  <div key={req.id} className="flex items-center justify-between bg-canvas rounded-input p-2.5 text-[12px]">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        req.status === 'approved' ? 'bg-green-500' :
+                        req.status === 'approved' ? 'bg-emerald-500' :
                         req.status === 'rejected' ? 'bg-red-500' :
                         req.status === 'pending_validation' ? 'bg-blue-500' :
-                        'bg-yellow-500'
+                        'bg-amber-500'
                       }`} />
-                      <span className="text-gray-900 dark:text-white truncate">{req.planLabel}</span>
+                      <span className="text-ink truncate">{req.planLabel}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className={`font-medium ${
-                        req.status === 'approved' ? 'text-green-600 dark:text-green-400' :
-                        req.status === 'rejected' ? 'text-red-600 dark:text-red-400' :
-                        req.status === 'pending_validation' ? 'text-blue-600 dark:text-blue-400' :
-                        'text-yellow-600 dark:text-yellow-400'
+                        req.status === 'approved' ? 'text-emerald-600' :
+                        req.status === 'rejected' ? 'text-red-600' :
+                        req.status === 'pending_validation' ? 'text-blue-600' :
+                        'text-amber-600'
                       }`}>
                         {req.status === 'approved' ? t('dashboard.subApproved') :
                          req.status === 'rejected' ? t('dashboard.subRejected') :
                          req.status === 'pending_validation' ? t('dashboard.subValidating') :
                          t('dashboard.subPending')}
                       </span>
-                      <span className="text-gray-500 dark:text-gray-600">{new Date(req.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                      <span className="text-muted">{new Date(req.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                     </div>
                   </div>
                 ))}
               </div>
               {subRequests.some(r => r.status === 'rejected' && r.rejectionReason) && (
-                <div className="mt-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/20 rounded-lg p-2.5 space-y-2">
-                  <p className="text-xs text-red-700 dark:text-red-400">
+                <div className="mt-2 rounded-input p-2.5 space-y-2" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                  <p className="text-[12px] text-red-700">
                     {t('dashboard.subLastRejection')}: {subRequests.find(r => r.status === 'rejected')?.rejectionReason}
                   </p>
                   <button
                     onClick={() => navigate('/plans')}
-                    className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition-colors"
+                    className="w-full h-9 rounded-input bg-gold-400 hover:bg-goldHov text-ink text-[12px] font-bold active:scale-[0.97] transition-transform"
                   >
                     {t('dashboard.resubmitRequest')}
                   </button>
@@ -1314,12 +1430,14 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Rejected products alert */}
         {myProducts.filter(p => p.status === 'rejected').length > 0 && (
-          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-xl">⚠️</span>
+          <div className="rounded-card border p-4 flex items-start gap-3" style={{ background: 'rgba(239,68,68,0.06)', borderColor: 'rgba(239,68,68,0.18)' }}>
+            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0 text-red-600">
+              <X size={16} />
+            </div>
             <div>
-              <p className="text-sm text-red-700 dark:text-red-400 font-bold">{t('dashboard.rejectedProducts', { count: myProducts.filter(p => p.status === 'rejected').length })}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.rejectedHint')}</p>
-              <button onClick={() => { setActiveTab('products'); setProductStatusFilter('rejected'); }} className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1">
+              <p className="text-[14px] text-red-800 font-black">{t('dashboard.rejectedProducts', { count: myProducts.filter(p => p.status === 'rejected').length })}</p>
+              <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.rejectedHint')}</p>
+              <button onClick={() => { setActiveTab('products'); setProductStatusFilter('rejected'); }} className="text-[12px] font-bold text-goldDeep hover:underline mt-1.5">
                 {t('dashboard.viewRejected')}
               </button>
             </div>
@@ -1328,42 +1446,68 @@ export const SellerDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <div>
-          <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.quickActions')}</h3>
+          <SectionTitle sub={t('dashboard.quickActionsSub', { defaultValue: 'Raccourcis vers les actions les plus fréquentes' })}>{t('dashboard.quickActions')}</SectionTitle>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { icon: '➕', label: t('dashboard.addProduct'), action: () => setActiveTab('add_product') },
-              { icon: '🎨', label: t('dashboard.myShopAction'), action: () => setActiveTab('shop') },
-              { icon: '📦', label: t('dashboard.myProducts'), action: () => setActiveTab('products') },
-              { icon: '📈', label: t('dashboard.viewAnalytics'), action: () => setActiveTab('analytics') },
-              { icon: '💬', label: t('dashboard.contactAdmin'), action: contactAdmin },
-            ].map(item => (
-              <button key={item.label} onClick={item.action} className="bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 text-center transition-all group shadow-sm dark:shadow-none">
-                <span className="text-2xl block mb-1 group-hover:scale-110 transition-transform">{item.icon}</span>
-                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{item.label}</span>
-              </button>
-            ))}
+              { icon: Plus, label: t('dashboard.addProduct'), action: () => setActiveTab('add_product') },
+              { icon: Palette, label: t('dashboard.myShopAction'), action: () => setActiveTab('shop') },
+              { icon: Zap, label: t('dashboard.viewAnalytics'), action: () => setActiveTab('boost') },
+              { icon: WhatsAppIcon, label: t('dashboard.contactAdmin'), action: contactAdmin },
+            ].map(item => {
+              const IconCmp = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  className="bg-white rounded-card border border-black/[0.07] shadow-card hover:-translate-y-px hover:shadow-cardHover transition-all p-4 text-left active:scale-[0.97]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-canvas text-goldDeep">
+                      <IconCmp size={16} />
+                    </div>
+                    <ArrowRight size={16} className="ml-auto text-ink2" />
+                  </div>
+                  <div className="mt-3 text-[13.5px] font-black text-ink">{item.label}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Top products by views */}
-        {myProducts.filter(p => p.status === 'approved' && p.views > 0).length > 0 && (
-          <div>
-            <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">{t('dashboard.topByViews')}</h3>
-            <div className="space-y-2">
-              {[...myProducts].filter(p => p.status === 'approved').sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5).map((p, i) => (
-                <div key={p.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-lg p-2.5">
-                  <span className="text-xs font-bold text-gray-500 w-5 text-center">{i + 1}</span>
-                  <img src={p.images[0] ? getOptimizedUrl(p.images[0], 40) : ''} alt="" loading="lazy" className="w-8 h-8 rounded-md object-cover bg-gray-200 dark:bg-gray-700" />
-                  <span className="flex-1 text-sm text-gray-900 dark:text-white truncate">{p.title}</span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">👁 {p.views}</span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">❤️ {p.likesCount || 0}</span>
+        {topByViews.length > 0 && (
+          <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5">
+            <SectionTitle sub={t('dashboard.topByViewsSub', { defaultValue: 'Vos plus performants ce mois' })}>{t('dashboard.topByViews')}</SectionTitle>
+            <div className="space-y-2.5">
+              {topByViews.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3">
+                  <img
+                    src={p.images[0] ? getOptimizedUrl(p.images[0], 80) : ''}
+                    alt=""
+                    loading="lazy"
+                    className="w-10 h-10 rounded-[10px] object-cover bg-canvas shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-ink truncate">{p.title}</div>
+                    <div className="text-[11.5px] text-ink2">{(p.views || 0).toLocaleString('fr-FR')} {t('dashboard.analyticsViews')}</div>
+                  </div>
+                  {i === 0 ? <Crown size={16} className="text-gold-400" /> : <span className="text-[11px] font-bold text-muted">#{i + 1}</span>}
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {/* Network footer */}
+        <div className="flex items-center justify-center gap-2 text-[11.5px] text-muted pt-1 pb-2">
+          <span className="inline-flex items-center gap-1.5">
+            <Wifi size={12} />
+            {networkQuality === 'slow' ? t('dashboard.slowNetworkBanner') : t('dashboard.networkConnected', { defaultValue: 'Connecté' })}
+          </span>
+        </div>
     </div>
-  );
+    );
+  };
 
   const renderAnalytics = () => {
     const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1405,57 +1549,52 @@ export const SellerDashboard: React.FC = () => {
     });
 
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-5 animate-fadein">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.analyticsTitle')}</h2>
-          <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.analyticsSubtitle')}</p>
+          <h1 className="text-[24px] font-black tracking-tight text-ink">{t('dashboard.analyticsTitle')}</h1>
+          <div className="text-[13px] text-ink2 mt-1">{t('dashboard.analyticsSubtitle')}</div>
         </div>
 
         {analyticsLoading ? (
-          <div className="text-center py-16 text-gray-500 text-sm">{t('dashboard.loadingAnalytics')}</div>
+          <div className="text-center py-16 text-ink2 text-sm">{t('dashboard.loadingAnalytics')}</div>
         ) : (
           <>
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: totalViews30, label: t('dashboard.analyticsViews'), color: 'text-blue-400' },
-                { value: totalContacts30, label: t('dashboard.analyticsContacts'), color: 'text-green-400' },
-                { value: totalLikes30, label: t('dashboard.analyticsLikes'), color: 'text-pink-400' },
-              ].map(card => (
-                <div key={card.label} className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none p-4 rounded-2xl text-center">
-                  <p className={`text-2xl font-black ${card.color}`}>{card.value}</p>
-                  <p className="text-[10px] text-gray-500 mt-1 leading-tight">{card.label}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-3 gap-3.5">
+              <StatCard label={t('dashboard.analyticsViews')} value={totalViews30} />
+              <StatCard label={t('dashboard.analyticsContacts')} value={totalContacts30} />
+              <StatCard label={t('dashboard.analyticsLikes')} value={totalLikes30} />
             </div>
 
             {/* 30-day bar chart */}
-            <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-5">
-              <p className="text-sm font-bold text-gray-900 dark:text-white mb-4">{t('dashboard.analyticsChart')}</p>
+            <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5">
+              <SectionTitle sub={t('dashboard.analyticsChartSub', { defaultValue: 'Vues quotidiennes sur 30 jours' })}>
+                {t('dashboard.analyticsChart')}
+              </SectionTitle>
               {totalViews30 === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">{t('dashboard.analyticsNoData')}</div>
+                <div className="text-center py-8 text-ink2 text-sm">{t('dashboard.analyticsNoData')}</div>
               ) : (
                 <div className="w-full">
-                  <svg viewBox={`0 0 ${30 * 8} 80`} className="w-full" preserveAspectRatio="none" aria-hidden="true">
+                  <div className="h-[180px] flex items-end gap-[3px]">
                     {viewsByDay.map((count, i) => {
-                      const barH = count === 0 ? 2 : Math.max(4, (count / maxDayViews) * 70);
+                      const h = count === 0 ? 1.5 : Math.max(4, (count / maxDayViews) * 100);
                       return (
-                        <rect
-                          key={i}
-                          x={i * 8 + 1}
-                          y={80 - barH}
-                          width={6}
-                          height={barH}
-                          rx={1.5}
-                          fill={count === 0 ? '#374151' : '#3b82f6'}
-                          opacity={count === 0 ? 0.4 : 0.6 + 0.4 * (count / maxDayViews)}
-                        />
+                        <div key={i} className="flex-1 flex flex-col items-center justify-end">
+                          <div
+                            className="w-full rounded-t-[5px]"
+                            style={{
+                              height: h + '%',
+                              background: count === 0 ? '#EEF0F4' : 'linear-gradient(180deg,#F5C842,#E8A800)',
+                              transition: 'height 700ms ease-out',
+                            }}
+                          />
+                        </div>
                       );
                     })}
-                  </svg>
-                  <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted font-medium mt-2">
                     {xLabels.map(label => (
-                      <span key={label}>{label}</span>
+                      <span key={label} className="tabular-nums">{label}</span>
                     ))}
                   </div>
                 </div>
@@ -1463,42 +1602,41 @@ export const SellerDashboard: React.FC = () => {
             </div>
 
             {/* Per-product ranking */}
-            <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700/50">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">{t('dashboard.analyticsTopProducts')}</p>
-              </div>
+            <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5">
+              <SectionTitle sub={t('dashboard.analyticsTopProductsSub', { defaultValue: 'Classement par nombre de vues sur 30 jours' })}>
+                {t('dashboard.analyticsTopProducts')}
+              </SectionTitle>
               {topProducts.length === 0 ? (
-                <p className="text-center py-8 text-gray-500 text-sm">{t('dashboard.analyticsNoProducts')}</p>
+                <p className="text-center py-8 text-ink2 text-sm">{t('dashboard.analyticsNoProducts')}</p>
               ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700/30">
-                  {topProducts.map(({ product, stats }) => (
-                    <div key={product.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
-                        {product.images?.[0] && (
-                          <img
-                            src={getOptimizedUrl(product.images[0], 36)}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{product.title}</p>
-                        <div className="flex gap-3 mt-0.5">
-                          <span className="text-[10px] text-blue-400">👁 {stats.views}</span>
-                          <span className="text-[10px] text-green-400">💬 {stats.contacts}</span>
-                          <span className="text-[10px] text-pink-400">❤️ {stats.likes}</span>
+                <div className="space-y-1">
+                  {topProducts.map(({ product, stats }, i) => {
+                    const ratio = stats.views / maxViews;
+                    return (
+                      <div key={product.id} className="grid grid-cols-[24px_44px_1fr_auto] items-center gap-3 py-2 border-b border-black/[0.04] last:border-b-0">
+                        <div className="flex items-center justify-center">
+                          {i === 0 ? <Crown size={18} className="text-gold-400" /> : <span className="text-[12px] font-black text-muted tabular-nums">#{i + 1}</span>}
+                        </div>
+                        <div className="w-11 h-11 rounded-[10px] overflow-hidden bg-canvas shrink-0">
+                          {product.images?.[0] && (
+                            <img src={getOptimizedUrl(product.images[0], 80)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[13.5px] font-semibold text-ink truncate">{product.title}</div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <div className="h-1.5 rounded-full bg-black/[0.05] overflow-hidden flex-1 max-w-[200px]">
+                              <div className="h-full" style={{ width: (ratio * 100) + '%', background: 'linear-gradient(90deg,#F5C842,#E8A800)', transition: 'width 700ms ease-out' }} />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[14px] font-black text-ink tabular-nums">{stats.views}</div>
+                          <div className="text-[10.5px] text-ink2 font-medium uppercase tracking-wide">{t('dashboard.analyticsViews')}</div>
                         </div>
                       </div>
-                      <div className="w-16 bg-gray-200 dark:bg-gray-700/60 h-1.5 rounded-full overflow-hidden flex-shrink-0">
-                        <div
-                          className="h-full bg-blue-500 rounded-full origin-left transition-transform"
-                          style={{ transform: `scaleX(${stats.views / maxViews})` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1512,40 +1650,43 @@ export const SellerDashboard: React.FC = () => {
       // LOGIQUE DE BLOCAGE SI LIMITE ATTEINTE
       if (isLimitReached) {
           return (
-            <div className="max-w-md mx-auto animate-fade-in py-10 text-center">
-                <div className="bg-white dark:bg-gradient-to-b dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-3xl p-8 shadow-xl dark:shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-500"></div>
-                    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-gray-200 dark:border-gray-700 shadow-inner">
-                        <span className="text-4xl">🔒</span>
+            <div className="max-w-md mx-auto animate-fadein py-10 text-center">
+                <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-8 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1" style={{ background: 'linear-gradient(90deg,#EF4444,#F97316,#EF4444)' }} />
+                    <div className="w-20 h-20 bg-canvas rounded-full flex items-center justify-center mx-auto mb-6 text-ink2">
+                        <Lock size={36} />
                     </div>
 
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">{t('dashboard.limitReachedTitle')}</h2>
+                    <h2 className="text-[22px] font-black text-ink mb-2">{t('dashboard.limitReachedTitle')}</h2>
 
                     {!hasNif ? (
                          <div className="mb-6">
-                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-4">
-                                {t('dashboard.noNifLimit')}
-                            </p>
-                            <Button onClick={() => setActiveTab('shop')} className="w-full bg-blue-600 text-white">
+                            <p className="text-ink2 text-[13.5px] mb-4">{t('dashboard.noNifLimit')}</p>
+                            <button
+                              onClick={() => setActiveTab('shop')}
+                              className="w-full h-11 rounded-input bg-ink hover:bg-black text-white font-semibold text-[14px] active:scale-[0.97] transition-transform"
+                            >
                                 {t('dashboard.addNifNow')}
-                            </Button>
+                            </button>
                          </div>
                     ) : (
                         <div className="mb-6 space-y-3">
-                            <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
+                            <p className="text-ink2 mb-4 text-[13.5px] leading-relaxed">
                                 {t('dashboard.usedSlots', { max: currentTier.max, label: currentTier.label })}
                             </p>
                             <a
                               href="https://wa.me/25768515135"
                               target="_blank"
-                              className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 w-full h-11 rounded-input text-white font-semibold text-[14px] active:scale-[0.97] transition-transform"
+                              style={{ background: '#25D366' }}
                             >
-                              <span>📱</span> {t('dashboard.whatsappUpgrade')}
+                              <WhatsAppIcon size={16} /> {t('dashboard.whatsappUpgrade')}
                             </a>
                         </div>
                     )}
 
-                    <button onClick={() => setActiveTab('overview')} className="mt-4 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white underline">
+                    <button onClick={() => setActiveTab('overview')} className="mt-4 text-[12.5px] font-semibold text-ink2 hover:text-ink underline">
                         {t('dashboard.backToDashboard')}
                     </button>
                 </div>
@@ -1553,69 +1694,71 @@ export const SellerDashboard: React.FC = () => {
           );
       }
 
+      const selectCls = 'w-full h-11 pl-3.5 pr-9 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink appearance-none transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none';
+      const inputCls = 'w-full h-11 px-3.5 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none';
+
       return (
-        <div className="max-w-5xl mx-auto animate-fade-in">
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => setActiveTab('products')} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">{t('dashboard.backButton')}</button>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.addProductTitle')}</h2>
-                <span className="ml-auto text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
+        <div className="animate-fadein">
+            <div className="mb-4 flex items-end justify-between gap-3 flex-wrap">
+                <div>
+                  <h1 className="text-[24px] font-black tracking-tight text-ink">{t('dashboard.addProductTitle')}</h1>
+                  <div className="text-[13px] text-ink2 mt-1">{t('dashboard.addProductSub', { defaultValue: "Renseignez votre annonce. Elle sera publiée dès validation." })}</div>
+                </div>
+                <span className="text-[12px] font-bold text-ink2 bg-canvas px-2.5 h-8 inline-flex items-center rounded-input border border-black/[0.06]">
                     {t('dashboard.quota', { current: currentCount, max: currentTier.max === null ? '∞' : currentTier.max })}
                 </span>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* Form Column */}
-              <div className="flex-1 min-w-0">
-                <form onSubmit={handleAddProduct} className="space-y-6">
-                  {/* Slow-network heads-up — appears only on 2G/slow-2g/Save-Data.
-                      Tells the seller their submission will be safely queued
-                      and synced when the connection improves, instead of them
-                      watching a long upload bar and assuming a failure. */}
-                  {isSlowNetwork && (
-                    <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-amber-300">
-                      <span className="text-xl leading-none mt-0.5">📶</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">{t('dashboard.slowNetworkBanner')}</p>
-                        <p className="text-xs text-amber-300/80 mt-0.5">{t('dashboard.slowNetworkHint')}</p>
-                      </div>
-                    </div>
-                  )}
+            {isSlowNetwork && (
+              <div className="mb-4 rounded-card border p-3.5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg,#FFF7E6,#FFFFFF)', borderColor: 'rgba(217,119,6,0.25)' }}>
+                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                  <Wifi size={16} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-[13.5px] font-bold text-amber-900">{t('dashboard.slowNetworkBanner')}</div>
+                  <div className="text-[12px] text-amber-800/80">{t('dashboard.slowNetworkHint')}</div>
+                </div>
+              </div>
+            )}
 
-                  {/* Quality Score */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
+              {/* Form Column */}
+              <div className="min-w-0">
+                <form onSubmit={handleAddProduct} className="space-y-4">
+                  {/* Quality Score (real component) */}
                   <ProductQualityScore score={productScore} />
 
-                  <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">{t('dashboard.basicInfo')}</h3>
+                  <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-4">
+                    <SectionTitle>{t('dashboard.basicInfo')}</SectionTitle>
 
-                    <div className="grid grid-cols-2 gap-4">
-                       <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.categoryLabel')}</label>
-                          <select
-                              required value={category} onChange={e => { setCategory(e.target.value); setSubCategory(''); }}
-                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
-                          >
-                              <option value="">{t('dashboard.selectPlaceholder')}</option>
-                              {categoriesList.map(c => (
-                                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                              ))}
-                          </select>
-                       </div>
-                       <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.subCategoryLabel')}</label>
-                          <select
-                              value={subCategory} onChange={e => setSubCategory(e.target.value)}
-                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-[38px]"
-                              disabled={!category}
-                          >
-                              <option value="">{t('dashboard.selectPlaceholder')}</option>
-                              {(categoriesList.find(c => c.id === category)?.subCategories || []).map(sub => (
-                                  <option key={sub} value={sub}>{sub}</option>
-                              ))}
-                          </select>
-                       </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                       <label className="block">
+                          <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.categoryLabel')}</span>
+                          <div className="relative">
+                            <select required value={category} onChange={e => { setCategory(e.target.value); setSubCategory(''); }} className={selectCls}>
+                                <option value="">{t('dashboard.selectPlaceholder')}</option>
+                                {categoriesList.map(c => (
+                                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink2" />
+                          </div>
+                       </label>
+                       <label className="block">
+                          <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.subCategoryLabel')}</span>
+                          <div className="relative">
+                            <select value={subCategory} onChange={e => setSubCategory(e.target.value)} disabled={!category} className={`${selectCls} disabled:opacity-50`}>
+                                <option value="">{t('dashboard.selectPlaceholder')}</option>
+                                {(categoriesList.find(c => c.id === category)?.subCategories || []).map(sub => (
+                                    <option key={sub} value={sub}>{sub}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink2" />
+                          </div>
+                       </label>
                     </div>
 
-                    {/* Smart Title Input with autocomplete */}
+                    {/* Smart Title Input with autocomplete (real component) */}
                     <SmartTitleInput
                       value={title}
                       onChange={setTitle}
@@ -1628,91 +1771,79 @@ export const SellerDashboard: React.FC = () => {
 
                     {/* Description with generate button */}
                     <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-bold text-gray-400">{t('dashboard.detailedDescription')}</label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[12.5px] font-semibold text-ink2">{t('dashboard.detailedDescription')}</span>
                           <button
                             type="button"
                             onClick={handleGenerateDescription}
-                            className="text-[10px] font-bold text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-gold-400/10"
+                            className="inline-flex items-center gap-1 text-[11.5px] font-bold text-goldDeep active:scale-[0.97] transition-transform px-2 py-1 rounded-full"
+                            style={{ background: 'rgba(245,200,66,0.15)' }}
                           >
-                            <span>✨</span> {t('dashboard.generateDescription')}
+                            <Sparkles size={11} /> {t('dashboard.generateDescription')}
                           </button>
                         </div>
                         <textarea
                           required value={desc} onChange={e => setDesc(e.target.value)}
-                          className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none min-h-[100px]"
+                          className="w-full px-3.5 py-3 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition resize-y min-h-[110px] focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none"
                           placeholder={t('dashboard.descriptionPlaceholder')}
                         />
                     </div>
                   </div>
 
-                  <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-6 space-y-4">
-                     <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">{t('dashboard.priceAndImages')}</h3>
+                  <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-4">
+                     <SectionTitle>{t('dashboard.priceAndImages')}</SectionTitle>
 
-                     <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.priceLabel')}</label>
-                          <input
-                            required type="number" min="0.01" step="any" value={price} onChange={e => setPrice(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.currencyLabel')}</label>
-                          <select
-                            value={productCurrency}
-                            onChange={e => setProductCurrency(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                          >
-                            {currencies.map(c => <option key={c.id} value={c.code}>{c.symbol} ({c.code})</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.oldPrice')}</label>
-                          <input
-                            type="number" min="0" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
-                            placeholder="—"
-                          />
-                        </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <label className="block">
+                          <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.priceLabel')}</span>
+                          <input required type="number" min="0.01" step="any" value={price} onChange={e => setPrice(e.target.value)} className={`${inputCls} tabular-nums`} placeholder="0" />
+                        </label>
+                        <label className="block">
+                          <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.currencyLabel')}</span>
+                          <div className="relative">
+                            <select value={productCurrency} onChange={e => setProductCurrency(e.target.value)} className={selectCls}>
+                              {currencies.map(c => <option key={c.id} value={c.code}>{c.symbol} ({c.code})</option>)}
+                            </select>
+                            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink2" />
+                          </div>
+                        </label>
+                        <label className="block">
+                          <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.oldPrice')}</span>
+                          <input type="number" min="0" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)} className={`${inputCls} tabular-nums`} placeholder="—" />
+                        </label>
                      </div>
 
                     {/* B2B Wholesale Toggle */}
-                    <div className="border border-indigo-300 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/5 rounded-xl p-4 space-y-3">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className={`relative w-11 h-6 rounded-full transition-colors ${isWholesale ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-700'}`}
-                          onClick={() => setIsWholesale(!isWholesale)}>
-                          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isWholesale ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
-                        </div>
+                    <div className="rounded-input border border-black/[0.08] bg-canvas p-4 space-y-3">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{t('dashboard.wholesaleToggle')}</span>
-                          <p className="text-xs text-gray-500">{t('dashboard.wholesaleHint')}</p>
+                          <span className="text-[13.5px] font-semibold text-ink">{t('dashboard.wholesaleToggle')}</span>
+                          <p className="text-[12px] text-ink2">{t('dashboard.wholesaleHint')}</p>
                         </div>
-                      </label>
+                        <button
+                          type="button"
+                          onClick={() => setIsWholesale(!isWholesale)}
+                          aria-pressed={isWholesale}
+                          className={`relative w-10 h-6 rounded-full transition active:scale-[0.97] shrink-0 ${isWholesale ? 'bg-gold-400' : 'bg-black/[0.15]'}`}
+                        >
+                          <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition" style={{ transform: isWholesale ? 'translateX(16px)' : 'translateX(0)' }} />
+                        </button>
+                      </div>
                       {isWholesale && (
-                        <div className="grid grid-cols-2 gap-4 pt-2">
-                          <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.minOrder')}</label>
-                            <input
-                              type="number" min="2" value={minOrderQty} onChange={e => setMinOrderQty(e.target.value)}
-                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
-                              placeholder="10"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.wholesalePrice')}</label>
-                            <input
-                              type="number" min="0" step="any" value={wholesalePrice} onChange={e => setWholesalePrice(e.target.value)}
-                              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
-                              placeholder="0"
-                            />
-                          </div>
+                        <div className="grid grid-cols-2 gap-3 pt-1 animate-fadein">
+                          <label className="block">
+                            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.minOrder')}</span>
+                            <input type="number" min="2" value={minOrderQty} onChange={e => setMinOrderQty(e.target.value)} className={`${inputCls} tabular-nums`} placeholder="10" />
+                          </label>
+                          <label className="block">
+                            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.wholesalePrice')}</span>
+                            <input type="number" min="0" step="any" value={wholesalePrice} onChange={e => setWholesalePrice(e.target.value)} className={`${inputCls} tabular-nums`} placeholder="0" />
+                          </label>
                         </div>
                       )}
                     </div>
 
-                    {/* Smart Image Upload */}
+                    {/* Smart Image Upload (real component) */}
                     <SmartImageUpload
                       previews={imagePreviews}
                       maxImages={5}
@@ -1724,20 +1855,20 @@ export const SellerDashboard: React.FC = () => {
                   </div>
 
                   {formError && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-500/40 text-red-700 dark:text-red-300 text-sm p-3 rounded-xl">
+                    <div className="rounded-input p-3 text-[13px] font-medium" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)', color: '#B91C1C' }}>
                       {formError}
                     </div>
                   )}
 
                   {uploadProgress && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300 text-sm p-3 rounded-xl flex items-center gap-2">
+                    <div className="rounded-input p-3 text-[13px] font-medium flex items-center gap-2" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.20)', color: '#1D4ED8' }}>
                       <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                       {uploadProgress}
                     </div>
                   )}
 
-                  {/* Mobile Preview Toggle */}
-                  <div className="md:hidden">
+                  {/* Mobile Preview Toggle (real component) */}
+                  <div className="lg:hidden">
                     <ProductPreview
                       data={{
                         title, price, originalPrice, currency: productCurrency,
@@ -1751,18 +1882,56 @@ export const SellerDashboard: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flex gap-4 pt-4 pb-24 md:pb-4">
-                    <Button type="button" variant="ghost" className="flex-1" onClick={() => setActiveTab('products')}>{t('dashboard.cancelButton')}</Button>
-                    <Button type="submit" className="flex-[2]" isLoading={loading} disabled={loading || compressing}>
+                  {/* Desktop submit row */}
+                  <div className="hidden lg:flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('products')}
+                      className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-white text-ink font-semibold text-[14px] border border-black/[0.08] active:scale-[0.97] transition-transform hover:bg-canvas"
+                    >
+                      {t('dashboard.cancelButton')}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading || compressing}
+                      className="inline-flex items-center justify-center gap-2 px-6 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov disabled:opacity-60"
+                      style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+                    >
+                      <Upload size={16} />
                       {loading ? t('dashboard.publishing') : compressing ? t('dashboard.optimizing') : t('dashboard.publishNow')}
-                    </Button>
+                    </button>
+                  </div>
+
+                  {/* Mobile sticky submit */}
+                  <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 bg-gradient-to-t from-canvas via-canvas/95 to-canvas/0">
+                    <div className="bg-white rounded-card border border-black/[0.07] shadow-cardHover p-2.5 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('products')}
+                        className="inline-flex items-center justify-center px-4 h-12 rounded-input bg-canvas text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform"
+                      >
+                        {t('dashboard.cancelButton')}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading || compressing}
+                        className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov disabled:opacity-60"
+                        style={{ boxShadow: '0 6px 16px rgba(245,200,66,0.35)' }}
+                      >
+                        <Upload size={16} />
+                        {loading ? t('dashboard.publishing') : compressing ? t('dashboard.optimizing') : t('dashboard.publishNow')}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
 
-              {/* Desktop Preview Sidebar */}
-              <div className="hidden md:block w-[300px] flex-shrink-0">
-                <div className="sticky top-24">
+              {/* Desktop Preview Sidebar (real component) */}
+              <div className="hidden lg:block">
+                <div className="sticky top-5">
+                  <div className="text-[11px] font-bold text-muted uppercase tracking-[0.14em] mb-2 px-1">
+                    {t('dashboard.livePreview', { defaultValue: 'Aperçu en direct' })}
+                  </div>
                   <ProductPreview
                     data={{
                       title, price, originalPrice, currency: productCurrency,
@@ -1781,237 +1950,244 @@ export const SellerDashboard: React.FC = () => {
       );
   };
 
-  const renderShopSettings = () => (
-      <div className="max-w-2xl mx-auto animate-fade-in space-y-6 pb-24 md:pb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t('dashboard.shopCustomization')}</h2>
+  const renderShopSettings = () => {
+    const fieldInputCls = 'w-full h-11 px-3.5 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none';
+    const fieldSelectCls = 'w-full h-11 pl-3.5 pr-9 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink appearance-none transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none';
+    return (
+      <form onSubmit={handleSaveProfile} className="animate-fadein space-y-5 pb-28 lg:pb-5">
+          <div>
+            <h1 className="text-[24px] font-black tracking-tight text-ink">{t('dashboard.shopCustomization')}</h1>
+            <div className="text-[13px] text-ink2 mt-1">{t('dashboard.shopCustomizationSub', { defaultValue: 'Personnalisez votre vitrine. Ces informations sont visibles par tous les acheteurs.' })}</div>
+          </div>
 
-          <form onSubmit={handleSaveProfile} className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-6">
-              <div className="space-y-4">
-                  {/* Logo / Image boutique */}
-                  <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-2">{t('dashboard.logoLabel')}</label>
-                      <div className="flex items-center gap-4">
-                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-                          <img
-                            src={avatarPreview || '/icons/icon-192.png'}
-                            alt="Logo"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <input
-                            ref={avatarInputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleAvatarSelect}
-                            className="hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => avatarInputRef.current?.click()}
-                            className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-blue-500 transition-colors"
-                          >
-                            {t('dashboard.changeImage')}
-                          </button>
-                          <p className="text-[10px] text-gray-500 mt-1">{t('dashboard.imageHint')}</p>
-                        </div>
-                      </div>
-                  </div>
+          {/* IDENTITY */}
+          <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-4">
+              <SectionTitle>{t('dashboard.logoLabel')}</SectionTitle>
+              <div className="flex items-center gap-4">
+                <img
+                  src={avatarPreview || '/icons/icon-192.png'}
+                  alt=""
+                  className="w-20 h-20 rounded-card object-cover bg-canvas border border-black/[0.07] shrink-0"
+                />
+                <div className="flex-1">
+                  <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarSelect} className="hidden" />
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-4 h-10 rounded-input bg-canvas text-ink text-[13px] font-bold active:scale-[0.97] transition-transform hover:bg-black/[0.06]"
+                  >
+                    <Camera size={14} /> {t('dashboard.changeImage')}
+                  </button>
+                  <p className="text-[11.5px] text-muted mt-1.5">{t('dashboard.imageHint')}</p>
+                </div>
+              </div>
 
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.shopNameLabel')}</label>
-                      <input
-                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
-                        value={shopProfile.name}
-                        onChange={(e) => setShopProfile({...shopProfile, name: e.target.value})}
-                      />
-                  </div>
+              <label className="block">
+                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.shopNameLabel')}</span>
+                <input className={fieldInputCls} value={shopProfile.name} onChange={(e) => setShopProfile({ ...shopProfile, name: e.target.value })} />
+              </label>
 
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.bioLabel')}</label>
-                      <textarea
-                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none min-h-[80px]"
-                        value={shopProfile.bio}
-                        onChange={(e) => setShopProfile({...shopProfile, bio: e.target.value})}
-                        placeholder={t('dashboard.bioPlaceholder')}
-                      />
-                  </div>
+              <label className="block">
+                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.bioLabel')}</span>
+                <textarea
+                  className="w-full px-3.5 py-3 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition resize-y min-h-[90px] focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none"
+                  value={shopProfile.bio}
+                  onChange={(e) => setShopProfile({ ...shopProfile, bio: e.target.value })}
+                  placeholder={t('dashboard.bioPlaceholder')}
+                />
+              </label>
+          </div>
 
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.whatsappLabel')}</label>
-                      <input
-                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
-                        value={shopProfile.whatsapp}
-                        onChange={(e) => setShopProfile({...shopProfile, whatsapp: e.target.value})}
-                        placeholder="+257..."
-                      />
-                  </div>
+          {/* CONTACT & LOCATION */}
+          <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-4">
+              <SectionTitle sub={t('dashboard.contactSub', { defaultValue: 'Comment les acheteurs vous trouvent et vous contactent.' })}>
+                {t('dashboard.whatsappLabel')}
+              </SectionTitle>
 
-                  {/* GPS — Capture automatique */}
-                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-300 dark:border-blue-500/30 p-4 rounded-xl space-y-3">
-                      <label className="block text-xs font-bold text-blue-700 dark:text-blue-300">{t('dashboard.gpsLabel')}</label>
+              <label className="block">
+                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.whatsappLabel')}</span>
+                <input className={fieldInputCls} value={shopProfile.whatsapp} onChange={(e) => setShopProfile({ ...shopProfile, whatsapp: e.target.value })} placeholder="+257..." />
+              </label>
+
+              {/* GPS — Capture automatique */}
+              <div className="rounded-input border border-black/[0.08] bg-canvas p-4 space-y-3">
+                  <span className="text-[12.5px] font-semibold text-ink2">{t('dashboard.gpsLabel')}</span>
+                  <button
+                    type="button"
+                    onClick={captureGPS}
+                    disabled={gpsLoading}
+                    className={`w-full flex items-center justify-center gap-2 h-11 rounded-input font-bold text-[13.5px] active:scale-[0.97] transition-transform ${
+                      shopProfile.gps ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-ink hover:bg-black text-white'
+                    }`}
+                  >
+                    {gpsLoading ? (
+                      <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {t('dashboard.capturingGps')}</>
+                    ) : shopProfile.gps ? (
+                      <><MapPin size={15} /> {t('dashboard.gpsCaptured')} ({shopProfile.gps.lat.toFixed(4)}, {shopProfile.gps.lng.toFixed(4)})</>
+                    ) : (
+                      <><MapPin size={15} /> {t('dashboard.captureGps')}</>
+                    )}
+                  </button>
+                  <p className="text-[11.5px] text-muted">{t('dashboard.gpsHint')}</p>
+              </div>
+
+              <label className="block">
+                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.locationUrlLabel')}</span>
+                <input className={fieldInputCls} value={shopProfile.locationUrl} onChange={(e) => setShopProfile({ ...shopProfile, locationUrl: e.target.value })} placeholder="https://maps.google.com/..." />
+              </label>
+
+              {/* TYPE DE VENTE */}
+              <div>
+                  <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.sellingTypeLabel')}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {([
+                      { value: 'shop' as const, icon: '🏪', label: t('dashboard.fixedShop') },
+                      { value: 'street' as const, icon: '🚶', label: t('dashboard.ambulant') },
+                      { value: 'online' as const, icon: '🌐', label: t('dashboard.online') },
+                    ]).map(opt => (
                       <button
+                        key={opt.value}
                         type="button"
-                        onClick={captureGPS}
-                        disabled={gpsLoading}
-                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                          shopProfile.gps
-                            ? 'bg-green-600 hover:bg-green-500 text-white'
-                            : 'bg-blue-600 hover:bg-blue-500 text-white'
+                        onClick={() => setShopProfile({ ...shopProfile, sellerType: opt.value })}
+                        className={`text-left rounded-input p-3.5 border-2 transition active:scale-[0.97] ${
+                          shopProfile.sellerType === opt.value ? 'border-gold-400 bg-gold-400/[0.08]' : 'border-black/[0.08] hover:bg-canvas'
                         }`}
                       >
-                        {gpsLoading ? (
-                          <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {t('dashboard.capturingGps')}</>
-                        ) : shopProfile.gps ? (
-                          <>📍 {t('dashboard.gpsCaptured')} ({shopProfile.gps.lat.toFixed(4)}, {shopProfile.gps.lng.toFixed(4)})</>
-                        ) : (
-                          <>📍 {t('dashboard.captureGps')}</>
-                        )}
+                        <div className="text-[22px] leading-none">{opt.icon}</div>
+                        <div className="mt-2 text-[13.5px] font-bold text-ink">{opt.label}</div>
                       </button>
-                      <p className="text-[10px] text-gray-500">{t('dashboard.gpsHint')}</p>
-                  </div>
-
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.locationUrlLabel')}</label>
-                      <input
-                          className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
-                          value={shopProfile.locationUrl}
-                          onChange={(e) => setShopProfile({...shopProfile, locationUrl: e.target.value})}
-                          placeholder="https://maps.google.com/..."
-                      />
-                  </div>
-                  
-                  {/* TYPE DE VENTE */}
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-2">{t('dashboard.sellingTypeLabel')}</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {([
-                          { value: 'shop' as const, icon: '🏪', label: t('dashboard.fixedShop') },
-                          { value: 'street' as const, icon: '🚶', label: t('dashboard.ambulant') },
-                          { value: 'online' as const, icon: '🌐', label: t('dashboard.online') },
-                        ]).map(opt => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => setShopProfile({...shopProfile, sellerType: opt.value})}
-                            className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-sm font-medium transition-all ${
-                              shopProfile.sellerType === opt.value
-                                ? 'bg-blue-600/20 border-blue-500 text-blue-700 dark:text-white'
-                                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
-                            }`}
-                          >
-                            <span className="text-xl">{opt.icon}</span>
-                            <span className="text-xs">{opt.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                  </div>
-
-                  {/* PHOTO DE LA BOUTIQUE (distincte du logo/avatar) */}
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-2">{t('dashboard.shopPhotoLabel')}</label>
-                      <div className="flex items-center gap-4">
-                        <div className="relative w-24 h-16 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-                          {shopImagePreview ? (
-                            <img src={shopImagePreview} alt="Boutique" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-600 text-2xl">🏪</div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <input ref={shopImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleShopImageSelect} className="hidden" />
-                          <button type="button" onClick={() => shopImageInputRef.current?.click()} className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-blue-500 transition-colors">
-                            {shopImagePreview ? t('dashboard.changePhoto') : t('dashboard.addPhoto2')}
-                          </button>
-                          <p className="text-[10px] text-gray-500 mt-1">{t('dashboard.shopPhotoHint')}</p>
-                        </div>
-                      </div>
-                  </div>
-
-                  {/* CATÉGORIES */}
-                  <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-2">{t('dashboard.categoriesLabel')}</label>
-                      <div className="flex flex-wrap gap-2">
-                        {firestoreCategories.map(c => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => toggleShopCategory(c.name)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                              shopProfile.categories.includes(c.name)
-                                ? 'bg-gold-400 text-gray-900 border-gold-400 shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
-                                : 'bg-transparent text-gray-600 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                            }`}
-                          >
-                            {c.icon} {c.name}
-                          </button>
-                        ))}
-                      </div>
-                  </div>
-
-                  {/* ADRESSE */}
-                  <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 p-4 rounded-xl space-y-3">
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.addressLabel')}</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Ville</label>
-                          <select
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none"
-                            value={shopProfile.province}
-                            onChange={e => setShopProfile({ ...shopProfile, province: e.target.value, commune: e.target.value })}
-                          >
-                            <option value="">Sélectionnez votre ville</option>
-                            {sellerCities.map(city => (
-                              <option key={city} value={city}>{city}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Quartier / Adresse (optionnel)</label>
-                          <input
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none"
-                            value={shopProfile.quartier}
-                            onChange={(e) => setShopProfile({...shopProfile, quartier: e.target.value})}
-                            placeholder="Ex: Rohero, Av. de la Liberté"
-                          />
-                        </div>
-                      </div>
-                  </div>
-
-                  {/* SECTION NIF & REGISTRE */}
-                  <div className={`p-4 rounded-xl border ${!hasNif ? 'bg-red-50 dark:bg-red-900/10 border-red-300 dark:border-red-500/30' : 'bg-green-50 dark:bg-green-900/10 border-green-300 dark:border-green-500/30'}`}>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.nifLabel')}</label>
-                          <input
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
-                            value={shopProfile.nif}
-                            onChange={(e) => setShopProfile({...shopProfile, nif: e.target.value})}
-                            placeholder={!hasNif ? t('dashboard.nifPlaceholder') : t('dashboard.nifRegistered')}
-                          />
-                          {!hasNif && <p className="text-xs text-red-400 mt-2">{t('dashboard.addNifHint')}</p>}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">{t('dashboard.registryLabel')}</label>
-                          <input
-                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
-                            value={shopProfile.registryNumber}
-                            onChange={(e) => setShopProfile({...shopProfile, registryNumber: e.target.value})}
-                            placeholder="Ex: RC/BUJ/2026-xxxx"
-                          />
-                        </div>
-                      </div>
-                  </div>
-
-                  <div className="mt-6 flex justify-end">
-                      <Button type="submit" isLoading={savingProfile} disabled={savingProfile}>
-                        {savingProfile ? t('dashboard.saving') : t('dashboard.saveChanges')}
-                      </Button>
+                    ))}
                   </div>
               </div>
-          </form>
-      </div>
-  );
+
+              {/* PHOTO DE LA BOUTIQUE */}
+              <div>
+                  <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.shopPhotoLabel')}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-24 h-16 rounded-input overflow-hidden border border-black/[0.07] bg-canvas shrink-0">
+                      {shopImagePreview ? (
+                        <img src={shopImagePreview} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted text-2xl">🏪</div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input ref={shopImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleShopImageSelect} className="hidden" />
+                      <button
+                        type="button"
+                        onClick={() => shopImageInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-4 h-10 rounded-input bg-canvas text-ink text-[13px] font-bold active:scale-[0.97] transition-transform hover:bg-black/[0.06]"
+                      >
+                        <Camera size={14} /> {shopImagePreview ? t('dashboard.changePhoto') : t('dashboard.addPhoto2')}
+                      </button>
+                      <p className="text-[11.5px] text-muted mt-1.5">{t('dashboard.shopPhotoHint')}</p>
+                    </div>
+                  </div>
+              </div>
+
+              {/* ADRESSE */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.addressLabel')}</span>
+                  <div className="relative">
+                    <select
+                      className={fieldSelectCls}
+                      value={shopProfile.province}
+                      onChange={e => setShopProfile({ ...shopProfile, province: e.target.value, commune: e.target.value })}
+                    >
+                      <option value="">{t('dashboard.selectCity', { defaultValue: 'Sélectionnez votre ville' })}</option>
+                      {sellerCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink2" />
+                  </div>
+                </label>
+                <label className="block">
+                  <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.quartierLabel', { defaultValue: 'Quartier / Adresse (optionnel)' })}</span>
+                  <input
+                    className={fieldInputCls}
+                    value={shopProfile.quartier}
+                    onChange={(e) => setShopProfile({ ...shopProfile, quartier: e.target.value })}
+                    placeholder="Ex: Rohero, Av. de la Liberté"
+                  />
+                </label>
+              </div>
+          </div>
+
+          {/* CATEGORIES */}
+          <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5">
+              <SectionTitle sub={t('dashboard.categoriesSub', { defaultValue: 'Elles aident les acheteurs à vous trouver.' })}>
+                {t('dashboard.categoriesLabel')}
+              </SectionTitle>
+              <div className="flex flex-wrap gap-2">
+                {firestoreCategories.map(c => {
+                  const on = shopProfile.categories.includes(c.name);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleShopCategory(c.name)}
+                      className={`inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[12.5px] font-bold transition active:scale-[0.97] border ${
+                        on ? 'text-ink shadow-gold border-transparent' : 'bg-white text-ink2 border-black/[0.08] hover:bg-canvas'
+                      }`}
+                      style={on ? { background: '#F5C842' } : undefined}
+                    >
+                      {on && <Check size={12} />}
+                      {c.icon} {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+          </div>
+
+          {/* DOCUMENTS — NIF & REGISTRE */}
+          <div
+            className="rounded-card border p-5 space-y-4"
+            style={{
+              background: !hasNif ? 'rgba(239,68,68,0.04)' : 'rgba(16,185,129,0.04)',
+              borderColor: !hasNif ? 'rgba(239,68,68,0.20)' : 'rgba(16,185,129,0.22)',
+            }}
+          >
+              <SectionTitle sub={t('dashboard.documentsSub', { defaultValue: 'Utiles pour la vérification de votre boutique.' })}>
+                {t('dashboard.nifLabel')}
+              </SectionTitle>
+              <label className="block">
+                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.nifLabel')}</span>
+                <input
+                  className={fieldInputCls}
+                  value={shopProfile.nif}
+                  onChange={(e) => setShopProfile({ ...shopProfile, nif: e.target.value })}
+                  placeholder={!hasNif ? t('dashboard.nifPlaceholder') : t('dashboard.nifRegistered')}
+                />
+                {!hasNif && <span className="block text-[11.5px] text-red-600 mt-1.5">{t('dashboard.addNifHint')}</span>}
+              </label>
+              <label className="block">
+                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.registryLabel')}</span>
+                <input
+                  className={fieldInputCls}
+                  value={shopProfile.registryNumber}
+                  onChange={(e) => setShopProfile({ ...shopProfile, registryNumber: e.target.value })}
+                  placeholder="Ex: RC/BUJ/2026-xxxx"
+                />
+              </label>
+          </div>
+
+          {/* SAVE */}
+          <div className="flex items-center justify-end sticky bottom-0 py-3 -mx-4 md:-mx-8 px-4 md:px-8 bg-canvas/90 backdrop-blur border-t border-black/[0.05]">
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="inline-flex items-center justify-center gap-2 px-6 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov disabled:opacity-60"
+              style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+            >
+              <Check size={16} />
+              {savingProfile ? t('dashboard.saving') : t('dashboard.saveChanges')}
+            </button>
+          </div>
+      </form>
+    );
+  };
 
   const verificationStatus = currentUser.sellerDetails?.verificationStatus || 'none';
   const hasDocuments = !!(currentUser.sellerDetails?.documents?.cniUrl);
@@ -2050,286 +2226,345 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  const renderVerification = () => (
-    <div className="max-w-2xl mx-auto animate-fade-in space-y-6 pb-24 md:pb-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.verification')}</h2>
-
-      {/* Statut actuel */}
-      <div className={`p-5 rounded-2xl border ${
-        verificationStatus === 'verified' ? 'bg-green-50 dark:bg-green-500/10 border-green-300 dark:border-green-500/30' :
-        verificationStatus === 'pending' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/30' :
-        verificationStatus === 'rejected' ? 'bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/30' :
-        'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-none'
-      }`}>
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">
-            {verificationStatus === 'verified' ? '✅' : verificationStatus === 'pending' ? '⏳' : verificationStatus === 'rejected' ? '❌' : '🔒'}
-          </span>
-          <div>
-            <p className={`font-bold ${
-              verificationStatus === 'verified' ? 'text-green-600 dark:text-green-400' :
-              verificationStatus === 'pending' ? 'text-blue-600 dark:text-blue-400' :
-              verificationStatus === 'rejected' ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'
-            }`}>
-              {verificationStatus === 'verified' ? t('dashboard.verifyStatusVerified') :
-               verificationStatus === 'pending' ? t('dashboard.verifyStatusPending') :
-               verificationStatus === 'rejected' ? t('dashboard.verifyStatusRejected') :
-               t('dashboard.verifyStatusNone')}
-            </p>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {verificationStatus === 'verified' ? t('dashboard.verifyStatusVerifiedDesc') :
-               verificationStatus === 'pending' ? t('dashboard.verifyStatusPendingDesc') :
-               verificationStatus === 'rejected' ? currentUser.sellerDetails?.verificationNote || t('dashboard.verifyStatusRejectedDesc') :
-               t('dashboard.verifyStatusNoneDesc')}
-            </p>
-          </div>
-        </div>
+  const renderVerification = () => {
+    const verifInputCls = 'w-full h-11 px-3.5 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none';
+    const showForm = verificationStatus !== 'verified' && verificationStatus !== 'pending';
+    return (
+    <div className="animate-fadein space-y-5">
+      <div>
+        <h1 className="text-[24px] font-black tracking-tight text-ink">{t('dashboard.verification')}</h1>
+        <div className="text-[13px] text-ink2 mt-1">{t('dashboard.verificationSub', { defaultValue: 'Le badge vérifié rassure les acheteurs et augmente vos ventes.' })}</div>
       </div>
 
-      {/* Formulaire demande (affiché uniquement si non vérifié / non pending) */}
-      {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 space-y-4 shadow-sm dark:shadow-none">
-          <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold">{t('dashboard.verifyFormTitle')}</h3>
-            <p className="text-xs text-gray-500 mt-1">{t('dashboard.verifyFormSubtitle')}</p>
+      {/* STATUS HERO */}
+      {verificationStatus === 'verified' ? (
+        <div className="bg-white rounded-card border shadow-card p-6 sm:p-7 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.10) 0%, #FFFFFF 60%)', borderColor: 'rgba(16,185,129,0.30)' }}>
+          <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.20), transparent 70%)' }} />
+          <div className="relative flex items-start gap-4">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#34D399,#10B981)', boxShadow: '0 10px 30px rgba(16,185,129,0.40)' }}>
+              <Check size={26} />
+            </div>
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider" style={{ background: 'rgba(16,185,129,0.15)', color: '#065F46' }}>
+                {t('dashboard.verifyStatusVerified')}
+              </div>
+              <h2 className="mt-2 text-[22px] sm:text-[26px] font-black tracking-tight leading-tight text-ink">{t('dashboard.verifyStatusVerified')}</h2>
+              <p className="mt-2 text-[13.5px] text-ink2 max-w-[60ch]">{t('dashboard.verifyStatusVerifiedDesc')}</p>
+            </div>
           </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1.5">
-                {t('dashboard.verifyPhoneLabel')} <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="tel"
-                value={verifForm.phone}
-                onChange={(e) => setVerifForm(s => ({ ...s, phone: e.target.value }))}
-                placeholder={t('dashboard.verifyPhonePlaceholder')}
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
-              />
+        </div>
+      ) : verificationStatus === 'pending' ? (
+        <div className="bg-white rounded-card border shadow-card p-6 overflow-hidden" style={{ background: 'linear-gradient(135deg,#FFFBE6,#FFFFFF)', borderColor: 'rgba(217,119,6,0.25)' }}>
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center text-amber-700 bg-amber-100 shrink-0">
+              <Clock size={24} />
             </div>
-
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1.5">
-                {t('dashboard.verifyNifLabel')}
-              </label>
-              <input
-                type="text"
-                value={verifForm.nif}
-                onChange={(e) => setVerifForm(s => ({ ...s, nif: e.target.value }))}
-                placeholder={t('dashboard.verifyNifPlaceholder')}
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
-              />
+              <h2 className="text-[20px] font-black text-ink">{t('dashboard.verifyStatusPending')}</h2>
+              <p className="mt-1 text-[13px] text-ink2">{t('dashboard.verifyStatusPendingDesc')}</p>
             </div>
-
+          </div>
+        </div>
+      ) : (
+        <div
+          className="bg-white rounded-card border shadow-card p-6 overflow-hidden"
+          style={{
+            background: verificationStatus === 'rejected' ? 'linear-gradient(135deg,#FEF2F2,#FFFFFF)' : '#FFFFFF',
+            borderColor: verificationStatus === 'rejected' ? 'rgba(239,68,68,0.25)' : 'rgba(0,0,0,0.07)',
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 ${verificationStatus === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-canvas text-ink2'}`}>
+              {verificationStatus === 'rejected' ? <X size={24} /> : <Lock size={24} />}
+            </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1.5">
-                {t('dashboard.verifyRegistryLabel')}
-              </label>
-              <input
-                type="text"
-                value={verifForm.registryNumber}
-                onChange={(e) => setVerifForm(s => ({ ...s, registryNumber: e.target.value }))}
-                placeholder={t('dashboard.verifyRegistryPlaceholder')}
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
-              />
+              <h2 className={`text-[20px] font-black ${verificationStatus === 'rejected' ? 'text-red-800' : 'text-ink'}`}>
+                {verificationStatus === 'rejected' ? t('dashboard.verifyStatusRejected') : t('dashboard.verifyStatusNone')}
+              </h2>
+              <p className="mt-1 text-[13px] text-ink2">
+                {verificationStatus === 'rejected'
+                  ? currentUser.sellerDetails?.verificationNote || t('dashboard.verifyStatusRejectedDesc')
+                  : t('dashboard.verifyStatusNoneDesc')}
+              </p>
             </div>
-
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              {t('dashboard.verifyNumbersHint')}
-            </p>
           </div>
         </div>
       )}
 
+      {/* BENEFITS */}
+      <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5">
+        <SectionTitle sub={t('dashboard.verifyBenefitsSub', { defaultValue: 'Pourquoi se vérifier auprès de NUNULIA' })}>
+          {t('dashboard.verifyBenefitsTitle', { defaultValue: 'Avantages du badge vérifié' })}
+        </SectionTitle>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {[
+            { icon: BadgeCheck, t: t('dashboard.verifyBenefit1Title', { defaultValue: 'Badge vérifié visible' }), d: t('dashboard.verifyBenefit1Desc', { defaultValue: 'Apparaît sur toutes vos annonces et votre profil public.' }), c: '#10B981' },
+            { icon: BarChart2, t: t('dashboard.verifyBenefit2Title', { defaultValue: 'Meilleur classement' }), d: t('dashboard.verifyBenefit2Desc', { defaultValue: 'Vos produits remontent plus haut dans les résultats.' }), c: '#F5C842' },
+            { icon: Star, t: t('dashboard.verifyBenefit3Title', { defaultValue: '+38% de confiance' }), d: t('dashboard.verifyBenefit3Desc', { defaultValue: 'Les acheteurs achètent plus chez les vendeurs vérifiés.' }), c: '#8B5CF6' },
+          ].map((b, i) => {
+            const IconCmp = b.icon;
+            return (
+              <div key={i} className="rounded-card border border-black/[0.06] p-4 bg-canvas/40">
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white" style={{ background: b.c }}>
+                  <IconCmp size={16} />
+                </div>
+                <div className="mt-3 text-[14px] font-black text-ink">{b.t}</div>
+                <div className="text-[12.5px] text-ink2 mt-1 leading-relaxed">{b.d}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Formulaire demande (affiché uniquement si non vérifié / non pending) */}
+      {showForm && (
+        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-4">
+          <SectionTitle sub={t('dashboard.verifyFormSubtitle')}>{t('dashboard.verifyFormTitle')}</SectionTitle>
+
+          <label className="block">
+            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">
+              {t('dashboard.verifyPhoneLabel')} <span className="text-red-500">*</span>
+            </span>
+            <input
+              type="tel"
+              value={verifForm.phone}
+              onChange={(e) => setVerifForm(s => ({ ...s, phone: e.target.value }))}
+              placeholder={t('dashboard.verifyPhonePlaceholder')}
+              className={verifInputCls}
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.verifyNifLabel')}</span>
+            <input
+              type="text"
+              value={verifForm.nif}
+              onChange={(e) => setVerifForm(s => ({ ...s, nif: e.target.value }))}
+              placeholder={t('dashboard.verifyNifPlaceholder')}
+              className={verifInputCls}
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.verifyRegistryLabel')}</span>
+            <input
+              type="text"
+              value={verifForm.registryNumber}
+              onChange={(e) => setVerifForm(s => ({ ...s, registryNumber: e.target.value }))}
+              placeholder={t('dashboard.verifyRegistryPlaceholder')}
+              className={verifInputCls}
+            />
+          </label>
+
+          <p className="text-[11.5px] text-muted leading-relaxed">{t('dashboard.verifyNumbersHint')}</p>
+        </div>
+      )}
+
       {/* Documents optionnels — accélère la vérification */}
-      {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 space-y-3 shadow-sm dark:shadow-none">
-          <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold">{t('dashboard.verifyDocumentsOptional')}</h3>
-            <p className="text-xs text-gray-500 mt-1">{t('dashboard.verifyDocumentsOptionalHint')}</p>
-          </div>
+      {showForm && (
+        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-3">
+          <SectionTitle sub={t('dashboard.verifyDocumentsOptionalHint')}>{t('dashboard.verifyDocumentsOptional')}</SectionTitle>
           {currentUser.sellerDetails?.documents?.cniUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 p-3 bg-canvas rounded-input border border-black/[0.06]">
               <span className="text-xl">🪪</span>
               <div className="flex-1">
-                <p className="text-sm text-gray-900 dark:text-white font-medium">{t('dashboard.verifyCNI')}</p>
-                <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+                <p className="text-[13px] text-ink font-medium">{t('dashboard.verifyCNI')}</p>
+                <p className="text-[11.5px] text-emerald-600">{t('dashboard.verifyUploaded')}</p>
               </div>
-              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
-                 className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-goldDeep hover:underline">{t('dashboard.verifyView')}</a>
             </div>
           )}
           {currentUser.sellerDetails?.documents?.nifUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 p-3 bg-canvas rounded-input border border-black/[0.06]">
               <span className="text-xl">📄</span>
               <div className="flex-1">
-                <p className="text-sm text-gray-900 dark:text-white font-medium">NIF</p>
-                <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+                <p className="text-[13px] text-ink font-medium">NIF</p>
+                <p className="text-[11.5px] text-emerald-600">{t('dashboard.verifyUploaded')}</p>
               </div>
-              <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
-                 className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+              <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-goldDeep hover:underline">{t('dashboard.verifyView')}</a>
             </div>
           )}
           {!hasDocuments && (
-            <p className="text-xs text-gray-500 italic">{t('dashboard.verifyNoDocuments')}</p>
+            <p className="text-[12px] text-muted italic">{t('dashboard.verifyNoDocuments')}</p>
           )}
         </div>
       )}
 
       {/* Documents déjà soumis — affichage compact pour vendeurs verifiés/pending */}
       {(verificationStatus === 'verified' || verificationStatus === 'pending') && hasDocuments && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 space-y-3 shadow-sm dark:shadow-none">
-          <h3 className="text-gray-900 dark:text-white font-semibold">{t('dashboard.verifyDocuments')}</h3>
+        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-3">
+          <SectionTitle>{t('dashboard.verifyDocuments')}</SectionTitle>
           {currentUser.sellerDetails?.documents?.cniUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 p-3 bg-canvas rounded-input border border-black/[0.06]">
               <span className="text-xl">🪪</span>
               <div className="flex-1">
-                <p className="text-sm text-gray-900 dark:text-white font-medium">{t('dashboard.verifyCNI')}</p>
-                <p className="text-xs text-green-400">{t('dashboard.verifyUploaded')}</p>
+                <p className="text-[13px] text-ink font-medium">{t('dashboard.verifyCNI')}</p>
+                <p className="text-[11.5px] text-emerald-600">{t('dashboard.verifyUploaded')}</p>
               </div>
-              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
-                 className="text-xs text-blue-400 hover:underline">{t('dashboard.verifyView')}</a>
+              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-goldDeep hover:underline">{t('dashboard.verifyView')}</a>
             </div>
           )}
         </div>
       )}
 
       {/* Bouton demander vérification */}
-      {verificationStatus !== 'verified' && verificationStatus !== 'pending' && (
-        <Button onClick={handleRequestVerification} disabled={verifSubmitting} className="w-full">
+      {showForm && (
+        <button
+          onClick={handleRequestVerification}
+          disabled={verifSubmitting}
+          className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov disabled:opacity-60"
+          style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+        >
+          <ShieldCheck size={16} />
           {verifSubmitting ? t('common.loading') : t('dashboard.verifyRequest')}
-        </Button>
+        </button>
       )}
+
+      {/* WHATSAPP SUPPORT */}
+      <div className="bg-white rounded-card border shadow-card p-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(37,211,102,0.07),#FFFFFF)', borderColor: 'rgba(37,211,102,0.20)' }}>
+        <div className="w-11 h-11 rounded-[12px] flex items-center justify-center text-white shrink-0" style={{ background: '#25D366' }}>
+          <WhatsAppIcon size={20} />
+        </div>
+        <div className="flex-1">
+          <div className="text-[14px] font-black text-ink">{t('dashboard.verifySupportTitle', { defaultValue: 'Une question sur votre vérification ?' })}</div>
+          <div className="text-[12.5px] text-ink2">{t('dashboard.verifySupportDesc', { defaultValue: "Notre équipe répond en moins d'une heure." })}</div>
+        </div>
+        <button
+          onClick={contactAdmin}
+          className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input text-white font-semibold text-[14px] active:scale-[0.97] transition-transform shrink-0"
+          style={{ background: '#25D366', boxShadow: '0 6px 16px rgba(37,211,102,0.30)' }}
+        >
+          <WhatsAppIcon size={16} /> {t('dashboard.contactSupport', { defaultValue: 'Contacter le support' })}
+        </button>
+      </div>
 
       <VerificationRequestModal open={showVerifModal} onClose={() => setShowVerifModal(false)} />
     </div>
-  );
+    );
+  };
 
   const renderBoost = () => {
     const approvedProducts = myProducts.filter(p => p.status === 'approved');
     const countryId = currentUser.sellerDetails?.countryId || 'bi';
 
     return (
-      <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-        {/* Header */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>⚡</span> {t('dashboard.boostTitle')}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">{t('dashboard.boostDesc')}</p>
+      <div className="space-y-5 animate-fadein">
+        {/* HERO */}
+        <div className="bg-white rounded-card border shadow-card p-6 sm:p-7 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.10) 0%, #FFFFFF 60%)', borderColor: 'rgba(0,0,0,0.07)' }}>
+          <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18), transparent 70%)' }} />
+          <div className="relative flex items-start gap-4">
+            <div className="w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 text-white" style={{ background: 'linear-gradient(135deg,#A78BFA,#7C3AED)', boxShadow: '0 8px 24px rgba(139,92,246,0.40)' }}>
+              <Zap size={22} />
+            </div>
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider" style={{ background: 'rgba(139,92,246,0.12)', color: '#5B21B6' }}>
+                {t('dashboard.boostBadge', { defaultValue: 'Visibilité Premium' })}
+              </div>
+              <h1 className="mt-2 text-[24px] sm:text-[28px] font-black tracking-tight leading-tight text-ink">{t('dashboard.boostTitle')}</h1>
+              <p className="mt-2 text-[13.5px] text-ink2 leading-relaxed max-w-[60ch]">{t('dashboard.boostDesc')}</p>
+            </div>
+          </div>
         </div>
 
         {/* Comment ça marche */}
-        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 space-y-3">
-          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">{t('dashboard.boostHowTitle')}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700 dark:text-gray-400">
-            <div className="flex items-start gap-2">
-              <span className="text-amber-400 font-black text-base">1</span>
-              <span>{t('dashboard.boostStep1')}</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-amber-400 font-black text-base">2</span>
-              <span>{t('dashboard.boostStep2')}</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-amber-400 font-black text-base">3</span>
-              <span>{t('dashboard.boostStep3')}</span>
-            </div>
+        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5">
+          <SectionTitle>{t('dashboard.boostHowTitle')}</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            {[t('dashboard.boostStep1'), t('dashboard.boostStep2'), t('dashboard.boostStep3')].map((step, i) => (
+              <div key={i} className="rounded-card border border-black/[0.06] p-4 bg-canvas/40">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-[13px]" style={{ background: 'linear-gradient(135deg,#A78BFA,#7C3AED)' }}>{i + 1}</div>
+                <div className="mt-2.5 text-[12.5px] text-ink2 leading-relaxed">{step}</div>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Mes demandes en cours */}
         {boostRequests.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.boostMyRequests')}</p>
-            {boostRequests.map(req => (
-              <div key={req.id} className="flex items-center justify-between bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-xl px-4 py-3 gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{req.productTitle}</p>
-                  <p className="text-xs text-gray-500">{new Date(req.createdAt).toLocaleDateString('fr-FR')}</p>
+          <div>
+            <SectionTitle sub={t('dashboard.boostActiveSub', { defaultValue: 'Vos campagnes en cours' })} right={<span className="text-[11.5px] font-bold text-ink2">{boostRequests.length}</span>}>
+              {t('dashboard.boostMyRequests')}
+            </SectionTitle>
+            <div className="space-y-3">
+              {boostRequests.map(req => (
+                <div key={req.id} className="flex items-center justify-between bg-white rounded-card border border-black/[0.07] shadow-card px-4 py-3 gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-bold text-ink truncate">{req.productTitle}</p>
+                    <p className="text-[11.5px] text-ink2">{new Date(req.createdAt).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                  <span className={`text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                    req.status === 'approved' ? 'bg-emerald-500/15 text-emerald-600'
+                    : req.status === 'pending_validation' ? 'bg-blue-500/15 text-blue-600'
+                    : req.status === 'rejected' ? 'bg-red-500/15 text-red-600'
+                    : 'bg-amber-500/15 text-amber-600'
+                  }`}>
+                    {req.status === 'approved' ? t('dashboard.boostStatusActive')
+                     : req.status === 'pending_validation' ? t('dashboard.boostStatusValidating')
+                     : req.status === 'rejected' ? t('dashboard.boostStatusRejected')
+                     : t('dashboard.boostStatusPending')}
+                  </span>
                 </div>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${
-                  req.status === 'approved'           ? 'bg-green-500/20 text-green-300 border-green-500/30'
-                  : req.status === 'pending_validation' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                  : req.status === 'rejected'           ? 'bg-red-500/20 text-red-300 border-red-500/30'
-                  : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
-                }`}>
-                  {req.status === 'approved'            ? t('dashboard.boostStatusActive')
-                   : req.status === 'pending_validation' ? t('dashboard.boostStatusValidating')
-                   : req.status === 'rejected'            ? t('dashboard.boostStatusRejected')
-                   : t('dashboard.boostStatusPending')}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
         {/* Liste des produits éligibles */}
         {approvedProducts.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-3xl mb-3">📦</p>
-            <p className="text-sm">{t('dashboard.boostNoProducts')}</p>
+          <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-10 text-center">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-canvas flex items-center justify-center text-ink2 mb-3"><Package size={28} /></div>
+            <div className="text-[14px] text-ink2">{t('dashboard.boostNoProducts')}</div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.boostChooseProduct')}</p>
-            {approvedProducts.map(product => {
-              const isActive   = !!product.isBoosted && !!product.boostExpiresAt && product.boostExpiresAt > Date.now();
-              const isPending  = boostRequests.some(
-                r => r.productId === product.id && (r.status === 'pending' || r.status === 'pending_validation')
-              );
-              const thumb = product.images[0]
-                ? getOptimizedUrl(product.images[0], 80)
-                : null;
+          <div>
+            <SectionTitle sub={t('dashboard.boostChooseSub', { defaultValue: 'Sélectionnez un produit pour lancer une campagne.' })}>
+              {t('dashboard.boostChooseProduct')}
+            </SectionTitle>
+            <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-2">
+              <div className="divide-y divide-black/[0.05]">
+                {approvedProducts.map(product => {
+                  const isActive = !!product.isBoosted && !!product.boostExpiresAt && product.boostExpiresAt > Date.now();
+                  const isPending = boostRequests.some(
+                    r => r.productId === product.id && (r.status === 'pending' || r.status === 'pending_validation')
+                  );
+                  const thumb = product.images[0] ? getOptimizedUrl(product.images[0], 80) : null;
 
-              return (
-                <div
-                  key={product.id}
-                  className="flex items-center gap-4 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-4"
-                >
-                  {/* Thumbnail */}
-                  {thumb ? (
-                    <img src={thumb} alt={product.title} loading="lazy"
-                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-gray-200 dark:bg-gray-700" />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0" />
-                  )}
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{product.title}</p>
-                    <p className="text-xs text-gray-500">
-                      {product.price.toLocaleString()} {product.currency || 'BIF'}
-                    </p>
-                    {isActive && (
-                      <p className="text-xs text-amber-400 font-bold mt-0.5">
-                        ⚡ {t('dashboard.boostActiveUntil', {
-                          date: new Date(product.boostExpiresAt!).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
-                        })}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* CTA */}
-                  {isPending ? (
-                    <span className="text-xs text-yellow-400 font-bold bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20 whitespace-nowrap">
-                      {t('dashboard.boostStatusPending')}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setBoostingProduct(product)}
-                      className={`text-xs font-black px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                        isActive
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
-                          : 'bg-amber-500 hover:bg-amber-400 text-gray-900 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40'
-                      }`}
-                    >
-                      {isActive ? t('dashboard.boostRenew') : `⚡ ${t('dashboard.boostCta')}`}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                  return (
+                    <div key={product.id} className="flex items-center gap-3 p-3">
+                      {thumb ? (
+                        <img src={thumb} alt="" loading="lazy" className="w-12 h-12 rounded-[10px] object-cover shrink-0 bg-canvas" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-[10px] bg-canvas shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13.5px] font-semibold text-ink truncate">{product.title}</p>
+                        <p className="text-[12px] text-ink2">{product.price.toLocaleString('fr-FR')} {product.currency || 'BIF'}</p>
+                        {isActive && (
+                          <p className="text-[11.5px] font-bold mt-0.5" style={{ color: '#7C3AED' }}>
+                            ⚡ {t('dashboard.boostActiveUntil', {
+                              date: new Date(product.boostExpiresAt!).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      {isPending ? (
+                        <span className="text-[11.5px] text-amber-600 font-bold bg-amber-500/10 px-3 py-1.5 rounded-full whitespace-nowrap">
+                          {t('dashboard.boostStatusPending')}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setBoostingProduct(product)}
+                          className="h-9 px-3.5 rounded-input text-white text-[12.5px] font-bold active:scale-[0.97] transition-transform inline-flex items-center gap-1.5"
+                          style={{ background: 'linear-gradient(135deg,#A78BFA,#7C3AED)', boxShadow: '0 4px 12px rgba(139,92,246,0.35)' }}
+                        >
+                          <Zap size={13} /> {isActive ? t('dashboard.boostRenew') : t('dashboard.boostCta')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
@@ -2349,556 +2584,597 @@ export const SellerDashboard: React.FC = () => {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-[#F7F7F5] dark:bg-gray-950 flex flex-col md:flex-row">
-       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen sticky top-0 p-4">
-           {/* ... Sidebar content same as before ... */}
-           <div className="flex items-center gap-2 mb-8 px-2">
-               <div className="w-8 h-8 bg-gradient-to-br from-gold-400 to-gold-600 rounded-lg"></div>
-               <span className="font-black text-xl text-gray-900 dark:text-white tracking-tight">{t('dashboard.sellerSpace')}</span>
-           </div>
-           <div className="space-y-2 flex-1">
-               <SidebarItem id="overview" icon="📊" label={t('dashboard.overview')} />
-               <SidebarItem id="products" icon="📦" label={t('dashboard.inventory')} count={myProducts.length} />
-               <SidebarItem id="analytics" icon="📈" label={t('dashboard.analytics')} />
-               <SidebarItem id="boost" icon="⚡" label={t('dashboard.boost')} />
-               <SidebarItem id="requests" icon="🛒" label={t('dashboard.buyerRequests')} count={requestStats?.todayCount || undefined} gold />
-               <SidebarItem id="shop" icon="🎨" label={t('dashboard.myShop')} />
-               <SidebarItem id="verification" icon="✅" label={t('dashboard.verification')} />
-           </div>
-           <div className="mb-4 bg-gray-100 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
-               <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                   <span>{currentTier.label}</span>
-                   <span className={isLimitReached ? "text-red-500 dark:text-red-400 font-bold" : "text-blue-600 dark:text-blue-400"}>{currentCount}/{currentTier.max || '∞'}</span>
-               </div>
-               <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
-                   <div className={`h-full ${isLimitReached ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(progressPercentage, 100)}%` }}></div>
-               </div>
-           </div>
-           <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-               <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-                   <span>🚪</span> {t('dashboard.backToSite')}
-               </button>
-           </div>
-       </aside>
+  // Nav items shared by desktop sidebar + mobile drawer + chip rail.
+  const NAV_ITEMS: { id: Tab; icon: React.ComponentType<{ size?: number }>; label: string; count?: number; gold?: boolean }[] = [
+    { id: 'overview',     icon: LayoutGrid,  label: t('dashboard.overview') },
+    { id: 'products',     icon: Package,     label: t('dashboard.inventory'), count: myProducts.length },
+    { id: 'analytics',    icon: BarChart2,   label: t('dashboard.analytics') },
+    { id: 'boost',        icon: Zap,         label: t('dashboard.boost') },
+    { id: 'requests',     icon: ShoppingCart,label: t('dashboard.buyerRequests'), count: requestStats?.todayCount, gold: true },
+    { id: 'shop',         icon: Palette,     label: t('dashboard.myShop') },
+    { id: 'verification', icon: ShieldCheck, label: t('dashboard.verification') },
+  ];
 
-       <div className="md:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30">
-         {/* Header mobile */}
-         <div className="p-3 px-4 flex justify-between items-center">
-           <span className="font-black text-lg text-gray-900 dark:text-white">{t('dashboard.sellerSpace')}</span>
-           <div className="flex items-center gap-2">
-             <div className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
-               <span className={`text-xs font-bold ${isLimitReached ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                 {currentCount}/{currentTier.max || '∞'}
-               </span>
-             </div>
-             <LanguageSwitcher compact />
-             <button
-               onClick={() => navigate('/')}
-               aria-label={t('dashboard.backToSite')}
-               title={t('dashboard.backToSite')}
-               className="flex items-center gap-1 min-h-[40px] px-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-             >
-               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                 <path d="M15 18l-6-6 6-6" />
-               </svg>
-               <span className="text-xs font-semibold">{t('dashboard.exitShort')}</span>
-             </button>
-           </div>
-         </div>
-         {/* Onglets de navigation mobile — scroll horizontal */}
-         <div className="flex overflow-x-auto gap-1 px-3 pb-2 scrollbar-none">
-           {([
-             { id: 'overview',      icon: '📊', label: t('dashboard.overview') },
-             { id: 'products',      icon: '📦', label: t('dashboard.inventory') },
-             { id: 'add_product',   icon: '➕', label: t('dashboard.newButton') },
-             { id: 'analytics',     icon: '📈', label: t('dashboard.analytics') },
-             { id: 'boost',         icon: '⚡', label: t('dashboard.boost') },
-             { id: 'requests',      icon: '🔍', label: t('dashboard.buyerRequests') },
-             { id: 'shop',          icon: '🎨', label: t('dashboard.myShop') },
-             { id: 'verification',  icon: '✅', label: t('dashboard.verification') },
-           ] as { id: Tab; icon: string; label: string }[]).map(tab => (
-             <button
-               key={tab.id}
-               onClick={() => setActiveTab(tab.id)}
-               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                 activeTab === tab.id
-                   ? 'bg-gold-400 text-gray-900 border-gold-400 shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
-                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:text-gray-900 dark:hover:text-white'
-               }`}
-             >
-               <span>{tab.icon}</span>
-               <span>{tab.label}</span>
-             </button>
-           ))}
-         </div>
-       </div>
+  const renderProducts = () => (
+    <div className="space-y-4 animate-fadein">
+      {/* Staleness banner — appears only when rendering from IDB cache
+          because the network fetch failed (offline / Firestore down). */}
+      {inventoryCachedAt !== null && inventoryFreshAt === null && (
+        <div className="flex items-center gap-2 rounded-input px-3 py-2 text-[12px]" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', color: '#92400E' }}>
+          <Wifi size={14} className="shrink-0" />
+          <span className="flex-1 min-w-0">
+            {t('dashboard.inventoryStale', {
+              when: new Date(inventoryCachedAt).toLocaleString(undefined, {
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+              }),
+            })}
+          </span>
+        </div>
+      )}
 
-       <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-60px)] md:h-screen">
-           {activeTab === 'overview' && renderOverview()}
-           {activeTab === 'analytics' && renderAnalytics()}
-           {activeTab === 'products' && (
-               <div className="space-y-4 animate-fade-in">
-                {/* Staleness banner — appears only when rendering from IDB cache
-                    because the network fetch failed (offline / Firestore down).
-                    Tells the seller WHY their list might not match what's in
-                    Firestore right now and offers an explicit refresh path. */}
-                {inventoryCachedAt !== null && inventoryFreshAt === null && (
-                  <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-xs">
-                    <span className="text-base leading-none">📡</span>
-                    <span className="flex-1 min-w-0">
-                      {t('dashboard.inventoryStale', {
-                        when: new Date(inventoryCachedAt).toLocaleString(undefined, {
-                          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-                        }),
-                      })}
-                    </span>
+      {/* Sticky sub-header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-[24px] font-black tracking-tight text-ink">
+          {t('dashboard.myInventory')} <span className="text-ink2 font-bold">({myProducts.length})</span>
+        </h1>
+        <div className="flex items-center gap-2">
+          {filteredProducts.length > 0 && (
+            <button
+              onClick={() => { setBulkSelectMode(m => !m); setSelectedProductIds(new Set()); }}
+              className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-input text-[12.5px] font-semibold border transition active:scale-[0.97] ${
+                bulkSelectMode ? 'bg-ink text-white border-ink' : 'bg-white text-ink border-black/[0.08] hover:bg-canvas'
+              }`}
+            >
+              <Check size={14} /> {bulkSelectMode ? t('dashboard.bulkCancel') : t('dashboard.bulkSelect')}
+            </button>
+          )}
+          {!bulkSelectMode && (
+            <button
+              onClick={() => setActiveTab('add_product')}
+              className="inline-flex items-center justify-center gap-2 px-4 h-9 rounded-input bg-gold-400 text-ink font-semibold text-[13px] active:scale-[0.97] transition-transform hover:bg-goldHov"
+              style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+            >
+              <Plus size={15} /> {t('dashboard.newButton')}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Status filter chips */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        {([
+          { value: 'all' as const, label: t('dashboard.all'), count: myProducts.length },
+          { value: 'approved' as const, label: t('dashboard.approved'), count: myProducts.filter(p => p.status === 'approved').length },
+          { value: 'pending' as const, label: t('dashboard.pendingStatus'), count: myProducts.filter(p => p.status === 'pending').length },
+          { value: 'rejected' as const, label: t('dashboard.rejected'), count: myProducts.filter(p => p.status === 'rejected').length },
+        ]).map(tab => {
+          const active = productStatusFilter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setProductStatusFilter(tab.value)}
+              className={`inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[13px] font-semibold whitespace-nowrap transition active:scale-[0.97] ${
+                active ? 'bg-ink text-white' : 'bg-white text-ink2 border border-black/[0.08] hover:bg-canvas'
+              }`}
+            >
+              {tab.label}
+              <span className={`px-1.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold inline-flex items-center justify-center ${active ? 'bg-black/15 text-white' : 'bg-ink/10 text-ink'}`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bulk action bar */}
+      {bulkSelectMode && filteredProducts.length > 0 && (
+        <div className="flex items-center gap-3 bg-white rounded-card border border-black/[0.07] shadow-card px-4 py-2.5">
+          <button
+            onClick={() => {
+              const allIds = filteredProducts.map(p => p.id).filter((id): id is string => Boolean(id));
+              const allSelected = allIds.every(id => selectedProductIds.has(id));
+              setSelectedProductIds(allSelected ? new Set() : new Set(allIds));
+            }}
+            className="text-[12px] text-goldDeep font-bold hover:underline"
+          >
+            {filteredProducts.every(p => p.id && selectedProductIds.has(p.id))
+              ? t('dashboard.bulkDeselectAll')
+              : t('dashboard.bulkSelectAll')}
+          </button>
+          <span className="text-[12px] text-ink2 flex-1">
+            {selectedProductIds.size > 0
+              ? t('dashboard.bulkSelected', { count: selectedProductIds.size })
+              : t('dashboard.bulkNoneSelected')}
+          </span>
+          {selectedProductIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold px-3 h-9 rounded-input bg-red-600 hover:bg-red-500 text-white active:scale-[0.97] transition-transform"
+            >
+              <Trash2 size={14} /> {t('dashboard.bulkDeleteBtn', { count: selectedProductIds.size })}
+            </button>
+          )}
+        </div>
+      )}
+
+      {filteredProducts.length === 0 ? (
+        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-10 text-center">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-canvas flex items-center justify-center text-ink2 mb-3"><Package size={28} /></div>
+          <div className="text-[16px] font-black text-ink">{t('dashboard.noProducts')}</div>
+          <div className="text-[13px] text-ink2 mt-1">{productStatusFilter === 'all' ? t('dashboard.startAdding') : t('dashboard.noProductsInCategory')}</div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredProducts.map(product => {
+            const cur = product.currency || CURRENCY;
+            const isSelected = product.id ? selectedProductIds.has(product.id) : false;
+            return (
+              <div
+                key={product.id}
+                onClick={() => bulkSelectMode && product.id && toggleProductSelection(product.id)}
+                className={`bg-white rounded-card border shadow-card overflow-hidden transition-all ${bulkSelectMode ? 'cursor-pointer' : 'hover:-translate-y-px hover:shadow-cardHover'} ${
+                  isSelected ? 'border-gold-400' : 'border-black/[0.07]'
+                }`}
+              >
+                <div className="p-3 sm:p-4 flex items-start gap-3 sm:gap-4">
+                  {bulkSelectMode && (
+                    <button
+                      type="button"
+                      className={`mt-2 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${isSelected ? 'bg-gold-400 border-gold-400' : 'border-black/20 bg-white'}`}
+                    >
+                      {isSelected && <Check size={12} />}
+                    </button>
+                  )}
+                  <div className="relative shrink-0">
+                    <img
+                      src={product.images[0] ? getOptimizedUrl(product.images[0], 160) : ''}
+                      alt=""
+                      loading="lazy"
+                      className="w-20 h-20 sm:w-[88px] sm:h-[88px] rounded-[12px] object-cover bg-canvas"
+                    />
+                    {product.images.length > 1 && (
+                      <span className="absolute -bottom-1 -right-1 bg-white text-ink2 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-black/[0.07] shadow-sm">
+                        +{product.images.length - 1}
+                      </span>
+                    )}
                   </div>
-                )}
-                <div className="flex justify-between items-center gap-2">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.myInventory')}</h2>
-                    <div className="flex items-center gap-2">
-                      {filteredProducts.length > 0 && (
-                        <button
-                          onClick={() => {
-                            setBulkSelectMode(m => !m);
-                            setSelectedProductIds(new Set());
-                          }}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
-                            bulkSelectMode
-                              ? 'bg-blue-600/20 border-blue-500/50 text-blue-600 dark:text-blue-400'
-                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
-                          }`}
-                        >
-                          {bulkSelectMode ? t('dashboard.bulkCancel') : t('dashboard.bulkSelect')}
-                        </button>
-                      )}
-                      {!bulkSelectMode && (
-                        <Button size="sm" onClick={() => setActiveTab('add_product')}>{t('dashboard.newButton')}</Button>
-                      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[14.5px] font-semibold text-ink leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {product.title}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                          <span className="text-[16px] font-black text-ink tabular-nums">{product.price.toLocaleString('fr-FR')} <span className="text-[12px] text-ink2 font-semibold">{cur}</span></span>
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <span className="text-[12px] text-muted line-through tabular-nums">{product.originalPrice.toLocaleString('fr-FR')}</span>
+                          )}
+                          {product.status === 'approved' && (
+                            <span className="text-[11.5px] text-ink2 inline-flex items-center gap-1"><Eye size={11} /> {product.views || 0}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px] font-semibold leading-none ${
+                          product.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600' :
+                          product.status === 'pending' ? 'bg-amber-500/10 text-amber-600' :
+                          'bg-red-500/10 text-red-600'
+                        }`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                          {product.status === 'approved' ? t('dashboard.statusActive') : product.status === 'pending' ? t('dashboard.statusPending') : t('dashboard.statusRejected')}
+                        </span>
+                        {!bulkSelectMode && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }}
+                            className="w-8 h-8 rounded-full hover:bg-canvas inline-flex items-center justify-center text-ink2 hover:text-red-500 active:scale-[0.97] transition"
+                            title={t('common.delete', { defaultValue: 'Supprimer' })}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {product.status === 'pending' && (
+                      <div className="mt-1.5 text-[11px] text-muted italic">{t('dashboard.searchDelayHint')}</div>
+                    )}
+                    {product.isPromoted && (
+                      <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold" style={{ background: 'rgba(139,92,246,0.10)', color: '#7C3AED' }}>
+                        {t('dashboard.statusSponsored')}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Status filter tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {([
-                    { value: 'all' as const, label: t('dashboard.all'), count: myProducts.length },
-                    { value: 'approved' as const, label: t('dashboard.approved'), count: myProducts.filter(p => p.status === 'approved').length },
-                    { value: 'pending' as const, label: t('dashboard.pendingStatus'), count: myProducts.filter(p => p.status === 'pending').length },
-                    { value: 'rejected' as const, label: t('dashboard.rejected'), count: myProducts.filter(p => p.status === 'rejected').length },
-                  ]).map(tab => (
-                    <button
-                      key={tab.value}
-                      onClick={() => setProductStatusFilter(tab.value)}
-                      className={`flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${
-                        productStatusFilter === tab.value
-                          ? 'bg-gold-400 text-gray-900 border-gold-400 shadow-[0_2px_10px_rgba(245,200,66,0.35)]'
-                          : 'bg-transparent text-gray-600 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                    >
-                      {tab.label} ({tab.count})
-                    </button>
-                  ))}
-                </div>
-
-                {/* Bulk action bar */}
-                {bulkSelectMode && filteredProducts.length > 0 && (
-                  <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-none rounded-xl px-4 py-2.5">
-                    <button
-                      onClick={() => {
-                        const allIds = filteredProducts.map(p => p.id).filter((id): id is string => Boolean(id));
-                        const allSelected = allIds.every(id => selectedProductIds.has(id));
-                        setSelectedProductIds(allSelected ? new Set() : new Set(allIds));
-                      }}
-                      className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
-                    >
-                      {filteredProducts.every(p => p.id && selectedProductIds.has(p.id))
-                        ? t('dashboard.bulkDeselectAll')
-                        : t('dashboard.bulkSelectAll')}
-                    </button>
-                    <span className="text-xs text-gray-500 flex-1">
-                      {selectedProductIds.size > 0
-                        ? t('dashboard.bulkSelected', { count: selectedProductIds.size })
-                        : t('dashboard.bulkNoneSelected')}
-                    </span>
-                    {selectedProductIds.size > 0 && (
-                      <button
-                        onClick={handleBulkDelete}
-                        className="text-xs font-bold px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
-                      >
-                        🗑 {t('dashboard.bulkDeleteBtn', { count: selectedProductIds.size })}
-                      </button>
+                {/* Rejection reason + edit & resubmit buttons */}
+                {product.status === 'rejected' && (
+                  <div className="border-t border-black/[0.06] p-3 sm:p-4" style={{ background: 'rgba(239,68,68,0.04)' }}>
+                    {product.rejectionReason && (
+                      <p className="text-[12.5px] text-red-700">
+                        <span className="font-bold">{t('dashboard.rejectionReason')}</span> {product.rejectionReason}
+                      </p>
+                    )}
+                    {(product.resubmitCount ?? 0) >= MAX_RESUBMIT_ATTEMPTS ? (
+                      <p className="text-[12px] text-muted italic mt-2">{t('dashboard.resubmitLimitReached')}</p>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-ink2 mt-2">
+                          {t('dashboard.resubmitAttemptsLeft', {
+                            left: MAX_RESUBMIT_ATTEMPTS - (product.resubmitCount ?? 0),
+                            max: MAX_RESUBMIT_ATTEMPTS,
+                          })}
+                        </p>
+                        <div className="flex gap-2 mt-2.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEditProduct(product); }}
+                            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-input bg-gold-400 text-ink text-[12px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov"
+                          >
+                            {t('dashboard.editAndResubmit')} <ArrowRight size={12} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleResubmit(product.id); }}
+                            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-input bg-white text-ink text-[12px] font-bold border border-black/[0.08] active:scale-[0.97] transition-transform hover:bg-canvas"
+                          >
+                            {t('dashboard.resubmitAsIs')}
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
-                {filteredProducts.length === 0 ? (
-                  <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-8 text-center text-gray-600 dark:text-gray-400">
-                    <div className="text-4xl mb-3">📦</div>
-                    <p className="font-medium text-gray-900 dark:text-white mb-1">{t('dashboard.noProducts')}</p>
-                    <p className="text-sm">{productStatusFilter === 'all' ? t('dashboard.startAdding') : t('dashboard.noProductsInCategory')}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {filteredProducts.map(product => {
-                      const cur = product.currency || CURRENCY;
-                      const isSelected = product.id ? selectedProductIds.has(product.id) : false;
-                      return (
-                      <div
-                        key={product.id}
-                        onClick={() => bulkSelectMode && product.id && toggleProductSelection(product.id)}
-                        className={`bg-white dark:bg-gray-800/50 border rounded-xl p-4 space-y-2 transition-all shadow-sm dark:shadow-none ${
-                          bulkSelectMode ? 'cursor-pointer' : ''
-                        } ${
-                          isSelected ? 'border-blue-500/60 bg-blue-50 dark:bg-blue-900/10' :
-                          product.status === 'rejected' ? 'border-red-300 dark:border-red-800/40' :
-                          product.status === 'pending' ? 'border-yellow-300 dark:border-yellow-800/30' :
-                          'border-gray-200 dark:border-gray-700/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          {bulkSelectMode && (
-                            <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
-                              isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-600'
-                            }`}>
-                              {isSelected && <span className="text-white text-[10px] font-black">✓</span>}
-                            </div>
-                          )}
-                          <div className="relative flex-shrink-0">
-                            <img
-                              src={product.images[0] ? getOptimizedUrl(product.images[0], 80) : ''}
-                              alt={product.title}
-                              loading="lazy"
-                              className="w-16 h-16 rounded-lg object-cover bg-gray-200 dark:bg-gray-700"
-                            />
-                            {product.images.length > 1 && (
-                              <span className="absolute -bottom-1 -right-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-gray-300 dark:border-gray-600">
-                                +{product.images.length - 1}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-gray-900 dark:text-white font-medium text-sm truncate">{product.title}</h4>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-blue-600 dark:text-blue-400 text-sm font-bold">{product.price.toLocaleString('fr-FR')} <span className="text-xs font-normal text-gray-500">{cur}</span></p>
-                              {product.originalPrice && product.originalPrice > product.price && (
-                                <p className="text-gray-500 text-xs line-through">{product.originalPrice.toLocaleString('fr-FR')}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                product.status === 'approved' ? 'bg-green-900/30 text-green-400 border border-green-800/30' :
-                                product.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/30' :
-                                'bg-red-900/30 text-red-400 border border-red-800/30'
-                              }`}>
-                                {product.status === 'approved' ? t('dashboard.statusActive') : product.status === 'pending' ? t('dashboard.statusPending') : t('dashboard.statusRejected')}
-                              </span>
-                              {product.status === 'pending' && (
-                                <span className="text-[10px] text-gray-500 italic">
-                                  {t('dashboard.searchDelayHint')}
-                                </span>
-                              )}
-                              {product.isPromoted && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/30">{t('dashboard.statusSponsored')}</span>}
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <span>👁 {product.views}</span>
-                              <span>❤️ {product.likesCount || 0}</span>
-                            </div>
-                            {!bulkSelectMode && (
-                              <button
-                                onClick={() => handleDeleteProduct(product.id)}
-                                className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20"
-                                title="Supprimer"
-                              >
-                                🗑️
-                              </button>
-                            )}
-                          </div>
-                        </div>
+  const renderRequests = () => {
+    const isEligible = canContactBuyer(currentUser.sellerDetails);
+    return (
+      <div className="space-y-5 animate-fadein">
+        {/* Header */}
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider" style={{ background: 'rgba(245,200,66,0.18)', color: '#92400E' }}>
+              <Star size={11} /> {t('dashboard.opportunityBadge', { defaultValue: 'Opportunités acheteurs' })}
+            </div>
+            <h1 className="mt-2 text-[24px] font-black tracking-tight text-ink">{t('dashboard.buyerRequests')}</h1>
+            <div className="text-[13px] text-ink2 mt-1">{t('dashboard.buyerRequestsDesc')}</div>
+          </div>
+          <button
+            onClick={() => navigate('/demandes')}
+            className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov"
+            style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+          >
+            {t('dashboard.viewAllRequests')} <ArrowRight size={16} />
+          </button>
+        </div>
 
-                        {/* Rejection reason + edit & resubmit buttons */}
-                        {product.status === 'rejected' && (
-                          <div className="bg-red-900/10 border border-red-800/30 rounded-lg p-3 space-y-2">
-                            {product.rejectionReason && (
-                              <p className="text-xs text-red-400">
-                                <span className="font-bold">{t('dashboard.rejectionReason')}</span> {product.rejectionReason}
-                              </p>
-                            )}
-                            {(product.resubmitCount ?? 0) >= MAX_RESUBMIT_ATTEMPTS ? (
-                              <p className="text-xs text-gray-500 italic">
-                                {t('dashboard.resubmitLimitReached')}
-                              </p>
-                            ) : (
-                              <>
-                                <p className="text-[10px] text-gray-600">
-                                  {t('dashboard.resubmitAttemptsLeft', {
-                                    left: MAX_RESUBMIT_ATTEMPTS - (product.resubmitCount ?? 0),
-                                    max: MAX_RESUBMIT_ATTEMPTS,
-                                  })}
-                                </p>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => openEditProduct(product)}
-                                    className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white text-xs font-bold rounded-lg transition-colors"
-                                  >
-                                    {t('dashboard.editAndResubmit')}
-                                  </button>
-                                  <button
-                                    onClick={() => handleResubmit(product.id)}
-                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
-                                  >
-                                    {t('dashboard.resubmitAsIs')}
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                    })}
+        {/* Stats */}
+        {requestStats && (
+          <div className="bg-white rounded-card border shadow-card p-5 overflow-hidden relative" style={{ background: 'linear-gradient(135deg,#FFFDF4 0%,#FFF8E1 100%)', borderColor: 'rgba(245,200,66,0.30)' }}>
+            <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full" style={{ background: 'radial-gradient(circle, rgba(245,200,66,0.25), transparent 70%)' }} />
+            <div className="grid grid-cols-2 gap-4 relative">
+              <div>
+                <div className="text-[10.5px] font-bold text-muted uppercase tracking-wider">{t('dashboard.buyerRequestsStatToday')}</div>
+                <div className="text-[40px] font-black leading-none text-ink tabular-nums mt-1">{requestStats.todayCount}</div>
+              </div>
+              <div>
+                <div className="text-[10.5px] font-bold text-muted uppercase tracking-wider">{t('dashboard.buyerRequestsStatFulfilled')}</div>
+                <div className="text-[40px] font-black leading-none text-ink tabular-nums mt-1">{requestStats.fulfilledCount}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Plan eligibility banner */}
+        {!isEligible ? (
+          <div className="bg-white rounded-card border shadow-card p-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg,#FFFDF4 0%,#FFFFFF 70%)', borderColor: 'rgba(245,200,66,0.30)' }}>
+            <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full" style={{ background: 'radial-gradient(circle, rgba(245,200,66,0.22), transparent 70%)' }} />
+            <div className="relative">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-14 h-14 rounded-2xl bg-gold-400/15 border border-gold-400/30 flex items-center justify-center text-goldDeep shrink-0"><Lock size={26} /></div>
+                <div>
+                  <h3 className="text-ink font-black text-[18px]">{t('requests.planGate.title')}</h3>
+                  <p className="text-ink2 text-[13px] mt-1">{t('requests.planGate.subtitle')}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                {[t('dashboard.buyerRequestsFeat1'), t('dashboard.buyerRequestsFeat2'), t('dashboard.buyerRequestsFeat3')].map(label => (
+                  <div key={label} className="flex items-center gap-2.5 bg-canvas border border-black/[0.06] rounded-input p-3">
+                    <span className="text-[13px] text-ink2 font-medium">{label}</span>
                   </div>
-                )}
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => navigate('/plans')}
+                  className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov"
+                  style={{ boxShadow: '0 6px 16px rgba(245,200,66,0.35)' }}
+                >
+                  <Crown size={16} /> {t('requests.planGate.cta')}
+                </button>
+                <button
+                  onClick={() => navigate('/demandes')}
+                  className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-input bg-white text-ink font-semibold text-[14px] border border-black/[0.08] active:scale-[0.97] transition-transform hover:bg-canvas"
+                >
+                  <Eye size={16} /> {t('dashboard.buyerRequestsPreview')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-card border shadow-card p-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%,#FFFFFF 70%)', borderColor: 'rgba(16,185,129,0.30)' }}>
+            <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.18), transparent 70%)' }} />
+            <div className="relative">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 shrink-0"><Check size={26} /></div>
+                <div>
+                  <h3 className="text-ink font-black text-[18px]">{t('dashboard.buyerRequestsUnlocked')}</h3>
+                  <p className="text-ink2 text-[13px] mt-1">{t('dashboard.buyerRequestsUnlockedDesc')}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                {[t('dashboard.buyerRequestsFeat1'), t('dashboard.buyerRequestsFeat2'), t('dashboard.buyerRequestsFeat3')].map(label => (
+                  <div key={label} className="flex items-center gap-2.5 bg-canvas border border-black/[0.06] rounded-input p-3">
+                    <span className="text-[13px] text-ink2 font-medium">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => navigate('/demandes')}
+                className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov"
+                style={{ boxShadow: '0 6px 16px rgba(245,200,66,0.35)' }}
+              >
+                {t('dashboard.viewAllRequests')} <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex bg-canvas">
+       {/* Desktop sidebar */}
+       <aside className="hidden md:flex flex-col w-[256px] shrink-0 h-screen sticky top-0 bg-white border-r border-black/[0.06]">
+           <div className="px-5 pt-5 pb-4">
+             <div className="flex items-center gap-2.5">
+               <div
+                 className="w-9 h-9 rounded-[10px] flex items-center justify-center font-black text-[18px] text-white"
+                 style={{ background: 'linear-gradient(135deg,#F5C842 0%, #E8A800 55%, #B07410 100%)', boxShadow: '0 4px 14px rgba(245,200,66,0.45), inset 0 1px 0 rgba(255,255,255,0.35)', letterSpacing: '-0.04em' }}
+               >N</div>
+               <div className="leading-tight">
+                 <div className="text-[15px] font-black tracking-tight text-ink">NUNULIA</div>
+                 <div className="text-[10.5px] font-semibold text-ink2 -mt-0.5 tracking-[0.14em] uppercase">{t('dashboard.sellerSpace')}</div>
                </div>
-           )}
+             </div>
+           </div>
+
+           <nav className="px-3 flex-1 overflow-y-auto">
+             <div className="flex flex-col gap-1">
+               {NAV_ITEMS.map(it => (
+                 <NavItem key={it.id} id={it.id} icon={it.icon} label={it.label} count={it.count} gold={it.gold} />
+               ))}
+             </div>
+             <div className="mt-4 mb-3 px-3 text-[10.5px] font-bold text-muted uppercase tracking-[0.14em]">{t('dashboard.actionLabel', { defaultValue: 'Action' })}</div>
+             <button
+               onClick={() => setActiveTab('add_product')}
+               className="w-full flex items-center gap-2.5 px-3 h-11 rounded-[12px] text-[13.5px] font-semibold active:scale-[0.97] transition-transform"
+               style={{ background: activeTab === 'add_product' ? '#E8A800' : '#F5C842', color: '#111318', boxShadow: '0 6px 16px rgba(245,200,66,0.40), inset 0 1px 0 rgba(255,255,255,0.4)' }}
+             >
+               <Plus size={18} /> {t('dashboard.addArticle')}
+             </button>
+           </nav>
+
+           <div className="p-3 border-t border-black/[0.06]">
+             <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-3.5">
+               <div className="flex items-center justify-between mb-1.5">
+                 <div className="flex items-center gap-1.5">
+                   <TierBadge label={currentTier.label} />
+                 </div>
+                 <span className={`text-[12px] font-black tabular-nums ${isLimitReached ? 'text-red-500' : 'text-ink'}`}>
+                   {currentCount}<span className="text-ink2 font-semibold">/{currentTier.max === null ? '∞' : currentTier.max}</span>
+                 </span>
+               </div>
+               <Progress value={currentTier.max === null ? 100 : Math.min(progressPercentage, 100)} />
+             </div>
+             <button
+               onClick={() => navigate('/')}
+               className="mt-3 w-full h-10 rounded-input text-[13px] font-semibold text-ink2 hover:bg-canvas active:scale-[0.97] transition inline-flex items-center justify-center gap-1.5"
+             >
+               <ArrowRight size={14} className="rotate-180" /> {t('dashboard.backToSite')}
+             </button>
+           </div>
+       </aside>
+
+       <div className="flex-1 min-w-0 flex flex-col">
+         {/* Mobile header */}
+         <header className="md:hidden sticky top-0 z-30 bg-white border-b border-black/[0.06]">
+           <div className="h-14 flex items-center justify-between px-4">
+             <div className="flex items-center gap-2.5">
+               <div className="w-8 h-8 rounded-[8px] flex items-center justify-center font-black text-[14px] text-white" style={{ background: 'linear-gradient(135deg,#F5C842,#B07410)', boxShadow: '0 2px 8px rgba(245,200,66,0.40)' }}>N</div>
+               <div className="leading-tight">
+                 <div className="text-[13px] font-black tracking-tight text-ink">{t('dashboard.sellerSpace')}</div>
+                 <div className="text-[10px] text-ink2 font-semibold -mt-0.5 truncate max-w-[140px]">{currentUser.sellerDetails?.shopName || currentUser.name}</div>
+               </div>
+             </div>
+             <div className="flex items-center gap-2">
+               <TierBadge label={currentTier.label} />
+               <LanguageSwitcher compact />
+               <button
+                 onClick={() => navigate('/')}
+                 aria-label={t('dashboard.backToSite')}
+                 className="w-9 h-9 rounded-input bg-canvas inline-flex items-center justify-center text-ink2 active:scale-[0.97] transition-transform"
+               >
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                   <path d="M15 18l-6-6 6-6" />
+                 </svg>
+               </button>
+             </div>
+           </div>
+           <div className="px-4 pb-3 overflow-x-auto no-scrollbar">
+             <div className="flex gap-2 w-max">
+               {NAV_ITEMS.map(it => (
+                 <Chip key={it.id} id={it.id} label={it.label} count={it.count} gold={it.gold} />
+               ))}
+               <Chip id="add_product" label={t('dashboard.newButton')} />
+             </div>
+           </div>
+         </header>
+
+         <main
+           id="main-scroll"
+           className={`flex-1 px-4 md:px-8 py-4 md:py-8 ${activeTab === 'add_product' ? 'pb-32 md:pb-8' : 'pb-24 md:pb-10'}`}
+           style={{ maxWidth: 1180, width: '100%', marginInline: 'auto' }}
+         >
+           {activeTab === 'overview' && renderOverview()}
+           {activeTab === 'analytics' && renderAnalytics()}
+           {activeTab === 'products' && renderProducts()}
            {activeTab === 'boost' && renderBoost()}
            {activeTab === 'add_product' && renderAddProduct()}
            {activeTab === 'shop' && renderShopSettings()}
            {activeTab === 'verification' && renderVerification()}
-           {activeTab === 'requests' && (() => {
-             const isEligible = canContactBuyer(currentUser.sellerDetails);
-             return (
-               <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
-                 {/* Header */}
-                 <div className="flex items-center justify-between">
-                   <div>
-                     <div className="flex items-center gap-2">
-                       <h2 className="text-xl font-black text-gray-900 dark:text-white">{t('dashboard.buyerRequests')}</h2>
-                       {requestStats && requestStats.todayCount > 0 && (
-                         <span className="text-xs bg-gold-400/20 text-gold-400 border border-gold-400/40 px-2.5 py-0.5 rounded-full font-bold animate-pulse">
-                           {requestStats.todayCount} {t('dashboard.buyerRequestsToday')}
-                         </span>
-                       )}
-                     </div>
-                     <p className="text-sm text-gray-500 mt-0.5">{t('dashboard.buyerRequestsDesc')}</p>
-                   </div>
-                   <button
-                     onClick={() => navigate('/demandes')}
-                     className="px-4 py-2 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-amber-900/30"
-                   >
-                     🔍 {t('dashboard.viewAllRequests')}
-                   </button>
-                 </div>
-
-                 {/* Plan eligibility banner */}
-                 {!isEligible ? (
-                   <div className="relative overflow-hidden rounded-2xl border border-gold-400/40 bg-gradient-to-br from-amber-50 via-white to-white dark:from-amber-950/50 dark:via-gray-900 dark:to-gray-900 p-6 shadow-sm dark:shadow-none">
-                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.15),transparent_60%)] pointer-events-none" />
-                     <div className="relative z-10">
-                       <div className="flex items-start gap-4 mb-5">
-                         <div className="w-14 h-14 rounded-2xl bg-gold-400/15 dark:bg-gold-400/10 border border-gold-400/30 dark:border-gold-400/20 flex items-center justify-center text-3xl shrink-0">🔒</div>
-                         <div>
-                           <h3 className="text-gray-900 dark:text-white font-black text-lg">{t('requests.planGate.title')}</h3>
-                           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{t('requests.planGate.subtitle')}</p>
-                         </div>
-                       </div>
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-                         {[
-                           { icon: '📋', label: t('dashboard.buyerRequestsFeat1') },
-                           { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
-                           { icon: '📈', label: t('dashboard.buyerRequestsFeat3') },
-                         ].map(f => (
-                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/40 rounded-xl p-3">
-                             <span className="text-xl">{f.icon}</span>
-                             <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{f.label}</span>
-                           </div>
-                         ))}
-                       </div>
-                       <div className="flex flex-col sm:flex-row gap-3">
-                         <button
-                           onClick={() => navigate('/plans')}
-                           className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] shadow-lg shadow-amber-200/50 dark:shadow-amber-900/30"
-                         >
-                           ⭐ {t('requests.planGate.cta')}
-                         </button>
-                         <button
-                           onClick={() => navigate('/demandes')}
-                           className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl text-sm transition-colors"
-                         >
-                           👁 {t('dashboard.buyerRequestsPreview')}
-                         </button>
-                       </div>
-                     </div>
-                   </div>
-                 ) : (
-                   <div className="relative overflow-hidden rounded-2xl border border-green-500/40 bg-gradient-to-br from-green-50 via-white to-white dark:from-green-950/30 dark:via-gray-900 dark:to-gray-900 p-6 shadow-sm dark:shadow-none">
-                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(34,197,94,0.1),transparent_60%)] pointer-events-none" />
-                     <div className="relative z-10">
-                       <div className="flex items-start gap-4 mb-5">
-                         <div className="w-14 h-14 rounded-2xl bg-green-500/15 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/20 flex items-center justify-center text-3xl shrink-0">✅</div>
-                         <div>
-                           <h3 className="text-gray-900 dark:text-white font-black text-lg">{t('dashboard.buyerRequestsUnlocked')}</h3>
-                           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{t('dashboard.buyerRequestsUnlockedDesc')}</p>
-                         </div>
-                       </div>
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-                         {[
-                           { icon: '📋', label: t('dashboard.buyerRequestsFeat1') },
-                           { icon: '💬', label: t('dashboard.buyerRequestsFeat2') },
-                           { icon: '📈', label: t('dashboard.buyerRequestsFeat3') },
-                         ].map(f => (
-                           <div key={f.label} className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/40 rounded-xl p-3">
-                             <span className="text-xl">{f.icon}</span>
-                             <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{f.label}</span>
-                           </div>
-                         ))}
-                       </div>
-                       <button
-                         onClick={() => navigate('/demandes')}
-                         className="w-full py-3 bg-gradient-to-r from-amber-500 to-gold-400 hover:from-amber-400 hover:to-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all hover:scale-[1.01] shadow-lg shadow-amber-900/30"
-                       >
-                         🔍 {t('dashboard.viewAllRequests')}
-                       </button>
-                     </div>
-                   </div>
-                 )}
-
-                 {/* Stats row */}
-                 {requestStats && (
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-4 text-center">
-                       <p className="text-2xl font-black text-gold-400">{requestStats.todayCount}</p>
-                       <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wide">{t('dashboard.buyerRequestsStatToday')}</p>
-                     </div>
-                     <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none rounded-2xl p-4 text-center">
-                       <p className="text-2xl font-black text-green-400">{requestStats.fulfilledCount}</p>
-                       <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wide">{t('dashboard.buyerRequestsStatFulfilled')}</p>
-                     </div>
-                   </div>
-                 )}
-               </div>
-             );
-           })()}
-       </main>
+           {activeTab === 'requests' && renderRequests()}
+         </main>
+       </div>
 
        {/* Mobile Bottom Nav — All tabs visible with labels */}
-       <div className="md:hidden fixed bottom-0 w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 pb-safe z-50">
+       <div className="md:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-xl border-t border-black/[0.06] pb-safe z-40">
          <div className="flex justify-around items-center h-16">
            {([
-             { id: 'overview' as Tab, icon: '📊', label: t('dashboard.mobileHome'), gold: false },
-             { id: 'products' as Tab, icon: '📦', label: t('dashboard.mobileProducts'), gold: false },
-             { id: 'add_product' as Tab, icon: '➕', label: t('dashboard.mobileAdd'), gold: false },
-             { id: 'requests' as Tab, icon: '🛒', label: t('dashboard.mobileRequests'), gold: true },
-             { id: 'shop' as Tab, icon: '🎨', label: t('dashboard.mobileShop'), gold: false },
-           ]).map(item => (
-             <button
-               key={item.id}
-               onClick={() => setActiveTab(item.id)}
-               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 relative ${
-                 activeTab === item.id
-                   ? item.gold ? 'text-gold-600 dark:text-gold-400' : 'text-blue-600 dark:text-blue-400'
-                   : item.gold ? 'text-amber-600' : 'text-gray-500'
-               }`}
-             >
-               <span className={`text-lg transition-transform ${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</span>
-               <span className="text-[9px] font-medium">{item.label}</span>
-               {item.gold && requestStats && requestStats.todayCount > 0 && activeTab !== item.id && (
-                 <span className="absolute top-1 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-gold-400 ring-2 ring-white dark:ring-gray-900" />
-               )}
-             </button>
-           ))}
+             { id: 'overview' as Tab, icon: LayoutGrid, label: t('dashboard.mobileHome'), gold: false },
+             { id: 'products' as Tab, icon: Package, label: t('dashboard.mobileProducts'), gold: false },
+             { id: 'add_product' as Tab, icon: Plus, label: t('dashboard.mobileAdd'), gold: false },
+             { id: 'requests' as Tab, icon: ShoppingCart, label: t('dashboard.mobileRequests'), gold: true },
+             { id: 'shop' as Tab, icon: Palette, label: t('dashboard.mobileShop'), gold: false },
+           ]).map(item => {
+             const IconCmp = item.icon;
+             const active = activeTab === item.id;
+             return (
+               <button
+                 key={item.id}
+                 onClick={() => setActiveTab(item.id)}
+                 className={`flex flex-col items-center justify-center w-full h-full gap-0.5 relative transition ${
+                   active
+                     ? item.gold ? 'text-goldDeep' : 'text-ink'
+                     : 'text-ink2 hover:text-ink'
+                 }`}
+               >
+                 <IconCmp size={20} />
+                 <span className="text-[9.5px] font-semibold">{item.label}</span>
+                 {item.gold && requestStats && requestStats.todayCount > 0 && !active && (
+                   <span className="absolute top-1.5 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-gold-400 ring-2 ring-white" />
+                 )}
+                 {active && <span className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-1 rounded-b-full bg-gold-400" />}
+               </button>
+             );
+           })}
          </div>
        </div>
 
        {/* Edit Rejected Product Modal */}
        {editingProduct && (
-         <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEditingProduct(null)}>
-           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-             <div className="flex items-center justify-between">
-               <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.editProductTitle')}</h3>
-               <button onClick={() => setEditingProduct(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl">&times;</button>
+         <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-4 animate-fadein" style={{ background: 'rgba(15,15,20,0.5)', backdropFilter: 'blur(6px)' }} onClick={() => setEditingProduct(null)}>
+           <div className="bg-white rounded-modal w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-cardHover" onClick={e => e.stopPropagation()}>
+             <div className="p-5 flex items-center justify-between border-b border-black/[0.06]">
+               <h3 className="text-[16px] font-black text-ink">{t('dashboard.editProductTitle')}</h3>
+               <button onClick={() => setEditingProduct(null)} className="w-8 h-8 rounded-full hover:bg-canvas inline-flex items-center justify-center text-ink2"><X size={16} /></button>
              </div>
 
-             {editingProduct.rejectionReason && (
-               <div className="bg-red-900/20 border border-red-800/30 rounded-lg p-3">
-                 <p className="text-xs text-red-400"><span className="font-bold">{t('dashboard.rejectionReason')}</span> {editingProduct.rejectionReason}</p>
-               </div>
-             )}
-
-             <div>
-               <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Titre *</label>
-               <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500" />
-             </div>
-
-             <div className="grid grid-cols-2 gap-3">
-               <div>
-                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Prix *</label>
-                 <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500" />
-               </div>
-               <div>
-                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Categorie *</label>
-                 <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none">
-                   <option value="">Choisir</option>
-                   {firestoreCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                 </select>
-               </div>
-             </div>
-
-             <div>
-               <label className="block text-xs font-bold text-gray-700 dark:text-gray-400 mb-1">Description</label>
-               <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500 resize-none" />
-             </div>
-
-             {/* Existing images */}
-             {editImages.length > 0 && (
-               <div>
-                 <label className="block text-xs font-bold text-gray-400 mb-2">Images actuelles</label>
-                 <div className="flex gap-2 flex-wrap">
-                   {editImages.map((img, i) => (
-                     <div key={i} className="relative w-16 h-16">
-                       <img src={getOptimizedUrl(img, 80)} loading="lazy" className="w-full h-full object-cover rounded-lg" />
-                       <button onClick={() => removeEditExistingImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">&times;</button>
-                     </div>
-                   ))}
+             <div className="p-5 space-y-4">
+               {editingProduct.rejectionReason && (
+                 <div className="rounded-input p-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                   <p className="text-[12.5px] text-red-700"><span className="font-bold">{t('dashboard.rejectionReason')}</span> {editingProduct.rejectionReason}</p>
                  </div>
-               </div>
-             )}
+               )}
 
-             {/* New images */}
-             {editNewPreviews.length > 0 && (
-               <div>
-                 <label className="block text-xs font-bold text-gray-400 mb-2">Nouvelles images</label>
-                 <div className="flex gap-2 flex-wrap">
-                   {editNewPreviews.map((src, i) => (
-                     <div key={i} className="relative w-16 h-16">
-                       <img src={src} className="w-full h-full object-cover rounded-lg" />
-                       <button onClick={() => removeEditNewImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">&times;</button>
-                     </div>
-                   ))}
+               <label className="block">
+                 <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">Titre <span className="text-red-500">*</span></span>
+                 <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full h-11 px-3.5 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none" />
+               </label>
+
+               <div className="grid grid-cols-2 gap-3">
+                 <label className="block">
+                   <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">Prix <span className="text-red-500">*</span></span>
+                   <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="w-full h-11 px-3.5 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink tabular-nums transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none" />
+                 </label>
+                 <label className="block">
+                   <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">Catégorie <span className="text-red-500">*</span></span>
+                   <div className="relative">
+                     <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="w-full h-11 pl-3.5 pr-9 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink appearance-none transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none">
+                       <option value="">Choisir</option>
+                       {firestoreCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                     </select>
+                     <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink2" />
+                   </div>
+                 </label>
+               </div>
+
+               <label className="block">
+                 <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">Description</span>
+                 <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="w-full px-3.5 py-3 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink transition resize-none focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none" />
+               </label>
+
+               {/* Existing images */}
+               {editImages.length > 0 && (
+                 <div>
+                   <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">Images actuelles</span>
+                   <div className="flex gap-2 flex-wrap">
+                     {editImages.map((img, i) => (
+                       <div key={i} className="relative w-16 h-16">
+                         <img src={getOptimizedUrl(img, 80)} loading="lazy" className="w-full h-full object-cover rounded-input bg-canvas" alt="" />
+                         <button onClick={() => removeEditExistingImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-[10px] flex items-center justify-center"><X size={10} /></button>
+                       </div>
+                     ))}
+                   </div>
                  </div>
+               )}
+
+               {/* New images */}
+               {editNewPreviews.length > 0 && (
+                 <div>
+                   <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">Nouvelles images</span>
+                   <div className="flex gap-2 flex-wrap">
+                     {editNewPreviews.map((src, i) => (
+                       <div key={i} className="relative w-16 h-16">
+                         <img src={src} className="w-full h-full object-cover rounded-input" alt="" />
+                         <button onClick={() => removeEditNewImage(i)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-[10px] flex items-center justify-center"><X size={10} /></button>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
+               <div>
+                 <input ref={editFileRef} type="file" accept="image/*" multiple onChange={handleEditNewImages} className="hidden" />
+                 <button
+                   onClick={() => editFileRef.current?.click()}
+                   className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-input text-ink2 hover:text-ink text-[13px] font-semibold transition active:scale-[0.97]"
+                   style={{ border: '2px dashed rgba(0,0,0,0.10)' }}
+                 >
+                   <Plus size={14} /> {t('dashboard.addPhoto2', { defaultValue: 'Ajouter des images' })}
+                 </button>
                </div>
-             )}
 
-             <div>
-               <input ref={editFileRef} type="file" accept="image/*" multiple onChange={handleEditNewImages} className="hidden" />
-               <button onClick={() => editFileRef.current?.click()} className="w-full border border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-3 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">
-                 + Ajouter des images
-               </button>
-             </div>
-
-             <div className="flex gap-3 pt-2">
-               <button onClick={() => setEditingProduct(null)} className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                 {t('common.cancel')}
-               </button>
-               <button
-                 onClick={handleSaveEdit}
-                 disabled={editLoading}
-                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors disabled:opacity-50"
-               >
-                 {editLoading ? t('common.loading') : t('dashboard.editAndResubmit')}
-               </button>
+               <div className="flex gap-3 pt-2">
+                 <button
+                   onClick={() => setEditingProduct(null)}
+                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-white text-ink font-semibold text-[14px] border border-black/[0.08] active:scale-[0.97] transition-transform hover:bg-canvas"
+                 >
+                   {t('common.cancel')}
+                 </button>
+                 <button
+                   onClick={handleSaveEdit}
+                   disabled={editLoading}
+                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-gold-400 text-ink font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-goldHov disabled:opacity-60"
+                   style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,200,66,0.35)' }}
+                 >
+                   {editLoading ? t('common.loading') : t('dashboard.editAndResubmit')}
+                 </button>
+               </div>
              </div>
            </div>
          </div>
