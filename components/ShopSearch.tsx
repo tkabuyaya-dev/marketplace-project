@@ -217,7 +217,7 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
       {/* Search bar */}
       <div className="relative" ref={suggestionsRef}>
         <div className="relative flex items-center">
-          <svg className="absolute left-4 w-5 h-5 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="absolute left-4 w-5 h-5 text-ink2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -227,13 +227,15 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
             onChange={(e) => handleQueryChange(e.target.value)}
             onFocus={() => query.length >= 2 && setSuggestions(s => s.length > 0 ? s : [])}
             placeholder="Rechercher dans cette boutique..."
-            className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl pl-12 pr-24 py-3 text-white placeholder-gray-500 focus:border-gold-400/50 focus:bg-gray-800 outline-none transition-all text-sm"
+            className="w-full h-12 bg-white border-2 border-black/[0.08] rounded-input pl-12 pr-24 text-[14px] font-medium text-ink placeholder:text-ink2 focus-gold transition-all duration-150"
           />
           <div className="absolute right-2 flex items-center gap-1">
             {query && (
               <button
+                type="button"
+                aria-label="Effacer la recherche"
                 onClick={() => { setQuery(''); setAlgoliaResults(null); setShowSuggestions(false); }}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-white transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-ink2 hover:text-ink transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -241,8 +243,14 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
               </button>
             )}
             <button
+              type="button"
+              aria-label={showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-2 rounded-lg transition-all ${showFilters || hasActiveFilters ? 'bg-gold-400 text-gray-900' : 'text-gray-500 hover:text-white hover:bg-gray-700'}`}
+              className={`w-9 h-9 rounded-input inline-flex items-center justify-center transition-all press ${
+                showFilters || hasActiveFilters
+                  ? 'bg-gold-400 text-ink shadow-gold'
+                  : 'bg-fieldRest text-ink2 hover:bg-black/[0.06] hover:text-ink'
+              }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -250,22 +258,23 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
             </button>
           </div>
           {isSearching && (
-            <div className="absolute right-20 top-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+            <div className="absolute right-24 top-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
             </div>
           )}
         </div>
 
         {/* Autocomplete suggestions */}
         {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute z-30 w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+          <div className="absolute z-30 w-full mt-1.5 bg-white border border-black/[0.08] rounded-input shadow-cardLg overflow-hidden">
             {suggestions.map((s, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={() => handleSuggestionClick(s)}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition-colors flex items-center gap-3"
+                className="w-full text-left px-4 py-2.5 text-[13.5px] font-medium text-ink hover:bg-canvas transition-colors flex items-center gap-3"
               >
-                <svg className="w-3.5 h-3.5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5 text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <span className="truncate">{s}</span>
@@ -277,11 +286,16 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
 
       {/* Filters panel */}
       {showFilters && (
-        <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 space-y-4 animate-fade-in">
+        <div className="bg-white border border-black/[0.07] rounded-card shadow-card p-4 space-y-4 animate-fadein">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Filtres</span>
+            <span className="text-[11px] font-bold text-muted uppercase tracking-[0.10em]">Filtres</span>
             {hasActiveFilters && (
-              <button onClick={resetFilters} className="text-xs text-gold-400 hover:text-blue-300 transition-colors">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-[12px] font-bold hover:underline transition-colors"
+                style={{ color: '#C47E00' }}
+              >
                 Réinitialiser
               </button>
             )}
@@ -290,19 +304,29 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
           {/* Categories */}
           {categories.length > 1 && (
             <div>
-              <label className="block text-xs font-bold text-gray-500 mb-2">Catégorie</label>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted mb-2">Catégorie</label>
               <div className="flex flex-wrap gap-1.5">
                 <button
+                  type="button"
                   onClick={() => handleFilterChange({ category: undefined })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!filters.category ? 'bg-gold-400 text-gray-900' : 'bg-gray-700/50 text-gray-400 hover:text-white'}`}
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-bold transition-all press border ${
+                    !filters.category
+                      ? 'bg-gold-400 text-ink border-transparent shadow-gold'
+                      : 'bg-fieldRest text-ink2 border-black/[0.06] hover:border-black/[0.15] hover:text-ink'
+                  }`}
                 >
                   Toutes
                 </button>
                 {categories.map(cat => (
                   <button
                     key={cat}
+                    type="button"
                     onClick={() => handleFilterChange({ category: filters.category === cat ? undefined : cat })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filters.category === cat ? 'bg-gold-400 text-gray-900' : 'bg-gray-700/50 text-gray-400 hover:text-white'}`}
+                    className={`px-3 py-1.5 rounded-full text-[12px] font-bold transition-all press border ${
+                      filters.category === cat
+                        ? 'bg-gold-400 text-ink border-transparent shadow-gold'
+                        : 'bg-fieldRest text-ink2 border-black/[0.06] hover:border-black/[0.15] hover:text-ink'
+                    }`}
                   >
                     {cat}
                   </button>
@@ -315,11 +339,11 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Sort */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1.5">Trier par</label>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted mb-1.5">Trier par</label>
               <select
                 value={filters.sort}
                 onChange={(e) => handleFilterChange({ sort: e.target.value as SearchFilters['sort'] })}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-xs text-white outline-none"
+                className="w-full h-10 bg-fieldRest border border-transparent rounded-input px-3 text-[13px] font-medium text-ink focus-gold transition-all"
               >
                 <option value="relevance">Pertinence</option>
                 <option value="price_asc">Prix croissant</option>
@@ -330,40 +354,40 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
 
             {/* Min price */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1.5">Prix min</label>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted mb-1.5">Prix min</label>
               <input
                 type="number"
                 min={0}
                 value={filters.minPrice ?? ''}
                 onChange={(e) => handleFilterChange({ minPrice: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="0"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-xs text-white outline-none"
+                className="w-full h-10 bg-fieldRest border border-transparent rounded-input px-3 text-[13px] font-medium text-ink placeholder:text-muted focus-gold transition-all"
               />
             </div>
 
             {/* Max price */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1.5">Prix max</label>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted mb-1.5">Prix max</label>
               <input
                 type="number"
                 min={0}
                 value={filters.maxPrice ?? ''}
                 onChange={(e) => handleFilterChange({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="∞"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-xs text-white outline-none"
+                className="w-full h-10 bg-fieldRest border border-transparent rounded-input px-3 text-[13px] font-medium text-ink placeholder:text-muted focus-gold transition-all"
               />
             </div>
 
             {/* In stock */}
-            <div className="flex items-end pb-0.5">
+            <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.inStock || false}
                   onChange={(e) => handleFilterChange({ inStock: e.target.checked || undefined })}
-                  className="accent-blue-500 w-4 h-4"
+                  className="accent-gold-400 w-4 h-4"
                 />
-                <span className="text-xs font-bold text-gray-400">En stock</span>
+                <span className="text-[12.5px] font-semibold text-ink">En stock</span>
               </label>
             </div>
           </div>
@@ -374,25 +398,28 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
       {isActive && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs text-gray-500">
-              {displayProducts.length} résultat{displayProducts.length !== 1 ? 's' : ''}
-              {query.trim() && <> pour <span className="text-gray-300">"{query}"</span></>}
+            <p className="text-[12.5px] font-medium text-ink2">
+              <span className="font-bold text-ink">{displayProducts.length}</span> résultat{displayProducts.length !== 1 ? 's' : ''}
+              {query.trim() && (
+                <>
+                  {' '}pour <span className="font-bold text-ink">"{query}"</span>
+                </>
+              )}
             </p>
-            {isActive && (
-              <button
-                onClick={resetFilters}
-                className="text-xs text-gray-500 hover:text-white transition-colors"
-              >
-                Effacer
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-[12px] font-bold text-ink2 hover:text-ink transition-colors press"
+            >
+              Effacer
+            </button>
           </div>
 
           {displayProducts.length === 0 ? (
-            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8 text-center">
-              <p className="text-3xl mb-3">🔍</p>
-              <p className="text-gray-400 text-sm font-bold">Aucun produit trouvé</p>
-              <p className="text-gray-500 text-xs mt-1">Essayez avec d'autres mots-clés ou modifiez les filtres.</p>
+            <div className="bg-white border border-black/[0.07] rounded-card shadow-card p-8 text-center">
+              <p className="text-4xl mb-3 opacity-60">🔍</p>
+              <p className="text-[14px] font-bold text-ink">Aucun produit trouvé</p>
+              <p className="text-[12.5px] text-ink2 mt-1">Essayez avec d'autres mots-clés ou modifiez les filtres.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

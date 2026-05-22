@@ -86,4 +86,30 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Light design system helpers — used by SellerRegistration & other redesigned pages */
+  .focus-gold:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(245, 200, 66, 0.20);
+    border-color: #F5C842 !important;
+    background: #FFFFFF !important;
+  }
+  .text-gold-grad {
+    background: linear-gradient(135deg, #C47E00, #B07410);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .press:active { transform: scale(0.97); }
+  .lift {
+    transition: transform 180ms ease, box-shadow 180ms ease,
+                border-color 180ms ease, background 180ms ease;
+  }
+  .stripey {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.05) 0 8px,
+      rgba(0, 0, 0, 0) 8px 16px
+    );
+  }
 }

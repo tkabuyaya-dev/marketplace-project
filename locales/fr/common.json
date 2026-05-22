@@ -1408,6 +1408,7 @@
   },
   "unverifiedSeller": {
     "inline": "Profil non vérifié",
+    "bannerTitle": "Vendeur non vérifié",
     "banner": "Ce vendeur n'est pas encore vérifié par notre équipe. Consultez nos conseils avant tout achat.",
     "safetyTips": "Voir les conseils de sécurité"
   },

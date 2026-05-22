@@ -233,7 +233,7 @@ export const ProductCard = memo<ProductCardProps>(({
 
         <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
           <span className="truncate flex-1 min-w-0">
-            {product.seller?.name || '—'}
+            {product.seller?.sellerDetails?.shopName || product.seller?.name || '—'}
             {product.seller?.isVerified && (
               <VerifiedBadge tier={product.seller.verificationTier} size="xs" className="ml-0.5" />
             )}

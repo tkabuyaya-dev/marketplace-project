@@ -455,7 +455,7 @@ const ProductDetail: React.FC = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[14px] font-extrabold text-[#111318] tracking-[-0.01em] truncate">
-                {product.seller.name}
+                {product.seller.sellerDetails?.shopName || product.seller.name}
               </span>
               {product.seller.isVerified && (
                 <div className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full"
@@ -603,30 +603,34 @@ const ProductDetail: React.FC = () => {
       )}
 
       {/* ── 5. SAFETY TIP ── */}
-      <div className="mx-3 mt-2.5 rounded-2xl px-4 py-3.5"
-        style={{ background: 'rgba(245,200,66,0.08)', border: '1px solid rgba(245,200,66,0.32)' }}>
+      <div className="mx-3 mt-2.5 rounded-2xl px-4 py-4"
+        style={{
+          background: 'rgba(245,200,66,0.12)',
+          border: '1px solid rgba(245,200,66,0.42)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}>
         <div className="flex items-start gap-3">
           <div
-            className="w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg,#F5C842,#E8A920)', boxShadow: '0 2px 6px rgba(245,200,66,0.4)' }}
           >
-            <Shield size={16} strokeWidth={2} className="text-[#3D2800]" />
+            <Shield size={18} strokeWidth={2.2} className="text-[#3D2800]" />
           </div>
           <div className="flex-1">
-            <div className="text-[13.5px] font-extrabold text-[#3D2800] tracking-[-0.01em]">
+            <div className="text-[14px] font-extrabold text-[#3D2800] tracking-[-0.01em]">
               Achetez en toute sécurité
             </div>
-            <p className="mt-0.5 text-[12px] font-medium leading-[1.5] text-[#6B5318]">
+            <p className="mt-1 text-[12.5px] font-medium leading-[1.5] text-[#6B5318]">
               {t('productDetail.trustNotice')}
             </p>
             <button
               type="button"
               onClick={() => navigate('/securite')}
-              className="mt-2 inline-flex items-center gap-0.5 text-[11.5px] font-extrabold tracking-[-0.01em]"
+              className="mt-2 inline-flex items-center gap-0.5 text-[12px] font-extrabold tracking-[-0.01em] hover:underline"
               style={{ color: '#C47E00' }}
             >
               Voir les conseils de sécurité
-              <ChevronRight size={11} strokeWidth={2.4} />
+              <ChevronRight size={12} strokeWidth={2.4} />
             </button>
           </div>
         </div>

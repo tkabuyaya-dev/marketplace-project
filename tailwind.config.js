@@ -29,13 +29,14 @@ export default {
           950: '#3D2805',
         },
         // Seller Dashboard design tokens (light-only design system)
-        canvas:  '#F7F8FA',
-        ink:     '#111318',
-        ink2:    '#5C6370',
-        muted:   '#9EA5B0',
-        goldHov: '#E8A800',
-        goldDeep:'#B07410',
-        wa:      '#25D366',
+        canvas:    '#F7F8FA',
+        ink:       '#111318',
+        ink2:      '#5C6370',
+        muted:     '#9EA5B0',
+        goldHov:   '#E8A800',
+        goldDeep:  '#B07410',
+        wa:        '#25D366',
+        fieldRest: '#F0F1F4',
       },
       borderRadius: {
         card:  '16px',
@@ -45,7 +46,9 @@ export default {
       boxShadow: {
         card:      '0 2px 8px rgba(0,0,0,0.05)',
         cardHover: '0 6px 18px rgba(0,0,0,0.07)',
+        cardLg:    '0 4px 24px rgba(0,0,0,0.06)',
         gold:      '0 4px 20px rgba(245,200,66,0.45)',
+        goldBig:   '0 8px 24px rgba(245,200,66,0.45)',
       },
       fontFamily: {
         sans: ['Inter', 'Inter Fallback', 'system-ui', '-apple-system', 'sans-serif'],
@@ -61,6 +64,9 @@ export default {
         'check-pop': 'checkPop 500ms cubic-bezier(0.175,0.885,0.32,1.275) forwards',
         'fadein':     'fadein 0.2s ease-out',
         'pulse-ring': 'pulseRing 2s infinite',
+        'pop':        'pop 180ms ease-out',
+        'pulse-ring-green': 'pulseRingGreen 1.8s ease-out infinite',
+        'checkdraw':  'checkdraw 400ms ease-out forwards',
       },
       keyframes: {
         fadeIn: {
@@ -92,6 +98,19 @@ export default {
           '0%,100%': { boxShadow: '0 0 0 0 rgba(245,200,66,0.35)' },
           '50%':     { boxShadow: '0 0 0 8px rgba(245,200,66,0)' },
         },
+        pop: {
+          '0%':   { transform: 'scale(0.9)' },
+          '60%':  { transform: 'scale(1.06)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        pulseRingGreen: {
+          '0%,100%': { boxShadow: '0 0 0 0 rgba(16,185,129,0.45)' },
+          '50%':     { boxShadow: '0 0 0 14px rgba(16,185,129,0)' },
+        },
+        checkdraw: {
+          '0%':   { strokeDashoffset: '28' },
+          '100%': { strokeDashoffset: '0' },
+        },
       },
       scale: {
         '98': '0.98',
@@ -121,8 +140,9 @@ export default {
     'animate-fade-in', 'animate-slide-up', 'animate-pulse', 'animate-card-in', 'animate-shimmer', 'animate-check-pop',
     'animate-fadein', 'animate-pulse-ring',
     // Seller Dashboard design tokens
-    'rounded-card', 'shadow-card', 'shadow-cardHover', 'shadow-gold',
-    'bg-canvas', 'text-ink', 'text-ink2', 'text-muted',
+    'rounded-card', 'shadow-card', 'shadow-cardHover', 'shadow-cardLg', 'shadow-gold', 'shadow-goldBig',
+    'bg-canvas', 'bg-fieldRest', 'text-ink', 'text-ink2', 'text-muted',
+    'animate-pop', 'animate-pulse-ring-green', 'animate-checkdraw',
     // Scale
     'active:scale-[0.98]', 'active:scale-95',
     // Scrollbar

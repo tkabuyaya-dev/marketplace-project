@@ -69,7 +69,7 @@ export const FeaturedVendorCard: React.FC<FeaturedVendorCardProps> = ({ seller, 
               onClick={goToShop}
               className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate hover:underline"
             >
-              {seller.name}
+              {seller.sellerDetails?.shopName || seller.name}
             </button>
             {seller.isVerified && (
               <VerifiedBadge tier={seller.verificationTier} size="xs" />
