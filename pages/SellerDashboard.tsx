@@ -1902,8 +1902,8 @@ export const SellerDashboard: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Mobile sticky submit */}
-                  <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 bg-gradient-to-t from-canvas via-canvas/95 to-canvas/0">
+                  {/* Mobile sticky submit — positionné au-dessus de la bottom nav (h-16 = 64px) */}
+                  <div className="lg:hidden fixed left-0 right-0 z-30 px-4 pt-3 pb-3 bg-gradient-to-t from-canvas via-canvas/95 to-canvas/0" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
                     <div className="bg-white rounded-card border border-black/[0.07] shadow-cardHover p-2.5 flex gap-2">
                       <button
                         type="button"
@@ -3020,14 +3020,14 @@ export const SellerDashboard: React.FC = () => {
                {NAV_ITEMS.map(it => (
                  <Chip key={it.id} id={it.id} label={it.label} count={it.count} gold={it.gold} />
                ))}
-               <Chip id="add_product" label={t('dashboard.newButton')} />
+               <Chip id="add_product" label={t('dashboard.newButton')} gold />
              </div>
            </div>
          </header>
 
          <main
            id="main-scroll"
-           className={`flex-1 px-4 md:px-8 py-4 md:py-8 ${activeTab === 'add_product' ? 'pb-32 md:pb-8' : 'pb-24 md:pb-10'}`}
+           className={`flex-1 px-4 md:px-8 py-4 md:py-8 ${activeTab === 'add_product' ? 'pb-48 md:pb-8' : 'pb-24 md:pb-10'}`}
            style={{ maxWidth: 1180, width: '100%', marginInline: 'auto' }}
          >
            {activeTab === 'overview' && renderOverview()}
