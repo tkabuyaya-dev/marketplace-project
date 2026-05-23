@@ -92,14 +92,16 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
     <div className="space-y-4">
       {/* Header with rating summary */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+        <h3 className="text-lg font-bold text-ink flex items-center gap-2">
           Avis clients
-          <span className="text-sm font-normal text-gray-400">({reviewCount})</span>
+          <span className="text-sm font-medium text-ink2">({reviewCount})</span>
         </h3>
         {currentUserId && !hasUserReviewed && !showForm && (
           <button
+            type="button"
             onClick={() => setShowForm(true)}
-            className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+            className="text-sm font-bold hover:underline transition-colors press"
+            style={{ color: '#C47E00' }}
           >
             + Laisser un avis
           </button>
@@ -107,33 +109,33 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
       </div>
 
       {/* Rating summary */}
-      <div className="flex items-center gap-3 p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
+      <div className="flex items-center gap-3 p-4 bg-white rounded-card border border-black/[0.07] shadow-card">
         <div className="text-center">
-          <div className="text-3xl font-bold text-white">{productRating.toFixed(1)}</div>
+          <div className="text-3xl font-extrabold text-ink tracking-tight">{productRating.toFixed(1)}</div>
           <div className="flex gap-0.5 mt-1">
             {[1, 2, 3, 4, 5].map(star => (
-              <span key={star} className={`text-sm ${star <= Math.round(productRating) ? 'text-yellow-400' : 'text-gray-600'}`}>
+              <span key={star} className={`text-sm ${star <= Math.round(productRating) ? 'text-yellow-400' : 'text-black/[0.15]'}`}>
                 &#9733;
               </span>
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-1">{reviewCount} avis</p>
+          <p className="text-xs text-muted mt-1 font-medium">{reviewCount} avis</p>
         </div>
-        <div className="flex-1 space-y-1 ml-4">
+        <div className="flex-1 space-y-1.5 ml-4">
           {[5, 4, 3, 2, 1].map(star => {
             const count = reviews.filter(r => r.rating === star).length;
             const pct = reviewCount > 0 ? (count / reviewCount) * 100 : 0;
             return (
               <div key={star} className="flex items-center gap-2 text-xs">
-                <span className="text-gray-400 w-3">{star}</span>
+                <span className="text-ink2 w-3 font-semibold tabular-nums">{star}</span>
                 <span className="text-yellow-400">&#9733;</span>
-                <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-black/[0.06] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-yellow-400 rounded-full origin-left transition-transform duration-500"
                     style={{ transform: `scaleX(${pct / 100})` }}
                   />
                 </div>
-                <span className="text-gray-500 w-6 text-right">{count}</span>
+                <span className="text-ink2 w-6 text-right font-semibold tabular-nums">{count}</span>
               </div>
             );
           })}
@@ -142,8 +144,8 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
       {/* Review form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="p-4 bg-gray-800/50 rounded-xl border border-gray-700/50 space-y-3">
-          <p className="text-sm font-medium text-white">Votre avis</p>
+        <form onSubmit={handleSubmit} className="p-4 bg-white rounded-card border border-black/[0.07] shadow-card space-y-3 animate-fadein">
+          <p className="text-sm font-bold text-ink">Votre avis</p>
 
           {/* Star rating selector */}
           <div className="flex gap-1">
@@ -152,9 +154,10 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                 key={star}
                 type="button"
                 onClick={() => setFormRating(star)}
-                className={`text-2xl transition-transform hover:scale-110 ${
-                  star <= formRating ? 'text-yellow-400' : 'text-gray-600'
+                className={`text-2xl transition-transform hover:scale-110 press ${
+                  star <= formRating ? 'text-yellow-400' : 'text-black/[0.15]'
                 }`}
+                aria-label={`${star} étoile${star > 1 ? 's' : ''}`}
               >
                 &#9733;
               </button>
@@ -168,25 +171,26 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
             placeholder="Partagez votre experience..."
             maxLength={1000}
             rows={3}
-            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none resize-none"
+            className="w-full bg-fieldRest border border-transparent rounded-input px-3 py-2.5 text-sm font-medium text-ink placeholder:text-muted focus-gold transition-all resize-none"
           />
 
           {/* Image upload */}
           <div className="flex items-center gap-2 flex-wrap">
             {formImages.map((file, i) => (
-              <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-600 group">
+              <div key={i} className="relative w-16 h-16 rounded-input overflow-hidden border border-black/[0.10] group">
                 <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removeImage(i)}
                   className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity"
+                  aria-label="Retirer la photo"
                 >
                   &#x2715;
                 </button>
               </div>
             ))}
             {formImages.length < 3 && (
-              <label className="w-16 h-16 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-600 text-gray-500 hover:border-blue-500 hover:text-blue-400 cursor-pointer transition-colors">
+              <label className="w-16 h-16 flex items-center justify-center rounded-input border-2 border-dashed border-black/[0.15] text-ink2 hover:border-gold-400 hover:text-ink hover:bg-canvas cursor-pointer transition-colors">
                 <span className="text-xl">+</span>
                 <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
               </label>
@@ -197,14 +201,18 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
             <button
               type="button"
               onClick={() => { setShowForm(false); setFormImages([]); }}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-ink2 hover:text-ink hover:bg-fieldRest rounded-input transition-colors press"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={submitting || !formComment.trim()}
-              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className={`px-5 py-2 text-sm font-bold rounded-input transition-all press ${
+                submitting || !formComment.trim()
+                  ? 'bg-fieldRest text-muted cursor-not-allowed'
+                  : 'bg-gold-400 hover:bg-goldHov text-ink shadow-gold'
+              }`}
             >
               {submitting ? 'Envoi...' : 'Publier'}
             </button>
@@ -216,31 +224,31 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
       {loading ? (
         <div className="space-y-3">
           {[1, 2].map(n => (
-            <div key={n} className="h-24 bg-gray-800 rounded-xl animate-pulse" />
+            <div key={n} className="h-24 bg-canvas border border-black/[0.05] rounded-card animate-pulse" />
           ))}
         </div>
       ) : reviews.length > 0 ? (
         <div className="space-y-3">
           {reviews.map(review => (
-            <div key={review.id} className="p-4 bg-gray-800/30 rounded-xl border border-gray-700/30 space-y-2">
+            <div key={review.id} className="p-4 bg-white rounded-card border border-black/[0.07] shadow-card space-y-2">
               {/* User info + rating */}
               <div className="flex items-center gap-3">
                 <img
                   src={getOptimizedUrl(review.userAvatar, 40)}
                   alt={review.userName}
-                  className="w-8 h-8 rounded-full object-cover border border-gray-600"
+                  className="w-8 h-8 rounded-full object-cover border border-black/[0.08]"
                 />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-white">{review.userName}</p>
+                  <p className="text-sm font-bold text-ink">{review.userName}</p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map(star => (
-                        <span key={star} className={`text-xs ${star <= review.rating ? 'text-yellow-400' : 'text-gray-600'}`}>
+                        <span key={star} className={`text-xs ${star <= review.rating ? 'text-yellow-400' : 'text-black/[0.15]'}`}>
                           &#9733;
                         </span>
                       ))}
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted font-medium">
                       {new Date(review.createdAt).toLocaleDateString('fr-FR')}
                     </span>
                   </div>
@@ -248,7 +256,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
               </div>
 
               {/* Comment */}
-              <p className="text-sm text-gray-300 leading-relaxed">{review.comment}</p>
+              <p className="text-sm text-ink2 leading-relaxed">{review.comment}</p>
 
               {/* Review photos */}
               {review.images && review.images.length > 0 && (
@@ -256,8 +264,10 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                   {review.images.map((img, i) => (
                     <button
                       key={i}
+                      type="button"
                       onClick={() => setPreviewImage(img)}
-                      className="w-20 h-20 rounded-lg overflow-hidden border border-gray-600 hover:border-blue-500 transition-colors"
+                      className="w-20 h-20 rounded-input overflow-hidden border border-black/[0.10] hover:border-gold-400 transition-colors press"
+                      aria-label="Agrandir la photo"
                     >
                       <img src={getOptimizedUrl(img, 100)} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -268,7 +278,11 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-500 py-2">Aucun avis pour le moment. Soyez le premier !</p>
+        <div className="bg-canvas border border-black/[0.06] rounded-card p-5 text-center">
+          <p className="text-2xl mb-1.5 opacity-60">💬</p>
+          <p className="text-sm font-bold text-ink">Aucun avis pour le moment</p>
+          <p className="text-xs text-ink2 mt-0.5">Soyez le premier à partager votre expérience !</p>
+        </div>
       )}
 
       {/* Full-screen image preview modal */}

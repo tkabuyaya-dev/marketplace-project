@@ -46,6 +46,7 @@ function productToAlgoliaRecord(id: string, data: any, sellerDetails?: any) {
     marketplace: data.marketplace || null,
     sellerId: data.sellerId || "",
     sellerName: data.sellerName || "",
+    sellerShopName: data.sellerShopName || "",
     sellerIsVerified: data.sellerIsVerified || false,
     sellerVerificationTier: data.sellerVerificationTier || (data.sellerIsVerified ? "identity" : "none"),
     images: (data.images || []).slice(0, 3),

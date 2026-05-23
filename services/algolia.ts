@@ -139,8 +139,12 @@ function hitToProduct(hit: AlgoliaHit): Product {
       verificationTier: hit.sellerVerificationTier || (hit.sellerIsVerified ? "identity" : "none"),
       role: "seller",
       joinDate: 0,
-      sellerDetails: (hit.sellerCommune || hit.sellerProvince)
-        ? { commune: hit.sellerCommune || "", province: hit.sellerProvince || "" }
+      sellerDetails: (hit.sellerCommune || hit.sellerProvince || hit.sellerShopName)
+        ? {
+            commune: hit.sellerCommune || "",
+            province: hit.sellerProvince || "",
+            shopName: hit.sellerShopName || undefined,
+          }
         : undefined,
     } as any,
     isPromoted: hit.isSponsored || false,
@@ -511,6 +515,9 @@ function backendHitToProduct(hit: Record<string, any>): Product {
       verificationTier:   hit.sellerIsVerified ? "identity" : "none",
       role:               "seller",
       joinDate:           0,
+      sellerDetails: hit.sellerShopName
+        ? { shopName: hit.sellerShopName, commune: '', province: '' }
+        : undefined,
     } as any,
     isPromoted:    hit.isSponsored   ?? false,
     isSponsored:   hit.isSponsored   ?? false,

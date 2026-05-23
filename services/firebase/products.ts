@@ -372,6 +372,7 @@ export const addProduct = async (
     reviews:         0,
     sellerId:        auth.currentUser.uid,
     sellerName:      userData.name || '',
+    sellerShopName:  userData.sellerDetails?.shopName || null,
     sellerEmail:     userData.email || '',
     sellerAvatar:    userData.avatar || '',
     sellerIsVerified: userData.isVerified || false,

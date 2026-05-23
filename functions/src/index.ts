@@ -77,6 +77,9 @@ export { rejectSubscription } from "./reject-subscription.js";
 // One-shot backfill: verificationTier migration for existing users
 export { backfillVerificationTier } from "./backfill-verification-tier.js";
 
+// One-shot backfill: sellerShopName on existing products (post-fix denormalization)
+export { backfillSellerShopName } from "./backfill-shop-name.js";
+
 // Seller analytics — returns 30-day activity for the caller's own products
 // (bypasses the userActivity rule that hides viewer identities).
 export { getMyProductsActivity } from "./seller-stats.js";
