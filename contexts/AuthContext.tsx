@@ -121,6 +121,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser) {
       setUserProperties(currentUser.id, currentUser.role, currentUser.sellerDetails?.countryId || activeCountry || 'unknown');
       setSentryUser(currentUser.id, currentUser.email, currentUser.role);
+      // FCM silent refresh : si l'utilisateur a déjà accordé les notifs sur
+      // ce navigateur, on rafraîchit son token (peut avoir changé après
+      // réinstall PWA, bascule device, etc.). Pas de prompt — le toggle est
+      // dans Profile pour la 1ʳᵉ demande.
+      import('../services/fcm')
+        .then(m => m.refreshFcmTokenSilent(currentUser.id))
+        .catch(() => {});
     } else {
       clearSentryUser();
     }

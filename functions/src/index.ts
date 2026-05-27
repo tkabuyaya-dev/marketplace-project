@@ -83,3 +83,7 @@ export { backfillSellerShopName } from "./backfill-shop-name.js";
 // Seller analytics — returns 30-day activity for the caller's own products
 // (bypasses the userActivity rule that hides viewer identities).
 export { getMyProductsActivity } from "./seller-stats.js";
+
+// FCM push sender — triggers on new notifications/{id} doc, sends push to
+// all registered devices of the recipient. Prunes invalid tokens automatically.
+export { onNotificationCreate } from "./fcm-send.js";

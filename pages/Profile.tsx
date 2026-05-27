@@ -604,7 +604,7 @@ const Profile: React.FC = () => {
   const handleNotifications = async () => {
     if (permission === 'granted') return;
     if (permission === 'denied') { toast(t('profile.notifsBlocked'), 'info'); return; }
-    const result = await requestPermission();
+    const result = await requestPermission(currentUser.id);
     if (result === 'granted') toast(t('profile.notifsEnabled'), 'success');
     else toast(t('profile.notifsBlocked'), 'error');
   };

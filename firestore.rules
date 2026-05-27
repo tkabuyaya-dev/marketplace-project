@@ -145,6 +145,20 @@ service cloud.firestore {
 
       // Suppression: admin uniquement
       allow delete: if isAdmin();
+
+      // ── FCM tokens (sous-collection) ────────────────────────
+      // Tokens push notification : 1 doc par device. Strictement privés
+      // au propriétaire — exposer ces tokens permettrait à un attaquant
+      // d'envoyer des push arbitraires.
+      // Les CF (admin SDK) bypassent ces rules pour pruner les tokens invalides.
+      match /fcmTokens/{tokenId} {
+        allow read, list:   if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && request.resource.data.token is string
+          && request.resource.data.token.size() > 20
+          && request.resource.data.token.size() <= 500;
+        allow delete:       if isOwner(userId);
+      }
     }
 
     // ─────────────────────────────────────────────────────────
