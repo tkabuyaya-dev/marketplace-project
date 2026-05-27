@@ -7,6 +7,7 @@ import {
   createNotification, renewSubscription,
 } from '../../services/firebase';
 import { getOptimizedUrl } from '../../services/cloudinary';
+import { getCountryFlag } from '../../constants';
 import type { UsersProps } from './types';
 
 const TIER_OPTIONS = [
@@ -272,7 +273,7 @@ export const Users: React.FC<UsersProps> = ({
           <select value={sellerCountryFilter} onChange={e => setSellerCountryFilter(e.target.value)}
             className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 outline-none">
             <option value="all">{t('admin.allCountries')}</option>
-            {countries.map(c => <option key={c.id} value={c.id}>{c.flag} {c.name}</option>)}
+            {countries.map(c => <option key={c.id} value={c.id}>{getCountryFlag(c)} {c.name}</option>)}
           </select>
           <select value={sellerStatusFilter} onChange={e => setSellerStatusFilter(e.target.value as any)}
             className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 outline-none">
@@ -323,7 +324,7 @@ export const Users: React.FC<UsersProps> = ({
                         {t('admin.planInfo', { label: u.sellerDetails.tierLabel, max: u.sellerDetails.maxProducts || '?' })}
                         {u.sellerDetails.countryId && (() => {
                           const c = countries.find(cc => cc.id === u.sellerDetails!.countryId);
-                          return c ? <span className="ml-1 text-gray-500">{c.flag}</span> : null;
+                          return c ? <span className="ml-1 text-gray-500">{getCountryFlag(c)}</span> : null;
                         })()}
                       </p>
                       {u.sellerDetails.subscriptionExpiresAt && (() => {

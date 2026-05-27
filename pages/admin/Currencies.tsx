@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../components/Toast';
 import { updateCurrency, seedInitialData } from '../../services/firebase';
+import { getCountryFlag } from '../../constants';
 import type { CurrenciesProps } from './types';
 
 export const Currencies: React.FC<CurrenciesProps> = ({
@@ -28,7 +29,7 @@ export const Currencies: React.FC<CurrenciesProps> = ({
               <p className="text-xs text-gray-500">{cur.name}</p>
               {cur.countryId !== 'intl' && (() => {
                 const c = countries.find(cc => cc.id === cur.countryId);
-                return c ? <p className="text-[10px] text-gray-600 mt-0.5">{c.flag} {c.name}</p> : null;
+                return c ? <p className="text-[10px] text-gray-600 mt-0.5">{getCountryFlag(c)} {c.name}</p> : null;
               })()}
               {cur.countryId === 'intl' && <p className="text-[10px] text-gray-600 mt-0.5">🌐 {t('admin.international')}</p>}
             </div>

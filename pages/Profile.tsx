@@ -13,7 +13,7 @@ import { updateUserProfile } from '../services/firebase';
 import { useNotificationConsent } from '../hooks/useNotificationConsent';
 import { useToast } from '../components/Toast';
 import { getOptimizedUrl } from '../services/cloudinary';
-import { INITIAL_COUNTRIES, SUPPORT_WHATSAPP } from '../constants';
+import { INITIAL_COUNTRIES, SUPPORT_WHATSAPP, getCountryFlag } from '../constants';
 import type { VerificationTier, User } from '../types';
 
 // ─────────────────────────────────────────────────────────────
@@ -592,7 +592,7 @@ const Profile: React.FC = () => {
   const country = INITIAL_COUNTRIES.find(c => c.id === activeCountry);
   const currentLang = (i18n.language || 'fr').slice(0, 2).toLowerCase();
   const langLabel = currentLang === 'en' ? 'English' : 'Français';
-  const countryLabel = country ? `${country.flag} ${country.name}` : t('profile.allCountries');
+  const countryLabel = country ? `${getCountryFlag(country)} ${country.name}` : t('profile.allCountries');
 
   const joinYear = currentUser.joinDate ? new Date(currentUser.joinDate).getFullYear() : null;
   const expiresAt = currentUser.sellerDetails?.subscriptionExpiresAt;
@@ -794,7 +794,7 @@ const Profile: React.FC = () => {
         title={t('profile.country')}
         options={[
           { value: '', label: t('profile.allCountries'), flag: '🌍' },
-          ...INITIAL_COUNTRIES.filter(c => c.isActive).map(c => ({ value: c.id, label: c.name, flag: c.flag })),
+          ...INITIAL_COUNTRIES.filter(c => c.isActive).map(c => ({ value: c.id, label: c.name, flag: getCountryFlag(c) })),
         ]}
         value={activeCountry}
         onSelect={setActiveCountry}

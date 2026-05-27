@@ -17,10 +17,16 @@ describe('Constants', () => {
     expect(PROVINCES_BURUNDI).toContain('Gitega');
   });
 
-  it('has 3 initial countries (Grands Lacs launch scope)', () => {
-    expect(INITIAL_COUNTRIES).toHaveLength(3);
-    const codes = INITIAL_COUNTRIES.map(c => c.code);
-    expect(codes).toEqual(['BI', 'CD', 'RW']);
+  it('has 3 active countries at launch (Grands Lacs : BI, CD, RW)', () => {
+    const activeCodes = INITIAL_COUNTRIES.filter(c => c.isActive).map(c => c.code);
+    expect(activeCodes).toEqual(['BI', 'CD', 'RW']);
+  });
+
+  it('has 3 scaffolded countries for expansion (TZ, KE, UG), all inactive by default', () => {
+    const scaffolded = INITIAL_COUNTRIES.filter(c => !c.isActive);
+    expect(scaffolded.map(c => c.code)).toEqual(['TZ', 'KE', 'UG']);
+    // Safety: scaffolded countries must remain off until admin manually enables them
+    scaffolded.forEach(c => expect(c.isActive).toBe(false));
   });
 
   it('subscription tiers are ordered by min', () => {

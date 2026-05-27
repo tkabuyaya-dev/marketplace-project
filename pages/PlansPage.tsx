@@ -9,7 +9,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import {
   INITIAL_SUBSCRIPTION_TIERS, PAYMENT_METHODS, SUPPORT_WHATSAPP,
-  DEFAULT_SUBSCRIPTION_PRICING, INITIAL_COUNTRIES,
+  DEFAULT_SUBSCRIPTION_PRICING, INITIAL_COUNTRIES, getCountryFlag,
 } from '../constants';
 import {
   SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod, SubscriptionPeriod,
@@ -336,7 +336,7 @@ export const PlansPage: React.FC = () => {
                 <strong className="text-emerald-600 font-bold">{currentTierLabel}</strong>
               </span>
               <span className="text-gray-300">·</span>
-              <span>{country?.flag} {country?.name}</span>
+              <span>{country ? getCountryFlag(country) : ''} {country?.name}</span>
             </p>
           )}
           {step !== 'plans' && selectedPlan && (
@@ -830,7 +830,7 @@ export const PlansPage: React.FC = () => {
             <div className="rounded-2xl overflow-hidden bg-white border border-black/[0.07] shadow-sm">
               <div className="px-3.5 py-3 border-b border-black/[0.05]">
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                  {t('plans.paymentMethods', { flag: country?.flag, country: country?.name })}
+                  {t('plans.paymentMethods', { flag: country ? getCountryFlag(country) : '', country: country?.name })}
                 </p>
               </div>
               {paymentMethods.map((m: PaymentMethod, i: number) => {

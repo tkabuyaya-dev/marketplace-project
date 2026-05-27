@@ -6,7 +6,7 @@ import {
   getAllSubscriptionRequests, approveSubscriptionRequest,
   getSubscriptionPricing, updateSubscriptionPricing,
 } from '../../services/firebase';
-import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS } from '../../constants';
+import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS, getCountryFlag as getCountryFlagFromConst } from '../../constants';
 import { auth } from '../../firebase-config';
 import type { SubscriptionsProps } from './types';
 
@@ -233,8 +233,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
     });
   };
 
-  const getCountryFlag = (countryId: string) =>
-    INITIAL_COUNTRIES.find(c => c.id === countryId)?.flag || '';
+  const getCountryFlag = (countryId: string) => {
+    const c = INITIAL_COUNTRIES.find(c => c.id === countryId);
+    return c ? getCountryFlagFromConst(c) : '';
+  };
 
   const daysLeft = (expiresAt: number) => Math.ceil((expiresAt - Date.now()) / DAY_MS);
 
@@ -759,7 +761,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
             >
               <option value="all">{t('admin.allCountries')}</option>
               {INITIAL_COUNTRIES.map(c => (
-                <option key={c.id} value={c.id}>{c.flag} {c.name}</option>
+                <option key={c.id} value={c.id}>{getCountryFlagFromConst(c)} {c.name}</option>
               ))}
             </select>
             <select
@@ -1016,7 +1018,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
               return (
                 <div key={country.id} className="bg-gray-800 rounded-xl p-4 border border-gray-700">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-bold text-white">{country.flag} {country.name}</p>
+                    <p className="text-sm font-bold text-white">{getCountryFlagFromConst(country)} {country.name}</p>
                     <div className="flex items-center gap-2">
                       <input
                         value={currency}
@@ -1121,7 +1123,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
           ) : (
             <div className="space-y-2">
               {Object.entries(analytics.mrrByCountry).map(([countryId, { currency, amount }]) => {
-                const flag = INITIAL_COUNTRIES.find(c => c.id === countryId)?.flag || '';
+                const flag = getCountryFlag(countryId);
                 const maxAmount = Math.max(...Object.values(analytics.mrrByCountry).map(v => v.amount));
                 const pct = maxAmount > 0 ? Math.round((amount / maxAmount) * 100) : 0;
                 return (
@@ -1633,7 +1635,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
               </p>
               <p className="text-[10px] text-gray-500 mb-2.5">
                 {t('admin.subApproveCountryHint', 'Méthodes disponibles pour {{flag}} {{country}}', {
-                  flag: country?.flag ?? '',
+                  flag: country ? getCountryFlagFromConst(country) : '',
                   country: country?.name ?? approvingRequest.countryId,
                 })}
               </p>

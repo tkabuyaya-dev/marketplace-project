@@ -97,15 +97,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
           <svg
             width="15" height="15" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" strokeWidth={2.5}
-            className="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors duration-200"
+            className="text-gray-600 group-hover:text-gray-800 dark:text-gray-400 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors duration-200"
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
 
-          {/* Animated rotating placeholder */}
+          {/* Animated rotating placeholder — WCAG AA: gray-600 = 4.69:1 sur fond gray-100 */}
           <span className="flex-1 overflow-hidden h-5 relative">
             <span
-              className={`absolute inset-0 text-sm text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
+              className={`absolute inset-0 text-sm text-gray-600 group-hover:text-gray-800 dark:text-gray-400 dark:group-hover:text-gray-300 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
                 termVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5'
               }`}
             >
@@ -180,13 +180,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
             <svg
               width="15" height="15" fill="none" viewBox="0 0 24 24"
               stroke="currentColor" strokeWidth={2.5}
-              className="text-gray-400 dark:text-gray-500 flex-shrink-0"
+              className="text-gray-600 dark:text-gray-500 flex-shrink-0"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
+            {/* WCAG AA : gray-600 = 4.69:1 sur fond #F7F7F5 */}
             <span className="flex-1 overflow-hidden h-4 relative">
               <span
-                className={`absolute inset-0 text-[13px] text-gray-500 dark:text-gray-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
+                className={`absolute inset-0 text-[13px] text-gray-600 dark:text-gray-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
                   termVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'
                 }`}
               >

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { SellerDetails } from '../types';
 import { CITIES_BY_COUNTRY } from '../data/locations';
+import { getCountryFlag } from '../constants';
 import { registerSeller, updateUserProfile } from '../services/firebase';
 import { uploadImage } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
@@ -24,6 +25,10 @@ const COUNTRY_DIAL_CODES: Record<string, string> = {
   bi: '+257',
   cd: '+243',
   rw: '+250',
+  // Pays scaffolded — activation via Firestore admin
+  tz: '+255',
+  ke: '+254',
+  ug: '+256',
 };
 
 const STEPS = [1, 2, 3, 4] as const;
@@ -307,13 +312,13 @@ const Step1Profile: React.FC<Step1Props> = ({
             >
               {countries.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.flag} &nbsp;{c.name}
+                  {getCountryFlag(c)} &nbsp;{c.name}
                 </option>
               ))}
             </select>
             {country && (
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[18px] pointer-events-none">
-                {country.flag}
+                {getCountryFlag(country)}
               </span>
             )}
             <ChevronDown
@@ -347,7 +352,7 @@ const Step1Profile: React.FC<Step1Props> = ({
                   className="inline-flex items-center gap-1.5 h-12 px-3 rounded-l-input border-r border-black/[0.08] text-[14px] font-bold text-ink"
                   style={{ background: 'rgba(245,200,66,0.12)' }}
                 >
-                  {country && <span>{country.flag}</span>}
+                  {country && <span>{getCountryFlag(country)}</span>}
                   <span className="tabular-nums">{dialCode}</span>
                 </div>
               ) : undefined
@@ -906,7 +911,7 @@ const Step4Finalize: React.FC<Step4Props> = ({
   const recap = [
     { i: '👤', l: 'Nom', v: name || '—' },
     { i: '🏪', l: 'Boutique', v: form.shopName || '—' },
-    { i: '📍', l: 'Ville', v: form.province ? `${form.province} ${country?.flag || ''}` : '—' },
+    { i: '📍', l: 'Ville', v: form.province ? `${form.province} ${country ? getCountryFlag(country) : ''}` : '—' },
     { i: '🏷️', l: 'Type', v: sellerTypeLabel[form.sellerType] || '—' },
     { i: '📦', l: 'Catégories', v: form.categories.join(', ') || '—' },
     { i: '📋', l: 'NIF', v: form.hasNif ? (form.nif || '—') : 'Non renseigné' },

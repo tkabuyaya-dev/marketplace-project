@@ -40,6 +40,22 @@ export const CITIES_BY_COUNTRY: Record<string, string[]> = {
     'Rusizi (Cyangugu)',
     'Muhanga (Gitarama)',
   ],
+  // Pays scaffolded — villes principales. Activation pays via Firestore.
+  tz: [
+    'Dar es Salaam', 'Arusha', 'Mwanza', 'Mbeya',
+    'Dodoma', 'Morogoro', 'Tanga', 'Moshi',
+    'Iringa', 'Kigoma', 'Bukoba', 'Musoma',
+  ],
+  ke: [
+    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru',
+    'Eldoret', 'Thika', 'Malindi', 'Kitale',
+    'Garissa', 'Kakamega',
+  ],
+  ug: [
+    'Kampala', 'Wakiso', 'Mukono', 'Jinja',
+    'Mbarara', 'Gulu', 'Mbale', 'Lira',
+    'Masaka', 'Entebbe',
+  ],
 };
 
 export const COMMUNES_BY_PROVINCE: Record<string, Record<string, string[]>> = {

@@ -25,6 +25,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { useCategories } from '../hooks/useCategories';
 import { useGeolocation, haversineDistance, formatDistance } from '../hooks/useGeolocation';
 import { useActiveCountries } from '../hooks/useActiveCountries';
+import { getCountryFlag } from '../constants';
 
 // ── Module-level cache ──────────────────────────────────────────────────────
 interface HomeCache {
@@ -126,7 +127,7 @@ function CountrySheet({
               className="w-full flex items-center gap-3 px-5 py-3.5 border-none cursor-pointer text-left transition-colors active:bg-gray-50"
               style={{ background: activeCountry === c.id ? 'rgba(245,200,66,0.08)' : 'transparent' }}
             >
-              <span className="text-2xl">{c.flag || '🏳️'}</span>
+              <span className="text-2xl">{getCountryFlag(c)}</span>
               <span className="flex-1 text-[15px] font-semibold text-[#111318]">{c.name}</span>
               {activeCountry === c.id && (
                 <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: '#F5C842' }}>
@@ -707,7 +708,7 @@ export const Home: React.FC = () => {
 
   // Country info for header
   const activeCountryData = countries.find(c => c.id === activeCountry);
-  const countryFlag = activeCountryData?.flag || '🌍';
+  const countryFlag = activeCountryData ? getCountryFlag(activeCountryData) : '🌍';
   const countryName = activeCountryData?.name || (activeCountry ? activeCountry : 'Tous pays');
 
   // Validate active country when countries list changes

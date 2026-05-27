@@ -21,6 +21,7 @@ import {
 import {
   PAYMENT_METHODS, DEFAULT_SUBSCRIPTION_PRICING,
   INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES, SUPPORT_WHATSAPP,
+  getCountryFlag,
 } from '../constants';
 import {
   createSubscriptionRequest,
@@ -245,7 +246,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
               {/* Payment methods */}
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                  {t('plans.paymentMethods', { flag: country?.flag ?? '', country: country?.name ?? sellerCountryId })}
+                  {t('plans.paymentMethods', { flag: country ? getCountryFlag(country) : '', country: country?.name ?? sellerCountryId })}
                 </p>
                 <div className="space-y-2">
                   {paymentMethods.map((method, i) => (

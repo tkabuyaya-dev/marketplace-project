@@ -20,7 +20,7 @@ import {
 } from '../../services/firebase/buyer-requests';
 import { uploadImage } from '../../services/cloudinary';
 import { verifyRecaptcha, loadRecaptchaScript } from '../../services/recaptcha';
-import { INITIAL_COUNTRIES } from '../../constants';
+import { INITIAL_COUNTRIES, getCountryFlag } from '../../constants';
 import { CITIES_BY_COUNTRY } from '../../data/locations';
 
 // Indicatifs téléphoniques par pays
@@ -274,7 +274,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-gold-400/50 outline-none text-sm cursor-pointer"
               >
                 {INITIAL_COUNTRIES.filter(c => c.isActive).map(c => (
-                  <option key={c.id} value={c.id}>{c.flag} {c.name}</option>
+                  <option key={c.id} value={c.id}>{getCountryFlag(c)} {c.name}</option>
                 ))}
               </select>
             </div>
@@ -312,7 +312,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
               <div className="flex gap-0 rounded-xl overflow-hidden border border-gray-700 focus-within:border-gold-400/50 focus-within:ring-1 focus-within:ring-gold-400/20 transition-all">
                 {/* Indicatif pays — non modifiable, change avec le pays */}
                 <div className="flex items-center gap-1.5 px-3 py-3 bg-gray-700/60 border-r border-gray-700 shrink-0 select-none">
-                  <span className="text-base leading-none">{selectedCountry?.flag}</span>
+                  <span className="text-base leading-none">{selectedCountry ? getCountryFlag(selectedCountry) : ''}</span>
                   <span className="text-sm font-bold text-gold-400 tracking-wide">{phonePrefix}</span>
                 </div>
                 {/* Numéro local */}

@@ -19,7 +19,7 @@ import {
   BuyerRequestFilters, PAGE_SIZE,
 } from '../services/firebase/buyer-requests';
 import { BuyerRequest } from '../types';
-import { INITIAL_COUNTRIES, INITIAL_CATEGORIES } from '../constants';
+import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
 import { CITIES_BY_COUNTRY } from '../data/locations';
 
 /* ─────────────────────── KEYFRAMES ──────────────────────── */
@@ -73,7 +73,8 @@ function fmtBudget(budget?: number, currency?: string): string | null {
 }
 
 function countryFlag(countryId: string): string {
-  return INITIAL_COUNTRIES.find(c => c.id === countryId)?.flag || '🌍';
+  const c = INITIAL_COUNTRIES.find(c => c.id === countryId);
+  return c ? getCountryFlag(c) : '🌍';
 }
 
 function countryName(countryId: string): string {
@@ -235,7 +236,7 @@ function FilterSheet({
                   ].join(' ')}
                   style={active ? { boxShadow: '0 4px 10px rgba(245,200,66,0.35)' } : undefined}
                 >
-                  {c.flag} {c.name}
+                  {getCountryFlag(c)} {c.name}
                 </button>
               );
             })}

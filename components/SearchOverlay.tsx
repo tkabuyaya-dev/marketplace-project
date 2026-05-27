@@ -193,7 +193,8 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={t('search.searchPlaceholder')}
-                className="w-full bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-gold-400/40 focus:border-gold-400 focus:bg-white dark:bg-gray-800/50 dark:border-gray-700/50 dark:text-white dark:placeholder-gray-500 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50 dark:focus:bg-gray-800 rounded-2xl pl-12 pr-20 py-3.5 transition-all outline-none"
+                // WCAG AA : placeholder-gray-600 = 4.69:1 sur fond gray-100
+                className="w-full bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-gold-400/40 focus:border-gold-400 focus:bg-white dark:bg-gray-800/50 dark:border-gray-700/50 dark:text-white dark:placeholder-gray-500 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50 dark:focus:bg-gray-800 rounded-2xl pl-12 pr-20 py-3.5 transition-all outline-none"
                 role="combobox"
                 aria-expanded={showSuggestions}
                 aria-autocomplete="list"
@@ -354,8 +355,8 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                                 Sale -{discountPct}% now
                               </p>
                             )}
-                            <p className="text-[11px] text-gold-600 dark:text-amber-400 font-bold leading-none">
-                              {displayPrice.toLocaleString('fr-FR')} <span className="text-[9px] font-normal text-gold-600/70 dark:text-amber-400/70">{cur}</span>
+                            <p className="text-[11px] text-goldText dark:text-amber-400 font-bold leading-none">
+                              {displayPrice.toLocaleString('fr-FR')} <span className="text-[9px] font-normal text-goldText/80 dark:text-amber-400/70">{cur}</span>
                             </p>
                           </div>
                         </button>

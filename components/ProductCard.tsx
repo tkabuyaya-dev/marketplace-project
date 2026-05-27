@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Heart, MapPin, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
-import { CURRENCY, INITIAL_COUNTRIES } from '../constants';
+import { CURRENCY, INITIAL_COUNTRIES, getCountryFlag } from '../constants';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
 import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
 import { ProgressiveImage } from './ProgressiveImage';
@@ -72,7 +72,8 @@ export const ProductCard = memo<ProductCardProps>(({
   const optimizedUrl  = primaryImage ? getOptimizedUrl(primaryImage, 400) : '';
   const srcSet        = primaryImage ? getResponsiveSrcSet(primaryImage) : '';
   const currency      = product.currency || CURRENCY;
-  const countryFlag   = INITIAL_COUNTRIES.find(c => c.id === product.countryId)?.flag || '';
+  const countryEntry  = INITIAL_COUNTRIES.find(c => c.id === product.countryId);
+  const countryFlag   = countryEntry ? getCountryFlag(countryEntry) : '';
   const city          = product.seller?.sellerDetails?.commune || '';
 
   const isOnPromotion = product.discountPrice != null
@@ -217,11 +218,12 @@ export const ProductCard = memo<ProductCardProps>(({
       {/* Info */}
       <div className="p-2 space-y-1">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-lg font-bold leading-tight text-[#C47E00] dark:text-gold-400">
+          {/* WCAG AA : goldText (#A45F00) = 4.61:1 sur blanc, lisible en 14px */}
+          <span className="text-lg font-bold leading-tight text-goldText dark:text-gold-400">
             {displayPrice.toLocaleString('fr-FR')} {currency}
           </span>
           {displayOriginalPrice && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 line-through">
+            <span className="text-xs text-gray-500 dark:text-gray-500 line-through">
               {displayOriginalPrice.toLocaleString('fr-FR')} {currency}
             </span>
           )}
@@ -231,7 +233,8 @@ export const ProductCard = memo<ProductCardProps>(({
           {product.title}
         </p>
 
-        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+        {/* WCAG AA : ink2 (#5C6370) = ~5.6:1 sur blanc, vs gray-600 = ~4.6:1 */}
+        <div className="flex items-center gap-1 text-xs text-ink2 dark:text-gray-400">
           <span className="truncate flex-1 min-w-0">
             {product.seller?.sellerDetails?.shopName || product.seller?.name || '—'}
             {product.seller?.isVerified && (
@@ -242,7 +245,7 @@ export const ProductCard = memo<ProductCardProps>(({
         </div>
 
         {city && (
-          <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-500">
+          <div className="flex items-center gap-1 text-[11px] text-ink2 dark:text-gray-500">
             <MapPin size={12} className="flex-shrink-0" strokeWidth={2} aria-hidden />
             <span className="truncate">{city}</span>
           </div>

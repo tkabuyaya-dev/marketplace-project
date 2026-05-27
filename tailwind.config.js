@@ -35,6 +35,9 @@ export default {
         muted:     '#9EA5B0',
         goldHov:   '#E8A800',
         goldDeep:  '#B07410',
+        // AA-compliant gold for body text (4.61:1 on white). Use for prices,
+        // small labels, links — anywhere small-text must pass WCAG AA.
+        goldText:  '#A45F00',
         wa:        '#25D366',
         fieldRest: '#F0F1F4',
       },

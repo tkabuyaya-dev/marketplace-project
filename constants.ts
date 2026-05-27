@@ -21,26 +21,77 @@ export const PROVINCES_RWANDA = [
   'Kigali', 'Est', 'Nord', 'Ouest', 'Sud'
 ];
 
-/** Lookup provinces by country ID — Grands Lacs region only */
+export const PROVINCES_TANZANIA = [
+  'Dar es Salaam', 'Arusha', 'Mwanza', 'Mbeya', 'Dodoma',
+  'Morogoro', 'Tanga', 'Kilimanjaro', 'Tabora', 'Kigoma',
+  'Kagera', 'Mara', 'Iringa', 'Rukwa', 'Singida',
+];
+
+export const PROVINCES_KENYA = [
+  'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret',
+  'Thika', 'Malindi', 'Kitale', 'Garissa', 'Kakamega',
+];
+
+export const PROVINCES_OUGANDA = [
+  'Kampala', 'Wakiso', 'Mukono', 'Jinja', 'Mbarara',
+  'Gulu', 'Mbale', 'Lira', 'Masaka', 'Entebbe',
+];
+
+/** Lookup provinces by country ID */
 export const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
   bi: PROVINCES_BURUNDI,
   cd: PROVINCES_RDC,
   rw: PROVINCES_RWANDA,
+  tz: PROVINCES_TANZANIA,
+  ke: PROVINCES_KENYA,
+  ug: PROVINCES_OUGANDA,
 };
 
 // --- PAYS SUPPORTÉS — Région des Grands Lacs ---
 export const INITIAL_COUNTRIES: Country[] = [
-    { id: 'bi', name: 'Burundi', code: 'BI', currency: 'FBu', flag: '🇧🇮', isActive: true },
-    { id: 'cd', name: 'RDC',     code: 'CD', currency: 'FC',  flag: '🇨🇩', isActive: true },
-    { id: 'rw', name: 'Rwanda',  code: 'RW', currency: 'FRw', flag: '🇷🇼', isActive: true },
+    { id: 'bi', name: 'Burundi',  code: 'BI', currency: 'FBu', flag: '🇧🇮', isActive: true },
+    { id: 'cd', name: 'RDC',      code: 'CD', currency: 'FC',  flag: '🇨🇩', isActive: true },
+    { id: 'rw', name: 'Rwanda',   code: 'RW', currency: 'FRw', flag: '🇷🇼', isActive: true },
+    // Pays scaffolded — désactivés par défaut. Activation via Firestore admin.
+    // Configs supportées (cities, dial code, payment, pricing) ci-dessous.
+    { id: 'tz', name: 'Tanzanie', code: 'TZ', currency: 'TSh', flag: '🇹🇿', isActive: false },
+    { id: 'ke', name: 'Kenya',    code: 'KE', currency: 'KSh', flag: '🇰🇪', isActive: false },
+    { id: 'ug', name: 'Ouganda',  code: 'UG', currency: 'USh', flag: '🇺🇬', isActive: false },
 ];
+
+/**
+ * Mapping de secours id → emoji drapeau.
+ * Utilisé quand le doc Firestore countries/{id} a un `flag` invalide
+ * (ex: créé à la main avec "rw" au lieu de "🇷🇼"). Garantit qu'on
+ * n'affiche jamais un code à 2 lettres dans l'UI.
+ */
+const COUNTRY_FLAG_FALLBACK: Record<string, string> = {
+  bi: '🇧🇮', cd: '🇨🇩', rw: '🇷🇼', tz: '🇹🇿', ke: '🇰🇪', ug: '🇺🇬',
+};
+
+/**
+ * Retourne le drapeau emoji d'un pays — robuste aux docs Firestore mal seedés.
+ * Si `country.flag` ne contient PAS de Regional Indicator Symbol (U+1F1E6 → U+1F1FF),
+ * on tombe sur la table de secours. Évite l'affichage de "rw" en texte brut.
+ */
+export function getCountryFlag(country: { id: string; flag?: string } | null | undefined): string {
+  if (!country) return '🌍';
+  const f = country.flag || '';
+  // Test la présence d'au moins un caractère Regional Indicator Symbol
+  if (/[\u{1F1E6}-\u{1F1FF}]/u.test(f)) return f;
+  return COUNTRY_FLAG_FALLBACK[country.id] || '🏳️';
+}
 
 // --- DEVISES — Grands Lacs + USD international ---
 export const INITIAL_CURRENCIES: Currency[] = [
-  { id: 'BIF', code: 'BIF', name: 'Franc Burundais',  symbol: 'FBu', countryId: 'bi',   isActive: true },
-  { id: 'CDF', code: 'CDF', name: 'Franc Congolais',  symbol: 'FC',  countryId: 'cd',   isActive: true },
-  { id: 'RWF', code: 'RWF', name: 'Franc Rwandais',   symbol: 'FRw', countryId: 'rw',   isActive: true },
-  { id: 'USD', code: 'USD', name: 'Dollar Américain', symbol: '$',   countryId: 'intl', isActive: true },
+  { id: 'BIF', code: 'BIF', name: 'Franc Burundais',   symbol: 'FBu', countryId: 'bi',   isActive: true  },
+  { id: 'CDF', code: 'CDF', name: 'Franc Congolais',   symbol: 'FC',  countryId: 'cd',   isActive: true  },
+  { id: 'RWF', code: 'RWF', name: 'Franc Rwandais',    symbol: 'FRw', countryId: 'rw',   isActive: true  },
+  { id: 'USD', code: 'USD', name: 'Dollar Américain',  symbol: '$',   countryId: 'intl', isActive: true  },
+  // Devises scaffolded — désactivées par défaut. Activation via Firestore admin.
+  { id: 'TZS', code: 'TZS', name: 'Shilling Tanzanien', symbol: 'TSh', countryId: 'tz', isActive: false },
+  { id: 'KES', code: 'KES', name: 'Shilling Kényan',    symbol: 'KSh', countryId: 'ke', isActive: false },
+  { id: 'UGX', code: 'UGX', name: 'Shilling Ougandais', symbol: 'USh', countryId: 'ug', isActive: false },
 ];
 
 export const THEME: ThemeColors = {
@@ -86,6 +137,8 @@ export const FOUNDERS_SPOTS_TOTAL = 100;
 export const FOUNDERS_SPOTS_REMAINING = 67;
 
 // --- PAYMENT METHODS PAR PAYS ---
+// ⚠️ Pays "scaffolded" (tz, ke, ug) : placeholders à remplacer par les vrais
+// numéros opérateurs avant d'activer le pays en Firestore.
 export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
   bi: [
     { name: 'Lumicash',      number: '68 515 135',         icon: '📱' },
@@ -101,20 +154,46 @@ export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
     { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },
     { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
   ],
+  // Placeholders Tanzania — à compléter avant activation
+  tz: [
+    { name: 'M-Pesa',        number: 'Contactez support',  icon: '📱' },
+    { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
+    { name: 'Tigo Pesa',     number: 'Contactez support',  icon: '📱' },
+  ],
+  // Placeholders Kenya
+  ke: [
+    { name: 'M-Pesa',        number: 'Contactez support',  icon: '📱' },
+    { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
+  ],
+  // Placeholders Ouganda
+  ug: [
+    { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },
+    { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
+  ],
 };
 
 // --- SUPPORT WHATSAPP PAR PAYS ---
+// ⚠️ Pays scaffolded : fallback sur le support BI tant que numéro local non fourni.
 export const SUPPORT_WHATSAPP: Record<string, string> = {
   bi: '+25768515135',
   cd: '+243979055933',
   rw: '+25768515135',
+  tz: '+25768515135', // PLACEHOLDER — remplacer par un numéro WhatsApp TZ
+  ke: '+25768515135', // PLACEHOLDER — remplacer par un numéro WhatsApp KE
+  ug: '+25768515135', // PLACEHOLDER — remplacer par un numéro WhatsApp UG
 };
 
 // --- PRIX D'ABONNEMENT PAR PAYS (defaults — admin peut modifier via Firestore) ---
+// Ordre de grandeur : aligné sur la baseline ~5 USD pour Starter.
+// 1 USD ≈ 2 600 TZS / 130 KES / 3 700 UGX (taux 2026).
 export const DEFAULT_SUBSCRIPTION_PRICING: Record<string, SubscriptionPricing> = {
-  bi: { prices: { starter: 15000, pro: 45000, elite: 100000, unlimited: 250000 }, currency: 'BIF' },
-  cd: { prices: { starter: 5,     pro: 15,    elite: 30,     unlimited: 75     }, currency: 'USD' },
-  rw: { prices: { starter: 5000,  pro: 15000, elite: 30000,  unlimited: 75000  }, currency: 'RWF' },
+  bi: { prices: { starter: 15000,  pro: 45000,  elite: 100000, unlimited: 250000 }, currency: 'BIF' },
+  cd: { prices: { starter: 5,      pro: 15,     elite: 30,     unlimited: 75     }, currency: 'USD' },
+  rw: { prices: { starter: 5000,   pro: 15000,  elite: 30000,  unlimited: 75000  }, currency: 'RWF' },
+  // Placeholders scaffolded — à ajuster aux marchés réels
+  tz: { prices: { starter: 13000,  pro: 39000,  elite: 78000,  unlimited: 195000 }, currency: 'TZS' },
+  ke: { prices: { starter: 650,    pro: 1950,   elite: 3900,   unlimited: 9750   }, currency: 'KES' },
+  ug: { prices: { starter: 18500,  pro: 55500,  elite: 111000, unlimited: 277500 }, currency: 'UGX' },
 };
 
 // --- PRIX BOOST PAR PAYS (defaults — admin peut modifier via Firestore collection boostPricing) ---
@@ -123,6 +202,9 @@ export const DEFAULT_BOOST_PRICING: Record<string, BoostPricing> = {
   bi: { amount: 5000, currency: 'BIF' },
   cd: { amount: 2500, currency: 'CDF' },
   rw: { amount: 1000, currency: 'RWF' },
+  tz: { amount: 2600, currency: 'TZS' },
+  ke: { amount: 130,  currency: 'KES' },
+  ug: { amount: 3700, currency: 'UGX' },
 };
 
 // --- USERS MOCK ---

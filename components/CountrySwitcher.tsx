@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TC } from '../constants';
+import { TC, getCountryFlag } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 import { trackCountrySwitch } from '../services/analytics';
@@ -39,7 +39,7 @@ export const CountrySwitcher: React.FC<{ compact?: boolean }> = ({ compact = fal
         className={`flex items-center gap-1 ${compact ? 'px-1.5 py-1 rounded-lg' : 'px-2.5 py-1.5 min-h-[44px] rounded-lg'} border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors ${open ? TC.border400 : ''}`}
         title={current?.name || 'Tous les pays'}
       >
-        <span className="text-base leading-none">{isTous ? '🌍' : current?.flag}</span>
+        <span className="text-base leading-none">{isTous ? '🌍' : getCountryFlag(current)}</span>
         {!compact && <span className="text-gray-300 text-xs">{isTous ? 'Tous' : current?.id.toUpperCase()}</span>}
         <span className="text-gray-500 text-[10px]">▼</span>
       </button>
@@ -69,7 +69,7 @@ export const CountrySwitcher: React.FC<{ compact?: boolean }> = ({ compact = fal
                   : 'text-gray-300 hover:bg-gray-700'
               }`}
             >
-              <span className="text-base">{country.flag}</span>
+              <span className="text-base">{getCountryFlag(country)}</span>
               <span>{country.name}</span>
             </button>
           ))}

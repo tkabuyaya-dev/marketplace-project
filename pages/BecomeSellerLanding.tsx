@@ -7,6 +7,7 @@ import {
   DEFAULT_SUBSCRIPTION_PRICING,
   FOUNDERS_SPOTS_REMAINING,
   FOUNDERS_SPOTS_TOTAL,
+  getCountryFlag,
 } from '../constants';
 import {
   subscribeToSubscriptionPricing,
@@ -788,7 +789,7 @@ const BecomeSellerLanding: React.FC = () => {
             getPrice={getPrice}
             currency={currency}
             onSelectPlan={goRegister}
-            previewFlag={previewCountry.flag}
+            previewFlag={getCountryFlag(previewCountry)}
             previewName={previewCountry.name}
           />
         </div>

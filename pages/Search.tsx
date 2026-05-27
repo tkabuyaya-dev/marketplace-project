@@ -23,7 +23,7 @@ import { useSearch, SearchFiltersState } from '../hooks/useSearch';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 import { useCategories } from '../hooks/useCategories';
 import { getOptimizedUrl } from '../services/cloudinary';
-import { INITIAL_COUNTRIES } from '../constants';
+import { INITIAL_COUNTRIES, getCountryFlag as getCountryFlagFromConst } from '../constants';
 import { Product, Category } from '../types';
 import { Country } from '../types';
 import {
@@ -62,7 +62,8 @@ function renderHighlight(html: string): React.ReactNode {
 
 function getCountryFlag(countryId?: string): string {
   if (!countryId) return '';
-  return INITIAL_COUNTRIES.find(c => c.id === countryId)?.flag || '';
+  const country = INITIAL_COUNTRIES.find(c => c.id === countryId);
+  return country ? getCountryFlagFromConst(country) : '';
 }
 
 function getCountryCurrency(countryId?: string): string {
@@ -712,7 +713,7 @@ const FilterSheet: React.FC<FilterSheetProps> = ({
                       border: active ? '1.5px solid #F5C842' : '1.5px solid rgba(0,0,0,0.08)',
                     }}
                   >
-                    <span className="text-[18px]">{c.flag}</span>
+                    <span className="text-[18px]">{getCountryFlagFromConst(c)}</span>
                     <span
                       className="text-[12px] tracking-tight"
                       style={{ color: active ? '#111318' : '#5C6370', fontWeight: active ? 800 : 600 }}
