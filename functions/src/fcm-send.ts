@@ -22,7 +22,7 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { getDb } from "./admin.js";
 
-const PUBLIC_ORIGIN = "https://aurburundi-e2fe2.web.app";
+const PUBLIC_ORIGIN = "https://nunulia.com";
 
 type NotifData = {
   userId?: string;

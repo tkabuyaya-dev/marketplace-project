@@ -125,9 +125,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // ce navigateur, on rafraîchit son token (peut avoir changé après
       // réinstall PWA, bascule device, etc.). Pas de prompt — le toggle est
       // dans Profile pour la 1ʳᵉ demande.
+      // Async setup avec garde anti-leak : si l'effect est cancelled avant
+      // que l'import termine, on appellera unsub() dès qu'il existe.
+      let cancelled = false;
+      let unsubFcm: (() => void) | null = null;
       import('../services/fcm')
-        .then(m => m.refreshFcmTokenSilent(currentUser.id))
+        .then(async (m) => {
+          await m.refreshFcmTokenSilent(currentUser.id);
+          // Handler foreground : le FCM SDK n'auto-affiche les notifs QUE
+          // quand la page est en background. Si l'utilisateur regarde
+          // l'app, on doit nous-mêmes afficher la notif. On utilise le
+          // Notification API natif (perm est forcément 'granted' ici)
+          // pour rester cohérent avec l'affichage background du SW.
+          const unsub = await m.onForegroundMessage(({ title, body, data }) => {
+            try {
+              if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+              const n = new Notification(title || 'Nunulia', {
+                body: body || '',
+                icon: '/icons/icon-192.png',
+                badge: '/icons/icon-192.png',
+                tag: data?.type || 'nunulia',
+              });
+              n.onclick = () => {
+                const link = data?.link || '/';
+                window.focus();
+                if (link && link !== window.location.pathname) navigate(link);
+                n.close();
+              };
+            } catch { /* navigateur trop restrictif */ }
+          });
+          if (cancelled) unsub();
+          else unsubFcm = unsub;
+        })
         .catch(() => {});
+      return () => { cancelled = true; if (unsubFcm) unsubFcm(); };
     } else {
       clearSentryUser();
     }
