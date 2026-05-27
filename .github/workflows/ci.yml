@@ -251,6 +251,10 @@ jobs:
           VITE_ENABLE_APP_CHECK: 'true'
           VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          # FCM Web Push (clé publique générée dans Firebase Console →
+          # Project Settings → Cloud Messaging → Web Push certificates).
+          # Si le secret est absent, le module FCM se désactive proprement.
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -285,7 +289,10 @@ jobs:
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only functions
+          # Rules + functions dans le même step : `git push main` = déploiement
+          # atomique de tout le backend (rules → enforcement immédiat, functions
+          # → cold-start ~30s en parallèle).
+          args: deploy --only functions,firestore:rules
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FUNCTIONS_DISCOVERY_TIMEOUT: "60000"
