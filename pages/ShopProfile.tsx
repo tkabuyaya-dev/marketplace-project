@@ -27,7 +27,7 @@ const MONTHS_FR = [
 const COUNTRY_NAMES: Record<string, string> = {
   bi: 'Burundi', cd: 'RD Congo', rw: 'Rwanda', tz: 'Tanzanie', ke: 'Kenya', ug: 'Ouganda',
 };
-const COVER_GRADIENT = 'linear-gradient(135deg,#C47E00 0%,#E8A920 50%,#F5C842 100%)';
+const COVER_GRADIENT = 'linear-gradient(135deg,#A45F00 0%,#E8A920 50%,#F5C842 100%)';
 
 function joinDateLabel(ts: number): string {
   const d = new Date(ts);
@@ -218,18 +218,18 @@ function IdentityCard({
             <span className="flex items-center gap-1">
               <Star size={11} color="#F5C842" fill="#F5C842" strokeWidth={2} />
               <span className="text-[11px] font-extrabold text-[#111318]">{rating.toFixed(1)}</span>
-              <span className="text-[9.5px] font-bold text-[#9EA5B0] uppercase" style={{ letterSpacing: '.06em' }}>Note</span>
+              <span className="text-[9.5px] font-bold text-[#5C6370] uppercase" style={{ letterSpacing: '.06em' }}>Note</span>
             </span>
             <span className="w-[3px] h-[3px] rounded-full" style={{ background: '#D0D2D8' }} />
           </>
         )}
         <span className="flex items-center gap-1">
           <span className="text-[11px] font-extrabold text-[#111318]">{productsCount}</span>
-          <span className="text-[9.5px] font-bold text-[#9EA5B0] uppercase" style={{ letterSpacing: '.06em' }}>Produits</span>
+          <span className="text-[9.5px] font-bold text-[#5C6370] uppercase" style={{ letterSpacing: '.06em' }}>Produits</span>
         </span>
         <span className="w-[3px] h-[3px] rounded-full" style={{ background: '#D0D2D8' }} />
         <span className="flex items-center gap-1">
-          <span className="text-[9.5px] font-bold text-[#9EA5B0] uppercase" style={{ letterSpacing: '.06em' }}>Depuis</span>
+          <span className="text-[9.5px] font-bold text-[#5C6370] uppercase" style={{ letterSpacing: '.06em' }}>Depuis</span>
           <span className="text-[11px] font-extrabold text-[#111318]">{joinYear(seller.joinDate)}</span>
         </span>
       </div>
@@ -249,19 +249,19 @@ function TrustMetrics({ seller, productsCount }: { seller: User; productsCount: 
       style={{ border: '1px solid rgba(0,0,0,0.06)' }}
     >
       <MetricCol
-        icon={<Zap size={14} color="#C47E00" fill="#C47E00" strokeWidth={0} />}
+        icon={<Zap size={14} color="#A45F00" fill="#A45F00" strokeWidth={0} />}
         big={hasWhatsApp ? 'WhatsApp' : 'Contacter'}
         small="Répond via"
       />
       <div className="w-px my-1.5" style={{ background: 'rgba(0,0,0,0.06)' }} />
       <MetricCol
-        icon={<Package size={14} color="#C47E00" strokeWidth={2.2} />}
+        icon={<Package size={14} color="#A45F00" strokeWidth={2.2} />}
         big={`${productsCount}`}
         small="Articles"
       />
       <div className="w-px my-1.5" style={{ background: 'rgba(0,0,0,0.06)' }} />
       <MetricCol
-        icon={<ShieldCheck size={14} color="#C47E00" strokeWidth={2.2} />}
+        icon={<ShieldCheck size={14} color="#A45F00" strokeWidth={2.2} />}
         big={isVerified ? 'Vérifié' : 'Standard'}
         small="Compte"
       />
@@ -285,7 +285,7 @@ function MetricCol({ icon, big, small }: { icon: React.ReactNode; big: string; s
         {big}
       </div>
       <div
-        className="text-center text-[#9EA5B0] uppercase font-semibold leading-[1.1]"
+        className="text-center text-[#5C6370] uppercase font-semibold leading-[1.1]"
         style={{ fontSize: 10, letterSpacing: '0.02em' }}
       >
         {small}
@@ -323,8 +323,8 @@ function ContactCTAs({ onWhatsApp, onLocation }: { onWhatsApp?: () => void; onLo
           className="h-[42px] w-full rounded-2xl bg-white cursor-pointer flex items-center justify-center gap-1.5 active:bg-[#FFFBEC] transition-colors"
           style={{ border: '1.5px solid #F5C842' }}
         >
-          <MapPin size={13} color="#C47E00" strokeWidth={2.2} />
-          <span className="font-extrabold" style={{ fontSize: 13, color: '#C47E00', letterSpacing: '-0.01em' }}>
+          <MapPin size={13} color="#A45F00" strokeWidth={2.2} />
+          <span className="font-extrabold" style={{ fontSize: 13, color: '#A45F00', letterSpacing: '-0.01em' }}>
             Voir localisation
           </span>
         </button>
@@ -394,7 +394,7 @@ function AboutSection({ seller }: { seller: User }) {
           className="inline-flex transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         >
-          <ChevronDown size={14} color="#9EA5B0" strokeWidth={2.4} />
+          <ChevronDown size={14} color="#5C6370" strokeWidth={2.4} />
         </span>
       </button>
 
@@ -410,12 +410,12 @@ function AboutSection({ seller }: { seller: User }) {
             style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}
           >
             <span className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: '#5C6370' }}>
-              <Calendar size={11} color="#9EA5B0" strokeWidth={2} />
+              <Calendar size={11} color="#5C6370" strokeWidth={2} />
               Membre depuis {joinDateLabel(seller.joinDate)}
             </span>
             {location && (
               <span className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: '#5C6370' }}>
-                <MapPin size={11} color="#9EA5B0" strokeWidth={2} />
+                <MapPin size={11} color="#5C6370" strokeWidth={2} />
                 {location}
               </span>
             )}
@@ -688,7 +688,7 @@ const ShopProfile: React.FC = () => {
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <p className="text-center text-[#9EA5B0] text-sm py-8">
+          <p className="text-center text-[#5C6370] text-sm py-8">
             {products.length === 0
               ? t('shopProfile.noProductsYet')
               : 'Aucun produit dans cette catégorie'}
@@ -725,7 +725,7 @@ const ShopProfile: React.FC = () => {
             </span>
           )}
         </div>
-        <p className="mt-2 text-[12.5px] font-medium leading-[1.5]" style={{ color: '#9EA5B0' }}>
+        <p className="mt-2 text-[12.5px] font-medium leading-[1.5]" style={{ color: '#5C6370' }}>
           {t('shopProfile.noReviews', 'Aucun avis pour l\'instant.')}
         </p>
       </div>

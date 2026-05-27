@@ -163,7 +163,7 @@ function StickyHeader({
           className="text-[23px] font-black tracking-tight leading-none"
           style={{
             fontFamily: "'Inter Display', Inter, sans-serif",
-            background: 'linear-gradient(135deg,#C47E00 0%,#B07410 100%)',
+            background: 'linear-gradient(135deg,#A45F00 0%,#B07410 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -181,7 +181,7 @@ function StickyHeader({
         >
           <span className="text-[13px] leading-none">{countryFlag}</span>
           <span className="text-[11px] font-bold text-[#5C6370] tracking-tight">{countryName}</span>
-          <ChevronDown size={10} color="#9EA5B0" strokeWidth={2.5} />
+          <ChevronDown size={10} color="#5C6370" strokeWidth={2.5} />
         </button>
 
         <button
@@ -208,15 +208,15 @@ function StickySearchBar({ onClick }: { onClick: () => void }) {
         style={{ background: '#F0F1F4' }}
         onClick={onClick}
       >
-        <Search size={17} color="#9EA5B0" strokeWidth={2} />
-        <span className="flex-1 text-[13px] font-medium text-[#9EA5B0] select-none">
+        <Search size={17} color="#5C6370" strokeWidth={2} />
+        <span className="flex-1 text-[13px] font-medium text-[#5C6370] select-none">
           Rechercher sur Nunulia…
         </span>
         <div
           className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center"
           style={{ background: 'rgba(196,126,0,0.12)' }}
         >
-          <SlidersHorizontal size={14} color="#C47E00" strokeWidth={2.5} />
+          <SlidersHorizontal size={14} color="#A45F00" strokeWidth={2.5} />
         </div>
       </div>
     </div>
@@ -330,8 +330,8 @@ function SectionHeader({
           onClick={onCta}
           className="flex items-center gap-0.5 bg-transparent border-none cursor-pointer p-1"
         >
-          <span className="text-[12px] font-bold" style={{ color: '#C47E00' }}>{cta}</span>
-          <ChevronRight size={13} color="#C47E00" strokeWidth={2.5} />
+          <span className="text-[12px] font-bold" style={{ color: '#A45F00' }}>{cta}</span>
+          <ChevronRight size={13} color="#A45F00" strokeWidth={2.5} />
         </button>
       )}
     </div>
@@ -376,7 +376,7 @@ function TrendingCard({
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#F0F1F4' }}>
-            <Store size={26} color="#9EA5B0" strokeWidth={1.5} />
+            <Store size={26} color="#5C6370" strokeWidth={1.5} />
           </div>
         )}
         <button
@@ -390,7 +390,8 @@ function TrendingCard({
         </button>
       </div>
       <div className="flex flex-col gap-0.5 px-2.5 pt-2 pb-2.5">
-        <span className="text-[14px] font-black leading-none tracking-tight" style={{ color: '#C47E00' }}>
+        {/* WCAG AA : #A45F00 (goldText) = 4.61:1 sur blanc, vs #A45F00 = 3.32:1 (FAIL) */}
+        <span className="text-[14px] font-black leading-none tracking-tight" style={{ color: '#A45F00' }}>
           {priceStr}{currency ? ` ${currency}` : ''}
         </span>
         <p
@@ -400,7 +401,8 @@ function TrendingCard({
           {product.title}
         </p>
         {sellerName && (
-          <span className="text-[10px] font-medium text-[#9EA5B0] mt-0.5 truncate">{sellerName}</span>
+          /* WCAG AA : #5C6370 (ink2) = 5.6:1 sur blanc, vs #5C6370 = 2.48:1 (FAIL) */
+          <span className="text-[10px] font-medium text-[#5C6370] mt-0.5 truncate">{sellerName}</span>
         )}
       </div>
     </div>
@@ -470,7 +472,7 @@ function VendorCard({ seller, onClick }: { seller: User; onClick: () => void }) 
             className="w-14 h-14 rounded-full flex items-center justify-center"
             style={{ border: '2.5px solid #F5C842', background: 'rgba(245,200,66,0.15)' }}
           >
-            <Store size={22} color="#C47E00" strokeWidth={1.5} />
+            <Store size={22} color="#A45F00" strokeWidth={1.5} />
           </div>
         )}
         {isVerified && (
@@ -637,13 +639,13 @@ function BottomNav({ navigate, onSell }: { navigate: (p: string) => void; onSell
             >
               <Icon
                 size={22}
-                color={isActive ? '#C47E00' : '#9EA5B0'}
+                color={isActive ? '#A45F00' : '#5C6370'}
                 strokeWidth={isActive ? 2.5 : 2}
-                fill={(id as string) === 'favorites' && isActive ? '#C47E00' : 'none'}
+                fill={(id as string) === 'favorites' && isActive ? '#A45F00' : 'none'}
               />
               <span
                 className="text-[10px]"
-                style={{ color: isActive ? '#C47E00' : '#9EA5B0', fontWeight: isActive ? 800 : 600 }}
+                style={{ color: isActive ? '#A45F00' : '#5C6370', fontWeight: isActive ? 800 : 600 }}
               >
                 {label}
               </span>
@@ -1101,7 +1103,7 @@ export const Home: React.FC = () => {
                   items.push(
                     <div key="empty" className="col-span-full flex flex-col items-center justify-center py-14 gap-3">
                       <span className="text-5xl">📦</span>
-                      <p className="text-[14px] font-semibold text-center" style={{ color: '#9EA5B0' }}>
+                      <p className="text-[14px] font-semibold text-center" style={{ color: '#5C6370' }}>
                         {t('home.noProductsInCategory')}
                       </p>
                     </div>
@@ -1124,7 +1126,7 @@ export const Home: React.FC = () => {
             >
               {loadingMore ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-gray-200 border-t-[#C47E00] rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-gray-200 border-t-[#A45F00] rounded-full animate-spin" />
                   Chargement…
                 </span>
               ) : t('home.loadMore')}
@@ -1134,7 +1136,7 @@ export const Home: React.FC = () => {
 
         {/* Footer légal */}
         <div className="text-center py-6 mt-4" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-          <div className="flex items-center justify-center gap-3 text-xs" style={{ color: '#9EA5B0' }}>
+          <div className="flex items-center justify-center gap-3 text-xs" style={{ color: '#5C6370' }}>
             <Link to="/cgu" className="hover:underline transition-colors" style={{ color: 'inherit' }}>
               Conditions d'utilisation
             </Link>

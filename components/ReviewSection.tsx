@@ -101,7 +101,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
             type="button"
             onClick={() => setShowForm(true)}
             className="text-sm font-bold hover:underline transition-colors press"
-            style={{ color: '#C47E00' }}
+            style={{ color: '#A45F00' }}
           >
             + Laisser un avis
           </button>

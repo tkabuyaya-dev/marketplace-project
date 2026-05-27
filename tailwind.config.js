@@ -32,7 +32,7 @@ export default {
         canvas:    '#F7F8FA',
         ink:       '#111318',
         ink2:      '#5C6370',
-        muted:     '#9EA5B0',
+        muted:     '#5C6370',
         goldHov:   '#E8A800',
         goldDeep:  '#B07410',
         // AA-compliant gold for body text (4.61:1 on white). Use for prices,

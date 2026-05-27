@@ -404,7 +404,7 @@ const ProductDetail: React.FC = () => {
             <span className="text-[18px] font-extrabold text-[#5C6370] tracking-[-0.02em]">{cur}</span>
           </span>
           {originalPrice && (
-            <span className="text-[13px] text-[#9EA5B0] font-medium line-through">
+            <span className="text-[13px] text-[#5C6370] font-medium line-through">
               {originalPrice.toLocaleString('fr-FR')} {cur}
             </span>
           )}
@@ -422,7 +422,7 @@ const ProductDetail: React.FC = () => {
         </p>
 
         {/* Lieu + heure + vues */}
-        <div className="mt-2 flex items-center gap-2.5 text-[#9EA5B0] flex-wrap">
+        <div className="mt-2 flex items-center gap-2.5 text-[#5C6370] flex-wrap">
           {(product.seller.sellerDetails?.commune || product.seller.sellerDetails?.countryId) && (
             <span className="inline-flex items-center gap-1 text-[12px] font-semibold">
               <MapPin size={11} strokeWidth={2} />
@@ -452,7 +452,7 @@ const ProductDetail: React.FC = () => {
           <div
             className="w-12 h-12 rounded-full p-0.5 shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #F5C842 0%, #C47E00 100%)',
+              background: 'linear-gradient(135deg, #F5C842 0%, #A45F00 100%)',
               boxShadow: '0 2px 8px rgba(245,200,66,0.35)',
             }}
           >
@@ -489,7 +489,7 @@ const ProductDetail: React.FC = () => {
                 <Star size={11} strokeWidth={2} className="text-[#F5C842] fill-[#F5C842]" />
                 <span className="text-[12px] font-bold text-[#111318]">{sellerRating.toFixed(1)}</span>
                 {product.reviews > 0 && (
-                  <span className="text-[11px] font-medium text-[#9EA5B0]">({product.reviews} avis)</span>
+                  <span className="text-[11px] font-medium text-[#5C6370]">({product.reviews} avis)</span>
                 )}
               </div>
             )}
@@ -499,7 +499,7 @@ const ProductDetail: React.FC = () => {
             type="button"
             onClick={() => onVisitShop(product.seller)}
             className="inline-flex items-center gap-0.5 text-[12px] font-extrabold py-1.5"
-            style={{ color: '#C47E00' }}
+            style={{ color: '#A45F00' }}
           >
             Boutique
             <ChevronRight size={11} strokeWidth={2.4} />
@@ -592,7 +592,7 @@ const ProductDetail: React.FC = () => {
           type="button"
           onClick={() => setDescExpanded(v => !v)}
           className="mt-1.5 inline-flex items-center gap-0.5 text-[12.5px] font-extrabold tracking-[-0.01em]"
-          style={{ color: '#C47E00' }}
+          style={{ color: '#A45F00' }}
         >
           {descExpanded ? 'Voir moins' : 'Voir plus'}
           <ChevronRight
@@ -613,7 +613,7 @@ const ProductDetail: React.FC = () => {
           <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
             {productDetails.map(d => (
               <div key={d.label} className="flex flex-col gap-0.5">
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-[#9EA5B0]">{d.label}</span>
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-[#5C6370]">{d.label}</span>
                 <span className="text-[13.5px] font-bold text-[#111318]">{d.value}</span>
               </div>
             ))}
@@ -646,7 +646,7 @@ const ProductDetail: React.FC = () => {
               type="button"
               onClick={() => navigate('/securite')}
               className="mt-2 inline-flex items-center gap-0.5 text-[12px] font-extrabold tracking-[-0.01em] hover:underline"
-              style={{ color: '#C47E00' }}
+              style={{ color: '#A45F00' }}
             >
               Voir les conseils de sécurité
               <ChevronRight size={12} strokeWidth={2.4} />
@@ -695,7 +695,7 @@ const ProductDetail: React.FC = () => {
       <div className="text-center mx-3 mt-4 pb-4">
         <button
           onClick={handleReport}
-          className="text-xs text-[#9EA5B0] hover:text-red-500 underline transition-colors"
+          className="text-xs text-[#5C6370] hover:text-red-500 underline transition-colors"
         >
           {t('productDetail.reportFraudulent')}
         </button>
@@ -721,7 +721,7 @@ const ProductDetail: React.FC = () => {
           <Heart
             size={20}
             strokeWidth={2}
-            className={liked ? 'text-[#EF4444] fill-[#EF4444]' : 'text-[#C47E00]'}
+            className={liked ? 'text-[#EF4444] fill-[#EF4444]' : 'text-[#A45F00]'}
           />
         </button>
 

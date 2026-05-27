@@ -6,11 +6,11 @@
  * Design tokens: light-only — zero dark: classes
  *   bg app       #F7F8FA
  *   cta gold     #F5C842
- *   gold text    #C47E00
+ *   gold text    #A45F00
  *   card         #FFFFFF
  *   primary      #111318
  *   secondary    #5C6370
- *   muted        #9EA5B0
+ *   muted        #5C6370
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -176,7 +176,7 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
           transition: 'all 180ms ease-out',
         }}
       >
-        <Search size={18} color={focused ? '#C47E00' : '#9EA5B0'} strokeWidth={2.25} />
+        <Search size={18} color={focused ? '#A45F00' : '#5C6370'} strokeWidth={2.25} />
         <input
           ref={inputRef}
           value={inputValue}
@@ -184,7 +184,7 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
           onFocus={onFocus}
           onBlur={onBlur}
           placeholder="Rechercher sur Nunulia…"
-          className="flex-1 bg-transparent border-none outline-none text-[14px] font-medium text-[#111318] placeholder:text-[#9EA5B0] min-w-0"
+          className="flex-1 bg-transparent border-none outline-none text-[14px] font-medium text-[#111318] placeholder:text-[#5C6370] min-w-0"
         />
         {inputValue && (
           <button
@@ -201,7 +201,7 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
           aria-label="Recherche vocale"
           className="w-7 h-7 flex items-center justify-center rounded-full flex-shrink-0 active:bg-black/5"
         >
-          <Mic size={17} color="#C47E00" strokeWidth={2.25} />
+          <Mic size={17} color="#A45F00" strokeWidth={2.25} />
         </button>
       </div>
     </form>
@@ -254,7 +254,7 @@ const SortFilterBar: React.FC<SortFilterBarProps> = ({
 }) => (
   <div className="flex items-center justify-between px-3 pt-3 pb-2.5">
     <p className="text-[14px] font-black text-[#111318] tracking-tight m-0">
-      <span style={{ color: '#C47E00' }}>{count.toLocaleString('fr-FR')}</span>
+      <span style={{ color: '#A45F00' }}>{count.toLocaleString('fr-FR')}</span>
       <span className="text-[#5C6370] font-bold ml-1">résultats</span>
     </p>
 
@@ -277,7 +277,7 @@ const SortFilterBar: React.FC<SortFilterBarProps> = ({
         className="relative flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white cursor-pointer active:scale-95 transition-transform"
         style={{ border: '1px solid rgba(0,0,0,0.08)' }}
       >
-        <SlidersHorizontal size={14} color="#C47E00" strokeWidth={2.5} />
+        <SlidersHorizontal size={14} color="#A45F00" strokeWidth={2.5} />
         <span className="text-[12px] font-bold text-[#111318] tracking-tight">Filtres</span>
         {filterCount > 0 && (
           <span
@@ -359,7 +359,7 @@ const SearchResultCard: React.FC<{
             style={{ opacity: imgLoaded ? 1 : 0 }}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-[#9EA5B0] text-3xl">
+          <div className="absolute inset-0 flex items-center justify-center text-[#5C6370] text-3xl">
             📦
           </div>
         )}
@@ -395,11 +395,11 @@ const SearchResultCard: React.FC<{
       <div className="flex flex-col px-2.5 py-2.5 gap-1.5">
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-[15px] font-black tracking-tight leading-none" style={{ color: '#C47E00' }}>
+          <span className="text-[15px] font-black tracking-tight leading-none" style={{ color: '#A45F00' }}>
             {product.price?.toLocaleString('fr-FR')}&nbsp;{currency}
           </span>
           {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-[10px] font-medium text-[#9EA5B0] line-through leading-none">
+            <span className="text-[10px] font-medium text-[#5C6370] line-through leading-none">
               {product.originalPrice.toLocaleString('fr-FR')}&nbsp;{currency}
             </span>
           )}
@@ -428,7 +428,7 @@ const SearchResultCard: React.FC<{
             />
           ) : (
             <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white"
-              style={{ background: '#C47E00' }}>
+              style={{ background: '#A45F00' }}>
               {sellerInitial}
             </div>
           )}
@@ -452,11 +452,11 @@ const SearchResultCard: React.FC<{
           if (!city && !flag) return null;
           return (
             <div className="flex items-center gap-1 mt-0.5">
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9EA5B0" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#5C6370" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                 <circle cx="12" cy="9" r="2.5"/>
               </svg>
-              <span className="text-[10px] text-[#9EA5B0] truncate">
+              <span className="text-[10px] text-[#5C6370] truncate">
                 {city
                   ? `${city}${flag ? ' ' + flag : ''}`
                   : `${countryName}${flag ? ' ' + flag : flag}`
@@ -476,8 +476,8 @@ const SearchResultCard: React.FC<{
             <span className="text-[10px] font-bold text-[#111318]">{stars > 0 ? stars : '—'}</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <Eye size={11} color="#9EA5B0" strokeWidth={2} />
-            <span className="text-[10px] font-medium text-[#9EA5B0]">{formatViews(views)}</span>
+            <Eye size={11} color="#5C6370" strokeWidth={2} />
+            <span className="text-[10px] font-medium text-[#5C6370]">{formatViews(views)}</span>
           </div>
         </div>
       </div>
@@ -496,7 +496,7 @@ const SheetSection: React.FC<{ title?: string; badge?: string; children: React.R
     {title && (
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-[13px] font-black text-[#111318] tracking-tight m-0">{title}</h4>
-        {badge && <span className="text-[11px] font-bold" style={{ color: '#C47E00' }}>{badge}</span>}
+        {badge && <span className="text-[11px] font-bold" style={{ color: '#A45F00' }}>{badge}</span>}
       </div>
     )}
     {children}
@@ -731,7 +731,7 @@ const FilterSheet: React.FC<FilterSheetProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-[14px] font-bold text-[#111318] tracking-tight">Vendeur vérifié uniquement</span>
-                <span className="text-[11px] text-[#9EA5B0] mt-0.5">Boutiques authentifiées par Nunulia</span>
+                <span className="text-[11px] text-[#5C6370] mt-0.5">Boutiques authentifiées par Nunulia</span>
               </div>
               <Toggle value={verifiedOnly} onChange={onVerifiedChange} />
             </div>
@@ -831,7 +831,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
             onClick={() => onSelect(term)}
             className="flex items-center gap-3 w-full py-3 px-1 rounded-lg active:bg-black/5 transition-colors text-left"
           >
-            <Search size={15} color="#9EA5B0" strokeWidth={2} />
+            <Search size={15} color="#5C6370" strokeWidth={2} />
             <span className="flex-1 text-[14px] font-medium text-[#111318]">{term}</span>
           </button>
         ))}
@@ -852,7 +852,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
               <div className="w-9 h-9 rounded-lg bg-[#F0F1F4] flex-shrink-0" />
             )}
             <span className="flex-1 text-[13px] font-medium text-[#111318] line-clamp-1">{p.title}</span>
-            <span className="text-[12px] font-bold flex-shrink-0" style={{ color: '#C47E00' }}>
+            <span className="text-[12px] font-bold flex-shrink-0" style={{ color: '#A45F00' }}>
               {p.price?.toLocaleString('fr-FR')}
             </span>
           </button>
@@ -867,14 +867,14 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
       {recent.length > 0 && (
         <section className="mb-7">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-[10px] font-black uppercase tracking-[.08em] m-0" style={{ color: '#9EA5B0' }}>
+            <h4 className="text-[10px] font-black uppercase tracking-[.08em] m-0" style={{ color: '#5C6370' }}>
               Recherches récentes
             </h4>
             <button
               type="button" onClick={onClearAll}
               className="bg-transparent border-none cursor-pointer p-1 -mr-1"
             >
-              <span className="text-[11px] font-bold" style={{ color: '#C47E00' }}>Tout effacer</span>
+              <span className="text-[11px] font-bold" style={{ color: '#A45F00' }}>Tout effacer</span>
             </button>
           </div>
 
@@ -885,7 +885,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
                 className="flex items-center gap-3 py-2.5 px-1 cursor-pointer rounded-lg active:bg-black/5 transition-colors"
                 onClick={() => onSelect(term)}
               >
-                <Clock size={16} color="#9EA5B0" strokeWidth={2} />
+                <Clock size={16} color="#5C6370" strokeWidth={2} />
                 <span className="flex-1 text-[14px] font-medium text-[#111318]">{term}</span>
                 <button
                   type="button"
@@ -893,7 +893,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
                   aria-label={`Supprimer ${term}`}
                   className="w-7 h-7 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer active:bg-black/5"
                 >
-                  <X size={14} color="#9EA5B0" strokeWidth={2.25} />
+                  <X size={14} color="#5C6370" strokeWidth={2.25} />
                 </button>
               </li>
             ))}
@@ -905,7 +905,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
         <section>
           <div className="flex items-center gap-1.5 mb-3">
             <Flame size={14} color="#EF4444" fill="#EF4444" strokeWidth={0} />
-            <h4 className="text-[10px] font-black uppercase tracking-[.08em] m-0" style={{ color: '#9EA5B0' }}>
+            <h4 className="text-[10px] font-black uppercase tracking-[.08em] m-0" style={{ color: '#5C6370' }}>
               Tendances
             </h4>
           </div>
@@ -944,13 +944,13 @@ const EmptyState: React.FC<{ query: string; onPostRequest?: () => void }> = ({ q
       }}
     >
       <span className="absolute w-2 h-2 rounded-full" style={{ top: 8, right: 16, background: '#F5C842', boxShadow: '0 0 0 4px rgba(245,200,66,0.18)' }} />
-      <span className="absolute w-1.5 h-1.5 rounded-full" style={{ bottom: 12, left: 14, background: '#C47E00' }} />
+      <span className="absolute w-1.5 h-1.5 rounded-full" style={{ bottom: 12, left: 14, background: '#A45F00' }} />
       <Search size={48} color="#7A4F00" strokeWidth={2.25} />
     </div>
 
     <h2 className="text-[20px] font-black text-[#111318] tracking-tight m-0 mb-2">
       Aucun résultat pour<br />
-      <span style={{ color: '#C47E00' }}>«&nbsp;{query}&nbsp;»</span>
+      <span style={{ color: '#A45F00' }}>«&nbsp;{query}&nbsp;»</span>
     </h2>
     <p className="text-[13px] font-medium text-[#5C6370] leading-relaxed max-w-[260px] m-0 mb-7">
       Essayez avec d'autres mots ou postez une demande — les vendeurs vous contacteront.
@@ -966,7 +966,7 @@ const EmptyState: React.FC<{ query: string; onPostRequest?: () => void }> = ({ q
       <span className="text-[14px] font-black text-[#111318] tracking-tight">Poster une demande Je Cherche</span>
     </button>
 
-    <p className="text-[11px] font-medium text-[#9EA5B0] mt-5 max-w-[260px]">
+    <p className="text-[11px] font-medium text-[#5C6370] mt-5 max-w-[260px]">
       Plus de <span className="font-bold text-[#5C6370]">4 200 vendeurs</span> reçoivent votre demande sur WhatsApp.
     </p>
   </div>

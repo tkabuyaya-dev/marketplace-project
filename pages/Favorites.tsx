@@ -151,7 +151,7 @@ function CategoryChips({ active, categories, counts, onChange }: {
           >
             <span className="text-[12px] tracking-tight text-[#111318]">{c}</span>
             {typeof count === 'number' && (
-              <span className={['text-[10px] font-bold', isActive ? 'text-[#7A4F00]' : 'text-[#9EA5B0]'].join(' ')}>
+              <span className={['text-[10px] font-bold', isActive ? 'text-[#7A4F00]' : 'text-[#5C6370]'].join(' ')}>
                 {count}
               </span>
             )}
@@ -275,13 +275,13 @@ function FavCard({
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span
-            className="text-[15px] font-black text-[#C47E00] leading-none"
+            className="text-[15px] font-black text-[#A45F00] leading-none"
             style={{ letterSpacing: '-0.02em' }}
           >
             {fmtPrice(item.price, item.currency)}
           </span>
           {hasDiscount && (
-            <span className="text-[10px] font-medium text-[#9EA5B0] line-through leading-none">
+            <span className="text-[10px] font-medium text-[#5C6370] line-through leading-none">
               {fmtPrice(item.originalPrice!, item.currency)}
             </span>
           )}
@@ -410,7 +410,7 @@ function SellerGroup({ seller, items, onContact, onCardClick }: {
       <div className="flex items-center gap-2.5 px-3.5 pb-2.5">
         <div
           className="relative w-11 h-11 rounded-full shrink-0"
-          style={{ padding: 2, background: 'linear-gradient(135deg,#F5C842 0%,#C47E00 100%)' }}
+          style={{ padding: 2, background: 'linear-gradient(135deg,#F5C842 0%,#A45F00 100%)' }}
         >
           <img
             src={seller.avatar}
@@ -526,7 +526,7 @@ function EmptyState({ onExplore, onJeCherche }: {
           <defs>
             <linearGradient id="favHeartGrad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#FBDA6E" />
-              <stop offset="55%" stopColor="#C47E00" />
+              <stop offset="55%" stopColor="#A45F00" />
               <stop offset="100%" stopColor="#8E5A00" />
             </linearGradient>
             <linearGradient id="favHeartHi" x1="0" y1="0" x2="0" y2="1">
@@ -547,7 +547,7 @@ function EmptyState({ onExplore, onJeCherche }: {
         {/* Floating dots */}
         <span className="absolute w-2.5 h-2.5 rounded-full bg-[#F5C842]"
           style={{ top: 18, right: 22, boxShadow: '0 0 0 6px rgba(245,200,66,0.18)', animation: 'favDotFloat 2.6s ease-in-out infinite' }} />
-        <span className="absolute rounded-full bg-[#C47E00]"
+        <span className="absolute rounded-full bg-[#A45F00]"
           style={{ bottom: 30, left: 14, width: 7, height: 7, animation: 'favDotFloat 2.6s ease-in-out 0.6s infinite' }} />
         <span className="absolute rounded-full bg-[#F5C842]"
           style={{ top: 46, left: 8, width: 5, height: 5, animation: 'favDotFloat 2.6s ease-in-out 1.2s infinite' }} />
@@ -585,9 +585,9 @@ function EmptyState({ onExplore, onJeCherche }: {
         onClick={onJeCherche}
         className="mt-[18px] py-2 px-1 bg-transparent inline-flex items-center gap-1.5 cursor-pointer"
       >
-        <Search size={13} strokeWidth={2.5} className="text-[#C47E00]" />
+        <Search size={13} strokeWidth={2.5} className="text-[#A45F00]" />
         <span
-          className="text-[13px] font-extrabold text-[#C47E00] tracking-tight underline"
+          className="text-[13px] font-extrabold text-[#A45F00] tracking-tight underline"
           style={{ textUnderlineOffset: 3, textDecorationThickness: 1.5 }}
         >
           Poster une demande Je Cherche

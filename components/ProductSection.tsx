@@ -42,10 +42,11 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
             type="button"
             className="flex items-center gap-0.5 bg-transparent border-none cursor-pointer p-1"
           >
-            <span className="text-[12px] font-bold" style={{ color: '#C47E00' }}>
+            {/* WCAG AA : #A45F00 (goldText) = 4.61:1 sur blanc, vs #C47E00 = 3.32:1 (FAIL) */}
+            <span className="text-[12px] font-bold" style={{ color: '#A45F00' }}>
               Voir tout
             </span>
-            <ChevronRight size={14} color="#C47E00" strokeWidth={2.5} />
+            <ChevronRight size={14} color="#A45F00" strokeWidth={2.5} />
           </button>
         )}
       </div>
@@ -77,7 +78,7 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
           ))}
         </div>
       ) : emptyMessage ? (
-        <p className="text-[#9EA5B0] text-xs py-2">{emptyMessage}</p>
+        <p className="text-[#5C6370] text-xs py-2">{emptyMessage}</p>
       ) : null}
     </section>
   );

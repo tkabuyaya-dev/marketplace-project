@@ -33,7 +33,7 @@ function tierFromLabel(label?: string): DisplayTier {
 const PlanBadge: React.FC<{ tier: DisplayTier }> = ({ tier }) => {
   const { t } = useTranslation();
   const cfg: Record<DisplayTier, { label: string; bg: string; text: string; dot: string }> = {
-    free:      { label: t('profile.tierFree'),      bg: '#F4F5F7', text: '#5C6370', dot: '#9EA5B0' },
+    free:      { label: t('profile.tierFree'),      bg: '#F4F5F7', text: '#5C6370', dot: '#5C6370' },
     starter:   { label: t('profile.tierStarter'),   bg: '#EFF6FF', text: '#1D4ED8', dot: '#3B82F6' },
     pro:       { label: t('profile.tierPro'),       bg: '#FFFBEB', text: '#92400E', dot: '#F59E0B' },
     elite:     { label: t('profile.tierElite'),     bg: '#FEF3C7', text: '#78350F', dot: '#D97706' },
@@ -164,7 +164,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, label, sub, danger = false, r
           {label}
         </span>
         {sub && (
-          <span className="block text-[11px] mt-0.5 truncate" style={{ color: '#9EA5B0' }}>
+          <span className="block text-[11px] mt-0.5 truncate" style={{ color: '#5C6370' }}>
             {sub}
           </span>
         )}
@@ -188,7 +188,7 @@ const MenuSection: React.FC<{ title?: string; children: React.ReactNode }> = ({ 
   return (
     <div className="mb-3">
       {title && (
-        <p className="text-[10px] font-bold uppercase tracking-[.07em] px-1 pb-1.5" style={{ color: '#9EA5B0' }}>
+        <p className="text-[10px] font-bold uppercase tracking-[.07em] px-1 pb-1.5" style={{ color: '#5C6370' }}>
           {title}
         </p>
       )}
@@ -227,7 +227,7 @@ const UpgradeBanner: React.FC<{ currentTier: DisplayTier; onUpgrade: () => void 
         className="w-[34px] h-[34px] rounded-[9px] shrink-0 flex items-center justify-center"
         style={{ background: 'rgba(245,200,66,0.2)' }}
       >
-        <Zap size={16} color="#C47E00" />
+        <Zap size={16} color="#A45F00" />
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-bold leading-tight" style={{ color: '#111318' }}>
@@ -266,7 +266,7 @@ const BecomeSellerBanner: React.FC<{ onStart: () => void }> = ({ onStart }) => {
         className="w-[34px] h-[34px] rounded-[9px] shrink-0 flex items-center justify-center"
         style={{ background: 'rgba(245,200,66,0.2)' }}
       >
-        <Store size={16} color="#C47E00" />
+        <Store size={16} color="#A45F00" />
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-bold leading-tight" style={{ color: '#111318' }}>
@@ -380,7 +380,7 @@ const SelectorSheet: React.FC<{
               >
                 {opt.flag && <span className="text-[18px] shrink-0">{opt.flag}</span>}
                 <span className="flex-1 text-[14px] font-medium" style={{ color: '#111318' }}>{opt.label}</span>
-                {active && <Check size={16} strokeWidth={2.5} style={{ color: '#C47E00', flexShrink: 0 }} />}
+                {active && <Check size={16} strokeWidth={2.5} style={{ color: '#A45F00', flexShrink: 0 }} />}
               </button>
             );
           })}
@@ -448,13 +448,13 @@ const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }
         </p>
         <div className="space-y-3">
           <div>
-            <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#9EA5B0' }}>
+            <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#5C6370' }}>
               {t('profile.name')}
             </label>
             <input value={name} onChange={e => setName(e.target.value)} className={inputCls} style={inputStyle} />
           </div>
           <div>
-            <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#9EA5B0' }}>
+            <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#5C6370' }}>
               {t('profile.bio')}
             </label>
             <textarea
@@ -466,7 +466,7 @@ const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#9EA5B0' }}>
+            <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#5C6370' }}>
               {t('profile.whatsapp')}
             </label>
             <input
@@ -552,8 +552,8 @@ function BottomNav({ navigate, onSell }: { navigate: (p: string) => void; onSell
               aria-current={isActive ? 'page' : undefined}
               className="flex flex-col items-center justify-center gap-1 flex-1 bg-transparent border-none cursor-pointer"
             >
-              <Icon size={22} color={isActive ? '#C47E00' : '#9EA5B0'} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px]" style={{ color: isActive ? '#C47E00' : '#9EA5B0', fontWeight: isActive ? 800 : 600 }}>
+              <Icon size={22} color={isActive ? '#A45F00' : '#5C6370'} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[10px]" style={{ color: isActive ? '#A45F00' : '#5C6370', fontWeight: isActive ? 800 : 600 }}>
                 {label}
               </span>
             </button>
@@ -644,7 +644,7 @@ const Profile: React.FC = () => {
           type="button"
           onClick={() => setEditOpen(true)}
           className="text-[13px] font-bold cursor-pointer border-none bg-transparent"
-          style={{ color: '#C47E00' }}
+          style={{ color: '#A45F00' }}
         >
           Modifier
         </button>
@@ -668,16 +668,16 @@ const Profile: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[12px]" style={{ color: '#9EA5B0' }}>{currentUser.email}</span>
+            <span className="text-[12px]" style={{ color: '#5C6370' }}>{currentUser.email}</span>
             {joinYear && (
               <>
                 <span className="text-[10px]" style={{ color: '#E5E7EB' }}>·</span>
-                <span className="text-[12px]" style={{ color: '#9EA5B0' }}>{t('profile.since', { year: joinYear })}</span>
+                <span className="text-[12px]" style={{ color: '#5C6370' }}>{t('profile.since', { year: joinYear })}</span>
               </>
             )}
           </div>
           {currentUser.bio && (
-            <p className="text-[12px] italic max-w-xs text-center mt-0.5" style={{ color: '#9EA5B0' }}>
+            <p className="text-[12px] italic max-w-xs text-center mt-0.5" style={{ color: '#5C6370' }}>
               "{currentUser.bio}"
             </p>
           )}
@@ -718,7 +718,7 @@ const Profile: React.FC = () => {
                 sub={planSub}
                 rightContent={tier !== 'free'
                   ? <PlanBadge tier={tier} />
-                  : <span className="text-[11px] font-bold" style={{ color: '#C47E00' }}>{t('profile.upgradeArrow')}</span>}
+                  : <span className="text-[11px] font-bold" style={{ color: '#A45F00' }}>{t('profile.upgradeArrow')}</span>}
                 onClick={() => navigate('/plans')}
               />
             )}

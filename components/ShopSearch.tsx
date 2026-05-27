@@ -294,7 +294,7 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
                 type="button"
                 onClick={resetFilters}
                 className="text-[12px] font-bold hover:underline transition-colors"
-                style={{ color: '#C47E00' }}
+                style={{ color: '#A45F00' }}
               >
                 Réinitialiser
               </button>

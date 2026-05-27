@@ -56,7 +56,7 @@ function LogoMark({ size = 32 }: { size?: number }) {
       style={{
         width: size, height: size,
         borderRadius: size * 0.28,
-        background: 'linear-gradient(135deg,#F5C842 0%,#C47E00 100%)',
+        background: 'linear-gradient(135deg,#F5C842 0%,#A45F00 100%)',
         color: '#111318',
         fontWeight: 900,
         fontSize: size * 0.55,
@@ -158,7 +158,7 @@ function PhoneMockCard() {
           <span>🇧🇮</span><span>🇨🇩</span><span>🇷🇼</span>
         </div>
       </div>
-      <p className="mt-2.5 text-[10px] text-[#9EA5B0] text-center">
+      <p className="mt-2.5 text-[10px] text-[#5C6370] text-center">
         Plus de 1 200 vendeurs actifs · Burundi, RDC, Rwanda
       </p>
     </div>
@@ -204,7 +204,7 @@ function HeroSection({
           style={{
             background: '#FEF9EC',
             border: '1px solid rgba(245,200,66,0.5)',
-            color: '#C47E00',
+            color: '#A45F00',
             letterSpacing: '.06em',
           }}
         >
@@ -218,7 +218,7 @@ function HeroSection({
         >
           Vendez à des milliers
           <br />
-          <span className="italic text-[#C47E00]">d'acheteurs</span>
+          <span className="italic text-[#A45F00]">d'acheteurs</span>
           <br />
           via WhatsApp
         </h1>
@@ -287,7 +287,7 @@ function StepCard({ n, icon, iconBg, iconColor, title, desc }: {
           top: -10, left: -8,
           width: 36, height: 36,
           borderRadius: 12,
-          background: 'linear-gradient(135deg,#F5C842 0%,#C47E00 100%)',
+          background: 'linear-gradient(135deg,#F5C842 0%,#A45F00 100%)',
           boxShadow: '0 4px 12px rgba(245,200,66,0.4)',
         }}
       >
@@ -313,13 +313,13 @@ function StepsSection() {
   const steps = [
     {
       n: 1, icon: <Store size={26} strokeWidth={1.9} />,
-      iconBg: '#FEF9EC', iconColor: '#C47E00',
+      iconBg: '#FEF9EC', iconColor: '#A45F00',
       title: 'Créez votre boutique',
       desc: 'Remplissez votre profil vendeur, ajoutez votre numéro WhatsApp et une photo de boutique.',
     },
     {
       n: 2, icon: <Camera size={26} strokeWidth={1.9} />,
-      iconBg: '#FEF9EC', iconColor: '#C47E00',
+      iconBg: '#FEF9EC', iconColor: '#A45F00',
       title: 'Publiez vos produits',
       desc: 'Prenez des photos, ajoutez le prix, la description. En ligne en moins de 2 minutes.',
     },
@@ -336,7 +336,7 @@ function StepsSection() {
       <h2 className="text-center font-black text-[22px] text-[#111318]" style={{ letterSpacing: '-0.03em' }}>
         Vendez en 3 étapes
       </h2>
-      <p className="mt-1 text-center text-[12px] text-[#9EA5B0]">
+      <p className="mt-1 text-center text-[12px] text-[#5C6370]">
         Pas de complexité, pas de frais cachés.
       </p>
 
@@ -407,8 +407,8 @@ function FoundersSection({ onJoin }: { onJoin: () => void }) {
           {/* Progress bar */}
           <div className="mt-4">
             <div className="flex justify-between mb-1.5">
-              <span className="inline-flex items-center gap-1 text-[11px] font-black text-[#C47E00]">
-                <Flame size={11} fill="#C47E00" stroke="#C47E00" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-black text-[#A45F00]">
+                <Flame size={11} fill="#A45F00" stroke="#A45F00" />
                 {taken} places prises
               </span>
               <span className="text-[11px] text-[#5C6370] font-medium">
@@ -423,7 +423,7 @@ function FoundersSection({ onJoin }: { onJoin: () => void }) {
                 className="absolute top-0 left-0 bottom-0 rounded-full overflow-hidden"
                 style={{
                   width: `${pct}%`,
-                  background: 'linear-gradient(90deg,#F5C842,#C47E00)',
+                  background: 'linear-gradient(90deg,#F5C842,#A45F00)',
                 }}
               >
                 <div
@@ -524,13 +524,13 @@ function PricingCard({
 
       <div className="mt-2.5 flex items-baseline gap-1">
         <span
-          className="font-black text-[26px] text-[#C47E00] leading-none"
+          className="font-black text-[26px] text-[#A45F00] leading-none"
           style={{ letterSpacing: '-0.04em' }}
         >
           {price}
         </span>
         {!isFree && (
-          <span className="text-[11px] text-[#9EA5B0] font-medium">/mois</span>
+          <span className="text-[11px] text-[#5C6370] font-medium">/mois</span>
         )}
       </div>
 
@@ -572,7 +572,7 @@ function PricingSection({
       <h2 className="text-center font-black text-[22px] text-[#111318]" style={{ letterSpacing: '-0.03em' }}>
         Tarifs simples et transparents
       </h2>
-      <p className="mt-1 text-center text-[12px] text-[#9EA5B0]">
+      <p className="mt-1 text-center text-[12px] text-[#5C6370]">
         {previewFlag} {previewName} · {currency}
       </p>
 
@@ -655,7 +655,7 @@ function FinalCtaSection({ onCreateShop }: { onCreateShop: () => void }) {
       <div
         className="text-center"
         style={{
-          background: 'linear-gradient(135deg,#F5C842 0%,#C47E00 100%)',
+          background: 'linear-gradient(135deg,#F5C842 0%,#A45F00 100%)',
           borderRadius: 24,
           padding: '28px 24px',
           boxShadow: '0 12px 40px rgba(212,148,26,0.30)',
@@ -692,14 +692,14 @@ function PageFooter() {
         <LogoMark size={28} />
         <div>
           <div className="font-black text-[14px] text-[#111318] tracking-[-0.04em]">NUNULIA</div>
-          <div className="text-[10px] text-[#9EA5B0] mt-px">Le marché africain dans votre poche</div>
+          <div className="text-[10px] text-[#5C6370] mt-px">Le marché africain dans votre poche</div>
         </div>
       </div>
       <nav className="mt-4 flex gap-4 text-[11px] text-[#5C6370]">
         <Link to="/cgu" className="underline underline-offset-2 text-[#5C6370]">CGU</Link>
         <Link to="/politique-confidentialite" className="underline underline-offset-2 text-[#5C6370]">Confidentialité</Link>
       </nav>
-      <div className="mt-3 text-[10px] text-[#9EA5B0]">© 2025 NUNULIA · Bujumbura, Burundi</div>
+      <div className="mt-3 text-[10px] text-[#5C6370]">© 2025 NUNULIA · Bujumbura, Burundi</div>
     </footer>
   );
 }

@@ -1000,7 +1000,7 @@ const Step4Finalize: React.FC<Step4Props> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="font-bold underline"
-              style={{ color: '#C47E00' }}
+              style={{ color: '#A45F00' }}
               onClick={(e) => e.stopPropagation()}
             >
               Conditions Générales d'Utilisation
@@ -1011,7 +1011,7 @@ const Step4Finalize: React.FC<Step4Props> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="font-bold underline"
-              style={{ color: '#C47E00' }}
+              style={{ color: '#A45F00' }}
               onClick={(e) => e.stopPropagation()}
             >
               Politique de confidentialité

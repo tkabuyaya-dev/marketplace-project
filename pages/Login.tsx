@@ -9,7 +9,7 @@ import { trackLanguageChange } from '../services/analytics';
 
 // ── Spinner ──────────────────────────────────────────────────────────────────
 
-function Spinner({ size = 22, color = '#9EA5B0' }: { size?: number; color?: string }) {
+function Spinner({ size = 22, color = '#5C6370' }: { size?: number; color?: string }) {
   return (
     <div
       className="rounded-full animate-spin flex-shrink-0"
@@ -82,7 +82,7 @@ const Login: React.FC = () => {
             <span className="text-[11px] font-bold text-[#5C6370] uppercase tracking-wide">
               {currentLang?.code ?? i18n.language}
             </span>
-            <ChevronDown size={11} color="#9EA5B0" strokeWidth={2.5} />
+            <ChevronDown size={11} color="#5C6370" strokeWidth={2.5} />
           </button>
         </div>
       )}
@@ -98,7 +98,7 @@ const Login: React.FC = () => {
           style={{
             fontFamily: "'Inter Display', Inter, sans-serif",
             letterSpacing: '-0.06em',
-            background: 'linear-gradient(135deg,#C47E00 0%,#B07410 100%)',
+            background: 'linear-gradient(135deg,#A45F00 0%,#B07410 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -110,7 +110,7 @@ const Login: React.FC = () => {
         <p className="text-[15px] font-semibold text-[#5C6370] tracking-tight m-0">
           {t('auth.loginSubtitle')}
         </p>
-        <p className="text-xs text-[#9EA5B0] m-0">Achetez et vendez en toute confiance</p>
+        <p className="text-xs text-[#5C6370] m-0">Achetez et vendez en toute confiance</p>
 
         {/* Pills pays */}
         <div className="flex flex-wrap justify-center gap-1.5 mt-2.5">
@@ -144,7 +144,7 @@ const Login: React.FC = () => {
           }}
         >
           {loginLoading ? (
-            <Spinner size={22} color="#9EA5B0" />
+            <Spinner size={22} color="#5C6370" />
           ) : (
             <>
               <GoogleLogo size={22} />
@@ -156,13 +156,13 @@ const Login: React.FC = () => {
         </button>
 
         {/* Mentions légales */}
-        <p className="text-[11px] text-[#9EA5B0] text-center leading-relaxed mx-2 m-0">
+        <p className="text-[11px] text-[#5C6370] text-center leading-relaxed mx-2 m-0">
           En continuant, vous acceptez nos{' '}
-          <Link to="/cgu" className="text-[#C47E00] underline underline-offset-2">
+          <Link to="/cgu" className="text-[#A45F00] underline underline-offset-2">
             Conditions d'utilisation
           </Link>{' '}
           et notre{' '}
-          <Link to="/politique-confidentialite" className="text-[#C47E00] underline underline-offset-2">
+          <Link to="/politique-confidentialite" className="text-[#A45F00] underline underline-offset-2">
             Politique de confidentialité
           </Link>
         </p>
@@ -180,7 +180,7 @@ const Login: React.FC = () => {
           <span className="text-[13px] font-semibold text-[#5C6370]">
             {t('auth.continueWithout')}
           </span>
-          <ArrowRight size={14} color="#9EA5B0" strokeWidth={2} />
+          <ArrowRight size={14} color="#5C6370" strokeWidth={2} />
         </button>
       </div>
 

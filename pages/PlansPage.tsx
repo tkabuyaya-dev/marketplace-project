@@ -373,7 +373,7 @@ export const PlansPage: React.FC = () => {
                     style={{ background: 'rgba(245,200,66,0.2)' }}
                     aria-hidden
                   >
-                    <Clock size={18} color="#C47E00" />
+                    <Clock size={18} color="#A45F00" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">
@@ -389,7 +389,7 @@ export const PlansPage: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-[16px] font-black tracking-tight" style={{ color: '#C47E00' }}>
+                    <p className="text-[16px] font-black tracking-tight" style={{ color: '#A45F00' }}>
                       {getPrice(currentPaidTier.id).toLocaleString()}
                     </p>
                     <p className="text-[9px] text-gray-500">{getCurrency()}{t('plans.perMonth')}</p>
@@ -547,7 +547,7 @@ export const PlansPage: React.FC = () => {
                       <div className="flex items-baseline gap-1">
                         <span
                           className="text-lg font-black tracking-tight leading-none"
-                          style={{ color: isPopular ? '#C47E00' : '#111318' }}
+                          style={{ color: isPopular ? '#A45F00' : '#111318' }}
                         >
                           {price.toLocaleString()}
                         </span>
@@ -568,7 +568,7 @@ export const PlansPage: React.FC = () => {
                           className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
                           style={{ background: isPopular ? 'rgba(245,200,66,0.15)' : 'rgba(16,185,129,0.1)' }}
                         >
-                          <Check size={9} color={isPopular ? '#C47E00' : '#059669'} strokeWidth={2.5} />
+                          <Check size={9} color={isPopular ? '#A45F00' : '#059669'} strokeWidth={2.5} />
                         </div>
                         <span className="text-[10px] text-gray-500 leading-snug font-medium">
                           {tier.max === null ? t('plans.featureUnlimited') : t('plans.featureUpTo', { max: tier.max })}
@@ -579,7 +579,7 @@ export const PlansPage: React.FC = () => {
                           className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
                           style={{ background: isPopular ? 'rgba(245,200,66,0.15)' : 'rgba(16,185,129,0.1)' }}
                         >
-                          <Check size={9} color={isPopular ? '#C47E00' : '#059669'} strokeWidth={2.5} />
+                          <Check size={9} color={isPopular ? '#A45F00' : '#059669'} strokeWidth={2.5} />
                         </div>
                         <span className="text-[10px] text-gray-500 leading-snug font-medium">
                           {t('plans.featureVerified')}
@@ -589,7 +589,7 @@ export const PlansPage: React.FC = () => {
                         <li className="flex items-start gap-1.5">
                           <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
                                style={{ background: 'rgba(245,200,66,0.15)' }}>
-                            <Check size={9} color="#C47E00" strokeWidth={2.5} />
+                            <Check size={9} color="#A45F00" strokeWidth={2.5} />
                           </div>
                           <span className="text-[10px] text-gray-500 leading-snug font-medium">
                             {t('plans.featureProBadge')}
@@ -819,7 +819,7 @@ export const PlansPage: React.FC = () => {
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-xl font-black tracking-tight leading-none" style={{ color: '#C47E00' }}>
+                <p className="text-xl font-black tracking-tight leading-none" style={{ color: '#A45F00' }}>
                   {getPrice(selectedPlan.id).toLocaleString()}
                 </p>
                 <p className="text-[10px] text-gray-400">{getCurrency()}{t('plans.perMonth')}</p>
@@ -1024,7 +1024,7 @@ export const PlansPage: React.FC = () => {
                          active:scale-[0.98] disabled:cursor-not-allowed"
               style={{
                 background: refValid && !loading ? '#F5C842' : '#D0D3DA',
-                color: refValid && !loading ? '#111318' : '#9EA5B0',
+                color: refValid && !loading ? '#111318' : '#5C6370',
                 boxShadow: refValid && !loading ? '0 3px 12px rgba(245,200,66,0.35)' : 'none',
               }}
             >
@@ -1071,7 +1071,7 @@ export const PlansPage: React.FC = () => {
                   <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                     {t('plans.refLabel')}
                   </p>
-                  <p className="text-[13px] font-black font-mono tracking-wider break-all" style={{ color: '#C47E00' }}>
+                  <p className="text-[13px] font-black font-mono tracking-wider break-all" style={{ color: '#A45F00' }}>
                     {transactionRef}
                   </p>
                 </div>

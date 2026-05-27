@@ -112,7 +112,7 @@ function PageHeader({ count, onBack }: { count: number; onBack?: () => void }) {
           </span>
         )}
       </div>
-      <p className="mt-1 ml-7 text-[11px] font-medium text-[#9EA5B0]">
+      <p className="mt-1 ml-7 text-[11px] font-medium text-[#5C6370]">
         Trouvez vos clients avant vos concurrents
       </p>
     </header>
@@ -220,7 +220,7 @@ function FilterSheet({
 
         {/* Country */}
         <div>
-          <p className="text-[11px] font-extrabold text-[#9EA5B0] uppercase tracking-wider mb-2">Pays</p>
+          <p className="text-[11px] font-extrabold text-[#5C6370] uppercase tracking-wider mb-2">Pays</p>
           <div className="flex flex-wrap gap-2">
             {activeCountries.map(c => {
               const active = country === c.id;
@@ -246,7 +246,7 @@ function FilterSheet({
         {/* City */}
         {country && cities.length > 0 && (
           <div>
-            <p className="text-[11px] font-extrabold text-[#9EA5B0] uppercase tracking-wider mb-2">Ville</p>
+            <p className="text-[11px] font-extrabold text-[#5C6370] uppercase tracking-wider mb-2">Ville</p>
             <div className="relative">
               <select
                 value={city}
@@ -256,14 +256,14 @@ function FilterSheet({
                 <option value="">Toutes les villes</option>
                 {cities.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <ChevronDown size={16} strokeWidth={2} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9EA5B0] pointer-events-none" />
+              <ChevronDown size={16} strokeWidth={2} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6370] pointer-events-none" />
             </div>
           </div>
         )}
 
         {/* Category */}
         <div>
-          <p className="text-[11px] font-extrabold text-[#9EA5B0] uppercase tracking-wider mb-2">Catégorie</p>
+          <p className="text-[11px] font-extrabold text-[#5C6370] uppercase tracking-wider mb-2">Catégorie</p>
           <div className="flex flex-wrap gap-2">
             {INITIAL_CATEGORIES.map(c => {
               const active = category === c.name;
@@ -311,7 +311,7 @@ function PlanGateBanner({ onUpgrade }: { onUpgrade: () => void }) {
         animation: 'nu-slide-down 320ms cubic-bezier(.2,.7,.2,1) both',
       }}
     >
-      <div className="w-9 h-9 rounded-full bg-[#FEF9EC] inline-flex items-center justify-center shrink-0 text-[#C47E00]">
+      <div className="w-9 h-9 rounded-full bg-[#FEF9EC] inline-flex items-center justify-center shrink-0 text-[#A45F00]">
         <Lock size={18} strokeWidth={2.25} />
       </div>
       <div className="flex-1 min-w-0">
@@ -387,7 +387,7 @@ function RequestCard({
         <div className="flex-1 min-w-0">
           {/* Badges */}
           <div className="flex flex-wrap gap-1.5 mb-1.5">
-            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-[#FEF9EC] border border-[#F5C842]/50 text-[#C47E00] text-[10px] font-bold">
+            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-[#FEF9EC] border border-[#F5C842]/50 text-[#A45F00] text-[10px] font-bold">
               <Search size={9} strokeWidth={3} />
               Recherche
             </span>
@@ -398,7 +398,7 @@ function RequestCard({
             )}
             {showUrgencyBadge && (
               <span
-                className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-[#FEF9EC] text-[#C47E00] text-[10px] font-bold"
+                className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-[#FEF9EC] text-[#A45F00] text-[10px] font-bold"
                 style={{ animation: 'nu-soft-pulse 4s ease-in-out infinite' }}
               >
                 🔥 {request.contactCount} vendeurs ont déjà contacté
@@ -453,9 +453,9 @@ function RequestCard({
       {locked ? (
         <div>
           <div className="h-10 px-3 rounded-xl bg-[#F7F8FA] border border-black/[0.06] flex items-center gap-2">
-            <Lock size={14} strokeWidth={2} className="text-[#9EA5B0] shrink-0" />
+            <Lock size={14} strokeWidth={2} className="text-[#5C6370] shrink-0" />
             <span
-              className="text-[13px] text-[#9EA5B0] tracking-[0.18em] select-none"
+              className="text-[13px] text-[#5C6370] tracking-[0.18em] select-none"
               style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', filter: 'blur(0.4px)' }}
             >
               +257 ██ ██ ██ ██
@@ -463,7 +463,7 @@ function RequestCard({
           </div>
           <button
             onClick={onUpgrade}
-            className="mt-2 w-full h-9 rounded-xl inline-flex items-center justify-center gap-1.5 text-[#C47E00] text-[12px] font-extrabold active:scale-[0.98] transition"
+            className="mt-2 w-full h-9 rounded-xl inline-flex items-center justify-center gap-1.5 text-[#A45F00] text-[12px] font-extrabold active:scale-[0.98] transition"
             style={{ border: '1.5px solid rgba(245,200,66,0.6)', background: 'transparent' }}
           >
             <Zap size={13} strokeWidth={2.5} />
@@ -568,7 +568,7 @@ function EmptyState({
 
       <button
         onClick={onRefresh}
-        className="mt-3.5 inline-flex items-center gap-1.5 text-[#C47E00] text-[12px] font-extrabold underline underline-offset-[3px] bg-transparent border-0 cursor-pointer"
+        className="mt-3.5 inline-flex items-center gap-1.5 text-[#A45F00] text-[12px] font-extrabold underline underline-offset-[3px] bg-transparent border-0 cursor-pointer"
       >
         <RefreshCw size={12} strokeWidth={2.5} />
         Actualiser
@@ -703,7 +703,7 @@ export const BuyerRequestsPage: React.FC = () => {
 
         {/* Results count */}
         {!loading && activeRequests.length > 0 && (
-          <div className="px-3.5 py-2 text-[12px] font-medium text-[#9EA5B0]">
+          <div className="px-3.5 py-2 text-[12px] font-medium text-[#5C6370]">
             {activeRequests.length} demande{activeRequests.length > 1 ? 's' : ''} active{activeRequests.length > 1 ? 's' : ''} · triées par date
           </div>
         )}
@@ -740,7 +740,7 @@ export const BuyerRequestsPage: React.FC = () => {
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
               >
                 {loading
-                  ? <span className="w-4 h-4 border-2 border-[#9EA5B0] border-t-transparent rounded-full animate-spin inline-block" />
+                  ? <span className="w-4 h-4 border-2 border-[#5C6370] border-t-transparent rounded-full animate-spin inline-block" />
                   : 'Charger plus'}
               </button>
             )}
