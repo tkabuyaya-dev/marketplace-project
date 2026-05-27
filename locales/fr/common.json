@@ -29,7 +29,7 @@
   "home": {
     "hero": {
       "title": "Le Marketplace",
-      "titleHighlight": "de l'Afrique de l'Est",
+      "titleHighlight": "des Grands Lacs",
       "subtitle": "Achetez et vendez en toute confiance au Burundi, RDC, Rwanda, Ouganda, Tanzanie et Kenya.",
       "cta": "Explorer",
       "sellCta": "Vendre gratuitement"
@@ -1422,8 +1422,8 @@
   "becomeSellerLanding": {
     "back": "Retour",
     "navCTA": "Devenir vendeur",
-    "heroEyebrow": "Marketplace n°1 d'Afrique de l'Est",
-    "heroTitle": "Vendez partout en Afrique de l'Est",
+    "heroEyebrow": "Marketplace des Grands Lacs",
+    "heroTitle": "Vendez partout dans les Grands Lacs",
     "heroSubtitle": "Créez votre boutique en 2 minutes. Touchez des milliers d'acheteurs au Burundi, en RDC et au Rwanda. Encaissez en direct via WhatsApp et Mobile Money.",
     "heroCTAPrimary": "Commencer gratuitement",
     "heroCTASecondary": "Voir les tarifs",
@@ -1455,7 +1455,7 @@
     "pricingCTAFree": "Commencer maintenant",
     "pricingCTAPaid": "Choisir ce plan",
     "whyTitle": "Pourquoi NUNULIA ?",
-    "whySubtitle": "La marketplace pensée pour le marché est-africain.",
+    "whySubtitle": "La marketplace pensée pour les Grands Lacs.",
     "whyLocalTitle": "100% local",
     "whyLocalDesc": "Conçue pour le Burundi, la RDC et le Rwanda. Devises, langues et habitudes adaptées.",
     "whyWhatsAppTitle": "WhatsApp natif",
@@ -1471,7 +1471,7 @@
     "finalCTATitle": "Prêt à lancer votre boutique ?",
     "finalCTASubtitle": "Inscription gratuite. Vos 5 premiers produits sont offerts.",
     "finalCTAButton": "Devenir vendeur",
-    "footerTagline": "La marketplace d'Afrique de l'Est",
+    "footerTagline": "La marketplace des Grands Lacs",
     "footerTerms": "CGU",
     "footerPrivacy": "Confidentialité",
     "footerCopyright": "© 2026 NUNULIA. Tous droits réservés.",

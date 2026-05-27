@@ -52,7 +52,7 @@ export default defineConfig({
       manifest: {
         name: 'Nunulia — Marketplace',
         short_name: 'Nunulia',
-        description: 'Le marketplace Tech & Beauté de Bujumbura',
+        description: 'Le marketplace des Grands Lacs',
         theme_color: '#111318',
         background_color: '#111318',
         display: 'standalone',

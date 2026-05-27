@@ -21,7 +21,7 @@ export function updateMetaTags(options: {
 
   const updates: Record<string, string> = {
     'og:title': safeTitle || 'Nunulia — Marketplace',
-    'og:description': safeDesc || 'Le marketplace Tech & Beauté de Bujumbura.',
+    'og:description': safeDesc || 'Le marketplace des Grands Lacs.',
     'og:image': options.image || '/icons/icon-512.png',
     'og:url': options.url || window.location.href,
   };

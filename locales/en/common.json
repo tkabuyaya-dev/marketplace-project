@@ -29,7 +29,7 @@
   "home": {
     "hero": {
       "title": "The Marketplace",
-      "titleHighlight": "of East Africa",
+      "titleHighlight": "of the Great Lakes",
       "subtitle": "Buy and sell with confidence in Burundi, DRC, Rwanda, Uganda, Tanzania and Kenya.",
       "cta": "Explore",
       "sellCta": "Sell for free"
@@ -1422,8 +1422,8 @@
   "becomeSellerLanding": {
     "back": "Back",
     "navCTA": "Become a seller",
-    "heroEyebrow": "East Africa's #1 marketplace",
-    "heroTitle": "Sell across East Africa",
+    "heroEyebrow": "Great Lakes marketplace",
+    "heroTitle": "Sell across the Great Lakes region",
     "heroSubtitle": "Open your shop in 2 minutes. Reach thousands of buyers in Burundi, DRC and Rwanda. Get paid directly via WhatsApp and Mobile Money.",
     "heroCTAPrimary": "Start for free",
     "heroCTASecondary": "See pricing",
@@ -1455,7 +1455,7 @@
     "pricingCTAFree": "Start now",
     "pricingCTAPaid": "Choose this plan",
     "whyTitle": "Why NUNULIA?",
-    "whySubtitle": "The marketplace built for East African sellers.",
+    "whySubtitle": "The marketplace built for Great Lakes sellers.",
     "whyLocalTitle": "100% local",
     "whyLocalDesc": "Built for Burundi, DRC and Rwanda. Local currencies, languages and habits.",
     "whyWhatsAppTitle": "WhatsApp native",
@@ -1471,7 +1471,7 @@
     "finalCTATitle": "Ready to launch your shop?",
     "finalCTASubtitle": "Free signup. Your first 5 listings are on us.",
     "finalCTAButton": "Become a seller",
-    "footerTagline": "East Africa's marketplace",
+    "footerTagline": "The Great Lakes marketplace",
     "footerTerms": "Terms",
     "footerPrivacy": "Privacy",
     "footerCopyright": "© 2026 NUNULIA. All rights reserved.",
