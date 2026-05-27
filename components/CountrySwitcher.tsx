@@ -36,23 +36,30 @@ export const CountrySwitcher: React.FC<{ compact?: boolean }> = ({ compact = fal
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1 ${compact ? 'px-1.5 py-1 rounded-lg' : 'px-2.5 py-1.5 min-h-[44px] rounded-lg'} border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors ${open ? TC.border400 : ''}`}
+        className={`flex items-center gap-1 ${compact ? 'px-1.5 py-1 rounded-lg' : 'px-2.5 py-1.5 min-h-[44px] rounded-lg'} border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${open ? TC.border400 : ''}`}
         title={current?.name || 'Tous les pays'}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
         <span className="text-base leading-none">{isTous ? '🌍' : getCountryFlag(current)}</span>
-        {!compact && <span className="text-gray-300 text-xs">{isTous ? 'Tous' : current?.id.toUpperCase()}</span>}
-        <span className="text-gray-500 text-[10px]">▼</span>
+        {!compact && <span className="text-ink dark:text-gray-300 text-xs font-medium">{isTous ? 'Tous' : current?.id.toUpperCase()}</span>}
+        <span className="text-muted dark:text-gray-500 text-[10px]">▼</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
+        <div
+          role="listbox"
+          className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-cardLg dark:shadow-xl overflow-hidden z-50 animate-fade-in"
+        >
           {/* Option "Tous les pays" */}
           <button
             onClick={() => handleSwitch('')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors border-b border-gray-700/50 ${
+            role="option"
+            aria-selected={isTous}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors border-b border-gray-100 dark:border-gray-700/50 ${
               isTous
-                ? `${TC.bg950} ${TC.text400} font-medium`
-                : 'text-gray-300 hover:bg-gray-700'
+                ? 'bg-gold-400/15 dark:bg-gold-950 text-goldText dark:text-gold-400 font-semibold'
+                : 'text-ink dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
             <span className="text-base">🌍</span>
@@ -63,10 +70,12 @@ export const CountrySwitcher: React.FC<{ compact?: boolean }> = ({ compact = fal
             <button
               key={country.id}
               onClick={() => handleSwitch(country.id)}
+              role="option"
+              aria-selected={country.id === activeCountry}
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                 country.id === activeCountry
-                  ? `${TC.bg950} ${TC.text400} font-medium`
-                  : 'text-gray-300 hover:bg-gray-700'
+                  ? 'bg-gold-400/15 dark:bg-gold-950 text-goldText dark:text-gold-400 font-semibold'
+                  : 'text-ink dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               <span className="text-base">{getCountryFlag(country)}</span>

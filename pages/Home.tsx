@@ -100,6 +100,7 @@ function CountrySheet({
           <h2 className="text-[17px] font-black text-[#111318]">Choisir un pays</h2>
           <button
             onClick={onClose}
+            aria-label="Fermer"
             className="w-8 h-8 rounded-full flex items-center justify-center border-none cursor-pointer"
             style={{ background: '#F0F1F4' }}
           >
@@ -711,7 +712,7 @@ export const Home: React.FC = () => {
   // Country info for header
   const activeCountryData = countries.find(c => c.id === activeCountry);
   const countryFlag = activeCountryData ? getCountryFlag(activeCountryData) : '🌍';
-  const countryName = activeCountryData?.name || (activeCountry ? activeCountry : 'Tous pays');
+  const countryName = activeCountryData?.name || (activeCountry ? activeCountry : 'Tous les pays');
 
   // Validate active country when countries list changes
   const countryIds = countries.map(c => c.id).join(',');

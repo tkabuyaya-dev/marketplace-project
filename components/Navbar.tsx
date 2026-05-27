@@ -143,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
                 onClick={() => handleNav(item)}
                 className={`text-sm font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'text-gold-600 dark:text-gold-400'
+                    ? 'text-goldText dark:text-gold-400'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
@@ -241,7 +241,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
               onClick={() => handleNav(item)}
               className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
                 isActive(item.path)
-                  ? 'text-gold-600 dark:text-gold-400'
+                  ? 'text-goldText dark:text-gold-400'
                   : 'text-gray-500 dark:text-gray-500'
               }`}
             >

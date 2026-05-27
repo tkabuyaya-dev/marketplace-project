@@ -76,7 +76,7 @@ export const NotificationBell: React.FC = () => {
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllNotifsRead()}
-                className="text-xs text-gold-600 dark:text-gold-400 hover:underline"
+                className="text-xs text-goldText dark:text-gold-400 hover:underline"
               >
                 Tout marquer lu
               </button>

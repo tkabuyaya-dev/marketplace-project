@@ -9,7 +9,7 @@ const PrivacyPolicy: React.FC = () => (
     <div className="max-w-2xl mx-auto">
       <LegalHeader
         title="Politique de Confidentialité"
-        subtitle="NUNULIA — Marketplace Afrique Centrale"
+        subtitle="NUNULIA — Marketplace des Grands Lacs"
         badge="Version 1.0 — En vigueur au 26 mars 2026"
       />
 

@@ -356,7 +356,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                               </p>
                             )}
                             <p className="text-[11px] text-goldText dark:text-amber-400 font-bold leading-none">
-                              {displayPrice.toLocaleString('fr-FR')} <span className="text-[9px] font-normal text-goldText/80 dark:text-amber-400/70">{cur}</span>
+                              {displayPrice.toLocaleString('fr-FR')} <span className="text-[9px] font-normal text-goldText dark:text-amber-400/70">{cur}</span>
                             </p>
                           </div>
                         </button>

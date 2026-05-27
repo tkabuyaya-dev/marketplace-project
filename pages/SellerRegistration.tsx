@@ -1423,7 +1423,7 @@ export const SellerRegistration: React.FC = () => {
 
         <div className="mt-6 text-center">
           <div className="inline-flex items-center gap-1.5 text-[11.5px] text-muted px-2.5 h-7 rounded-full bg-white border border-black/[0.06]">
-            <Lock size={11} /> Connexion sécurisée · Vos données restent en Afrique
+            <Lock size={11} /> Connexion sécurisée · Vos données chiffrées
           </div>
         </div>
       </main>

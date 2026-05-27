@@ -34,7 +34,7 @@ export const FeaturedVendorCard: React.FC<FeaturedVendorCardProps> = ({ seller, 
     <div className="col-span-full rounded-xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800/60 shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 p-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gold-600 dark:text-gold-400 bg-gold-500/10 px-2 py-0.5 rounded-full">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-goldText dark:text-gold-400 bg-gold-500/10 px-2 py-0.5 rounded-full">
           {t('home.featuredShop', 'Boutique mise en avant')}
         </span>
       </div>
@@ -81,7 +81,7 @@ export const FeaturedVendorCard: React.FC<FeaturedVendorCardProps> = ({ seller, 
           <button
             type="button"
             onClick={goToShop}
-            className="mt-1.5 text-xs font-semibold text-gold-600 dark:text-gold-400 hover:underline"
+            className="mt-1.5 text-xs font-semibold text-goldText dark:text-gold-400 hover:underline"
           >
             {t('home.viewShop', 'Voir la boutique')} ›
           </button>

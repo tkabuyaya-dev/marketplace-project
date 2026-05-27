@@ -208,7 +208,7 @@ function HeroSection({
             letterSpacing: '.06em',
           }}
         >
-          🌍 Marketplace Afrique centrale
+          🌍 Marketplace des Grands Lacs
         </div>
 
         {/* H1 */}
