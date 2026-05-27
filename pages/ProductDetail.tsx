@@ -20,7 +20,8 @@ import {
 } from '../services/firebase';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
-import { updateMetaTags } from '../utils/meta';
+import { updateMetaTags, injectJsonLd, removeJsonLd, productToJsonLd } from '../utils/meta';
+import { INITIAL_COUNTRIES } from '../constants';
 import { useToast } from '../components/Toast';
 import { useCategories } from '../hooks/useCategories';
 import { trackProductView, getSimilarProducts, getCustomersAlsoViewed } from '../services/recommendations';
@@ -149,7 +150,25 @@ const ProductDetail: React.FC = () => {
       image: product.images[0],
       url: window.location.href,
     });
+    // Schema.org Product → exposes the page to Google Shopping, ChatGPT, Perplexity
+    injectJsonLd(productToJsonLd({
+      id:          product.id,
+      title:       product.title,
+      description: product.description,
+      images:      product.images,
+      price:       product.discountPrice ?? product.price,
+      currency:    product.currency || CURRENCY,
+      rating:      product.rating,
+      reviews:     product.reviews,
+      sellerName:  product.seller?.sellerDetails?.shopName || product.seller?.name,
+      sellerCity:  product.seller?.sellerDetails?.commune,
+      countryCode: INITIAL_COUNTRIES.find(c => c.id === product.countryId)?.code,
+      url:         window.location.href,
+      inStock:     product.stockQuantity === undefined ? true : product.stockQuantity > 0,
+    }));
     if (currentUser) checkIsLiked(product.id, currentUser.id).then(setLiked);
+    // Cleanup JSON-LD on unmount → next route gets a clean head
+    return () => { removeJsonLd(); };
   }, [product?.id, currentUser]);
 
   useEffect(() => {

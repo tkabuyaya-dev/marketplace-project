@@ -40,16 +40,32 @@ export function initSentry(): void {
             dsn: SENTRY_DSN,
             environment: IS_PRODUCTION ? 'production' : 'development',
             release: `nunulia@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
-            tracesSampleRate: IS_PRODUCTION ? 0.2 : 1.0,
-            replaysSessionSampleRate: 0.1,
+            // ── Bandwidth & quota guards (Africa 2G/3G optimization) ──
+            // Performance traces : DISABLED on Home/listing pages — they generated
+            // 4 envelopes/session in the audit live (2026-05-26) without any real
+            // error. Re-enable to 0.05–0.1 once we have a Sentry Team plan and want
+            // performance metrics. tracePropagationTargets keeps tracing OFF unless
+            // an upstream service explicitly requests it.
+            tracesSampleRate: 0,
+            // Session replays : DISABLED. Only capture on actual errors.
+            replaysSessionSampleRate: 0,
             replaysOnErrorSampleRate: 1.0,
             integrations: [
-              mod.browserTracingIntegration(),
               mod.replayIntegration({
                 maskAllText: false,
                 blockAllMedia: false,
               }),
             ],
+            // Drop auto-breadcrumbs that aren't useful for debugging marketplace
+            // bugs — clicks, navigation, console.* generate ~80% of the noise
+            // and rarely help diagnose real issues.
+            beforeBreadcrumb(breadcrumb) {
+              if (breadcrumb.category === 'ui.click') return null;
+              if (breadcrumb.category === 'ui.input') return null;
+              if (breadcrumb.category === 'navigation') return null;
+              if (breadcrumb.category === 'console') return null;
+              return breadcrumb;
+            },
             transport: (options) => {
               const transport = mod.makeFetchTransport(options);
               return {

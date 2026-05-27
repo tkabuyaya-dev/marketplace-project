@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -929,6 +929,35 @@ export const Home: React.FC = () => {
 
   const trendingProducts = popularProducts.length > 0 ? popularProducts.slice(0, 8) : displayProducts.slice(0, 8);
 
+  // ── Rail-level deduplication ────────────────────────────────────────────────
+  // A product appearing in multiple rails fires multiple <img> fetches with the
+  // same Cloudinary URL — and on first visit (before the SW cache is hot) the
+  // browser can race and download the same asset 2-3× (confirmed in the live
+  // audit 2026-05-26 : 6 Cloudinary requests duplicated identically).
+  //
+  // Each rail filters out IDs already rendered in higher-priority rails.
+  // Side effect : better UX (no repeated cards while scrolling).
+  // The bottom grid ("Dernières annonces") is intentionally NOT deduped to keep
+  // the scroll feed rich for buyers who came specifically to browse.
+  const boostedDeduped = useMemo(
+    () => boostedProducts.filter(p => !sellerLatest.some(s => s.id === p.id)),
+    [boostedProducts, sellerLatest],
+  );
+  const trendingDeduped = useMemo(() => {
+    const upper = new Set<string>([...sellerLatest, ...boostedDeduped].map(p => p.id));
+    return trendingProducts.filter(p => !upper.has(p.id));
+  }, [trendingProducts, sellerLatest, boostedDeduped]);
+  const recommendedDeduped = useMemo(() => {
+    const upper = new Set<string>([...sellerLatest, ...boostedDeduped, ...trendingDeduped].map(p => p.id));
+    return recommended.filter(p => !upper.has(p.id)).slice(0, 8);
+  }, [recommended, sellerLatest, boostedDeduped, trendingDeduped]);
+  const recentlyViewedDeduped = useMemo(() => {
+    const upper = new Set<string>([
+      ...sellerLatest, ...boostedDeduped, ...trendingDeduped, ...recommendedDeduped,
+    ].map(p => p.id));
+    return recentlyViewed.filter(p => !upper.has(p.id)).slice(0, 8);
+  }, [recentlyViewed, sellerLatest, boostedDeduped, trendingDeduped, recommendedDeduped]);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F8FA]">
       <CountrySheet
@@ -974,20 +1003,20 @@ export const Home: React.FC = () => {
           </>
         )}
 
-        {/* Boostés / Sponsorisés */}
-        {boostedProducts.length > 0 && (
+        {/* Boostés / Sponsorisés — dédupliqué vs sellerLatest */}
+        {boostedDeduped.length > 0 && (
           <>
             <SectionHeader emoji="⚡" title={t('home.sections.sponsored')} />
-            <TrendingRail products={boostedProducts} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
+            <TrendingRail products={boostedDeduped} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
           </>
         )}
 
-        {/* Tendances */}
-        {(popularProducts.length > 0 || (!loading && displayProducts.length > 0)) && (
+        {/* Tendances — dédupliqué vs rails du dessus */}
+        {(popularProducts.length > 0 || (!loading && displayProducts.length > 0)) && trendingDeduped.length > 0 && (
           <>
             <SectionHeader emoji="🔥" title="Tendances" />
             <TrendingRail
-              products={trendingProducts}
+              products={trendingDeduped}
               likedMap={likedMap}
               onProductClick={onProductClick}
               onToggleLike={handleToggleLike}
@@ -1004,19 +1033,19 @@ export const Home: React.FC = () => {
           </>
         )}
 
-        {/* Recommandé pour vous */}
-        {currentUser && recommended.length >= 4 && (
+        {/* Recommandé pour vous — dédupliqué vs rails du dessus */}
+        {currentUser && recommendedDeduped.length >= 4 && (
           <>
             <SectionHeader emoji="✨" title={t('home.sections.recommended')} />
-            <TrendingRail products={recommended.slice(0, 8)} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
+            <TrendingRail products={recommendedDeduped} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
           </>
         )}
 
-        {/* Vus récemment */}
-        {recentlyViewed.length > 0 && (
+        {/* Vus récemment — dédupliqué vs rails du dessus */}
+        {recentlyViewedDeduped.length > 0 && (
           <>
             <SectionHeader emoji="🕐" title={t('home.sections.recentlyViewed')} />
-            <TrendingRail products={recentlyViewed.slice(0, 8)} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
+            <TrendingRail products={recentlyViewedDeduped} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
           </>
         )}
 

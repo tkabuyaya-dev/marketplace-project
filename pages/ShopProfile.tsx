@@ -10,7 +10,8 @@ import { User, Product } from '../types';
 import { getSellerProducts, getUserBySlugOrId, subscribeToUserProfile } from '../services/firebase';
 import { ProductCard } from '../components/ProductCard';
 import { useAppContext } from '../contexts/AppContext';
-import { updateMetaTags } from '../utils/meta';
+import { updateMetaTags, injectJsonLd, removeJsonLd, shopToJsonLd } from '../utils/meta';
+import { INITIAL_COUNTRIES } from '../constants';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { UnverifiedSellerNotice } from '../components/UnverifiedSellerNotice';
 
@@ -500,6 +501,17 @@ const ShopProfile: React.FC = () => {
       image: seller.avatar,
       url: window.location.href,
     });
+    // Schema.org LocalBusiness → discoverable by AI agents + Google
+    injectJsonLd(shopToJsonLd({
+      id:          seller.id,
+      name:        seller.sellerDetails?.shopName || seller.name,
+      description: seller.bio,
+      image:       seller.avatar,
+      city:        seller.sellerDetails?.commune,
+      countryCode: INITIAL_COUNTRIES.find(c => c.id === (seller.sellerDetails as any)?.countryId)?.code,
+      url:         window.location.href,
+      rating:      typeof seller.trustScore === 'number' ? seller.trustScore : undefined,
+    }));
     const load = async () => {
       setLoadingProducts(true);
       const data = await getSellerProducts(seller.id);
@@ -507,6 +519,7 @@ const ShopProfile: React.FC = () => {
       setLoadingProducts(false);
     };
     load();
+    return () => { removeJsonLd(); };
   }, [seller?.id]);
 
   const handleBack = () => {
