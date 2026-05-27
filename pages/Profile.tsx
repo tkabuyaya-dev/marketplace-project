@@ -602,8 +602,16 @@ const Profile: React.FC = () => {
   const supportHref = `https://wa.me/${supportPhone.replace(/\D/g, '')}`;
 
   const handleNotifications = async () => {
-    if (permission === 'granted') return;
     if (permission === 'denied') { toast(t('profile.notifsBlocked'), 'info'); return; }
+    if (permission === 'granted') {
+      // Perm déjà accordée → on (re)tente l'enregistrement du token côté
+      // Firestore (idempotent). Gère le cas où la 1ʳᵉ tentative avait
+      // échoué (VAPID manquante au moment du grant, hors-ligne, etc.).
+      const { registerFcmForUser } = await import('../services/fcm');
+      const ok = await registerFcmForUser(currentUser.id);
+      toast(ok ? t('profile.notifsActive') : t('profile.notifsBlockedHint'), ok ? 'success' : 'info');
+      return;
+    }
     const result = await requestPermission(currentUser.id);
     if (result === 'granted') toast(t('profile.notifsEnabled'), 'success');
     else toast(t('profile.notifsBlocked'), 'error');
