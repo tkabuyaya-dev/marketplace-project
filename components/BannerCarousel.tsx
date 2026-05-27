@@ -147,7 +147,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
               className={`w-full flex-shrink-0 relative h-44 sm:h-56 md:h-64 ${hasAction ? 'cursor-pointer' : ''}`}
               onClick={() => handleBannerClick(banner)}
             >
-              {/* Background image */}
+              {/* Background image — 100% visible, no darkening overlay (this is a paid ad space) */}
               <div className="absolute inset-0 z-0 overflow-hidden">
                 <img
                   src={getOptimizedUrl(banner.imageUrl, 700, 'auto')}
@@ -160,44 +160,59 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
                   fetchPriority={isFirst ? 'high' : 'low'}
                 />
               </div>
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 z-[1] bg-gradient-to-r from-gray-950/90 via-gray-900/60 to-transparent" />
 
-              {/* Content — z-10 ensures text is ALWAYS above image + gradient */}
-              <div className="relative z-10 h-full flex flex-col justify-center px-6 md:px-10 max-w-lg">
-                {banner.title && (
-                  <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight mb-1">
-                    {banner.title}
-                  </h2>
-                )}
-                {banner.subtitle && (
-                  <p className="text-gray-300 text-xs sm:text-sm mb-3 line-clamp-2">
-                    {banner.subtitle}
-                  </p>
-                )}
-                {banner.ctaText && (
-                  <div>
-                    <span className={`inline-block px-5 py-2 text-white text-xs font-bold rounded-full transition-colors ${
-                      hasAction
-                        ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/30'
-                        : 'bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20'
-                    }`}>
-                      {banner.ctaText}
-                      {hasAction && banner.ctaActionType === 'external' && (
-                        <span className="ml-1.5 text-[10px] opacity-70">&#x2197;</span>
-                      )}
-                    </span>
-                  </div>
-                )}
-              </div>
+              {/* Commercial card overlay — bottom-left, white translucent
+                  Image stays vivid (premium ad placement style à la AliExpress/Etsy).
+                  WCAG AAA contrast guaranteed by white card + dark ink text. */}
+              {(banner.title || banner.subtitle || banner.ctaText) && (
+                <div
+                  className="absolute z-10 left-3 right-3 bottom-3 sm:right-auto sm:max-w-sm md:max-w-md
+                             bg-white/95 backdrop-blur-md rounded-2xl
+                             p-3.5 sm:p-4
+                             border border-black/[0.06]"
+                  style={{ boxShadow: '0 10px 28px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08)' }}
+                >
+                  {banner.title && (
+                    <h2 className="text-[15px] sm:text-base md:text-lg font-black text-[#111318] leading-tight tracking-tight">
+                      {banner.title}
+                    </h2>
+                  )}
+                  {banner.subtitle && (
+                    <p className="text-[12px] sm:text-[13px] text-[#5C6370] mt-1 leading-snug line-clamp-2">
+                      {banner.subtitle}
+                    </p>
+                  )}
+                  {banner.ctaText && (
+                    <div className="mt-2.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-3.5 py-1.5 text-[12px] sm:text-[13px] font-black rounded-full transition-all ${
+                          hasAction
+                            ? 'bg-gold-400 text-[#111318] hover:bg-goldHov'
+                            : 'bg-[#F0F1F4] text-[#5C6370] border border-black/[0.08]'
+                        }`}
+                        style={hasAction ? { boxShadow: '0 4px 12px rgba(245,200,66,0.45)' } : undefined}
+                      >
+                        {banner.ctaText}
+                        {hasAction && banner.ctaActionType === 'external' && (
+                          <span className="ml-0.5 text-[10px] opacity-70">&#x2197;</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Dots indicator — gold expanding pill */}
+      {/* Dots indicator — top-right, doesn't conflict with the bottom card.
+          Pill background ensures legibility regardless of image content. */}
       {count > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+        <div
+          className="absolute top-3 right-3 flex gap-1.5 z-20 px-2 py-1 rounded-full backdrop-blur-md"
+          style={{ background: 'rgba(0,0,0,0.30)' }}
+        >
           {activeBanners.map((_, i) => (
             <button
               key={i}
@@ -205,10 +220,10 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
               aria-label={`Slide ${i + 1}`}
               className="border-none cursor-pointer p-0 transition-all duration-200"
               style={{
-                width: i === current ? 20 : 6,
-                height: 6,
-                borderRadius: 3,
-                background: i === current ? '#F5C842' : 'rgba(255,255,255,0.55)',
+                width: i === current ? 16 : 5,
+                height: 5,
+                borderRadius: 2.5,
+                background: i === current ? '#F5C842' : 'rgba(255,255,255,0.65)',
               }}
             />
           ))}
