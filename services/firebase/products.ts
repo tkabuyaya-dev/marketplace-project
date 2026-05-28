@@ -119,31 +119,41 @@ export const getProductBySlugOrId = async (slugOrId: string): Promise<Product | 
 export const getProductsByIds = async (ids: string[]): Promise<Product[]> => {
   if (!db || ids.length === 0) return [];
 
-  // IMPORTANT — filtre les IDs locaux (drafts offline) qui ne correspondent
-  // pas à des produits Firestore réels. Si on les inclut dans le `where __name__ in`,
-  // Firestore tente d'évaluer la règle products contre un doc inexistant, échoue,
-  // et REJETTE TOUTE LA QUERY (PERMISSION_DENIED). Symptôme : la page Favoris
-  // affiche "impossible de charger" alors que tous les autres likes sont valides.
+  // Filtre les IDs locaux (drafts offline) qui ne correspondent pas à des
+  // docs Firestore réels.
   const cleanIds = ids.filter(id => !id.startsWith('draft_') && id.length > 0 && id.length < 64);
   if (cleanIds.length === 0) return [];
 
-  const products: Product[] = [];
-  const batches = [];
-  for (let i = 0; i < cleanIds.length; i += 30) {
-    batches.push(cleanIds.slice(i, i + 30));
-  }
+  // POURQUOI getDoc parallèle plutôt que `where __name__ in [...]` :
+  // La rule products autorise read si status=='approved' OR sellerId==auth.uid OR isAdmin().
+  // Quand on fait une LIST query avec `__name__ in [...]`, Firestore évalue la rule
+  // pour CHAQUE doc de la liste avant de filtrer par status. Si même UN SEUL doc a
+  // status!='approved' et n'appartient pas au user (ex: produit liké puis rejected
+  // par admin), toute la query est rejetée avec PERMISSION_DENIED. Symptôme :
+  // /favorites affiche "impossible de charger" alors que 95% des likes sont valides.
+  //
+  // Avec getDoc isolé par produit : chaque get est évalué séparément, les forbidden
+  // tombent silencieusement (catch → null) et on garde tous les valides. Coût :
+  // N requêtes au lieu de N/30, mais Firestore cache local + persistance IndexedDB
+  // amortissent le surcoût après la 1ʳᵉ visite. Et c'est borné par le nombre de
+  // favoris d'un user (typiquement <30).
+  const results = await Promise.allSettled(
+    cleanIds.map(id => getDoc(doc(db, COLLECTIONS.PRODUCTS, id))),
+  );
 
-  for (const batch of batches) {
-    const q = query(
-      collection(db, COLLECTIONS.PRODUCTS),
-      where('status', '==', 'approved'),
-      where('__name__', 'in', batch)
-    );
-    const snap = await getDocs(q);
-    snap.docs.forEach(d => {
-      if (!isHiddenProduct(d.data())) products.push(docToProduct(d.data(), d.id));
-    });
-  }
+  const products: Product[] = [];
+  results.forEach((res, i) => {
+    if (res.status !== 'fulfilled') return; // 403 / network / forbidden → skip
+    const snap = res.value;
+    if (!snap.exists()) return;
+    const data = snap.data() as any;
+    // Côté client on garde le filtre status=approved + non-hidden pour les vues
+    // publiques (favoris, recommendations, etc.). Si on veut afficher les pending
+    // pour le seller lui-même, il faudra un autre helper.
+    if (data.status !== 'approved') return;
+    if (isHiddenProduct(data)) return;
+    products.push(docToProduct(data, cleanIds[i]));
+  });
 
   const productMap = new Map(products.map(p => [p.id, p]));
   return cleanIds.map(id => productMap.get(id)).filter(Boolean) as Product[];
