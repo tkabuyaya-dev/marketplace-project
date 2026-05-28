@@ -58,6 +58,22 @@ export const onBuyerRequestMatch = onDocumentCreated(
 
     const db = await getDb();
 
+    // ── Résolution slug ↔ display name ────────────────────────────────
+    // Le formulaire Je Cherche envoie `category` = slug (ex: "mode-accessoires")
+    // car <option value={cat.id}>. Les sellers stockent leur sellerDetails.categories
+    // en display name (ex: "Mode & Accessoires") via SellerDashboard.
+    // On lit la collection categories pour résoudre les 2 formes et matcher
+    // l'une ou l'autre — tolérant à une future migration slug-only.
+    const catSnap = await db.collection("categories").get();
+    const slugToName = new Map<string, string>();
+    catSnap.forEach((d) => {
+      const data = d.data() as { name?: string; slug?: string };
+      const slug = data.slug || d.id;
+      if (data.name) slugToName.set(slug, data.name);
+    });
+    const categorySlug = category;
+    const categoryName = slugToName.get(categorySlug) || "";
+
     const snap = await db
       .collection("users")
       .where("role", "==", "seller")
@@ -73,13 +89,17 @@ export const onBuyerRequestMatch = onDocumentCreated(
       const d = doc.data() as { isSuspended?: boolean; sellerDetails?: { categories?: string[] } };
       if (d.isSuspended) return;
       const cats = d.sellerDetails?.categories || [];
-      if (cats.includes(category)) matched.push(doc.id);
+      // Tolérant aux 2 formats — slug OU display name.
+      if (cats.includes(categorySlug) || (categoryName && cats.includes(categoryName))) {
+        matched.push(doc.id);
+      }
     });
 
     if (matched.length === 0) {
       logger.info("[buyer-request-match] aucun seller matching", {
         requestId,
-        category,
+        categorySlug,
+        categoryName,
         countryId,
         scanned: snap.size,
       });
