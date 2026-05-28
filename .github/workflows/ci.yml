@@ -289,10 +289,11 @@ jobs:
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
-          # Rules + functions dans le même step : `git push main` = déploiement
-          # atomique de tout le backend (rules → enforcement immédiat, functions
-          # → cold-start ~30s en parallèle).
-          args: deploy --only functions,firestore:rules
+          # Rules + functions + indexes dans le même step : `git push main`
+          # = déploiement atomique de tout le backend (rules → enforcement
+          # immédiat, functions → cold-start ~30s, indexes → build async côté
+          # Firestore). Le CLI ne supprime jamais les indexes absents du JSON.
+          args: deploy --only functions,firestore:rules,firestore:indexes
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FUNCTIONS_DISCOVERY_TIMEOUT: "60000"

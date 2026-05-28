@@ -92,3 +92,7 @@ export { onNotificationCreate } from "./fcm-send.js";
 // quand un user like ou review un produit, ce qui fait remonter la
 // cloche in-app + déclenche derrière le push FCM via onNotificationCreate.
 export { onLikeCreate, onReviewCreate } from "./notify-on-engagement.js";
+
+// Buyer Request → Sellers matching push (catégorie + pays).
+// Pendant offre/demande de la feature "Je Cherche".
+export { onBuyerRequestMatch } from "./notify-buyer-request-match.js";

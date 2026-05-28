@@ -210,6 +210,7 @@ export type NotificationType =
   | 'subscription_reminder'
   | 'boost_activated'
   | 'boost_expired'
+  | 'buyer_request_match'
   | 'system';
 
 export interface AppNotification {
