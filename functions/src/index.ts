@@ -87,3 +87,8 @@ export { getMyProductsActivity } from "./seller-stats.js";
 // FCM push sender — triggers on new notifications/{id} doc, sends push to
 // all registered devices of the recipient. Prunes invalid tokens automatically.
 export { onNotificationCreate } from "./fcm-send.js";
+
+// User-initiated engagement notifications — crée des docs notifications
+// quand un user like ou review un produit, ce qui fait remonter la
+// cloche in-app + déclenche derrière le push FCM via onNotificationCreate.
+export { onLikeCreate, onReviewCreate } from "./notify-on-engagement.js";
