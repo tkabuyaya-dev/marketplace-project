@@ -82,11 +82,23 @@ export const onNotificationCreate = onDocumentCreated(
         type: notif.type || "system",
       },
       webpush: {
+        // Urgency: high — empêche Android Chrome / OS de mettre en file
+        // d'attente la notif pour économie batterie. Sans ça, livraison
+        // peut prendre plusieurs minutes voire être droppée si Doze.
+        // TTL: 24h — si le device est hors-ligne plus longtemps, on
+        // abandonne (acceptable pour une marketplace).
+        headers: {
+          Urgency: "high",
+          TTL: "86400",
+        },
         fcmOptions: { link: `${PUBLIC_ORIGIN}${link.startsWith("/") ? link : `/${link}`}` },
         notification: {
           icon: "/icons/icon-192.png",
           badge: "/icons/icon-192.png",
           tag: notif.type || "nunulia",
+          // requireInteraction: false (défaut) — disparaît auto après ~6s
+          // pour éviter d'encombrer le tray Android.
+          renotify: true, // fait vibrer/sonner même si même tag
         },
       },
     };
