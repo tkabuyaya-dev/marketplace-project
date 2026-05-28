@@ -2,11 +2,12 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Search, SlidersHorizontal, Bell, Heart, ChevronRight, ChevronDown,
+  Search, SlidersHorizontal, Heart, ChevronRight, ChevronDown,
   Home as HomeIcon, Plus, User as UserIcon, BadgeCheck, X, Store,
 } from 'lucide-react';
 import { Product, User } from '../types';
 import { ProductCard } from '../components/ProductCard';
+import { NotificationBell } from '../components/NotificationBell';
 import { ProductCardSkeleton } from '../components/Skeleton';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
@@ -185,13 +186,7 @@ function StickyHeader({
           <ChevronDown size={10} color="#5C6370" strokeWidth={2.5} />
         </button>
 
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer active:bg-gray-100 transition-colors"
-        >
-          <Bell size={20} color="#111318" strokeWidth={2} />
-        </button>
+        <NotificationBell />
       </div>
     </header>
   );
