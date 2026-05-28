@@ -208,13 +208,55 @@ const KEYWORDS: Record<string, string[]> = {
     'lessive', 'pressing', 'lavage auto', 'lavage voiture', 'mecanicien',
     'electricien', 'plombier', 'soudeur', 'couturier', 'couture',
     'coiffure', 'coiffeur', 'manucure', 'massage', 'photographe',
-    'photographie', 'video', 'mariage organisation', 'evenement',
-    'comptable', 'avocat', 'consultant', 'formation professionnelle',
+    'photographie', 'video', 'comptable', 'avocat', 'consultant',
     'cours particulier', 'baby-sitting', 'garde enfant', 'jardinage',
     // Kirundi / Kinyarwanda
     'gusana', 'gukoresha',
     // Swahili
     'usafi', 'kurekebisha', 'usafiri',
+  ],
+
+  'immobilier': [
+    // FR
+    'immobilier', 'maison', 'appartement', 'studio', 'villa', 'duplex',
+    'parcelle', 'terrain', 'plot', 'lotissement', 'a louer', 'a vendre',
+    'location maison', 'location appartement', 'bureau a louer', 'commerce',
+    'depot a louer', 'magasin a louer', 'chambre a louer', 'colocation',
+    'meuble', 'non meuble', 'agence immobiliere', 'hypotheque',
+    // Kirundi / Kinyarwanda
+    'urugo', 'inzu', 'isambu', 'kodesha', 'kugurisha inzu', 'uburaro',
+    // Swahili
+    'nyumba', 'ploti', 'pango', 'shamba', 'duka',
+  ],
+
+  'emploi-recrutement': [
+    // FR
+    'emploi', 'travail', 'job', 'recrutement', 'embauche', 'recrute',
+    'recherche emploi', 'offre emploi', 'cv', 'curriculum vitae', 'candidat',
+    'candidate', 'candidature', 'freelance', 'stage', 'stagiaire',
+    'apprenti', 'apprentissage', 'cdi', 'cdd', 'temps partiel', 'temps plein',
+    'pigiste', 'consultant', 'mission', 'remote', 'teletravail',
+    'concours', 'fonction publique', 'salaire',
+    // Kirundi / Kinyarwanda
+    'akazi', 'umurimo', 'gushaka akazi', 'gukorera',
+    // Swahili
+    'kazi', 'mshahara', 'ajira', 'mfanyikazi', 'mishi',
+  ],
+
+  'evenements-ceremonies': [
+    // FR
+    'mariage', 'noce', 'fiancailles', 'engagement', 'bapteme', 'communion',
+    'anniversaire', 'fete', 'birthday', 'reception', 'cocktail',
+    'salle de fete', 'salle reception', 'salle mariage', 'organisateur',
+    'organisation mariage', 'wedding planner', 'evenement',
+    'animation', 'dj', 'sonorisation', 'son et lumiere', 'orchestre',
+    'fleurs mariage', 'bouquet', 'decoration mariage', 'centre de table',
+    'robe de mariee', 'costume marie', 'alliance', 'bague mariage',
+    'photographe mariage', 'videographe', 'invitation',
+    // Kirundi / Kinyarwanda
+    'ubukwe', 'umunsi mukuru', 'gushyingiranwa',
+    // Swahili
+    'harusi', 'sherehe', 'maadhimisho', 'arusi',
   ],
 };
 

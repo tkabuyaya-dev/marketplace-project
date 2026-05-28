@@ -36,6 +36,9 @@ Catégories disponibles :
 - energie-solaire : Panneaux solaires, batteries solaires, lampes solaires, générateurs, sola, jua
 - agriculture-elevage : Semences, engrais, vaches, chèvres, volaille, outils agricoles, inka, ng'ombe, mbegu
 - services : Réparation, installation, ménage, coiffure, photographie, transport, formation pro, usafi, kurekebisha
+- immobilier : Maison/appartement/villa à louer ou à vendre, terrain, parcelle, bureau, dépôt, urugo, inzu, nyumba, ploti, shamba
+- emploi-recrutement : Offres d'emploi, CV, candidature, freelance, stage, consultant, akazi, kazi, ajira
+- evenements-ceremonies : Mariage (ubukwe, harusi), fiançailles, baptême, anniversaire, salle de fête, DJ, traiteur événementiel, robe de mariée, organisation mariage
 
 Règles :
 1. Réponds UNIQUEMENT en JSON strict : {"slug": "category-slug", "confidence": 0.0-1.0}
@@ -59,6 +62,9 @@ const VALID_SLUGS = new Set([
   "energie-solaire",
   "agriculture-elevage",
   "services",
+  "immobilier",
+  "emploi-recrutement",
+  "evenements-ceremonies",
 ]);
 
 export interface ClassificationResult {
