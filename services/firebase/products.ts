@@ -119,10 +119,18 @@ export const getProductBySlugOrId = async (slugOrId: string): Promise<Product | 
 export const getProductsByIds = async (ids: string[]): Promise<Product[]> => {
   if (!db || ids.length === 0) return [];
 
+  // IMPORTANT — filtre les IDs locaux (drafts offline) qui ne correspondent
+  // pas à des produits Firestore réels. Si on les inclut dans le `where __name__ in`,
+  // Firestore tente d'évaluer la règle products contre un doc inexistant, échoue,
+  // et REJETTE TOUTE LA QUERY (PERMISSION_DENIED). Symptôme : la page Favoris
+  // affiche "impossible de charger" alors que tous les autres likes sont valides.
+  const cleanIds = ids.filter(id => !id.startsWith('draft_') && id.length > 0 && id.length < 64);
+  if (cleanIds.length === 0) return [];
+
   const products: Product[] = [];
   const batches = [];
-  for (let i = 0; i < ids.length; i += 30) {
-    batches.push(ids.slice(i, i + 30));
+  for (let i = 0; i < cleanIds.length; i += 30) {
+    batches.push(cleanIds.slice(i, i + 30));
   }
 
   for (const batch of batches) {
@@ -138,7 +146,7 @@ export const getProductsByIds = async (ids: string[]): Promise<Product[]> => {
   }
 
   const productMap = new Map(products.map(p => [p.id, p]));
-  return ids.map(id => productMap.get(id)).filter(Boolean) as Product[];
+  return cleanIds.map(id => productMap.get(id)).filter(Boolean) as Product[];
 };
 
 export const getProductsByCategory = async (
