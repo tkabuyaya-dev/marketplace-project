@@ -3,50 +3,75 @@
  * NUNULIA — Firebase Cloud Messaging Service Worker
  *
  * Scope: /firebase-cloud-messaging-push-scope (séparé du Workbox SW à '/').
- * Pattern : config Firebase auto-servie par Firebase Hosting via
- *   /__/firebase/init.js — pas de secret à hardcoder, et la config
- *   reste alignée avec le projet déployé.
  *
- * Limitation : en dev local (Vite), /__/firebase/init.js n'existe pas.
- * Le SW se contente alors de no-op. Tester FCM exige une preview channel
- * Firebase Hosting ou la prod.
+ * Stratégie : on s'abonne au `push` natif du Service Worker EN PLUS du
+ * onBackgroundMessage du SDK, comme filet de sécurité. Sur certains
+ * Android Chrome récents, le SDK ne déclenche pas l'affichage auto même
+ * quand il devrait. L'écoute `push` native garantit l'affichage.
+ *
+ * Le serveur envoie un payload data-only : `data: { title, body, link, type }`.
+ * Pas de champ `notification` → on garde le contrôle total de l'affichage.
  */
 
 importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-compat.js');
 
+let fcmReady = false;
 try {
-  // Auto-servi par Firebase Hosting (assigne à `firebase` global et init l'app).
+  // Auto-servi par Firebase Hosting (init firebase global avec la config prod).
   importScripts('/__/firebase/init.js');
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+    const messaging = firebase.messaging();
+    messaging.onBackgroundMessage((payload) => {
+      console.log('[FCM-SW] onBackgroundMessage', payload);
+      showFromPayload(payload && payload.data);
+    });
+    fcmReady = true;
+    console.log('[FCM-SW] Firebase messaging ready');
+  }
 } catch (e) {
-  // Dev local ou hors-Hosting : on désactive proprement.
-  console.warn('[FCM-SW] /__/firebase/init.js indisponible — FCM désactivé.');
+  console.warn('[FCM-SW] init failed — fallback to native push event:', e);
 }
 
-if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-  const messaging = firebase.messaging();
-
-  // ── Push reçu en arrière-plan ─────────────────────────────────────────────
-  // Le SDK affiche déjà automatiquement la notif si le payload est de type
-  // `notification` ; on prend la main pour ajouter l'icône, badge et data.
-  messaging.onBackgroundMessage((payload) => {
-    const data = payload.data || {};
-    const title = (payload.notification && payload.notification.title) || data.title || 'Nunulia';
-    const body  = (payload.notification && payload.notification.body)  || data.body  || '';
-    const link  = data.link || data.click_action || '/';
-
-    self.registration.showNotification(title, {
-      body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: data.tag || 'nunulia',
-      data: { link },
-    });
+// ── Helper d'affichage ──────────────────────────────────────────────────────
+function showFromPayload(data) {
+  if (!data) return;
+  const title = data.title || 'Nunulia';
+  return self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: data.type || 'nunulia',
+    renotify: true,
+    data: { link: data.link || '/' },
   });
 }
 
-// ── Clic sur la notif ────────────────────────────────────────────────────────
-// Focus un onglet Nunulia existant, sinon en ouvre un nouveau.
+// ── Fallback : événement `push` natif ───────────────────────────────────────
+// Garantit l'affichage même si le SDK FCM ne déclenche pas onBackgroundMessage
+// (cas observé sur Android Chrome 130+ avec payloads mixed notification/data).
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    console.log('[FCM-SW] push event without data — ignored');
+    return;
+  }
+  let payload = null;
+  try { payload = event.data.json(); } catch { /* ignore */ }
+  console.log('[FCM-SW] native push event', payload);
+
+  // FCM enveloppe parfois sous `data` ou `notification`, parfois plat.
+  const data = (payload && (payload.data || payload.notification || payload)) || {};
+  // Évite le double-affichage si le SDK a déjà géré le payload.
+  // Heuristique : si le SDK est ready ET qu'on a un payload data-only,
+  // onBackgroundMessage l'a déjà affiché — on skip.
+  if (fcmReady && payload && payload.data && !payload.notification) {
+    console.log('[FCM-SW] SDK already handled this push — skip native fallback');
+    return;
+  }
+  event.waitUntil(showFromPayload(data));
+});
+
+// ── Clic sur la notif ───────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const link = (event.notification.data && event.notification.data.link) || '/';

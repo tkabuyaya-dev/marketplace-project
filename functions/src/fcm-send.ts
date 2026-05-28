@@ -69,38 +69,30 @@ export const onNotificationCreate = onDocumentCreated(
 
     if (tokenDocs.length === 0) return;
 
-    // 2) Construction du payload
+    // 2) Construction du payload — DATA-ONLY (pas de champ notification top-level).
+    //
+    // Pourquoi : le FCM Web SDK a un comportement instable sur Android Chrome
+    // récent quand le payload contient à la fois `notification` ET `data`.
+    // Symptôme : push acked par FCM (sent=1) mais jamais affiché par le SW.
+    // Solution canonique recommandée par l'équipe Firebase : payload data-only
+    // + affichage explicite via onBackgroundMessage dans firebase-messaging-sw.js.
     const link = resolveLink(notif);
     const message = {
       tokens: tokenDocs.map(t => t.token),
-      notification: {
+      data: {
         title: notif.title || "Nunulia",
         body:  notif.body  || "",
-      },
-      data: {
         link,
-        type: notif.type || "system",
+        type:  notif.type  || "system",
       },
       webpush: {
-        // Urgency: high — empêche Android Chrome / OS de mettre en file
-        // d'attente la notif pour économie batterie. Sans ça, livraison
-        // peut prendre plusieurs minutes voire être droppée si Doze.
-        // TTL: 24h — si le device est hors-ligne plus longtemps, on
-        // abandonne (acceptable pour une marketplace).
-        headers: {
-          Urgency: "high",
-          TTL: "86400",
-        },
+        // Urgency: high → bypass Doze mode Android, livraison immédiate.
+        // TTL: 24h → on abandonne si device hors-ligne plus longtemps.
+        headers: { Urgency: "high", TTL: "86400" },
         fcmOptions: { link: `${PUBLIC_ORIGIN}${link.startsWith("/") ? link : `/${link}`}` },
-        notification: {
-          icon: "/icons/icon-192.png",
-          badge: "/icons/icon-192.png",
-          tag: notif.type || "nunulia",
-          // requireInteraction: false (défaut) — disparaît auto après ~6s
-          // pour éviter d'encombrer le tray Android.
-          renotify: true, // fait vibrer/sonner même si même tag
-        },
       },
+      // Android (mobile natif — non utilisé ici mais utile si on ajoute Capacitor)
+      android: { priority: "high" as const },
     };
 
     // 3) Envoi multicast
