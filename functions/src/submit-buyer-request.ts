@@ -83,6 +83,11 @@ export const submitBuyerRequest = onCall(
     if (!isValidString(data.city, 100)) {
       throw new HttpsError("invalid-argument", "La ville est requise.");
     }
+    // Catégorie obligatoire depuis le smart picker (slug réel OU "_help" pour "Je ne sais pas trop").
+    // Si _help, la CF onBuyerRequestMatch appellera Claude Haiku pour deviner.
+    if (!isValidString(data.category, 80)) {
+      throw new HttpsError("invalid-argument", "La catégorie est requise.");
+    }
 
     const whatsapp = (data.whatsapp || "").replace(/\s/g, "");
     if (!isValidWhatsapp(whatsapp)) {

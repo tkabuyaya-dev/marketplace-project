@@ -22,6 +22,10 @@ import { uploadImage } from '../../services/cloudinary';
 import { verifyRecaptcha, loadRecaptchaScript } from '../../services/recaptcha';
 import { INITIAL_COUNTRIES, getCountryFlag } from '../../constants';
 import { CITIES_BY_COUNTRY } from '../../data/locations';
+import { CategoryGridPicker } from './CategoryGridPicker';
+import { suggestCategory, HELP_CATEGORY_SLUG } from '../../utils/categoryAutoSuggest';
+
+const LAST_CATEGORY_KEY = 'nunulia_last_category';
 
 // Indicatifs téléphoniques par pays
 const PHONE_CODES: Record<string, string> = {
@@ -57,7 +61,14 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
     const prefix = PHONE_CODES[defaultCountry] || '+257';
     return wp.startsWith(prefix) ? wp.slice(prefix.length) : wp;
   });
-  const [category, setCategory] = useState('');
+  // Catégorie : pré-remplie depuis la dernière utilisée (sauf _help)
+  const [category, setCategory] = useState(() => {
+    try {
+      const last = localStorage.getItem(LAST_CATEGORY_KEY);
+      return last && last !== HELP_CATEGORY_SLUG ? last : '';
+    } catch { return ''; }
+  });
+  const [suggested, setSuggested] = useState<string | null>(null);
   const [budget, setBudget]     = useState('');
   const [showOptional, setShowOptional] = useState(false);
 
@@ -84,6 +95,14 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   useEffect(() => {
     if (initialQuery && step === 'form') setTitle(initialQuery);
   }, [initialQuery]);
+
+  // Auto-suggestion catégorie (debounce 350ms pour éviter le jitter pendant la frappe)
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSuggested(suggestCategory(title));
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [title]);
 
   // Load reCAPTCHA script on first open (lazy — not at module import)
   useEffect(() => {
@@ -160,6 +179,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
     if (!trimmedTitle)  { setError(t('jeCherche.form.errorTitle'));    return; }
     if (!digitsOnly)    { setError(t('jeCherche.form.errorWhatsapp')); return; }
     if (!city)          { setError(t('jeCherche.form.errorCity'));      return; }
+    if (!category)      { setError(t('jeCherche.form.errorCategory'));  return; }
 
     // Show loading spinner immediately — before any async work
     // (reCAPTCHA + rate limit can take 1-3s on slow networks)
@@ -196,11 +216,16 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         whatsapp:       fullWhatsapp,
         buyerId:        currentUser?.id,
         buyerName:      currentUser?.name || t('jeCherche.form.anonymousBuyer'),
-        category:       category || undefined,
+        category,
         budget:         budget ? parseFloat(budget) : undefined,
         budgetCurrency: selectedCountry?.currency,
         imageUrl:       imageUrl || undefined,
       });
+
+      // Mémorise la dernière catégorie réelle utilisée (jamais _help)
+      if (category !== HELP_CATEGORY_SLUG) {
+        try { localStorage.setItem(LAST_CATEGORY_KEY, category); } catch { /* quota */ }
+      }
 
       setStep('success');
     } catch (err: any) {
@@ -263,7 +288,24 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
               />
             </div>
 
-            {/* 2. Pays — required */}
+            {/* 2. Catégorie — required (avec suggestion auto + grid + "Je ne sais pas trop") */}
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1.5">
+                {t('jeCherche.form.labelCategory')} <span className="text-red-400">*</span>
+              </label>
+              {categories.length > 0 ? (
+                <CategoryGridPicker
+                  value={category}
+                  onChange={setCategory}
+                  suggested={suggested}
+                  categories={categories}
+                />
+              ) : (
+                <div className="h-20 bg-gray-800/40 border border-gray-700/50 rounded-xl animate-pulse" />
+              )}
+            </div>
+
+            {/* 3. Pays — required */}
             <div>
               <label className="block text-xs font-bold text-gray-400 mb-1.5">
                 {t('jeCherche.form.labelCountry')} <span className="text-red-400">*</span>
@@ -345,27 +387,6 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
 
             {showOptional && (
               <div className="space-y-3 pl-3 border-l-2 border-gray-700/60">
-
-                {/* Catégorie — optionnelle */}
-                {categories.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-1.5">
-                      {t('jeCherche.form.labelCategory')}
-                    </label>
-                    <select
-                      value={category}
-                      onChange={e => setCategory(e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-gold-400/50 outline-none text-sm cursor-pointer"
-                    >
-                      <option value="">{t('jeCherche.form.selectCategory')}</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.icon ? `${cat.icon} ` : ''}{cat.name || cat.id}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
 
                 {/* Image — optionnelle */}
                 <div>

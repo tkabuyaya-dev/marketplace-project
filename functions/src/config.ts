@@ -27,6 +27,10 @@ export const CLOUDINARY_CLOUD_NAME = defineSecret("CLOUDINARY_CLOUD_NAME");
 export const CLOUDINARY_API_KEY = defineSecret("CLOUDINARY_API_KEY");
 export const CLOUDINARY_API_SECRET = defineSecret("CLOUDINARY_API_SECRET");
 
+// Claude Haiku 4.5 — classification de catégorie pour les buyer requests
+// quand le buyer choisit "Je ne sais pas trop" (cf. notify-buyer-request-match).
+export const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+
 // Index names
 export const ALGOLIA_PRODUCTS_INDEX = "products";
 export const ALGOLIA_SELLERS_INDEX = "sellers";

@@ -211,6 +211,7 @@ export type NotificationType =
   | 'boost_activated'
   | 'boost_expired'
   | 'buyer_request_match'
+  | 'buyer_request_help'
   | 'system';
 
 export interface AppNotification {
