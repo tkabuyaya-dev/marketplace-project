@@ -83,6 +83,9 @@ export { backfillSellerShopName } from "./backfill-shop-name.js";
 // One-shot seed: 3 nouvelles catégories Immobilier + Emploi + Événements (V1 expansion 14→17)
 export { seedNewCategories } from "./seed-new-categories.js";
 
+// Génération IA de description produit (Claude Haiku 4.5 + cache + quota gating Pro).
+export { generateProductDescription } from "./generate-product-description.js";
+
 // Seller analytics — returns 30-day activity for the caller's own products
 // (bypasses the userActivity rule that hides viewer identities).
 export { getMyProductsActivity } from "./seller-stats.js";

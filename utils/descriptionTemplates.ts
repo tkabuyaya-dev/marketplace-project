@@ -31,29 +31,28 @@ const TEMPLATES: Record<string, (title: string, price?: string) => string> = {
     `${t}\n\nProduit disponible sur Nunulia Marketplace.\n\nDetails :\n- Etat : [Neuf / Occasion]\n- Disponibilite : Immediate\n\nContactez le vendeur pour plus d'informations et pour organiser la livraison ou le retrait.${p ? `\n\nPrix : ${p}` : ''}`,
 };
 
-// Map category IDs to template keys
+// Map category slugs (les 17 actuels) vers les 7 templates disponibles.
+// Les slugs non listés tombent sur 'default'. Ce fallback ne sert que si l'IA est down.
 const CATEGORY_MAP: Record<string, string> = {
-  'tech': 'tech',
-  'electronique': 'tech',
-  'phones': 'tech',
-  'informatique': 'tech',
-  'fashion': 'fashion',
-  'mode': 'fashion',
-  'vetements': 'fashion',
-  'beauty': 'beauty',
-  'beaute': 'beauty',
-  'sante': 'beauty',
-  'home': 'home',
-  'maison': 'home',
-  'jardin': 'home',
-  'meubles': 'home',
-  'food': 'food',
-  'alimentation': 'food',
-  'boissons': 'food',
-  'auto': 'auto',
-  'moto': 'auto',
-  'vehicules': 'auto',
-  'services': 'services',
+  // Templates spécifiques
+  'electronique-telephonie': 'tech',
+  'mode-accessoires':        'fashion',
+  'beaute-sante':            'beauty',
+  'restaurant':              'food',
+  'supermarche-alimentaire': 'food',
+  'maison-cuisine':          'home',
+  'auto-moto':               'auto',
+  'services':                'services',
+  // Slugs qui retombent sur le template générique (acceptable en V1)
+  'bebe-enfants':            'default',
+  'sport-loisirs':           'default',
+  'education-fournitures':   'default',
+  'construction-btp':        'default',
+  'energie-solaire':         'default',
+  'agriculture-elevage':     'default',
+  'immobilier':              'default',
+  'emploi-recrutement':      'default',
+  'evenements-ceremonies':   'default',
 };
 
 /**

@@ -22,7 +22,7 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useCategories } from '../hooks/useCategories';
 import { useProductScore } from '../hooks/useProductScore';
 import { compressImages } from '../utils/imageCompressor';
-import { generateDescription } from '../utils/descriptionTemplates';
+import { generateAIDescription } from '../services/firebase/ai-description';
 import { getSubscriptionStatus } from '../utils/subscription';
 import { SmartImageUpload } from '../components/SmartImageUpload';
 import { SmartTitleInput } from '../components/SmartTitleInput';
@@ -238,6 +238,10 @@ export const SellerDashboard: React.FC = () => {
   const [productCurrency, setProductCurrency] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
   const [desc, setDesc] = useState('');
+  // État pour la génération IA de description
+  const [descGenLoading, setDescGenLoading] = useState(false);
+  const [descGuessedFields, setDescGuessedFields] = useState<string[]>([]);
+  const [descQuota, setDescQuota] = useState<{ used: number; limit: number; isPro: boolean } | null>(null);
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -443,15 +447,54 @@ export const SellerDashboard: React.FC = () => {
     if (product.subCategory) setSubCategory(product.subCategory);
   }, []);
 
-  const handleGenerateDescription = useCallback(() => {
+  const handleGenerateDescription = useCallback(async () => {
     if (!title.trim()) {
       toast(t('dashboard.generateTitleFirst'), 'error');
       return;
     }
-    const generated = generateDescription(title, category, price ? `${price} ${productCurrency || CURRENCY}` : undefined);
-    setDesc(generated);
-    toast(t('dashboard.descriptionGenerated'), 'success');
-  }, [title, category, price, productCurrency, toast]);
+    if (!category) {
+      toast(t('dashboard.generateCategoryFirst'), 'error');
+      return;
+    }
+    setDescGenLoading(true);
+    const res = await generateAIDescription({
+      title,
+      categorySlug: category,
+      countryId: currentUser?.sellerDetails?.countryId,
+      shopName: currentUser?.sellerDetails?.shopName || currentUser?.name,
+    });
+    setDescGenLoading(false);
+
+    if (res.ok === false) {
+      // Toujours mettre le fallback template pour ne JAMAIS bloquer le vendeur
+      setDesc(res.fallback);
+      setDescGuessedFields([]);
+      const err = res.error;
+      if (err.kind === 'quota_exceeded') {
+        setDescQuota({ used: err.quotaUsed, limit: err.quotaLimit, isPro: false });
+        toast(t('dashboard.descriptionQuotaExceeded'), 'error');
+      } else if (err.kind === 'service_unavailable') {
+        toast(t('dashboard.descriptionFallbackTemplate'), 'info');
+      } else if (err.kind === 'unauthenticated') {
+        toast(t('dashboard.descriptionAuthRequired'), 'error');
+      }
+      return;
+    }
+    // res.ok === true
+    setDesc(res.data.description);
+    setDescGuessedFields(res.data.guessedFields);
+    setDescQuota({
+      used: res.data.quotaUsed,
+      limit: res.data.quotaLimit,
+      isPro: res.data.isPro,
+    });
+    toast(
+      res.data.cached
+        ? t('dashboard.descriptionGeneratedCached')
+        : t('dashboard.descriptionGenerated'),
+      'success',
+    );
+  }, [title, category, currentUser, toast, t]);
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1769,17 +1812,27 @@ export const SellerDashboard: React.FC = () => {
                       selectedSubCategory={subCategory}
                     />
 
-                    {/* Description with generate button */}
+                    {/* Description avec génération IA */}
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-[12.5px] font-semibold text-ink2">{t('dashboard.detailedDescription')}</span>
                           <button
                             type="button"
                             onClick={handleGenerateDescription}
-                            className="inline-flex items-center gap-1 text-[11.5px] font-bold text-goldDeep active:scale-[0.97] transition-transform px-2 py-1 rounded-full"
+                            disabled={descGenLoading}
+                            className="inline-flex items-center gap-1 text-[11.5px] font-bold text-goldDeep active:scale-[0.97] transition-transform px-2.5 py-1 rounded-full disabled:opacity-60 disabled:cursor-wait"
                             style={{ background: 'rgba(245,200,66,0.15)' }}
                           >
-                            <Sparkles size={11} /> {t('dashboard.generateDescription')}
+                            {descGenLoading ? (
+                              <>
+                                <span className="w-3 h-3 border-[1.5px] border-goldDeep border-t-transparent rounded-full animate-spin" />
+                                {t('dashboard.generatingDescription')}
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={11} /> {t('dashboard.generateDescription')}
+                              </>
+                            )}
                           </button>
                         </div>
                         <textarea
@@ -1787,6 +1840,31 @@ export const SellerDashboard: React.FC = () => {
                           className="w-full px-3.5 py-3 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition resize-y min-h-[110px] focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none"
                           placeholder={t('dashboard.descriptionPlaceholder')}
                         />
+                        {/* Specs devinées par l'IA — à vérifier */}
+                        {descGuessedFields.length > 0 && (
+                          <div
+                            className="mt-2 p-2.5 rounded-lg text-[11.5px] leading-relaxed"
+                            style={{ background: 'rgba(245,200,66,0.10)', border: '1px solid rgba(245,200,66,0.30)' }}
+                          >
+                            <div className="flex items-start gap-1.5 text-goldDeep font-semibold mb-1">
+                              <span>🔍</span>
+                              <span>{t('dashboard.aiGuessedHeader')}</span>
+                            </div>
+                            <ul className="space-y-0.5 ml-5 text-ink2">
+                              {descGuessedFields.map((field, i) => (
+                                <li key={i} className="list-disc">{field}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {/* Compteur de quota IA */}
+                        {descQuota && (
+                          <div className="mt-1.5 text-[10.5px] text-muted text-right">
+                            {descQuota.isPro
+                              ? t('dashboard.aiQuotaPro')
+                              : t('dashboard.aiQuotaCount', { used: descQuota.used, limit: descQuota.limit })}
+                          </div>
+                        )}
                     </div>
                   </div>
 
