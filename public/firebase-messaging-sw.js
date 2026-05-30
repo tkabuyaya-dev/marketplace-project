@@ -37,6 +37,14 @@ try {
 function showFromPayload(data) {
   if (!data) return;
   const title = data.title || 'Nunulia';
+  // Broadcaste vers /fcm-debug si la page est ouverte (debug live, no-op sinon).
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const ch = new BroadcastChannel('nunulia-fcm-debug');
+      ch.postMessage({ title, body: data.body, type: data.type, link: data.link, receivedAt: Date.now() });
+      ch.close();
+    }
+  } catch (e) { /* ignore */ }
   return self.registration.showNotification(title, {
     body: data.body || '',
     icon: '/icons/icon-192.png',

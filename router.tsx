@@ -41,6 +41,7 @@ const PrivacyPolicyPage = lazyRetry(() => import('./pages/legal/PrivacyPolicy'))
 const SafetyTipsPage = lazyRetry(() => import('./pages/legal/SafetyTips'));
 const BuyerRequestsPage = lazyRetry(() => import('./pages/BuyerRequests'));
 const AuthGooglePage = lazyRetry(() => import('./pages/AuthGoogle'));
+const FcmDebugPage = lazyRetry(() => import('./pages/FcmDebug'));
 
 // Prefetch critical routes after initial load
 if (typeof window !== 'undefined') {
@@ -117,6 +118,7 @@ export const router = createBrowserRouter([
       { path: 'securite', element: <SuspenseWrapper><SafetyTipsPage /></SuspenseWrapper> },
       { path: 'demandes', element: <SuspenseWrapper><BuyerRequestsPage /></SuspenseWrapper> },
       { path: 'auth-google', element: <SuspenseWrapper><AuthGooglePage /></SuspenseWrapper> },
+      { path: 'fcm-debug', element: <SuspenseWrapper><FcmDebugPage /></SuspenseWrapper> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

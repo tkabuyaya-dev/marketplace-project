@@ -86,6 +86,9 @@ export { seedNewCategories } from "./seed-new-categories.js";
 // Génération IA de description produit (Claude Haiku 4.5 + cache + quota gating Pro).
 export { generateProductDescription } from "./generate-product-description.js";
 
+// Test push FCM pour la page /fcm-debug — envoie un push à ses propres devices.
+export { sendTestPush } from "./send-test-push.js";
+
 // Seller analytics — returns 30-day activity for the caller's own products
 // (bypasses the userActivity rule that hides viewer identities).
 export { getMyProductsActivity } from "./seller-stats.js";
