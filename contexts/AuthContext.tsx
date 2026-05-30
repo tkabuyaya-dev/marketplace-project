@@ -134,24 +134,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await m.refreshFcmTokenSilent(currentUser.id);
           // Handler foreground : le FCM SDK n'auto-affiche les notifs QUE
           // quand la page est en background. Si l'utilisateur regarde
-          // l'app, on doit nous-mêmes afficher la notif. On utilise le
-          // Notification API natif (perm est forcément 'granted' ici)
-          // pour rester cohérent avec l'affichage background du SW.
-          const unsub = await m.onForegroundMessage(({ title, body, data }) => {
+          // l'app, on doit nous-mêmes afficher la notif.
+          //
+          // ⚠️ NE PAS UTILISER `new Notification()` : Chrome Android le bloque
+          // depuis 2024 avec "Illegal constructor" → erreur silencieuse
+          // dans le try/catch, aucune notif affichée sur mobile.
+          // ServiceWorkerRegistration.showNotification() est la seule API
+          // qui fonctionne UNIVERSELLEMENT (desktop + mobile + PWA).
+          const unsub = await m.onForegroundMessage(async ({ title, body, data }) => {
             try {
               if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-              const n = new Notification(title || 'Nunulia', {
+              if (!('serviceWorker' in navigator)) return;
+              const reg = await navigator.serviceWorker.ready;
+              await reg.showNotification(title || 'Nunulia', {
                 body: body || '',
                 icon: '/icons/icon-192.png',
                 badge: '/icons/icon-192.png',
                 tag: data?.type || 'nunulia',
+                data: { link: data?.link || '/' },
               });
-              n.onclick = () => {
-                const link = data?.link || '/';
-                window.focus();
-                if (link && link !== window.location.pathname) navigate(link);
-                n.close();
-              };
+              // Note : le clic est géré par firebase-messaging-sw.js
+              // (event notificationclick) qui sait ouvrir/focus le bon onglet
+              // et naviguer vers data.link. Pas besoin de handler ici.
             } catch { /* navigateur trop restrictif */ }
           });
           if (cancelled) unsub();

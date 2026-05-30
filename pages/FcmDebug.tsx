@@ -139,8 +139,9 @@ export default function FcmDebug() {
     return () => ch.close();
   }, []);
 
-  // ── Test direct : new Notification() ───────────────────────────────
-  const testDirect = useCallback(() => {
+  // ── Test direct via ServiceWorkerRegistration.showNotification() ───
+  // (compatible desktop + mobile — `new Notification()` est bloqué sur Android Chrome)
+  const testDirect = useCallback(async () => {
     setTesting('direct');
     const at = new Date().toLocaleTimeString('fr-FR');
     if (typeof Notification === 'undefined') {
@@ -153,32 +154,24 @@ export default function FcmDebug() {
       setTesting('none');
       return;
     }
+    if (!('serviceWorker' in navigator)) {
+      setResults((p) => [{ type: 'direct' as const, ok: false, message: 'Service Worker non supporté', at }, ...p].slice(0, 10));
+      setTesting('none');
+      return;
+    }
     try {
-      const n = new Notification('🧪 Test direct Nunulia', {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('🧪 Test direct Nunulia', {
         body: `Si tu vois ce popup, l'API Notification marche ! (${at})`,
         icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
         tag: 'fcm-debug-direct',
+        data: { link: '/fcm-debug' },
       });
-      n.onshow = () => {
-        setResults((p) => [{ type: 'direct' as const, ok: true, message: 'Notification créée. Popup visible ?', details: 'Si tu ne vois pas le popup → OS bloque (Focus Assist, Concentration)', at }, ...p].slice(0, 10));
-      };
-      n.onerror = (e) => {
-        setResults((p) => [{ type: 'direct' as const, ok: false, message: 'Erreur affichage', details: String(e), at }, ...p].slice(0, 10));
-      };
-      setTimeout(() => {
-        try { n.close(); } catch { /* */ }
-      }, 10000);
-      // Fallback : si onshow ne se déclenche pas dans 1s, considère comme créée
-      setTimeout(() => {
-        setResults((p) =>
-          p.length === 0 || p[0].at !== at
-            ? [{ type: 'direct' as const, ok: true, message: 'Notification créée. Popup visible ?', details: 'Vérifie en bas à droite Windows ou Centre de notifications', at }, ...p].slice(0, 10)
-            : p
-        );
-        setTesting('none');
-      }, 1000);
+      setResults((p) => [{ type: 'direct' as const, ok: true, message: 'Notification créée via SW. Popup visible ?', details: 'Si tu ne vois rien → OS bloque (Focus Assist Windows, HiOS Tecno, mode silencieux…)', at }, ...p].slice(0, 10));
     } catch (e) {
       setResults((p) => [{ type: 'direct' as const, ok: false, message: 'Exception', details: String(e), at }, ...p].slice(0, 10));
+    } finally {
       setTesting('none');
     }
   }, []);
