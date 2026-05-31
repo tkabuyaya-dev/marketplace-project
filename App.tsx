@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
+import { Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { ConsentBanner } from './components/ConsentBanner';
@@ -29,6 +29,7 @@ const App: React.FC = () => {
     loginLoading,
   } = useAppContext();
   const location = useLocation();
+  const navigate = useNavigate();
   const [jeChercheOpen, setJeChercheOpen] = useState(false);
 
   // Écoute globale du CustomEvent — fonctionne même quand la Navbar est cachée
@@ -37,6 +38,22 @@ const App: React.FC = () => {
     window.addEventListener('open-je-cherche', handler);
     return () => window.removeEventListener('open-je-cherche', handler);
   }, []);
+
+  // Navigation déclenchée par un clic sur une notification push.
+  // Le SW (firebase-messaging-sw.js) poste NOTIFICATION_NAVIGATE avec le lien ;
+  // on route ici via React Router pour rester en SPA (smooth, garde le state).
+  // Pourquoi pas client.navigate côté SW : Chrome 130+ ignore silencieusement.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      const data = event.data;
+      if (data && data.type === 'NOTIFICATION_NAVIGATE' && typeof data.link === 'string') {
+        navigate(data.link);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
+  }, [navigate]);
 
   // Bloque UNIQUEMENT pendant les transitions login/logout (popup Google ouvert).
   // PAS pendant l'init Firebase (authReady) — ça bloquerait le rendu 1-5s sur 4G lente

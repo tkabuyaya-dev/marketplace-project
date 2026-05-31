@@ -80,6 +80,9 @@ self.addEventListener('push', (event) => {
 });
 
 // ── Clic sur la notif ───────────────────────────────────────────────────────
+// Chrome `Client.navigate()` est silencieusement cassé depuis Chrome 130+ :
+// le focus marche mais la navigation ne s'exécute pas. On passe par
+// postMessage → l'app React route via React Router (cf. App.tsx).
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const link = (event.notification.data && event.notification.data.link) || '/';
@@ -90,9 +93,7 @@ self.addEventListener('notificationclick', (event) => {
     for (const client of allClients) {
       if (client.url.startsWith(origin)) {
         await client.focus();
-        if ('navigate' in client) {
-          try { await client.navigate(link); } catch { /* ignore */ }
-        }
+        client.postMessage({ type: 'NOTIFICATION_NAVIGATE', link });
         return;
       }
     }
