@@ -16,20 +16,16 @@ import { useCategories } from '../hooks/useCategories';
 import { verifyRecaptcha, loadRecaptchaScript } from '../services/recaptcha';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useActiveCountries } from '../hooks/useActiveCountries';
+import { validatePhone, normalizeLocalDigits, getPhoneSpec, PHONE_SPECS } from '../utils/phoneValidation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const COUNTRY_DIAL_CODES: Record<string, string> = {
-  bi: '+257',
-  cd: '+243',
-  rw: '+250',
-  // Pays scaffolded — activation via Firestore admin
-  tz: '+255',
-  ke: '+254',
-  ug: '+256',
-};
+// Dial codes dérivés de PHONE_SPECS centralisé (source unique de vérité)
+const COUNTRY_DIAL_CODES: Record<string, string> = Object.fromEntries(
+  Object.entries(PHONE_SPECS).map(([id, spec]) => [id, spec.dialCode]),
+);
 
 const STEPS = [1, 2, 3, 4] as const;
 
@@ -255,7 +251,9 @@ const Step1Profile: React.FC<Step1Props> = ({
 }) => {
   const country = countries.find(c => c.id === form.countryId) || countries[0];
   const dialCode = COUNTRY_DIAL_CODES[form.countryId] || '';
-  const canNext = name.trim() && form.cni.trim() && form.phone.trim() && form.province;
+  const phoneSpec = getPhoneSpec(form.countryId);
+  const phoneCheck = validatePhone(form.countryId, form.phone);
+  const canNext = !!name.trim() && !!form.cni.trim() && phoneCheck.valid && !!form.province;
   const initials =
     name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 
@@ -339,13 +337,14 @@ const Step1Profile: React.FC<Step1Props> = ({
         </div>
 
         <div>
-          <Label>Téléphone WhatsApp</Label>
+          <Label>Téléphone WhatsApp <span className="text-red-500">*</span></Label>
           <TextInput
             type="tel"
-            inputMode="tel"
+            inputMode="numeric"
             value={form.phone}
-            onChange={(e) => onChange('phone', e.target.value)}
-            placeholder="79 412 887"
+            onChange={(e) => onChange('phone', normalizeLocalDigits(e.target.value))}
+            placeholder={phoneSpec.placeholder}
+            maxLength={phoneSpec.digits + 2}
             leftAdornment={
               dialCode ? (
                 <div
@@ -358,6 +357,24 @@ const Step1Profile: React.FC<Step1Props> = ({
               ) : undefined
             }
           />
+          {/* Hint dynamique */}
+          {phoneCheck.digits.length === 0 ? (
+            <p className="text-[11px] text-ink2 mt-1.5">
+              Ex: {phoneSpec.placeholder} — {phoneCheck.required} chiffres requis pour {phoneSpec.flag}
+            </p>
+          ) : phoneCheck.valid ? (
+            <p className="text-[11px] text-green-600 mt-1.5 font-medium">
+              ✓ Numéro complet : {dialCode} {phoneCheck.digits}
+            </p>
+          ) : phoneCheck.missing > 0 ? (
+            <p className="text-[11px] text-orange-600 mt-1.5 font-medium">
+              ⚠ Il manque {phoneCheck.missing} chiffre{phoneCheck.missing > 1 ? 's' : ''} ({phoneCheck.required} requis pour {phoneSpec.flag})
+            </p>
+          ) : (
+            <p className="text-[11px] text-red-600 mt-1.5 font-medium">
+              ⚠ {phoneCheck.extra} chiffre{phoneCheck.extra > 1 ? 's' : ''} en trop
+            </p>
+          )}
         </div>
 
         <div>

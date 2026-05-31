@@ -14,7 +14,20 @@ import { useNotificationConsent } from '../hooks/useNotificationConsent';
 import { useToast } from '../components/Toast';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { INITIAL_COUNTRIES, SUPPORT_WHATSAPP, getCountryFlag } from '../constants';
+import { validatePhone, normalizeLocalDigits, getPhoneSpec, PHONE_SPECS } from '../utils/phoneValidation';
 import type { VerificationTier, User } from '../types';
+
+/**
+ * Devine le countryId d'un user en fonction (1) du préfixe de son WhatsApp existant,
+ * (2) sinon de son sellerDetails.countryId, (3) sinon fallback BI.
+ */
+function inferCountryFromWhatsapp(whatsapp: string, fallbackCountryId: string): string {
+  const clean = (whatsapp || '').replace(/\s/g, '');
+  for (const [id, spec] of Object.entries(PHONE_SPECS)) {
+    if (clean.startsWith(spec.dialCode)) return id;
+  }
+  return fallbackCountryId || 'bi';
+}
 
 // ─────────────────────────────────────────────────────────────
 // PLAN BADGE
@@ -405,16 +418,45 @@ const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }
   const { t } = useTranslation();
   const { toast } = useToast();
   const [name, setName] = useState(user.name || '');
-  const [whatsapp, setWhatsapp] = useState(user.whatsapp || '');
+
+  // Téléphone : on dérive le countryId du préfixe existant (ou sellerDetails),
+  // puis on ne stocke que les chiffres locaux dans le state. À la sauvegarde,
+  // on reconstruit le numéro complet "+XXXNNNNNNNNN".
+  const initialCountryId = inferCountryFromWhatsapp(
+    user.whatsapp || '',
+    user.sellerDetails?.countryId || 'bi',
+  );
+  const initialDigits = normalizeLocalDigits(
+    (user.whatsapp || '').replace(PHONE_SPECS[initialCountryId]?.dialCode || '', '')
+  );
+  const [phoneCountryId, setPhoneCountryId] = useState(initialCountryId);
+  const [phoneDigits, setPhoneDigits] = useState(initialDigits);
+  const phoneSpec = getPhoneSpec(phoneCountryId);
+  const phoneCheck = validatePhone(phoneCountryId, phoneDigits);
+
   const [bio, setBio] = useState(user.bio || '');
   const [saving, setSaving] = useState(false);
 
   if (!open) return null;
 
   const save = async () => {
+    // Bloque si le numéro est saisi mais invalide. Vide est OK (champ optionnel).
+    if (phoneDigits.length > 0 && !phoneCheck.valid) {
+      toast(
+        `Numéro WhatsApp incomplet : ${phoneCheck.required} chiffres requis pour ${phoneSpec.flag}.`,
+        'error',
+      );
+      return;
+    }
+    const fullWhatsapp = phoneDigits ? phoneCheck.fullNumber : '';
+
     setSaving(true);
     try {
-      await updateUserProfile(user.id, { name: name.trim(), whatsapp: whatsapp.trim(), bio: bio.trim() });
+      await updateUserProfile(user.id, {
+        name: name.trim(),
+        whatsapp: fullWhatsapp,
+        bio: bio.trim(),
+      });
       toast(t('profile.profileSaved'), 'success');
       onClose();
     } catch (err) {
@@ -469,13 +511,48 @@ const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }
             <label className="block text-[11px] font-bold mb-1.5 uppercase tracking-wide" style={{ color: '#5C6370' }}>
               {t('profile.whatsapp')}
             </label>
-            <input
-              value={whatsapp}
-              onChange={e => setWhatsapp(e.target.value)}
-              placeholder="+257..."
-              className={inputCls}
-              style={inputStyle}
-            />
+            <div className="flex gap-2">
+              {/* Sélecteur pays — affiche drapeau + indicatif */}
+              <select
+                value={phoneCountryId}
+                onChange={e => setPhoneCountryId(e.target.value)}
+                className="rounded-xl p-3 text-[14px] outline-none shrink-0"
+                style={inputStyle}
+              >
+                {Object.entries(PHONE_SPECS).map(([id, spec]) => (
+                  <option key={id} value={id}>{spec.flag} {spec.dialCode}</option>
+                ))}
+              </select>
+              {/* Chiffres locaux uniquement */}
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={phoneDigits}
+                onChange={e => setPhoneDigits(normalizeLocalDigits(e.target.value))}
+                placeholder={phoneSpec.placeholder}
+                maxLength={phoneSpec.digits + 2}
+                className={inputCls + ' flex-1 tracking-wider'}
+                style={inputStyle}
+              />
+            </div>
+            {/* Hint dynamique */}
+            {phoneDigits.length === 0 ? (
+              <p className="text-[11px] mt-1.5" style={{ color: '#5C6370' }}>
+                Optionnel — {phoneSpec.digits} chiffres pour {phoneSpec.flag}
+              </p>
+            ) : phoneCheck.valid ? (
+              <p className="text-[11px] mt-1.5 text-green-600 font-medium">
+                ✓ {phoneCheck.fullNumber}
+              </p>
+            ) : phoneCheck.missing > 0 ? (
+              <p className="text-[11px] mt-1.5 text-orange-600 font-medium">
+                ⚠ Il manque {phoneCheck.missing} chiffre{phoneCheck.missing > 1 ? 's' : ''}
+              </p>
+            ) : (
+              <p className="text-[11px] mt-1.5 text-red-600 font-medium">
+                ⚠ {phoneCheck.extra} chiffre{phoneCheck.extra > 1 ? 's' : ''} en trop
+              </p>
+            )}
           </div>
           <div className="flex gap-2 pt-2">
             <button

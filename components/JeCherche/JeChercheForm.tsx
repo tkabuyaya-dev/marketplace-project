@@ -24,18 +24,13 @@ import { INITIAL_COUNTRIES, getCountryFlag } from '../../constants';
 import { CITIES_BY_COUNTRY } from '../../data/locations';
 import { CategoryGridPicker } from './CategoryGridPicker';
 import { suggestCategory, HELP_CATEGORY_SLUG } from '../../utils/categoryAutoSuggest';
+import {
+  validatePhone,
+  normalizeLocalDigits,
+  getPhoneSpec,
+} from '../../utils/phoneValidation';
 
 const LAST_CATEGORY_KEY = 'nunulia_last_category';
-
-// Indicatifs téléphoniques par pays
-const PHONE_CODES: Record<string, string> = {
-  bi: '+257',
-  cd: '+243',
-  rw: '+250',
-  ug: '+256',
-  tz: '+255',
-  ke: '+254',
-};
 
 interface JeChercheFormProps {
   isOpen: boolean;
@@ -58,8 +53,9 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   const [city, setCity]         = useState('');
   const [localPhone, setLocalPhone] = useState(() => {
     const wp = currentUser?.whatsapp || '';
-    const prefix = PHONE_CODES[defaultCountry] || '+257';
-    return wp.startsWith(prefix) ? wp.slice(prefix.length) : wp;
+    const prefix = getPhoneSpec(defaultCountry).dialCode;
+    const stripped = wp.startsWith(prefix) ? wp.slice(prefix.length) : wp;
+    return normalizeLocalDigits(stripped);
   });
   // Catégorie : pré-remplie depuis la dernière utilisée (sauf _help)
   const [category, setCategory] = useState(() => {
@@ -87,7 +83,9 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   const titleRef = useRef<HTMLInputElement>(null);
 
   // Derived
-  const phonePrefix = PHONE_CODES[countryId] || '+257';
+  const phoneSpec   = getPhoneSpec(countryId);
+  const phonePrefix = phoneSpec.dialCode;
+  const phoneCheck  = validatePhone(countryId, localPhone);
   const cities      = CITIES_BY_COUNTRY[countryId] || [];
   const selectedCountry = INITIAL_COUNTRIES.find(c => c.id === countryId);
 
@@ -172,12 +170,19 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
     setError('');
 
     const trimmedTitle = title.trim();
-    const digitsOnly   = localPhone.replace(/\D/g, '');
+    const digitsOnly   = normalizeLocalDigits(localPhone);
     const fullWhatsapp = phonePrefix + digitsOnly;
 
     // Synchronous validation — fail fast before any network call
     if (!trimmedTitle)  { setError(t('jeCherche.form.errorTitle'));    return; }
     if (!digitsOnly)    { setError(t('jeCherche.form.errorWhatsapp')); return; }
+    if (!phoneCheck.valid) {
+      const msg = phoneCheck.missing > 0
+        ? `Il manque ${phoneCheck.missing} chiffre${phoneCheck.missing > 1 ? 's' : ''} (${phoneCheck.required} requis pour ${phoneSpec.flag}).`
+        : `${phoneCheck.extra} chiffre${phoneCheck.extra > 1 ? 's' : ''} en trop (${phoneCheck.required} requis pour ${phoneSpec.flag}).`;
+      setError(msg);
+      return;
+    }
     if (!city)          { setError(t('jeCherche.form.errorCity'));      return; }
     if (!category)      { setError(t('jeCherche.form.errorCategory'));  return; }
 
@@ -351,25 +356,60 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
               <label className="block text-xs font-bold text-gray-400 mb-1.5">
                 {t('jeCherche.form.labelWhatsapp')} <span className="text-red-400">*</span>
               </label>
-              <div className="flex gap-0 rounded-xl overflow-hidden border border-gray-700 focus-within:border-gold-400/50 focus-within:ring-1 focus-within:ring-gold-400/20 transition-all">
+              <div className={`flex gap-0 rounded-xl overflow-hidden border focus-within:ring-1 transition-all ${
+                phoneCheck.digits.length === 0
+                  ? 'border-gray-700 focus-within:border-gold-400/50 focus-within:ring-gold-400/20'
+                  : phoneCheck.valid
+                    ? 'border-green-500/40 focus-within:ring-green-500/20'
+                    : 'border-red-500/40 focus-within:ring-red-500/20'
+              }`}>
                 {/* Indicatif pays — non modifiable, change avec le pays */}
                 <div className="flex items-center gap-1.5 px-3 py-3 bg-gray-700/60 border-r border-gray-700 shrink-0 select-none">
                   <span className="text-base leading-none">{selectedCountry ? getCountryFlag(selectedCountry) : ''}</span>
                   <span className="text-sm font-bold text-gold-400 tracking-wide">{phonePrefix}</span>
                 </div>
-                {/* Numéro local */}
+                {/* Numéro local — input strict : on n'accepte que les chiffres */}
                 <input
                   type="tel"
                   value={localPhone}
-                  onChange={e => setLocalPhone(e.target.value)}
-                  placeholder="79 000 000"
-                  inputMode="tel"
-                  className="flex-1 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 outline-none text-sm min-w-0"
+                  onChange={e => setLocalPhone(normalizeLocalDigits(e.target.value))}
+                  placeholder={phoneSpec.placeholder}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={phoneSpec.digits + 2}
+                  className="flex-1 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 outline-none text-sm min-w-0 tracking-wider"
                 />
+                {/* Compteur live à droite */}
+                <div className="flex items-center px-3 py-3 bg-gray-700/40 border-l border-gray-700 shrink-0 select-none">
+                  <span className={`text-xs font-mono font-bold ${
+                    phoneCheck.valid
+                      ? 'text-green-400'
+                      : phoneCheck.digits.length === 0
+                        ? 'text-gray-500'
+                        : 'text-orange-400'
+                  }`}>
+                    {phoneCheck.digits.length}/{phoneCheck.required}
+                  </span>
+                </div>
               </div>
-              <p className="text-[10px] text-gray-600 mt-1 pl-1">
-                {t('jeCherche.form.whatsappHint', { prefix: phonePrefix })}
-              </p>
+              {/* Hint dynamique selon état */}
+              {phoneCheck.digits.length === 0 ? (
+                <p className="text-[10px] text-gray-600 mt-1 pl-1">
+                  Ex: {phoneSpec.placeholder} — {phoneCheck.required} chiffres requis pour {phoneSpec.flag}
+                </p>
+              ) : phoneCheck.valid ? (
+                <p className="text-[10px] text-green-400 mt-1 pl-1">
+                  ✓ Numéro complet : {phonePrefix} {phoneCheck.digits}
+                </p>
+              ) : phoneCheck.missing > 0 ? (
+                <p className="text-[10px] text-orange-400 mt-1 pl-1">
+                  ⚠ Il manque {phoneCheck.missing} chiffre{phoneCheck.missing > 1 ? 's' : ''} ({phoneCheck.required} requis pour {phoneSpec.flag})
+                </p>
+              ) : (
+                <p className="text-[10px] text-red-400 mt-1 pl-1">
+                  ⚠ {phoneCheck.extra} chiffre{phoneCheck.extra > 1 ? 's' : ''} en trop — vérifiez le numéro
+                </p>
+              )}
             </div>
 
             {/* Options facultatives */}
@@ -482,8 +522,8 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-gold-400 hover:bg-gold-300 disabled:opacity-60 disabled:cursor-not-allowed text-gray-900 font-black rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+              disabled={loading || !phoneCheck.valid || !title.trim() || !city || !category}
+              className="w-full py-3.5 bg-gold-400 hover:bg-gold-300 disabled:opacity-60 disabled:cursor-not-allowed text-gray-900 font-black rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
