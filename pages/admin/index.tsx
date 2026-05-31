@@ -27,6 +27,7 @@ const Users = lazy(() => import('./Users').then(m => ({ default: m.Users })));
 const Categories = lazy(() => import('./Categories').then(m => ({ default: m.Categories })));
 const Currencies = lazy(() => import('./Currencies').then(m => ({ default: m.Currencies })));
 const BuyerRequestsAdmin = lazy(() => import('./BuyerRequestsAdmin').then(m => ({ default: m.BuyerRequestsAdmin })));
+const BuyerRequestsHealth = lazy(() => import('./BuyerRequestsHealth').then(m => ({ default: m.BuyerRequestsHealth })));
 const AuditLogs = lazy(() => import('./AuditLogs').then(m => ({ default: m.AuditLogs })));
 const BoostRequestsAdmin = lazy(() => import('./BoostRequestsAdmin').then(m => ({ default: m.BoostRequestsAdmin })));
 
@@ -150,6 +151,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'overview', label: t('admin.tabOverview') },
     { id: 'products', label: t('admin.tabProducts'), badge: pendingCount },
     { id: 'requests', label: t('admin.tabRequests') },
+    { id: 'health', label: '📊 Santé Je Cherche' },
     { id: 'banners', label: t('admin.tabBanners') },
     { id: 'subs', label: t('admin.tabSubscriptions') },
     { id: 'users', label: t('admin.tabUsers') },
@@ -236,6 +238,9 @@ export const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'requests' && (
             <BuyerRequestsAdmin {...sharedProps} />
+          )}
+          {activeTab === 'health' && (
+            <BuyerRequestsHealth {...sharedProps} users={users} />
           )}
           {activeTab === 'audit' && (
             <AuditLogs {...sharedProps} />

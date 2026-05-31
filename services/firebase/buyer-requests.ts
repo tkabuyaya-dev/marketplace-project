@@ -217,6 +217,45 @@ export async function clearModerationFlag(requestId: string): Promise<void> {
   });
 }
 
+// ─── Health Dashboard Queries ─────────────────────────────────────────────────
+
+/** Récupère toutes les demandes des N derniers jours (admin only). */
+export async function getRecentRequestsForHealth(daysBack: number): Promise<BuyerRequest[]> {
+  if (!db) return [];
+  const since = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+  const q = query(
+    collection(db, COLLECTIONS.BUYER_REQUESTS),
+    where('createdAt', '>=', since),
+    orderBy('createdAt', 'desc'),
+    limit(2000),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => docToBuyerRequest(d.data(), d.id));
+}
+
+/** Récupère tous les contacts WhatsApp des N derniers jours (admin only). */
+export async function getRecentContactsForHealth(daysBack: number): Promise<BuyerRequestContact[]> {
+  if (!db) return [];
+  const since = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+  const q = query(
+    collection(db, COLLECTIONS.BUYER_REQUEST_CONTACTS),
+    where('timestamp', '>=', since),
+    orderBy('timestamp', 'desc'),
+    limit(5000),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => {
+    const data = d.data() as any;
+    return {
+      id: d.id,
+      requestId: data.requestId || '',
+      sellerId: data.sellerId || '',
+      sellerTierId: data.sellerTierId || '',
+      timestamp: data.timestamp || 0,
+    };
+  });
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
 export async function getAllBuyerRequestsForAdmin(
