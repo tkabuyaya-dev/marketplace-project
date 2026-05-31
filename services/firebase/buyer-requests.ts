@@ -26,23 +26,25 @@ export const PAGE_SIZE = 20;
 function docToBuyerRequest(data: any, id: string): BuyerRequest {
   return {
     id,
-    title:          data.title || '',
-    description:    data.description || undefined,
-    countryId:      data.countryId || '',
-    province:       data.province || '',
-    city:           data.city || '',
-    category:       data.category || undefined,
-    budget:         data.budget ?? undefined,
-    budgetCurrency: data.budgetCurrency || undefined,
-    imageUrl:       data.imageUrl || undefined,
-    whatsapp:       data.whatsapp || '',
-    buyerId:        data.buyerId || undefined,
-    buyerName:      data.buyerName || 'Acheteur',
-    status:         data.status || 'active',
-    createdAt:      data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
-    expiresAt:      data.expiresAt?.toMillis?.() || data.expiresAt || Date.now() + SEVEN_DAYS_MS,
-    viewCount:      data.viewCount || 0,
-    contactCount:   data.contactCount || 0,
+    title:            data.title || '',
+    description:      data.description || undefined,
+    countryId:        data.countryId || '',
+    province:         data.province || '',
+    city:             data.city || '',
+    category:         data.category || undefined,
+    budget:           data.budget ?? undefined,
+    budgetCurrency:   data.budgetCurrency || undefined,
+    imageUrl:         data.imageUrl || undefined,
+    whatsapp:         data.whatsapp || '',
+    buyerId:          data.buyerId || undefined,
+    buyerName:        data.buyerName || 'Acheteur',
+    status:           data.status || 'active',
+    createdAt:        data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
+    expiresAt:        data.expiresAt?.toMillis?.() || data.expiresAt || Date.now() + SEVEN_DAYS_MS,
+    viewCount:        data.viewCount || 0,
+    contactCount:     data.contactCount || 0,
+    moderationFlag:   data.moderationFlag === true ? true : undefined,
+    moderationReason: data.moderationReason || undefined,
   };
 }
 
@@ -205,6 +207,14 @@ export async function deleteBuyerRequest(requestId: string): Promise<void> {
 export async function adminDeleteBuyerRequest(requestId: string): Promise<void> {
   if (!db) return;
   await deleteDoc(doc(db, COLLECTIONS.BUYER_REQUESTS, requestId));
+}
+
+/** Admin : marque une demande borderline comme validée (clear le flag). */
+export async function clearModerationFlag(requestId: string): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, COLLECTIONS.BUYER_REQUESTS, requestId), {
+    moderationFlag: false,
+  });
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

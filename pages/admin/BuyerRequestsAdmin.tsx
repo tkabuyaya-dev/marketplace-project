@@ -13,8 +13,11 @@ import {
   adminDeleteBuyerRequest,
   markRequestFulfilled,
   getBuyerRequestStats,
+  clearModerationFlag,
 } from '../../services/firebase/buyer-requests';
 import { AdminSharedProps } from './types';
+
+type ModerationFilter = 'all' | 'borderline';
 
 const STATUS_COLORS: Record<BuyerRequestStatus, string> = {
   active:    'bg-green-500/20 text-green-400 border-green-500/30',
@@ -36,9 +39,11 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
   const [requests, setRequests] = useState<BuyerRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<BuyerRequestStatus | 'all'>('all');
+  const [moderationFilter, setModerationFilter] = useState<ModerationFilter>('all');
   const [stats, setStats] = useState<{ todayCount: number; fulfilledCount: number } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [clearingFlagId, setClearingFlagId] = useState<string | null>(null);
   const [spamPanelOpen, setSpamPanelOpen] = useState(true);
 
   // Spam detection: same WhatsApp > 5 requests in the last 24h across all loaded requests
@@ -103,14 +108,33 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
     } catch { /* silent */ }
   };
 
+  const handleClearFlag = async (id: string) => {
+    setClearingFlagId(id);
+    try {
+      await clearModerationFlag(id);
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, moderationFlag: undefined } : r));
+    } catch {
+      /* silent */
+    } finally {
+      setClearingFlagId(null);
+    }
+  };
+
   const formatDate = (ts: number) => new Date(ts).toLocaleDateString('fr-FR', {
     day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
   });
+
+  const visibleRequests = useMemo(() => (
+    moderationFilter === 'borderline'
+      ? requests.filter(r => r.moderationFlag === true)
+      : requests
+  ), [requests, moderationFilter]);
 
   const totalRequests = requests.length;
   const activeCount   = requests.filter(r => r.status === 'active').length;
   const fulfilledCount = requests.filter(r => r.status === 'fulfilled').length;
   const totalContacts = requests.reduce((s, r) => s + r.contactCount, 0);
+  const borderlineCount = requests.filter(r => r.moderationFlag === true).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -193,7 +217,7 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {(['all', 'active', 'fulfilled', 'expired', 'deleted'] as const).map(s => (
           <button
             key={s}
@@ -207,6 +231,20 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
             {s === 'all' ? 'Tout' : STATUS_LABELS[s]}
           </button>
         ))}
+
+        <span className="text-gray-700">|</span>
+
+        <button
+          onClick={() => setModerationFilter(moderationFilter === 'borderline' ? 'all' : 'borderline')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors border ${
+            moderationFilter === 'borderline'
+              ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+              : 'text-orange-400/70 hover:text-orange-300 border-orange-500/20'
+          }`}
+        >
+          🟠 Borderline {borderlineCount > 0 && <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-orange-500/30">{borderlineCount}</span>}
+        </button>
+
         <button
           onClick={loadRequests}
           className="ml-auto px-3 py-1.5 text-xs text-gray-500 hover:text-white border border-gray-700 rounded-lg transition-colors"
@@ -222,17 +260,19 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
             <div key={i} className="bg-gray-800/40 rounded-xl h-16 animate-pulse" />
           ))}
         </div>
-      ) : requests.length === 0 ? (
+      ) : visibleRequests.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <p className="text-4xl mb-3">📭</p>
           <p>Aucune demande trouvée.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {requests.map(r => (
+          {visibleRequests.map(r => (
             <div
               key={r.id}
-              className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3"
+              className={`bg-gray-800/40 border rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3 ${
+                r.moderationFlag ? 'border-orange-500/40 bg-orange-950/10' : 'border-gray-700/50'
+              }`}
             >
               {/* Info */}
               <div className="flex-1 min-w-0">
@@ -243,8 +283,21 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
                   {r.category && (
                     <span className="text-[10px] text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded-full">{r.category}</span>
                   )}
+                  {r.moderationFlag && (
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/40"
+                      title={r.moderationReason || 'À vérifier'}
+                    >
+                      🟠 Borderline
+                    </span>
+                  )}
                 </div>
                 <p className="font-bold text-white text-sm truncate">{r.title}</p>
+                {r.moderationFlag && r.moderationReason && (
+                  <p className="text-[11px] text-orange-300/80 italic mt-0.5">
+                    🤖 IA : {r.moderationReason}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-500">
                   <span>📍 {r.city}, {r.province}</span>
                   <span>👤 {r.buyerName}</span>
@@ -256,6 +309,15 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
 
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                {r.moderationFlag && (
+                  <button
+                    onClick={() => handleClearFlag(r.id)}
+                    disabled={clearingFlagId === r.id}
+                    className="px-3 py-1.5 text-xs text-orange-300 border border-orange-400/30 rounded-lg hover:bg-orange-400/10 transition-colors font-bold disabled:opacity-50"
+                  >
+                    {clearingFlagId === r.id ? '...' : '✅ Valider'}
+                  </button>
+                )}
                 {r.status === 'active' && (
                   <button
                     onClick={() => handleFulfill(r.id)}

@@ -16,7 +16,8 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { getDb } from "./admin.js";
 import { FieldValue } from "firebase-admin/firestore";
-import { ALLOWED_ORIGINS } from "./config.js";
+import { ALLOWED_ORIGINS, ANTHROPIC_API_KEY } from "./config.js";
+import { moderateBuyerRequest } from "./moderate-buyer-request.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_REQUESTS_PER_DAY = 3;
@@ -63,6 +64,9 @@ export const submitBuyerRequest = onCall(
     region: "europe-west1",
     maxInstances: 20,
     cors: ALLOWED_ORIGINS,
+    secrets: [ANTHROPIC_API_KEY],
+    // 60s pour couvrir l'appel Anthropic (600-900ms typ.) + rate-limit query + write.
+    timeoutSeconds: 60,
   },
   async (request) => {
     const data = request.data as SubmitBuyerRequestData;
@@ -130,6 +134,27 @@ export const submitBuyerRequest = onCall(
       );
     }
 
+    // ── Modération IA (Claude Haiku 4.5) ─────────────────────────────
+    // Bloque les contenus illicites avant publication. Fail-open si Anthropic
+    // est down (cf. moderate-buyer-request.ts) pour ne pas casser le service.
+    const moderation = await moderateBuyerRequest({
+      title: data.title,
+      description: data.description,
+      category: data.category,
+    });
+
+    if (moderation.verdict === "reject") {
+      logger.warn("[submitBuyerRequest] BLOCKED by AI moderation:", {
+        whatsapp: whatsapp.slice(0, 6) + "***",
+        title: data.title.slice(0, 100),
+        reason: moderation.reason,
+      });
+      throw new HttpsError(
+        "invalid-argument",
+        "Demande refusée. Vérifiez le contenu et réessayez."
+      );
+    }
+
     // ── Création du document (Admin SDK — bypass rules, timestamp serveur) ──
     const now = Date.now();
     const ref = await db.collection(COLLECTION).add({
@@ -153,9 +178,18 @@ export const submitBuyerRequest = onCall(
       contactCount:   0,
       // Timestamp Firestore natif pour les requêtes server-side
       createdAtTs:    FieldValue.serverTimestamp(),
+      // Borderline : publié mais flagué pour review admin
+      ...(moderation.verdict === "borderline" && {
+        moderationFlag: true,
+        moderationReason: moderation.reason,
+      }),
     });
 
-    logger.info("[submitBuyerRequest] Created:", { id: ref.id, whatsapp: whatsapp.slice(0, 6) + "***" });
+    logger.info("[submitBuyerRequest] Created:", {
+      id: ref.id,
+      whatsapp: whatsapp.slice(0, 6) + "***",
+      moderation: moderation.verdict,
+    });
 
     return { id: ref.id };
   }

@@ -294,6 +294,11 @@ export interface BuyerRequest {
   expiresAt: number;       // createdAt + 7 jours
   viewCount: number;
   contactCount: number;    // Clics WhatsApp
+  // Modération Claude Haiku 4.5 (cf. functions/src/moderate-buyer-request.ts).
+  // Si true, demande publiée mais à vérifier par l'admin (verdict "borderline").
+  // Les "reject" ne sont jamais persistés (HttpsError côté CF, audit dans Cloud Logs).
+  moderationFlag?: boolean;
+  moderationReason?: string;
 }
 
 export interface BuyerRequestContact {
