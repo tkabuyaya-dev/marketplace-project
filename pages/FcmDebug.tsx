@@ -44,6 +44,10 @@ interface Diagnostic {
   localToken: string | null;
   remoteTokens: RemoteToken[];
   fcmReady: boolean;
+  isIOS: boolean;
+  iosVersion: number | null;     // Major version (16, 17, etc.) or null si non-iOS
+  isStandalone: boolean;          // true = installé en PWA (Home Screen)
+  pushSupportedIOS: boolean;      // iOS 16.4+ AND standalone — sinon impossible
 }
 
 interface TestResult {
@@ -64,6 +68,22 @@ export default function FcmDebug() {
 
   // ── Collecte diagnostic ────────────────────────────────────────────
   const collect = useCallback(async () => {
+    // iOS-specific detection : Web Push n'existe sur iOS qu'à partir de 16.4
+    // ET uniquement quand l'app est installée en PWA (Add to Home Screen).
+    // Hors PWA, navigator.standalone est false et Apple bloque le Web Push.
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
+    let iosVersion: number | null = null;
+    if (isIOS) {
+      // ex: "OS 16_4_1 like Mac OS X" → 16
+      const m = ua.match(/OS (\d+)[_\.](\d+)/);
+      if (m) iosVersion = parseInt(m[1], 10) + parseInt(m[2], 10) / 100;
+    }
+    const isStandalone =
+      (window as unknown as { navigator: { standalone?: boolean } }).navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+    const pushSupportedIOS = !isIOS || (iosVersion !== null && iosVersion >= 16.4 && isStandalone);
+
     const d: Diagnostic = {
       permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
       swCount: 0,
@@ -71,6 +91,10 @@ export default function FcmDebug() {
       localToken: null,
       remoteTokens: [],
       fcmReady: false,
+      isIOS,
+      iosVersion,
+      isStandalone,
+      pushSupportedIOS,
     };
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -227,14 +251,46 @@ export default function FcmDebug() {
         </p>
       </header>
 
+      {/* ⚠️ Bandeau iOS — Apple bloque Web Push hors PWA installée */}
+      {diag?.isIOS && !diag.pushSupportedIOS && (
+        <div className="rounded-2xl p-4 border-2 bg-red-50 border-red-300">
+          <div className="text-base font-bold mb-2 text-red-800">
+            🍎 iOS détecté — push impossible en l'état
+          </div>
+          <div className="text-xs text-red-900 space-y-1">
+            {diag.iosVersion !== null && diag.iosVersion < 16.4 && (
+              <p>❌ <b>iOS {diag.iosVersion.toFixed(2)}</b> — il faut iOS 16.4 minimum. Mettez à jour votre iPhone.</p>
+            )}
+            {(diag.iosVersion === null || diag.iosVersion >= 16.4) && !diag.isStandalone && (
+              <>
+                <p>❌ <b>L'app n'est PAS installée</b> sur votre écran d'accueil.</p>
+                <p className="mt-2 font-bold">Comment installer (obligatoire pour les notifications) :</p>
+                <ol className="list-decimal ml-5 space-y-0.5">
+                  <li>Ouvrir Safari (pas Chrome ni Brave sur iPhone)</li>
+                  <li>Aller sur <b>nunulia.com</b></li>
+                  <li>Toucher l'icône <b>Partager</b> (carré avec flèche ↑) en bas</li>
+                  <li>Faire défiler → <b>« Sur l'écran d'accueil »</b></li>
+                  <li>Toucher <b>« Ajouter »</b> en haut à droite</li>
+                  <li>Ouvrir Nunulia depuis l'écran d'accueil (PAS Safari)</li>
+                  <li>Autoriser les notifications dans le Profil</li>
+                </ol>
+                <p className="mt-2 italic">C'est une limitation Apple : Safari iOS refuse les notifications hors PWA installée.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* État global */}
-      {diag && (
+      {diag && (!diag.isIOS || diag.pushSupportedIOS) && (
         <div className={`rounded-2xl p-4 border-2 ${diag.fcmReady ? 'bg-green-50 border-green-300' : 'bg-orange-50 border-orange-300'}`}>
           <div className="text-base font-bold mb-1">
             {diag.fcmReady ? '✅ Pipeline FCM opérationnel' : '⚠️ Pipeline FCM incomplet'}
           </div>
           <div className="text-xs text-gray-700">
-            Si les push ne s'affichent pas malgré ce statut vert → c'est Windows / l'OS qui bloque (Focus Assist, mode Ne pas déranger…).
+            {diag.isIOS
+              ? 'iOS PWA détectée. Si les push ne s\'affichent pas → vérifier les réglages iOS (Réglages → Notifications → Nunulia).'
+              : 'Si les push ne s\'affichent pas malgré ce statut vert → c\'est Windows / l\'OS qui bloque (Focus Assist, mode Ne pas déranger…).'}
           </div>
         </div>
       )}
@@ -243,6 +299,19 @@ export default function FcmDebug() {
       {diag && (
         <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <h2 className="text-sm font-bold text-gray-700">État technique</h2>
+
+          {diag.isIOS && (
+            <>
+              <Row label="iOS version">
+                <Badge ok={diag.iosVersion !== null && diag.iosVersion >= 16.4}>
+                  {diag.iosVersion !== null ? diag.iosVersion.toFixed(2) : 'inconnu'}
+                </Badge>
+              </Row>
+              <Row label="App installée (PWA)">
+                <Badge ok={diag.isStandalone}>{diag.isStandalone ? 'oui' : 'non — bloque tout'}</Badge>
+              </Row>
+            </>
+          )}
 
           <Row label="Permission navigateur">
             <Badge ok={diag.permission === 'granted'}>{diag.permission}</Badge>
