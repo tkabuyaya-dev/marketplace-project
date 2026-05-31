@@ -11,14 +11,16 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Search, SlidersHorizontal,
-  MessageCircle, Lock, Zap, X, RefreshCw, ChevronDown,
+  MessageCircle, Lock, Zap, X, RefreshCw, ChevronDown, Flag,
 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import {
   getBuyerRequests, trackWhatsAppContact, canContactBuyer,
+  flagBuyerRequest,
   BuyerRequestFilters, PAGE_SIZE,
 } from '../services/firebase/buyer-requests';
-import { BuyerRequest } from '../types';
+import { BuyerRequest, BuyerRequestFlagReason } from '../types';
+import { useToast } from '../components/Toast';
 import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
 import { CITIES_BY_COUNTRY } from '../data/locations';
 
@@ -358,7 +360,7 @@ function ExpiryPill({ days }: { days: number }) {
 /* ─────────────────────── REQUEST CARD ──────────────────────── */
 
 function RequestCard({
-  request, locked, index, eligible, onContact, onUpgrade,
+  request, locked, index, eligible, onContact, onUpgrade, onFlag, flagged,
 }: {
   request: BuyerRequest;
   locked: boolean;
@@ -366,6 +368,8 @@ function RequestCard({
   eligible: boolean;
   onContact: (r: BuyerRequest) => void;
   onUpgrade: () => void;
+  onFlag: (r: BuyerRequest) => void;
+  flagged: boolean;
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const remaining = daysLeft(request.expiresAt);
@@ -480,6 +484,25 @@ function RequestCard({
           Contacter sur WhatsApp
         </button>
       )}
+
+      {/* Flag discret — opt-in pour signaler une demande suspecte */}
+      <div className="mt-2 flex justify-end">
+        {flagged ? (
+          <span className="text-[10px] text-[#5C6370] inline-flex items-center gap-1">
+            <Flag size={10} strokeWidth={2.5} className="fill-current" />
+            Signalement envoyé
+          </span>
+        ) : (
+          <button
+            onClick={() => onFlag(request)}
+            className="text-[10px] text-[#5C6370] hover:text-red-600 transition-colors inline-flex items-center gap-1"
+            aria-label="Signaler cette demande"
+          >
+            <Flag size={10} strokeWidth={2} />
+            Signaler
+          </button>
+        )}
+      </div>
     </article>
   );
 }
@@ -609,6 +632,12 @@ export const BuyerRequestsPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const lastDocRef = useRef<unknown>(null);
 
+  // Flag (signalement community) state
+  const [flagging, setFlagging] = useState<BuyerRequest | null>(null);
+  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
+  const [submittingFlag, setSubmittingFlag] = useState(false);
+  const { toast } = useToast();
+
   const openSheet = () => {
     setDraftCountry(filterCountry);
     setDraftCity(filterCity);
@@ -662,6 +691,41 @@ export const BuyerRequestsPage: React.FC = () => {
     );
     const phone = request.whatsapp.replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleFlag = (request: BuyerRequest) => {
+    setFlagging(request);
+  };
+
+  const submitFlag = async (reason: BuyerRequestFlagReason, comment: string) => {
+    if (!flagging) return;
+    setSubmittingFlag(true);
+    try {
+      const res = await flagBuyerRequest(flagging.id, reason, comment.trim() || undefined);
+      const id = flagging.id;
+      setFlaggedIds(prev => new Set(prev).add(id));
+      setFlagging(null);
+      if (res.suspended) {
+        toast('Demande suspendue suite à plusieurs signalements. Merci.', 'success');
+        // Retire de la liste visible immédiatement
+        setRequests(prev => prev.filter(r => r.id !== id));
+      } else if (res.alreadyHandled) {
+        toast('Signalement déjà enregistré pour cette demande.', 'info');
+      } else {
+        toast('Merci, votre signalement aide à protéger la communauté.', 'success');
+      }
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code.includes('unauthenticated')) {
+        toast('Connexion requise pour signaler.', 'error');
+      } else if (code.includes('permission-denied')) {
+        toast('Compte suspendu — signalement impossible.', 'error');
+      } else {
+        toast('Échec du signalement. Réessayez.', 'error');
+      }
+    } finally {
+      setSubmittingFlag(false);
+    }
   };
 
   // Active chips for the filter bar
@@ -728,6 +792,8 @@ export const BuyerRequestsPage: React.FC = () => {
                 eligible={eligible}
                 onContact={handleContact}
                 onUpgrade={() => navigate('/plans')}
+                onFlag={handleFlag}
+                flagged={flaggedIds.has(r.id)}
               />
             ))}
 
@@ -760,8 +826,135 @@ export const BuyerRequestsPage: React.FC = () => {
         onApply={applySheet}
         onClose={() => setSheetOpen(false)}
       />
+
+      {/* Flag modal — signalement community */}
+      {flagging && (
+        <FlagModal
+          request={flagging}
+          submitting={submittingFlag}
+          onCancel={() => setFlagging(null)}
+          onSubmit={submitFlag}
+        />
+      )}
     </>
   );
 };
+
+/* ─────────────────────── FLAG MODAL ──────────────────────── */
+
+const FLAG_REASONS: Array<{ value: BuyerRequestFlagReason; label: string }> = [
+  { value: 'spam',         label: 'Spam (texte aléatoire, hors sujet)' },
+  { value: 'illegal',      label: 'Contenu illégal' },
+  { value: 'scam',         label: "Tentative d'arnaque" },
+  { value: 'fake_number',  label: 'Faux numéro WhatsApp' },
+  { value: 'other',        label: 'Autre (précisez)' },
+];
+
+function FlagModal({
+  request, submitting, onCancel, onSubmit,
+}: {
+  request: BuyerRequest;
+  submitting: boolean;
+  onCancel: () => void;
+  onSubmit: (reason: BuyerRequestFlagReason, comment: string) => void;
+}) {
+  const [reason, setReason] = useState<BuyerRequestFlagReason>('spam');
+  const [comment, setComment] = useState('');
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-3"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto"
+        style={{ animation: 'nu-sheet-up 220ms cubic-bezier(.2,.7,.2,1)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="text-base font-black text-[#111318]">Signaler cette demande</h3>
+            <p className="text-[11px] text-[#5C6370] mt-0.5 truncate max-w-[260px]">
+              "{request.title}"
+            </p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#5C6370] hover:bg-black/5"
+            aria-label="Fermer"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        <p className="text-xs text-[#5C6370] mb-3">
+          Pourquoi cette demande est suspecte ?
+        </p>
+
+        <div className="space-y-2 mb-4">
+          {FLAG_REASONS.map(r => (
+            <label
+              key={r.value}
+              className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-colors ${
+                reason === r.value
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-black/10 hover:border-black/20'
+              }`}
+            >
+              <input
+                type="radio"
+                name="flag-reason"
+                value={r.value}
+                checked={reason === r.value}
+                onChange={() => setReason(r.value)}
+                className="accent-red-500"
+              />
+              <span className="text-[13px] text-[#111318]">{r.label}</span>
+            </label>
+          ))}
+        </div>
+
+        {reason === 'other' && (
+          <textarea
+            value={comment}
+            onChange={e => setComment(e.target.value.slice(0, 300))}
+            placeholder="Précisez (max 300 caractères)…"
+            rows={3}
+            className="w-full p-2.5 text-[13px] border border-black/10 rounded-xl resize-none focus:border-red-500 outline-none mb-3"
+          />
+        )}
+
+        <p className="text-[10px] text-[#5C6370] italic mb-3">
+          3 signalements indépendants entraînent la suspension automatique.
+          L'équipe revoit ensuite la demande.
+        </p>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            disabled={submitting}
+            className="flex-1 h-10 rounded-xl border border-black/10 text-[13px] font-bold text-[#5C6370] hover:bg-black/5 disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => onSubmit(reason, comment)}
+            disabled={submitting}
+            className="flex-1 h-10 rounded-xl bg-red-600 text-white text-[13px] font-black active:scale-[0.98] disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+          >
+            {submitting ? (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Flag size={14} strokeWidth={2.5} />
+                Confirmer
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default BuyerRequestsPage;

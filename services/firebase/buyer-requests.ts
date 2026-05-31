@@ -7,7 +7,13 @@
  * - Only Business Pro / Élite / Grossiste sellers can contact via WhatsApp
  */
 
-import { BuyerRequest, BuyerRequestContact, BuyerRequestStatus } from '../../types';
+import {
+  BuyerRequest,
+  BuyerRequestContact,
+  BuyerRequestStatus,
+  BuyerRequestFlag,
+  BuyerRequestFlagReason,
+} from '../../types';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, increment,
@@ -231,6 +237,58 @@ export async function getRecentRequestsForHealth(daysBack: number): Promise<Buye
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => docToBuyerRequest(d.data(), d.id));
+}
+
+// ─── Community Flag (signalement seller) ─────────────────────────────────────
+
+/**
+ * Appelle la CF flagBuyerRequest pour signaler une demande suspecte.
+ * Idempotent côté serveur (1 flag max par seller/demande).
+ */
+export async function flagBuyerRequest(
+  requestId: string,
+  reason: BuyerRequestFlagReason,
+  comment?: string,
+): Promise<{ ok: boolean; flagCount: number | null; suspended?: boolean; alreadyHandled?: boolean }> {
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase Functions non initialisé');
+  const fn = httpsCallable<
+    { requestId: string; reason: string; comment?: string },
+    { ok: boolean; flagCount: number | null; suspended?: boolean; alreadyHandled?: boolean }
+  >(fns, 'flagBuyerRequest');
+  const res = await fn({ requestId, reason, comment });
+  return res.data;
+}
+
+/** Admin : récupère tous les flags pour une demande (pour la voir dans /admin). */
+export async function getFlagsForRequest(requestId: string): Promise<BuyerRequestFlag[]> {
+  if (!db) return [];
+  const q = query(
+    collection(db, 'buyerRequestFlags'),
+    where('requestId', '==', requestId),
+    orderBy('createdAt', 'desc'),
+    limit(20),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => {
+    const data = d.data() as any;
+    return {
+      id: d.id,
+      requestId: data.requestId || '',
+      sellerId: data.sellerId || '',
+      reason: (data.reason || 'other') as BuyerRequestFlagReason,
+      comment: data.comment || undefined,
+      createdAt: data.createdAt || 0,
+    };
+  });
+}
+
+/** Admin : restaure une demande suspendue (status → active). */
+export async function restoreBuyerRequest(requestId: string): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, COLLECTIONS.BUYER_REQUESTS, requestId), {
+    status: 'active',
+  });
 }
 
 /** Récupère tous les contacts WhatsApp des N derniers jours (admin only). */

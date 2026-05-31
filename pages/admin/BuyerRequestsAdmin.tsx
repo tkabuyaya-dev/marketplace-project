@@ -7,23 +7,33 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BuyerRequest, BuyerRequestStatus } from '../../types';
+import { BuyerRequest, BuyerRequestStatus, BuyerRequestFlag } from '../../types';
 import {
   getAllBuyerRequestsForAdmin,
   adminDeleteBuyerRequest,
   markRequestFulfilled,
   getBuyerRequestStats,
   clearModerationFlag,
+  getFlagsForRequest,
+  restoreBuyerRequest,
 } from '../../services/firebase/buyer-requests';
 import { AdminSharedProps } from './types';
 
 type ModerationFilter = 'all' | 'borderline';
+const FLAG_REASON_LABELS: Record<string, string> = {
+  spam: 'Spam',
+  illegal: 'Illégal',
+  scam: 'Arnaque',
+  fake_number: 'Faux WhatsApp',
+  other: 'Autre',
+};
 
 const STATUS_COLORS: Record<BuyerRequestStatus, string> = {
   active:    'bg-green-500/20 text-green-400 border-green-500/30',
   fulfilled: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   expired:   'bg-gray-700/40 text-gray-500 border-gray-600/30',
   deleted:   'bg-red-500/20 text-red-400 border-red-500/30',
+  suspended: 'bg-red-600/30 text-red-300 border-red-600/40',
 };
 
 const STATUS_LABELS: Record<BuyerRequestStatus, string> = {
@@ -31,6 +41,7 @@ const STATUS_LABELS: Record<BuyerRequestStatus, string> = {
   fulfilled: 'Satisfaite',
   expired:   'Expirée',
   deleted:   'Supprimée',
+  suspended: '🚩 Signalée',
 };
 
 export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) => {
@@ -44,6 +55,10 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [clearingFlagId, setClearingFlagId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [expandedFlagsId, setExpandedFlagsId] = useState<string | null>(null);
+  const [flagsByRequest, setFlagsByRequest] = useState<Record<string, BuyerRequestFlag[]>>({});
+  const [loadingFlags, setLoadingFlags] = useState<string | null>(null);
   const [spamPanelOpen, setSpamPanelOpen] = useState(true);
 
   // Spam detection: same WhatsApp > 5 requests in the last 24h across all loaded requests
@@ -117,6 +132,37 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
       /* silent */
     } finally {
       setClearingFlagId(null);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    setRestoringId(id);
+    try {
+      await restoreBuyerRequest(id);
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'active' as BuyerRequestStatus } : r));
+    } catch {
+      /* silent */
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const toggleFlagsDetail = async (id: string) => {
+    if (expandedFlagsId === id) {
+      setExpandedFlagsId(null);
+      return;
+    }
+    setExpandedFlagsId(id);
+    if (!flagsByRequest[id]) {
+      setLoadingFlags(id);
+      try {
+        const flags = await getFlagsForRequest(id);
+        setFlagsByRequest(prev => ({ ...prev, [id]: flags }));
+      } catch {
+        /* silent */
+      } finally {
+        setLoadingFlags(null);
+      }
     }
   };
 
@@ -218,7 +264,7 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap items-center">
-        {(['all', 'active', 'fulfilled', 'expired', 'deleted'] as const).map(s => (
+        {(['all', 'active', 'fulfilled', 'expired', 'deleted', 'suspended'] as const).map(s => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
@@ -270,10 +316,15 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
           {visibleRequests.map(r => (
             <div
               key={r.id}
-              className={`bg-gray-800/40 border rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3 ${
-                r.moderationFlag ? 'border-orange-500/40 bg-orange-950/10' : 'border-gray-700/50'
+              className={`bg-gray-800/40 border rounded-xl p-4 ${
+                r.status === 'suspended'
+                  ? 'border-red-500/40 bg-red-950/20'
+                  : r.moderationFlag
+                    ? 'border-orange-500/40 bg-orange-950/10'
+                    : 'border-gray-700/50'
               }`}
             >
+              <div className="flex flex-col md:flex-row md:items-center gap-3">
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -318,6 +369,23 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
                     {clearingFlagId === r.id ? '...' : '✅ Valider'}
                   </button>
                 )}
+                {r.status === 'suspended' && (
+                  <>
+                    <button
+                      onClick={() => toggleFlagsDetail(r.id)}
+                      className="px-3 py-1.5 text-xs text-red-300 border border-red-400/30 rounded-lg hover:bg-red-400/10 transition-colors font-bold"
+                    >
+                      {expandedFlagsId === r.id ? '▲ Masquer' : '▼ Signalements'}
+                    </button>
+                    <button
+                      onClick={() => handleRestore(r.id)}
+                      disabled={restoringId === r.id}
+                      className="px-3 py-1.5 text-xs text-green-400 border border-green-400/30 rounded-lg hover:bg-green-400/10 transition-colors font-bold disabled:opacity-50"
+                    >
+                      {restoringId === r.id ? '...' : '↩ Restaurer'}
+                    </button>
+                  </>
+                )}
                 {r.status === 'active' && (
                   <button
                     onClick={() => handleFulfill(r.id)}
@@ -352,6 +420,38 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
                   </button>
                 )}
               </div>
+              </div>
+
+              {/* Détail des signalements community (status='suspended') */}
+              {r.status === 'suspended' && expandedFlagsId === r.id && (
+                <div className="mt-3 pt-3 border-t border-red-500/20 space-y-2">
+                  <p className="text-[11px] font-bold text-red-300 uppercase tracking-wide">
+                    🚩 Signalements community
+                  </p>
+                  {loadingFlags === r.id ? (
+                    <div className="text-xs text-gray-500">Chargement…</div>
+                  ) : !flagsByRequest[r.id] || flagsByRequest[r.id].length === 0 ? (
+                    <div className="text-xs text-gray-500 italic">Aucun signalement trouvé.</div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {flagsByRequest[r.id].map(f => (
+                        <div key={f.id} className="text-xs text-gray-300 flex flex-wrap items-baseline gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+                            {FLAG_REASON_LABELS[f.reason] || f.reason}
+                          </span>
+                          <span className="text-[10px] text-gray-500 font-mono">{f.sellerId.slice(0, 8)}…</span>
+                          <span className="text-[10px] text-gray-500">{formatDate(f.createdAt)}</span>
+                          {f.comment && (
+                            <span className="text-[11px] text-gray-400 italic w-full">
+                              💬 {f.comment}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

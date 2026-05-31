@@ -38,6 +38,7 @@ export const NotificationBell: React.FC = () => {
       case 'subscription_reminder': return '⏰';
       case 'buyer_request_match': return '🛒';
       case 'buyer_request_help':  return '✨';
+      case 'buyer_request_suspended': return '🚩';
       default: return '🔔';
     }
   };

@@ -519,6 +519,31 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
+    // buyerRequestFlags : signalement community
+    // 3 flags indépendants → status='suspended' (mutation côté CF Admin SDK)
+    // ─────────────────────────────────────────────────────────
+    match /buyerRequestFlags/{flagId} {
+      // Lecture: admin uniquement (les flags sont privés au pilotage admin)
+      allow read: if isAdmin();
+
+      // Création: seller authentifié, non suspendu, flag pour LUI-MÊME
+      // L'anti-double-flag est géré côté CF (transaction).
+      allow create: if isAuth()
+        && isNotSuspended()
+        && request.resource.data.sellerId == request.auth.uid
+        && validString(request.resource.data.requestId, 100)
+        && request.resource.data.reason in ['spam', 'illegal', 'scam', 'fake_number', 'other']
+        && request.resource.data.createdAt is number
+        && request.resource.data.createdAt >= request.time.toMillis() - 300000
+        && request.resource.data.createdAt <= request.time.toMillis() + 300000
+        && request.resource.data.keys().hasAll([
+            'requestId', 'sellerId', 'reason', 'createdAt'
+          ]);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
     // BOOST REQUESTS — Demandes de mise en avant payante
     // ─────────────────────────────────────────────────────────
     match /boostRequests/{requestId} {

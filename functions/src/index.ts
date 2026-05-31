@@ -105,3 +105,11 @@ export { onLikeCreate, onReviewCreate } from "./notify-on-engagement.js";
 // Buyer Request → Sellers matching push (catégorie + pays).
 // Pendant offre/demande de la feature "Je Cherche".
 export { onBuyerRequestMatch } from "./notify-buyer-request-match.js";
+
+// Signalement community : seller flag une demande suspecte.
+// 3 flags indépendants → status='suspended' auto + notif admin.
+export { flagBuyerRequest } from "./flag-buyer-request.js";
+
+// Notif "produit approuvé" : trigger sur products/{id} quand status
+// passe de pending → approved. Push immédiat au seller avec deep link.
+export { onProductApproved } from "./notify-product-approved.js";

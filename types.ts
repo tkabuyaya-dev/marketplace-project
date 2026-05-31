@@ -212,6 +212,7 @@ export type NotificationType =
   | 'boost_expired'
   | 'buyer_request_match'
   | 'buyer_request_help'
+  | 'buyer_request_suspended'   // Admin alert : 3 sellers ont signalé une demande
   | 'system';
 
 export interface AppNotification {
@@ -273,7 +274,19 @@ export interface PaymentMethod {
 }
 
 // ─── Buyer Requests ("Je Cherche") ───
-export type BuyerRequestStatus = 'active' | 'fulfilled' | 'expired' | 'deleted';
+export type BuyerRequestStatus = 'active' | 'fulfilled' | 'expired' | 'deleted' | 'suspended';
+
+/** Raison d'un signalement community. */
+export type BuyerRequestFlagReason = 'spam' | 'illegal' | 'scam' | 'fake_number' | 'other';
+
+export interface BuyerRequestFlag {
+  id: string;
+  requestId: string;
+  sellerId: string;
+  reason: BuyerRequestFlagReason;
+  comment?: string;       // Optionnel — pour reason='other'
+  createdAt: number;
+}
 
 export interface BuyerRequest {
   id: string;
