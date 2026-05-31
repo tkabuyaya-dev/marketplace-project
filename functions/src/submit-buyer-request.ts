@@ -97,20 +97,22 @@ export const submitBuyerRequest = onCall(
     const db = await getDb();
 
     // ── Rate limiting : max 3 demandes par WhatsApp / 24h ────────────
-    // Query simplifiée pour n'utiliser que l'index { whatsapp, createdAt }
-    // qui existe déjà. Le filtre `status` est appliqué en mémoire (max 3 docs).
+    // Query "single-field equality" uniquement → utilise l'index auto Firestore,
+    // zéro besoin d'index composite. Le filtrage createdAt + status se fait
+    // en mémoire (volume max ~50 docs : TTL 7j × 3/j = 21, + marge expirées).
     // FAIL-CLOSED : si la query échoue, on REFUSE — vaut mieux faux positif
-    // qu'ouvrir le spam (bug observé : la version précédente laissait passer).
+    // qu'ouvrir le spam.
     const since = Date.now() - 24 * 60 * 60 * 1000;
     try {
       const rateSnap = await db.collection(COLLECTION)
         .where("whatsapp", "==", whatsapp)
-        .where("createdAt", ">=", since)
         .get();
 
       const activeCount = rateSnap.docs.filter((d) => {
-        const status = d.data().status;
-        return status === "active" || status === "fulfilled";
+        const data = d.data();
+        const status = data.status;
+        const createdAt = typeof data.createdAt === "number" ? data.createdAt : 0;
+        return (status === "active" || status === "fulfilled") && createdAt >= since;
       }).length;
 
       if (activeCount >= MAX_REQUESTS_PER_DAY) {
@@ -120,7 +122,7 @@ export const submitBuyerRequest = onCall(
         );
       }
     } catch (err: any) {
-      if (err instanceof HttpsError) throw err;
+      if (err?.code === "resource-exhausted") throw err;
       logger.error("[submitBuyerRequest] Rate-limit check failed — REFUSING request:", err?.message);
       throw new HttpsError(
         "unavailable",
