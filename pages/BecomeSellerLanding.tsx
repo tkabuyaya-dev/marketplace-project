@@ -465,8 +465,8 @@ function buttonStyle(variant: ButtonVariant): React.CSSProperties {
 }
 
 function tierBonus(tierId: string): string | null {
-  if (tierId === 'pro') return 'Accès Demandes clients (Je Cherche)';
-  if (tierId === 'elite') return 'Badge Vendeur Élite visible';
+  if (tierId === 'pro') return 'Contacter les clients (EXCLUSIF) + Badge Pro';
+  if (tierId === 'grossiste') return 'Produits illimités + Badge Grossiste';
   return null;
 }
 

@@ -93,7 +93,7 @@ export const checkSubscriptions = onSchedule(
       // renewal cycle restarts the J-7/J-3/J-1 sequence cleanly.
       batch.update(userDoc.ref, {
         "sellerDetails.maxProducts": 5,
-        "sellerDetails.tierLabel": "Gratuit",
+        "sellerDetails.tierLabel": "Découverte",
         "sellerDetails.subscriptionExpiresAt": null,
         "sellerDetails.reminderSentForExpiry": null, // legacy field
         "sellerDetails.reminderSentJ7": null,
@@ -107,7 +107,7 @@ export const checkSubscriptions = onSchedule(
         userId: userDoc.id,
         type: "subscription_change",
         title: "Abonnement expiré",
-        body: `Votre abonnement "${data.sellerDetails?.tierLabel ?? "payant"}" a expiré. Vous êtes revenu au plan Gratuit (5 produits max). Rendez-vous sur la page Plans pour renouveler.`,
+        body: `Votre abonnement "${data.sellerDetails?.tierLabel ?? "payant"}" a expiré. Vous êtes revenu au plan Découverte (5 produits max). Rendez-vous sur la page Plans pour renouveler.`,
         read: false,
         createdAt: FieldValue.serverTimestamp(),
       });
@@ -207,6 +207,14 @@ export const checkSubscriptions = onSchedule(
       // Defensive: skip if a transactionRef exists (should be 'pending_validation'
       // already, but a stale write could leave the status mismatched).
       if (data.transactionRef) continue;
+
+      // Lot 3 : Skip si la demande a été modifiée récemment OU annulée
+      // (modifiedAt > orphanCutoff = active < 7j). Le vendeur a interagi avec
+      // sa demande — pas une vraie orpheline. Idem si déjà cancelled (la CF
+      // cancelSubscriptionRequest a déjà fait le travail).
+      if (data.status === "cancelled") continue;
+      const modifiedAt = typeof data.modifiedAt === "number" ? data.modifiedAt : 0;
+      if (modifiedAt > orphanCutoff) continue;
 
       const batch = db.batch();
 

@@ -32,14 +32,15 @@ function inferCountryFromWhatsapp(whatsapp: string, fallbackCountryId: string): 
 // ─────────────────────────────────────────────────────────────
 // PLAN BADGE
 // ─────────────────────────────────────────────────────────────
-type DisplayTier = 'free' | 'starter' | 'pro' | 'elite' | 'unlimited';
+type DisplayTier = 'free' | 'vendeur' | 'pro' | 'grossiste';
 
 function tierFromLabel(label?: string): DisplayTier {
   const l = (label || '').toLowerCase();
-  if (l.includes('illimité') || l.includes('unlimited')) return 'unlimited';
-  if (l.includes('élite') || l.includes('elite')) return 'elite';
-  if (l.includes('pro')) return 'pro';
-  if (l.includes('starter')) return 'starter';
+  // Legacy aliases : unlimited/illimité/grossiste → grossiste
+  if (l.includes('grossiste') || l.includes('illim') || l.includes('unlimited')) return 'grossiste';
+  // Legacy aliases : elite/élite → pro (refonte : Élite supprimé)
+  if (l.includes('pro') || l.includes('élite') || l.includes('elite')) return 'pro';
+  if (l.includes('vendeur') || l.includes('starter')) return 'vendeur';
   return 'free';
 }
 
@@ -47,10 +48,9 @@ const PlanBadge: React.FC<{ tier: DisplayTier }> = ({ tier }) => {
   const { t } = useTranslation();
   const cfg: Record<DisplayTier, { label: string; bg: string; text: string; dot: string }> = {
     free:      { label: t('profile.tierFree'),      bg: '#F4F5F7', text: '#5C6370', dot: '#5C6370' },
-    starter:   { label: t('profile.tierStarter'),   bg: '#EFF6FF', text: '#1D4ED8', dot: '#3B82F6' },
+    vendeur:   { label: t('profile.tierVendeur', 'Vendeur'),   bg: '#EFF6FF', text: '#1D4ED8', dot: '#3B82F6' },
     pro:       { label: t('profile.tierPro'),       bg: '#FFFBEB', text: '#92400E', dot: '#F59E0B' },
-    elite:     { label: t('profile.tierElite'),     bg: '#FEF3C7', text: '#78350F', dot: '#D97706' },
-    unlimited: { label: t('profile.tierUnlimited'), bg: '#EEF2FF', text: '#3730A3', dot: '#6366F1' },
+    grossiste: { label: t('profile.tierGrossiste', 'Grossiste'), bg: '#EEF2FF', text: '#3730A3', dot: '#6366F1' },
   };
   const c = cfg[tier];
   return (
@@ -225,8 +225,8 @@ const MenuSection: React.FC<{ title?: string; children: React.ReactNode }> = ({ 
 // ─────────────────────────────────────────────────────────────
 const UpgradeBanner: React.FC<{ currentTier: DisplayTier; onUpgrade: () => void }> = ({ currentTier, onUpgrade }) => {
   const { t } = useTranslation();
-  if (currentTier === 'pro' || currentTier === 'elite' || currentTier === 'unlimited') return null;
-  const next = currentTier === 'free' ? t('profile.tierStarter') : t('profile.tierPro');
+  if (currentTier === 'pro' || currentTier === 'grossiste') return null;
+  const next = currentTier === 'free' ? t('profile.tierVendeur', 'Vendeur') : t('profile.tierPro');
   return (
     <div
       className="rounded-2xl p-3 flex items-center gap-3"

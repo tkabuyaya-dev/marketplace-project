@@ -77,6 +77,7 @@ export const COLLECTIONS = {
   USER_ACTIVITY:      'userActivity',
   CURRENCIES:         'currencies',
   SUBSCRIPTION_REQUESTS: 'subscriptionRequests',
+  SUBSCRIPTION_HISTORY:  'history', // sous-collection de subscriptionRequests/{id}
   SUBSCRIPTION_PRICING:  'subscriptionPricing',
   APP_SETTINGS:          'appSettings',
   BUYER_REQUESTS:        'buyerRequests',

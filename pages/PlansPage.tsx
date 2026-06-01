@@ -18,6 +18,7 @@ import {
   createSubscriptionRequest, confirmPayment,
   subscribeToSubscriptionPricing, subscribeToSubscriptionTiers,
   subscribeToMyRequests,
+  cancelMyRequest, modifyMyRequest,
 } from '../services/firebase';
 import { uploadImage, UploadError } from '../services/cloudinary';
 
@@ -100,6 +101,13 @@ export const PlansPage: React.FC = () => {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
   const [period, setPeriod] = useState<SubscriptionPeriod>('1m');
+
+  // Modal modification d'une demande pending (Lot 3)
+  const [modifyingRequest, setModifyingRequest] = useState<SubscriptionRequest | null>(null);
+  const [modifyPlanId, setModifyPlanId] = useState<string>('');
+  const [modifyPeriod, setModifyPeriod] = useState<SubscriptionPeriod>('1m');
+  const [modifyLoading, setModifyLoading] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const sellerCountryId = currentUser?.sellerDetails?.countryId || 'bi';
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
@@ -266,6 +274,61 @@ export const PlansPage: React.FC = () => {
     if (file) handleProofUpload(file);
     // Reset so the same file can be re-selected after a remove
     e.target.value = '';
+  };
+
+  // ── Lifecycle actions (Lot 3) ─────────────────────────────────────────────
+
+  const handleCancelRequest = async (requestId: string) => {
+    if (cancellingId) return;
+    const confirmed = window.confirm(
+      t('plans.cancelConfirm', 'Annuler cette demande ? Vous pourrez en créer une nouvelle.')
+    );
+    if (!confirmed) return;
+    setCancellingId(requestId);
+    try {
+      const res = await cancelMyRequest(requestId);
+      if (res.alreadyCancelled) {
+        toast(t('plans.cancelAlready', 'Demande déjà annulée'), 'info');
+      } else {
+        toast(t('plans.cancelSuccess', 'Demande annulée'), 'success');
+      }
+    } catch (err: any) {
+      toast(err?.message || t('plans.cancelError', 'Échec de l\'annulation'), 'error');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const openModifyModal = (req: SubscriptionRequest) => {
+    setModifyingRequest(req);
+    setModifyPlanId(req.planId);
+    setModifyPeriod(req.period ?? '1m');
+  };
+
+  const closeModifyModal = () => {
+    if (modifyLoading) return;
+    setModifyingRequest(null);
+  };
+
+  const handleConfirmModify = async () => {
+    if (!modifyingRequest) return;
+    const sameAsBefore =
+      modifyPlanId === modifyingRequest.planId &&
+      modifyPeriod === (modifyingRequest.period ?? '1m');
+    if (sameAsBefore) {
+      toast(t('plans.modifyNoChange', 'Aucun changement détecté'), 'info');
+      return;
+    }
+    setModifyLoading(true);
+    try {
+      await modifyMyRequest(modifyingRequest.id, { planId: modifyPlanId, period: modifyPeriod });
+      toast(t('plans.modifySuccess', 'Demande modifiée'), 'success');
+      setModifyingRequest(null);
+    } catch (err: any) {
+      toast(err?.message || t('plans.modifyError', 'Échec de la modification'), 'error');
+    } finally {
+      setModifyLoading(false);
+    }
   };
 
   const whatsappMessage = selectedPlan
@@ -586,17 +649,39 @@ export const PlansPage: React.FC = () => {
                         </span>
                       </li>
                       {tier.id === 'pro' && (
+                        <>
+                          <li className="flex items-start gap-1.5">
+                            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                                 style={{ background: 'rgba(245,200,66,0.15)' }}>
+                                <Check size={9} color="#A45F00" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                              {t('plans.featureContactExclusive', 'Contacter les clients (EXCLUSIF)')}
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-1.5">
+                            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
+                                 style={{ background: 'rgba(245,200,66,0.15)' }}>
+                              <Check size={9} color="#A45F00" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[10px] text-gray-500 leading-snug font-medium">
+                              {t('plans.featureProBadge')}
+                            </span>
+                          </li>
+                        </>
+                      )}
+                      {tier.id === 'grossiste' && (
                         <li className="flex items-start gap-1.5">
                           <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
-                               style={{ background: 'rgba(245,200,66,0.15)' }}>
-                            <Check size={9} color="#A45F00" strokeWidth={2.5} />
+                               style={{ background: 'rgba(99,102,241,0.12)' }}>
+                            <Check size={9} color="#4338CA" strokeWidth={2.5} />
                           </div>
                           <span className="text-[10px] text-gray-500 leading-snug font-medium">
-                            {t('plans.featureProBadge')}
+                            {t('plans.featureGrossisteBadge', 'Badge Grossiste visible')}
                           </span>
                         </li>
                       )}
-                      {(tier.id === 'elite' || tier.id === 'unlimited') && (
+                      {(tier.id === 'pro' || tier.id === 'grossiste') && (
                         <>
                           <li className="flex items-start gap-1.5">
                             <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
@@ -687,9 +772,10 @@ export const PlansPage: React.FC = () => {
                   {t('plans.pendingRequestsTitle')}
                 </p>
                 <div className="flex flex-col gap-1.5">
-                  {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected').map(req => {
+                  {myRequests.filter(r => r.status !== 'approved' && r.status !== 'rejected' && r.status !== 'cancelled').map(req => {
                     const isPaymentPending = req.status === 'pending';
                     const canResume = isPaymentPending && !req.transactionRef;
+                    const canModify = req.status === 'pending'; // CF refuse pending_validation
                     const reqTier = canResume ? tiers.find(tt => tt.id === req.planId) : undefined;
                     const handleResume = () => {
                       if (!reqTier) return;
@@ -697,45 +783,77 @@ export const PlansPage: React.FC = () => {
                       setCurrentRequestId(req.id);
                       setStep('confirmation');
                     };
-                    const Wrapper = (canResume && reqTier ? 'button' : 'div') as React.ElementType;
                     return (
-                      <Wrapper
+                      <div
                         key={req.id}
-                        type={canResume && reqTier ? 'button' : undefined}
-                        onClick={canResume && reqTier ? handleResume : undefined}
-                        className={`w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl ${
-                          canResume && reqTier ? 'hover:brightness-95 active:scale-[0.99] transition-all' : ''
-                        }`}
+                        className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl"
                         style={{
                           background: isPaymentPending ? 'rgba(249,115,22,0.07)' : 'rgba(59,130,246,0.07)',
                           border: `1px solid ${isPaymentPending ? 'rgba(249,115,22,0.2)' : 'rgba(59,130,246,0.2)'}`,
                         }}
                       >
                         <div
-                          className="w-2 h-2 rounded-full flex-shrink-0"
-                          style={{
-                            background: isPaymentPending ? '#f97316' : '#3b82f6',
-                            boxShadow: `0 0 6px ${isPaymentPending ? 'rgba(249,115,22,0.5)' : 'rgba(59,130,246,0.5)'}`,
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-gray-800">{req.planLabel}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            {canResume
-                              ? t('plans.tapToEnterRef', 'Touchez pour saisir votre référence')
-                              : isPaymentPending ? t('plans.paymentPending') : t('plans.paymentVerification')}
-                          </p>
-                        </div>
-                        <span
-                          className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                          style={{
-                            color: isPaymentPending ? '#f97316' : '#3b82f6',
-                            background: isPaymentPending ? 'rgba(249,115,22,0.1)' : 'rgba(59,130,246,0.1)',
-                          }}
+                          className="flex items-center gap-2.5"
+                          role={canResume && reqTier ? 'button' : undefined}
+                          onClick={canResume && reqTier ? handleResume : undefined}
+                          style={{ cursor: canResume && reqTier ? 'pointer' : 'default' }}
                         >
-                          {isPaymentPending ? t('plans.pendingBadgePayment') : t('plans.pendingBadgeVerif')}
-                        </span>
-                      </Wrapper>
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{
+                              background: isPaymentPending ? '#f97316' : '#3b82f6',
+                              boxShadow: `0 0 6px ${isPaymentPending ? 'rgba(249,115,22,0.5)' : 'rgba(59,130,246,0.5)'}`,
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              {req.planLabel}
+                              {req.isUpgrade && (
+                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                                  style={{ background: 'rgba(99,102,241,0.15)', color: '#4338ca' }}>
+                                  {t('plans.upgradeBadge', 'Upgrade')}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {canResume
+                                ? t('plans.tapToEnterRef', 'Touchez pour saisir votre référence')
+                                : isPaymentPending ? t('plans.paymentPending') : t('plans.paymentVerification')}
+                            </p>
+                          </div>
+                          <span
+                            className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                            style={{
+                              color: isPaymentPending ? '#f97316' : '#3b82f6',
+                              background: isPaymentPending ? 'rgba(249,115,22,0.1)' : 'rgba(59,130,246,0.1)',
+                            }}
+                          >
+                            {isPaymentPending ? t('plans.pendingBadgePayment') : t('plans.pendingBadgeVerif')}
+                          </span>
+                        </div>
+                        {/* Lifecycle actions (Lot 3) — toujours visibles : annuler + modifier (pending only) */}
+                        <div className="flex items-center gap-1.5 pt-1">
+                          {canModify && (
+                            <button
+                              type="button"
+                              onClick={() => openModifyModal(req)}
+                              className="flex-1 py-1.5 rounded-md text-[10px] font-bold bg-white border border-gray-200 text-gray-600 active:scale-95 transition-transform"
+                            >
+                              {t('plans.modifyAction', 'Modifier')}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleCancelRequest(req.id)}
+                            disabled={cancellingId === req.id}
+                            className="flex-1 py-1.5 rounded-md text-[10px] font-bold bg-white border border-red-200 text-red-600 active:scale-95 transition-transform disabled:opacity-50"
+                          >
+                            {cancellingId === req.id
+                              ? t('plans.cancelling', 'Annulation…')
+                              : t('plans.cancelAction', 'Annuler')}
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -1114,6 +1232,113 @@ export const PlansPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ─── Modal "Modifier ma demande" (Lot 3) ─────────────────────────── */}
+      {modifyingRequest && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={closeModifyModal}
+        >
+          <div
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3 border-b border-black/[0.07]">
+              <h3 className="text-base font-black text-gray-900">
+                {t('plans.modifyTitle', 'Modifier la demande')}
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {t('plans.modifySubtitle', 'Le montant sera recalculé. La référence de paiement est réinitialisée.')}
+              </p>
+            </div>
+
+            <div className="p-4 flex flex-col gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  {t('plans.modifyPlan', 'Plan')}
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {paidTiers.map(tier => {
+                    const active = modifyPlanId === tier.id;
+                    return (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        onClick={() => setModifyPlanId(tier.id)}
+                        disabled={modifyLoading}
+                        className="py-2 rounded-lg text-[11px] font-bold transition-all"
+                        style={{
+                          background: active ? '#F5C842' : '#F4F5F7',
+                          color: active ? '#111318' : '#5C6370',
+                          border: active ? '1.5px solid #F5C842' : '1.5px solid transparent',
+                        }}
+                      >
+                        {tier.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  {t('plans.modifyPeriod', 'Période')}
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {(['1m', '3m', '12m'] as SubscriptionPeriod[]).map(p => {
+                    const active = modifyPeriod === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setModifyPeriod(p)}
+                        disabled={modifyLoading}
+                        className="flex-1 py-2 rounded-lg text-[11px] font-bold transition-all"
+                        style={{
+                          background: active ? '#111318' : '#F4F5F7',
+                          color: active ? '#fff' : '#5C6370',
+                        }}
+                      >
+                        {p === '1m' ? t('plans.period1m', 'Mensuel')
+                          : p === '3m' ? t('plans.period3m', 'Trimestriel')
+                          : t('plans.period12m', 'Annuel')}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1.5">
+                  {t('plans.modifyHint', 'Le nouveau montant sera calculé automatiquement (trimestriel -10%, annuel -25%).')}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={closeModifyModal}
+                  disabled={modifyLoading}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-600 active:scale-[0.98] disabled:opacity-50"
+                >
+                  {t('plans.modifyCancel', 'Annuler')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmModify}
+                  disabled={modifyLoading}
+                  className="flex-1 py-3 rounded-xl text-sm font-black active:scale-[0.98] disabled:opacity-50"
+                  style={{
+                    background: '#F5C842', color: '#111318',
+                    boxShadow: '0 3px 12px rgba(245,200,66,0.35)',
+                  }}
+                >
+                  {modifyLoading
+                    ? t('plans.modifySaving', 'Sauvegarde…')
+                    : t('plans.modifyConfirm', 'Confirmer')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

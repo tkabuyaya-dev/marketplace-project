@@ -10,12 +10,13 @@ import { getOptimizedUrl } from '../../services/cloudinary';
 import { getCountryFlag } from '../../constants';
 import type { UsersProps } from './types';
 
+// Labels alignés sur INITIAL_SUBSCRIPTION_TIERS — utilisés pour le setter manuel admin.
+// Toute modification doit rester cohérente avec utils/planFeatures.ts (LABEL_TO_ID).
 const TIER_OPTIONS = [
-  { label: 'Gratuit (0-5 produits)', maxProducts: 5, tierLabel: 'Gratuit' },
-  { label: 'Starter (6-15 produits)', maxProducts: 15, tierLabel: 'Starter' },
-  { label: 'Pro (16-30 produits)', maxProducts: 30, tierLabel: 'Pro' },
-  { label: 'Elite (31-50 produits)', maxProducts: 50, tierLabel: 'Elite' },
-  { label: 'Illimité (51+)', maxProducts: 99999, tierLabel: 'Illimité' },
+  { label: 'Découverte (0-5 produits)',  maxProducts: 5,     tierLabel: 'Découverte' },
+  { label: 'Vendeur (jusqu\'à 25)',       maxProducts: 25,    tierLabel: 'Vendeur'    },
+  { label: 'Pro (jusqu\'à 100)',          maxProducts: 100,   tierLabel: 'Pro'        },
+  { label: 'Grossiste (illimité)',        maxProducts: 99999, tierLabel: 'Grossiste'  },
 ];
 
 export const Users: React.FC<UsersProps> = ({

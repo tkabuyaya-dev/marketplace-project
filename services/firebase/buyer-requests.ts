@@ -4,7 +4,8 @@
  * Handles creation, reading, tracking and moderation of buyer demand requests.
  * - Buyers (anonymous or logged-in) post needs
  * - All sellers can browse requests
- * - Only Business Pro / Élite / Grossiste sellers can contact via WhatsApp
+ * - Only Pro / Grossiste sellers can contact via WhatsApp
+ *   (source de vérité : utils/planFeatures.ts)
  */
 
 import {
@@ -14,6 +15,7 @@ import {
   BuyerRequestFlag,
   BuyerRequestFlagReason,
 } from '../../types';
+import { featuresForLabel } from '../../utils/planFeatures';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, increment,
@@ -365,11 +367,11 @@ export async function trackWhatsAppContact(
 
 // ─── Plan Eligibility ─────────────────────────────────────────────────────────
 
-/** Tier IDs that allow WhatsApp contact */
-const ELIGIBLE_TIER_LABELS = ['Business Pro', 'Élite', 'Grossiste Illimité'];
-
 /**
  * Returns true if the seller's current (non-expired) plan allows WhatsApp contact.
+ * Single source of truth : utils/planFeatures.ts (PLAN_FEATURES[id].canContactBuyer).
+ * Plans éligibles : Pro + Grossiste (inclus aliases legacy Business Pro / Élite /
+ * Grossiste Illimité). Cf. planFeatures.ts pour le mapping complet.
  */
 export function canContactBuyer(sellerDetails?: {
   tierLabel?: string;
@@ -382,9 +384,9 @@ export function canContactBuyer(sellerDetails?: {
   // Check subscription not expired
   if (subscriptionExpiresAt && Date.now() > subscriptionExpiresAt) return false;
 
-  // Check by label first
-  if (tierLabel && ELIGIBLE_TIER_LABELS.includes(tierLabel)) return true;
+  // Source de vérité : PLAN_FEATURES
+  if (featuresForLabel(tierLabel).canContactBuyer) return true;
 
-  // Fallback: Business Pro starts at 30 products max
-  return (maxProducts ?? 0) >= 30;
+  // Fallback robustesse : maxProducts ≥ 100 = Pro/Grossiste même si tierLabel incohérent
+  return (maxProducts ?? 0) >= 100;
 }

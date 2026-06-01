@@ -91,6 +91,17 @@ export interface SubscriptionTier {
   requiresNif: boolean;
 }
 
+// Plan IDs canoniques (post-refonte 2026-06)
+export type PlanId = 'free' | 'vendeur' | 'pro' | 'grossiste';
+
+export interface PlanFeatures {
+  maxProducts: number;
+  canContactBuyer: boolean;        // ✅ contacter un acheteur Je Cherche (Pro + Grossiste)
+  badge: 'pro' | 'grossiste' | null;
+  priorityRanking: boolean;        // priorité dans la recherche
+  requiresNif: boolean;            // NIF obligatoire à l'inscription
+}
+
 export interface Product {
   id: string;
   slug?: string;
@@ -243,7 +254,12 @@ export interface SearchFilters {
 
 // ─── Subscription Requests ───
 export type SubscriptionPeriod = '1m' | '3m' | '12m';
-export type SubscriptionRequestStatus = 'pending' | 'pending_validation' | 'approved' | 'rejected';
+export type SubscriptionRequestStatus =
+  | 'pending'             // créée, paiement non confirmé par le vendeur
+  | 'pending_validation'  // vendeur a soumis sa référence, attente admin
+  | 'approved'            // admin a validé
+  | 'rejected'            // admin a refusé (rejectionReason)
+  | 'cancelled';          // vendeur a annulé lui-même (avant approbation)
 
 export interface SubscriptionRequest {
   id: string;
@@ -265,6 +281,48 @@ export interface SubscriptionRequest {
   maxProducts: number;
   receiptUrl?: string | null;
   period?: SubscriptionPeriod;
+  // ─── Lifecycle complet (post-refonte 2026-06) ─────────────────────────────
+  cancelledAt?: number | null;     // ms — set par CF cancelSubscriptionRequest
+  cancelledBy?: string | null;     // userId du seller (auto-cancellation only)
+  reviewedAt?: number | null;      // ms — set par approve/reject (action admin)
+  modifiedAt?: number | null;      // ms — set par CF modifySubscriptionRequest
+  modifiedFrom?: {                 // snapshot des valeurs précédentes (audit utile)
+    planId: string;
+    planLabel?: string;
+    period?: SubscriptionPeriod;
+    amount?: number;
+  } | null;
+  isUpgrade?: boolean;             // true si vendeur déjà sur un plan payant actif
+}
+
+/**
+ * Sous-collection subscriptionRequests/{id}/history/{eventId} — traçabilité
+ * complète du cycle de vie. Toujours écrite par CF admin SDK (write=false côté
+ * client dans les rules).
+ */
+export type SubscriptionHistoryAction =
+  | 'created'      // request créée (status=pending)
+  | 'submitted'    // vendeur a confirmé son paiement (pending → pending_validation)
+  | 'modified'     // vendeur a changé plan/period via CF modifySubscriptionRequest
+  | 'cancelled'    // vendeur a annulé via CF cancelSubscriptionRequest
+  | 'approved'     // admin a approuvé
+  | 'rejected';    // admin a refusé
+
+export interface SubscriptionHistoryEvent {
+  id: string;
+  action: SubscriptionHistoryAction;
+  by: { userId: string; role: 'seller' | 'admin' | 'system' };
+  payload?: {
+    planId?: string;
+    planLabel?: string;
+    period?: SubscriptionPeriod;
+    amount?: number;
+    transactionRef?: string | null;
+    proofUrl?: string | null;
+    reason?: string;        // rejet / annulation
+    previous?: { planId: string; planLabel?: string; period?: SubscriptionPeriod; amount?: number };
+  };
+  timestamp: number;
 }
 
 export interface PaymentMethod {

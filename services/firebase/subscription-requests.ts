@@ -7,7 +7,10 @@
 
 import {
   SubscriptionRequest, SubscriptionRequestStatus, SubscriptionPricing, SubscriptionPeriod,
+  SubscriptionHistoryEvent,
 } from '../../types';
+import { httpsCallable } from 'firebase/functions';
+import { getFirebaseFunctions } from '../../firebase-config';
 
 function periodToDurationMs(period?: SubscriptionPeriod | string): number {
   if (period === '3m')  return 90  * 24 * 60 * 60 * 1000;
@@ -33,10 +36,36 @@ import { createNotification } from './notifications';
 
 // ── Create Subscription Request ──
 
+/**
+ * Crée une demande d'abonnement.
+ *
+ * Détection automatique `isUpgrade` : si le vendeur a déjà un plan payant
+ * actif (subscriptionExpiresAt dans le futur), la demande est marquée
+ * `isUpgrade: true`. Permet à l'admin de différencier "NOUVEAU" vs "UPGRADE"
+ * dans la file de validation. Le plan actif reste actif jusqu'à approbation.
+ */
 export const createSubscriptionRequest = async (
   request: Omit<SubscriptionRequest, 'id' | 'createdAt' | 'updatedAt' | 'approvedBy' | 'expiresAt' | 'rejectionReason'>
 ): Promise<string> => {
   if (!db) throw new Error('Firebase non initialisé');
+
+  // Auto-détection isUpgrade : lecture du profil seller pour vérifier
+  // s'il a déjà un plan payant non expiré.
+  let isUpgrade = false;
+  try {
+    const userSnap = await getDoc(doc(db, COLLECTIONS.USERS, request.userId));
+    if (userSnap.exists()) {
+      const sellerDetails = (userSnap.data() as any)?.sellerDetails;
+      const expiresAt = sellerDetails?.subscriptionExpiresAt;
+      const maxProducts = sellerDetails?.maxProducts ?? 0;
+      // Plan payant = maxProducts > 5 ET non expiré
+      if (maxProducts > 5 && typeof expiresAt === 'number' && expiresAt > Date.now()) {
+        isUpgrade = true;
+      }
+    }
+  } catch {
+    // Best-effort — si la lecture échoue, on crée la demande sans flag (défaut sûr).
+  }
 
   const docRef = await addDoc(collection(db, COLLECTIONS.SUBSCRIPTION_REQUESTS), {
     ...request,
@@ -44,12 +73,81 @@ export const createSubscriptionRequest = async (
     approvedBy: null,
     expiresAt: null,
     rejectionReason: null,
+    isUpgrade,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });
 
+  // P4 (Lot 4) : write-after rate-limit guard. Le rule sur create exige que
+  // lastSubRequestCreatedAt soit antérieur de >60s à la prochaine création.
+  // Best-effort : si l'update échoue, la rate-limit est juste désactivée pour
+  // ce vendeur jusqu'au prochain create réussi. Pas bloquant.
+  try {
+    await updateDoc(doc(db, COLLECTIONS.USERS, request.userId), {
+      'sellerDetails.lastSubRequestCreatedAt': Date.now(),
+    });
+  } catch {
+    // Non bloquant — la demande est créée, le rate-limit deviendra effectif
+    // au prochain update réussi des sellerDetails.
+  }
+
   return docRef.id;
 };
+
+// ── Lifecycle actions via Cloud Functions ──
+
+/**
+ * Annule la demande du vendeur. Statuts autorisés : `pending`, `pending_validation`.
+ * Idempotent : retour `{ ok, alreadyCancelled }` si déjà annulée.
+ */
+export async function cancelMyRequest(
+  requestId: string,
+): Promise<{ ok: boolean; alreadyCancelled?: boolean }> {
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase Functions non initialisé');
+  const fn = httpsCallable<
+    { requestId: string },
+    { ok: boolean; alreadyCancelled?: boolean }
+  >(fns, 'cancelSubscriptionRequest');
+  const res = await fn({ requestId });
+  return res.data;
+}
+
+/**
+ * Modifie la demande du vendeur (plan / période). Statut autorisé : `pending`.
+ * Montant recalculé côté serveur. transactionRef/proofUrl réinitialisés.
+ */
+export async function modifyMyRequest(
+  requestId: string,
+  payload: { planId: string; period: SubscriptionPeriod },
+): Promise<{ ok: boolean; newAmount: number; newCurrency: string; newPlanLabel: string }> {
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase Functions non initialisé');
+  const fn = httpsCallable<
+    { requestId: string; planId: string; period: SubscriptionPeriod },
+    { ok: boolean; newAmount: number; newCurrency: string; newPlanLabel: string }
+  >(fns, 'modifySubscriptionRequest');
+  const res = await fn({ requestId, planId: payload.planId, period: payload.period });
+  return res.data;
+}
+
+// ── History (sous-collection) ──
+
+/** Lit l'historique d'une demande (seller pour la sienne, admin pour toutes). */
+export async function getSubscriptionRequestHistory(
+  requestId: string,
+): Promise<SubscriptionHistoryEvent[]> {
+  if (!db) return [];
+  const histRef = collection(
+    db,
+    COLLECTIONS.SUBSCRIPTION_REQUESTS,
+    requestId,
+    COLLECTIONS.SUBSCRIPTION_HISTORY,
+  );
+  const q = query(histRef, orderBy('timestamp', 'desc'), limit(50));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...(d.data() as object) } as SubscriptionHistoryEvent));
+}
 
 // ── Get Requests (Seller — own requests) ──
 
@@ -151,16 +249,17 @@ export const confirmPayment = async (
 // ── Approve Request (Admin) ──
 
 /**
- * Approves a subscription request atomically.
+ * @deprecated Lot 4 P1 (2026-06) — l'approbation passe désormais ENTIÈREMENT
+ * par la CF `approveRenewal` qui fait tout en une transaction admin SDK
+ * atomique (request + user + history + audit + receipt + product reactivation).
  *
- * All Firestore writes (request status, user subscription, expiration) happen
- * in a single transaction. If any write fails the entire operation rolls back,
- * preventing partial state (e.g. tier upgraded but expiration not set).
+ * Cette fonction reste exportée comme fallback d'urgence si la CF est
+ * indisponible (panne réseau, quota dépassé). À ne plus utiliser dans le code
+ * normal — voir `pages/admin/Subscriptions.tsx#handleApproveRequest`.
  *
+ * Approves a subscription request atomically. All Firestore writes (request
+ * status, user subscription, expiration) happen in a single transaction.
  * Idempotency: throws if the request is already approved/rejected.
- *
- * Notification is sent AFTER the transaction commits (notifications are
- * non-critical and should not block the financial operation).
  */
 export const approveSubscriptionRequest = async (
   requestId: string,

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../../components/Toast';
 import { SubscriptionRequest, User } from '../../types';
 import {
-  getAllSubscriptionRequests, approveSubscriptionRequest,
+  getAllSubscriptionRequests,
   getSubscriptionPricing, updateSubscriptionPricing,
 } from '../../services/firebase';
 import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS, getCountryFlag as getCountryFlagFromConst } from '../../constants';
@@ -149,7 +149,14 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         case 'createdAt_asc':  return a.createdAt - b.createdAt;
         case 'amount_desc':    return b.amount - a.amount;
         case 'amount_asc':     return a.amount - b.amount;
-        case 'wait_desc':      return a.createdAt - b.createdAt; // oldest first = longest wait
+        case 'wait_desc': {
+          // Lot 3 : les demandes modifiées récemment remontent en haut
+          // (Q7 user). Sinon tri par ancienneté = plus longue attente d'abord.
+          const aMod = (a as any).modifiedAt ?? 0;
+          const bMod = (b as any).modifiedAt ?? 0;
+          if (aMod !== bMod) return bMod - aMod;
+          return a.createdAt - b.createdAt;
+        }
         case 'createdAt_desc':
         default:               return b.createdAt - a.createdAt;
       }
@@ -361,16 +368,20 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
   /**
    * Confirm approval after operator verification.
-   * Two-step transaction:
-   * 1. approveSubscriptionRequest (transactional, marks request approved + activates subscription)
-   * 2. approveRenewal CF (reactivates inactive products + writes audit log with verifiedVia)
+   *
+   * Lot 4 P1+P5 : un seul appel CF atomique (approveRenewal). La CF fait :
+   *   - Transaction request + user (status, expiresAt, maxProducts, tierLabel)
+   *   - History event
+   *   - Audit log (avec amountValidation si écart de prix détecté)
+   *   - Reçu PDF + notification + réactivation produits (best-effort)
+   *
+   * Plus de transaction client : robustesse +1 (élimine la fenêtre où la
+   * demande était approved mais le user pas encore réactivé).
    */
   const handleApproveRequest = async () => {
     if (!approvingRequest || !verifiedMethod) return;
     setApproving(true);
     try {
-      await approveSubscriptionRequest(approvingRequest.id, currentUser.id);
-
       const idToken = await auth?.currentUser?.getIdToken();
       if (!idToken) throw new Error('Not authenticated');
       const res = await fetch(
@@ -389,16 +400,29 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         }
       );
       if (!res.ok) {
-        console.warn('[approveRenewal] Cloud Function returned', res.status);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || `CF status ${res.status}`);
       }
-
+      // P5 — amountValidation : alerter l'admin si le montant ne matche pas
+      const data = await res.json().catch(() => ({}));
+      if (data?.amountValidation && data.amountValidation.passed === false) {
+        const v = data.amountValidation;
+        console.warn('[approveRequest] amount mismatch:', v);
+        toast(
+          t('admin.amountMismatch', '⚠ Montant {{submitted}} ≠ attendu {{expected}} ({{diff}}% d\'écart). Validation logguée.', {
+            submitted: v.submitted, expected: v.expected, diff: (v.diffPct * 100).toFixed(1),
+          }),
+          'info',
+        );
+      }
       toast(t('admin.subscriptionActivated'), 'success');
       setApprovingRequest(null);
       setVerifiedMethod('');
       loadSubRequests();
       refreshData();
-    } catch (err) {
-      toast(t('admin.approvalError'), 'error');
+    } catch (err: any) {
+      console.error('[approveRequest] failed:', err);
+      toast(err?.message || t('admin.approvalError'), 'error');
     } finally {
       setApproving(false);
     }
@@ -494,14 +518,11 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       if (!idToken) throw new Error('Not authenticated');
 
       // Sequential — keeps Firestore quota usage low and lets partial errors
-      // surface cleanly. Each request runs the full 2-step flow:
-      //   1. approveSubscriptionRequest (transactional)
-      //   2. approveRenewal CF (audit log + product reactivation)
+      // surface cleanly. Lot 4 P1 : un seul appel CF atomique par demande.
       let done = 0;
       let failed = 0;
       for (const req of selectedRequests) {
         try {
-          await approveSubscriptionRequest(req.id, currentUser.id);
           const res = await fetch(
             'https://europe-west1-aurburundi-e2fe2.cloudfunctions.net/approveRenewal',
             {
@@ -851,10 +872,32 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                         req.status === 'pending' ? 'bg-orange-500/20 text-orange-400' :
                         req.status === 'pending_validation' ? 'bg-blue-500/20 text-blue-400' :
                         req.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                        req.status === 'cancelled' ? 'bg-gray-500/20 text-gray-400' :
                         'bg-red-500/20 text-red-400'
                       }`}>
-                        {req.status === 'pending' ? t('admin.requestFilterPending') : req.status === 'pending_validation' ? t('admin.requestFilterPaymentSubmitted') : req.status === 'approved' ? t('admin.requestFilterApproved') : t('admin.requestFilterRejected')}
+                        {req.status === 'pending' ? t('admin.requestFilterPending')
+                          : req.status === 'pending_validation' ? t('admin.requestFilterPaymentSubmitted')
+                          : req.status === 'approved' ? t('admin.requestFilterApproved')
+                          : req.status === 'cancelled' ? t('admin.requestFilterCancelled', 'Annulée')
+                          : t('admin.requestFilterRejected')}
                       </span>
+                      {/* Lot 3 : badges MODIFIÉE / UPGRADE */}
+                      {req.modifiedAt && req.modifiedAt > req.createdAt + 1000 && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-black bg-yellow-500/25 text-yellow-300"
+                          title={t('admin.modifiedTooltip', 'Modifiée par le vendeur le {{date}}', { date: formatDate(req.modifiedAt) })}
+                        >
+                          ✏ {t('admin.requestModified', 'MODIFIÉE')}
+                        </span>
+                      )}
+                      {req.isUpgrade && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-black bg-indigo-500/25 text-indigo-300"
+                          title={t('admin.upgradeTooltip', 'Vendeur déjà sur un plan payant actif')}
+                        >
+                          ⤴ {t('admin.requestUpgrade', 'UPGRADE')}
+                        </span>
+                      )}
                       {(req.status === 'pending' || req.status === 'pending_validation') && (
                         <span
                           className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-700/50 text-gray-300"

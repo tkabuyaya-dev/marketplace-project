@@ -117,16 +117,17 @@ export const TC = {
   hoverShadow:  'hover:shadow-gold-900/20',
 } as const;
 
-// --- SUBSCRIPTION TIERS (Business Model) ---
-// Free: 0-5 produits (gratuit) — alerte à 3 produits pour encourager upgrade
-// Starter: 6-15 — payant, 30 jours renouvelable
-// Pro+: payant, 30 jours renouvelable, NIF requis
+// --- SUBSCRIPTION TIERS (Business Model — refonte 2026-06) ---
+// Découverte : 5 produits gratuit
+// Vendeur    : 25 produits, sans contact client
+// Pro        : 100 produits, contact client EXCLUSIF + badge Pro + priorité recherche
+// Grossiste  : Illimité, contact client + badge Grossiste + priorité + NIF requis
+// La source de vérité des features est utils/planFeatures.ts (PLAN_FEATURES).
 export const INITIAL_SUBSCRIPTION_TIERS: SubscriptionTier[] = [
-  { id: 'free', min: 0, max: 5, label: 'Découverte (Gratuit)', requiresNif: false },
-  { id: 'starter', min: 6, max: 15, label: 'Starter', requiresNif: false },
-  { id: 'pro', min: 16, max: 30, label: 'Business Pro', requiresNif: true },
-  { id: 'elite', min: 31, max: 50, label: 'Élite', requiresNif: true },
-  { id: 'unlimited', min: 51, max: null, label: 'Grossiste Illimité', requiresNif: true },
+  { id: 'free',      min: 0, max: 5,    label: 'Découverte', requiresNif: false },
+  { id: 'vendeur',   min: 1, max: 25,   label: 'Vendeur',    requiresNif: false },
+  { id: 'pro',       min: 1, max: 100,  label: 'Pro',        requiresNif: false },
+  { id: 'grossiste', min: 1, max: null, label: 'Grossiste',  requiresNif: true  },
 ];
 export const FREE_TIER_WARNING_AT = 3; // Show upgrade warning when reaching this count on free plan
 
@@ -184,16 +185,18 @@ export const SUPPORT_WHATSAPP: Record<string, string> = {
 };
 
 // --- PRIX D'ABONNEMENT PAR PAYS (defaults — admin peut modifier via Firestore) ---
-// Ordre de grandeur : aligné sur la baseline ~5 USD pour Starter.
-// 1 USD ≈ 2 600 TZS / 130 KES / 3 700 UGX (taux 2026).
+// Prix mensuels (base). Les prix trimestriels (-10%) et annuels (-25%) sont
+// calculés dynamiquement par getPeriodPrice() dans PlansPage.
+// Keys : 'vendeur' / 'pro' / 'grossiste' (post-refonte). Le tier 'free' est
+// toujours gratuit donc absent de la table.
 export const DEFAULT_SUBSCRIPTION_PRICING: Record<string, SubscriptionPricing> = {
-  bi: { prices: { starter: 15000,  pro: 45000,  elite: 100000, unlimited: 250000 }, currency: 'BIF' },
-  cd: { prices: { starter: 5,      pro: 15,     elite: 30,     unlimited: 75     }, currency: 'USD' },
-  rw: { prices: { starter: 5000,   pro: 15000,  elite: 30000,  unlimited: 75000  }, currency: 'RWF' },
-  // Placeholders scaffolded — à ajuster aux marchés réels
-  tz: { prices: { starter: 13000,  pro: 39000,  elite: 78000,  unlimited: 195000 }, currency: 'TZS' },
-  ke: { prices: { starter: 650,    pro: 1950,   elite: 3900,   unlimited: 9750   }, currency: 'KES' },
-  ug: { prices: { starter: 18500,  pro: 55500,  elite: 111000, unlimited: 277500 }, currency: 'UGX' },
+  bi: { prices: { vendeur: 9900,  pro: 29000, grossiste: 75000 }, currency: 'BIF' },
+  cd: { prices: { vendeur: 6000,  pro: 19000, grossiste: 42000 }, currency: 'CDF' },
+  rw: { prices: { vendeur: 2500,  pro: 7800,  grossiste: 17000 }, currency: 'RWF' },
+  tz: { prices: { vendeur: 4500,  pro: 15500, grossiste: 34000 }, currency: 'TZS' },
+  // Placeholders scaffolded — à ajuster aux marchés réels avant activation
+  ke: { prices: { vendeur: 650,   pro: 2000,  grossiste: 5000   }, currency: 'KES' },
+  ug: { prices: { vendeur: 18500, pro: 55500, grossiste: 140000 }, currency: 'UGX' },
 };
 
 // --- PRIX BOOST PAR PAYS (defaults — admin peut modifier via Firestore collection boostPricing) ---

@@ -795,7 +795,7 @@ const Step3Legal: React.FC<Step3Props> = ({
             <div>
               <div className="text-[14.5px] font-black text-ink">Accès illimité aux plans</div>
               <div className="text-[12.5px] text-ink2 mt-0.5 leading-relaxed">
-                Vous pourrez choisir n'importe quel plan (Starter, Pro, Elite, Unlimited) et
+                Vous pourrez choisir n'importe quel plan (Vendeur, Pro, Grossiste) et
                 accéder à toutes les fonctionnalités vendeur.
               </div>
             </div>

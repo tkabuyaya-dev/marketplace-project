@@ -892,10 +892,10 @@ export const SellerDashboard: React.FC = () => {
   const TierBadge = ({ label }: { label: string }) => {
     const key = label.toLowerCase();
     let bg = '#F4F5F7', fg = '#5C6370';
-    if (key.includes('starter')) { bg = '#EFF6FF'; fg = '#1D4ED8'; }
-    else if (key.includes('pro')) { bg = '#FFFBEB'; fg = '#92400E'; }
-    else if (key.includes('elite') || key.includes('premium')) { bg = '#FEF3C7'; fg = '#78350F'; }
-    else if (key.includes('illim') || key.includes('unlimited')) { bg = '#EEF2FF'; fg = '#3730A3'; }
+    // Legacy 'starter' → couleur Vendeur (bleu) ; legacy 'elite' → couleur Pro (ambre)
+    if (key.includes('vendeur') || key.includes('starter')) { bg = '#EFF6FF'; fg = '#1D4ED8'; }
+    else if (key.includes('grossiste') || key.includes('illim') || key.includes('unlimited')) { bg = '#EEF2FF'; fg = '#3730A3'; }
+    else if (key.includes('pro') || key.includes('elite') || key.includes('élite')) { bg = '#FFFBEB'; fg = '#92400E'; }
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] font-semibold leading-none" style={{ background: bg, color: fg }}>
         {label}

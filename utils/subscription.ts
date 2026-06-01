@@ -7,6 +7,7 @@
 
 import { SubscriptionTier } from '../types';
 import { INITIAL_SUBSCRIPTION_TIERS } from '../constants';
+import { featuresForLabel } from './planFeatures';
 
 export interface SubscriptionStatus {
   currentTier: SubscriptionTier;
@@ -46,13 +47,13 @@ export function getSubscriptionStatus(input: SubscriptionInput): SubscriptionSta
     // Expired → force free tier
     currentTier = INITIAL_SUBSCRIPTION_TIERS[0];
   } else if (maxProducts !== undefined && tierLabel) {
-    // Admin-set tier
+    // Admin-set tier — requiresNif est dérivé des features du plan (Grossiste only)
     currentTier = {
       id: 'admin_set',
       label: tierLabel,
       min: 0,
       max: maxProducts >= 99999 ? null : maxProducts,
-      requiresNif: true,
+      requiresNif: featuresForLabel(tierLabel).requiresNif,
     };
   } else if (!hasNif) {
     currentTier = INITIAL_SUBSCRIPTION_TIERS[0];

@@ -169,6 +169,147 @@ describe('/subscriptionRequests — lecture', () => {
   });
 });
 
+// ─── Lot 3 : hard-gate NIF Grossiste à la création ───────────────────────────
+
+describe('/subscriptionRequests — hard-gate NIF Grossiste (Lot 3)', () => {
+  const GROSSISTE_REQUEST = {
+    ...BASE_SUB_REQUEST,
+    planId: 'grossiste',
+    planLabel: 'Grossiste',
+    amount: 75000,
+    maxProducts: 99999,
+  };
+
+  it('vendeur SANS NIF ne peut PAS créer une demande Grossiste', async () => {
+    // Le seed par défaut a sellerDetails: { maxProducts: 50 } SANS hasNif/nif
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-1'), GROSSISTE_REQUEST)
+    );
+  });
+
+  it('vendeur AVEC NIF valide peut créer une demande Grossiste', async () => {
+    // Override le seed avec NIF valide
+    await seedDoc('users', SELLER_ID, {
+      role: 'seller', isSuspended: false, productCount: 2,
+      sellerDetails: { maxProducts: 50, hasNif: true, nif: 'NIF12345' },
+    });
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-2'), GROSSISTE_REQUEST)
+    );
+  });
+
+  it('vendeur avec hasNif=true mais nif vide ne peut PAS créer Grossiste', async () => {
+    await seedDoc('users', SELLER_ID, {
+      role: 'seller', isSuspended: false, productCount: 2,
+      sellerDetails: { maxProducts: 50, hasNif: true, nif: '' },
+    });
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-3'), GROSSISTE_REQUEST)
+    );
+  });
+
+  it('hard-gate NIF ne bloque PAS les autres plans (Pro / Vendeur / Découverte)', async () => {
+    // SELLER_ID seed default = pas de NIF — mais création Pro doit passer
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-pro-1'), {
+        ...BASE_SUB_REQUEST, planId: 'pro', planLabel: 'Pro', amount: 29000, maxProducts: 100,
+      })
+    );
+  });
+});
+
+// ─── Lot 4 : rate-limit createSubscriptionRequest (P4) ───────────────────────
+
+describe('/subscriptionRequests — rate-limit (Lot 4 P4)', () => {
+  it('vendeur peut créer une demande la première fois (lastSubRequestCreatedAt absent)', async () => {
+    // SELLER_ID seed default = pas de lastSubRequestCreatedAt (= 0)
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-rl-1'), BASE_SUB_REQUEST)
+    );
+  });
+
+  it('vendeur ne peut PAS créer 2 demandes en <60s (rate-limit)', async () => {
+    // Simule un lastSubRequestCreatedAt très récent (= maintenant)
+    await seedDoc('users', SELLER_ID, {
+      role: 'seller', isSuspended: false, productCount: 2,
+      sellerDetails: { maxProducts: 50, lastSubRequestCreatedAt: Date.now() },
+    });
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-rl-2'), BASE_SUB_REQUEST)
+    );
+  });
+
+  it('vendeur peut créer après 60s écoulées', async () => {
+    // Simule un lastSubRequestCreatedAt >60s dans le passé
+    await seedDoc('users', SELLER_ID, {
+      role: 'seller', isSuspended: false, productCount: 2,
+      sellerDetails: { maxProducts: 50, lastSubRequestCreatedAt: Date.now() - 90 * 1000 },
+    });
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-rl-3'), BASE_SUB_REQUEST)
+    );
+  });
+});
+
+// ─── Lot 3 : sous-collection history (read seller+admin, write false) ────────
+
+describe('/subscriptionRequests/{id}/history (Lot 3)', () => {
+  beforeEach(async () => {
+    await seedDoc('subscriptionRequests', 'sub-001', BASE_SUB_REQUEST);
+    await seedDoc(
+      'subscriptionRequests/sub-001/history',
+      'evt-001',
+      { action: 'created', by: { userId: SELLER_ID, role: 'seller' }, timestamp: now }
+    );
+  });
+
+  it('vendeur peut lire l\'historique de SA demande', async () => {
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      getDoc(doc(db, 'subscriptionRequests', 'sub-001', 'history', 'evt-001'))
+    );
+  });
+
+  it('autre vendeur ne peut PAS lire l\'historique d\'autrui', async () => {
+    const db = authed(OTHER_SELLER_ID).firestore();
+    await expectPermissionDenied(
+      getDoc(doc(db, 'subscriptionRequests', 'sub-001', 'history', 'evt-001'))
+    );
+  });
+
+  it('admin peut lire tous les historiques', async () => {
+    const db = authed(ADMIN_ID, { role: 'admin' }).firestore();
+    await expectPermissionGranted(
+      getDoc(doc(db, 'subscriptionRequests', 'sub-001', 'history', 'evt-001'))
+    );
+  });
+
+  it('aucun client (même admin) ne peut écrire dans history (admin SDK only)', async () => {
+    const db = authed(ADMIN_ID, { role: 'admin' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-001', 'history', 'evt-fake'), {
+        action: 'modified', by: { userId: ADMIN_ID, role: 'admin' }, timestamp: now,
+      })
+    );
+  });
+
+  it('seller ne peut PAS écrire dans history', async () => {
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-001', 'history', 'evt-fake-seller'), {
+        action: 'cancelled', by: { userId: SELLER_ID, role: 'seller' }, timestamp: now,
+      })
+    );
+  });
+});
+
 // ─── Boost Requests ──────────────────────────────────────────────────────────
 
 describe('/boostRequests — création', () => {

@@ -457,7 +457,7 @@ export const downgradeToFree = async (userId: string): Promise<void> => {
   if (!db) return;
   await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
     'sellerDetails.maxProducts': 5,
-    'sellerDetails.tierLabel': 'Gratuit',
+    'sellerDetails.tierLabel': 'Découverte',
     'sellerDetails.subscriptionExpiresAt': null,
   });
 };

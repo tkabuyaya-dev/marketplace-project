@@ -36,6 +36,7 @@ import * as logger from "firebase-functions/logger";
 import { getDb } from "./admin.js";
 import { ANTHROPIC_API_KEY } from "./config.js";
 import { classifyWithAI } from "./ai-classify-category.js";
+import { featuresForLabel } from "./plan-features.js";
 
 const HELP_CATEGORY_SLUG = "_help";
 const AI_CONFIDENCE_THRESHOLD = 0.7;
@@ -44,11 +45,9 @@ const MAX_SELLERS_NOTIFIED = 50;
 const MAX_SELLERS_SCANNED = 200;
 const MAX_PRO_FALLBACK = 20;
 
-// Tiers éligibles pour le fallback "demande sans catégorie" (cf. service
-// canContactBuyer — mêmes labels que la logique frontend qui gate les clics
-// WhatsApp). Les sellers gratuits ne sont PAS spammés ici, c'est volontaire :
-// argument upsell vers Pro.
-const PRO_TIER_LABELS = new Set(["Business Pro", "Élite", "Grossiste Illimité"]);
+// Le fallback "demande sans catégorie" cible uniquement les plans qui peuvent
+// contacter (cf. PLAN_FEATURES.canContactBuyer). Les sellers gratuits/Vendeur
+// ne sont PAS spammés ici, c'est volontaire : argument upsell vers Pro.
 
 type BuyerRequestData = {
   title?: string;
@@ -232,9 +231,9 @@ async function notifyTopPro(params: {
     if (d.isSuspended) return;
 
     const tierLabel = d.sellerDetails?.tierLabel || "";
-    if (!PRO_TIER_LABELS.has(tierLabel)) return;
+    if (!featuresForLabel(tierLabel).canContactBuyer) return;
 
-    // Exclure les Pro expirés
+    // Exclure les plans payants expirés
     const expiresAt = d.sellerDetails?.subscriptionExpiresAt;
     if (expiresAt && now > expiresAt) return;
 

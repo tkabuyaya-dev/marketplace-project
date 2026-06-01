@@ -74,6 +74,11 @@ export { deleteProducts } from "./delete-products.js";
 export { approveRenewal } from "./approve-renewal.js";
 export { rejectSubscription } from "./reject-subscription.js";
 
+// Seller lifecycle actions sur ses propres demandes d'abonnement (callables).
+// Atomicité transaction + écriture sous-collection history (admin SDK only).
+export { cancelSubscriptionRequest } from "./cancel-subscription-request.js";
+export { modifySubscriptionRequest } from "./modify-subscription-request.js";
+
 // One-shot backfill: verificationTier migration for existing users
 export { backfillVerificationTier } from "./backfill-verification-tier.js";
 

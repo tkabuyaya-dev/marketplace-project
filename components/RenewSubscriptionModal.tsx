@@ -15,8 +15,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
+import { Camera, Image as ImageIcon, X as XIcon } from 'lucide-react';
 import {
-  SubscriptionRequest, SubscriptionTier, SubscriptionPricing,
+  SubscriptionRequest, SubscriptionTier, SubscriptionPricing, SubscriptionPeriod,
 } from '../types';
 import {
   PAYMENT_METHODS, DEFAULT_SUBSCRIPTION_PRICING,
@@ -29,6 +30,7 @@ import {
   subscribeToSubscriptionTiers,
   subscribeToSubscriptionPricing,
 } from '../services/firebase';
+import { uploadImage, UploadError } from '../services/cloudinary';
 import { useToast } from './Toast';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -67,11 +69,17 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [transactionRef, setTransactionRef] = useState('');
   const [requestId, setRequestId] = useState<string | null>(null);
+  // P2 (Lot 4) : sélecteur de période + preuve de paiement Cloudinary
+  const [period, setPeriod] = useState<SubscriptionPeriod>('1m');
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [proofUploading, setProofUploading] = useState(false);
 
   // Subscribe to dynamic tiers & pricing only while the modal is open
   useEffect(() => {
     if (!isOpen) return;
     setTransactionRef('');
+    setProofUrl(null);
+    setPeriod('1m');
 
     // If vendor closed the modal before entering their ref, resume at confirm step
     const resumable = tier
@@ -80,6 +88,8 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
     if (resumable) {
       setRequestId(resumable.id);
       setStep('confirm');
+      // Restaure la période choisie à la création (fallback 1m si legacy)
+      if (resumable.period) setPeriod(resumable.period);
     } else {
       setRequestId(null);
       setStep('payment');
@@ -116,9 +126,18 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
     return defaults.currency;
   };
 
-  const price = getPrice();
+  const monthlyPrice = getPrice();
   const currency = getCurrency();
+
+  // Cohérent avec PlansPage.getPeriodPrice : ×3×0.9 / ×12×0.75
+  const getPeriodPrice = (p: SubscriptionPeriod): number => {
+    if (p === '3m')  return Math.round(monthlyPrice * 3 * 0.9);
+    if (p === '12m') return Math.round(monthlyPrice * 12 * 0.75);
+    return monthlyPrice;
+  };
+  const price = getPeriodPrice(period);
   const formattedPrice = `${price.toLocaleString()} ${currency}`;
+  const periodDiscount = (p: SubscriptionPeriod) => (p === '12m' ? '-25%' : p === '3m' ? '-10%' : null);
 
   const hasPendingForPlan = tier
     ? existingRequests.some(
@@ -148,6 +167,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
         transactionRef: null,
         proofUrl: null,
         maxProducts: tier.max === null ? 99999 : tier.max,
+        period, // P2 (Lot 4) : transmet la période choisie
       });
       setRequestId(id);
       setStep('confirm');
@@ -166,7 +186,8 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
     }
     setLoading(true);
     try {
-      await confirmPayment(requestId, transactionRef.trim());
+      // P2 (Lot 4) : transmet proofUrl (était toujours undefined avant)
+      await confirmPayment(requestId, transactionRef.trim(), proofUrl);
       setStep('done');
       toast(t('plans.paymentConfirmed'), 'success');
     } catch {
@@ -174,6 +195,27 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // P2 (Lot 4) : upload preuve Cloudinary
+  const handleProofUpload = async (file: File) => {
+    setProofUploading(true);
+    try {
+      const url = await uploadImage(file, { folder: 'aurabuja-app-2026/payment-proofs' });
+      setProofUrl(url);
+      toast(t('plans.proofUploaded', 'Preuve ajoutée'), 'success');
+    } catch (err) {
+      const msg = err instanceof UploadError ? err.message : t('plans.proofUploadError', 'Échec de l\'envoi de la preuve');
+      toast(msg, 'error');
+    } finally {
+      setProofUploading(false);
+    }
+  };
+
+  const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleProofUpload(file);
+    e.target.value = '';
   };
 
   // ── Render ──
@@ -232,6 +274,37 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
           {/* ── Step: payment ── */}
           {tier && step === 'payment' && (
             <>
+              {/* P2 (Lot 4) : Sélecteur de période 1m/3m/12m avec dégressivité */}
+              <div className="flex items-center gap-1.5">
+                {(['1m', '3m', '12m'] as SubscriptionPeriod[]).map(p => {
+                  const isActive = period === p;
+                  const discount = periodDiscount(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPeriod(p)}
+                      disabled={loading}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold transition-all"
+                      style={{
+                        background: isActive ? '#F5C842' : 'rgba(255,255,255,0.06)',
+                        color: isActive ? '#111318' : '#9CA3AF',
+                        border: isActive ? '1.5px solid #F5C842' : '1.5px solid transparent',
+                      }}
+                    >
+                      {p === '1m' ? t('plans.period1m', 'Mensuel')
+                        : p === '3m' ? t('plans.period3m', 'Trimestriel')
+                        : t('plans.period12m', 'Annuel')}
+                      {discount && (
+                        <span className="text-[9px] font-black px-1 rounded" style={{ background: '#22c55e', color: '#fff' }}>
+                          {discount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Plan + amount summary */}
               <div className="bg-gray-800/60 rounded-xl p-4 flex items-center justify-between">
                 <div>
@@ -239,6 +312,11 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
                   <p className="text-xs text-gray-400">
                     {tier.max === null ? t('plans.featureUnlimited') : t('plans.planSummary', { max: tier.max })}
                   </p>
+                  {period !== '1m' && (
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      ≈ {monthlyPrice.toLocaleString()} {currency}{t('plans.perMonth', '/mois')}
+                    </p>
+                  )}
                 </div>
                 <p className="text-xl font-black text-gold-400">{formattedPrice}</p>
               </div>
@@ -326,6 +404,66 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
                   autoFocus
                 />
                 <p className="text-gray-500 text-xs mt-1.5">{t('plans.transactionRefHint')}</p>
+              </div>
+
+              {/* P2 (Lot 4) : preuve de paiement Cloudinary (facultatif) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-400 mb-2">
+                  {t('plans.proofTitle', 'Preuve de paiement (facultatif)')}
+                </label>
+                {proofUrl ? (
+                  <div className="relative">
+                    <img
+                      src={proofUrl}
+                      alt={t('plans.proofAlt', 'Preuve de paiement')}
+                      className="w-full max-h-40 object-contain rounded-lg bg-black/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setProofUrl(null)}
+                      aria-label={t('plans.proofRemove', 'Retirer')}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center"
+                    >
+                      <XIcon size={12} />
+                    </button>
+                  </div>
+                ) : proofUploading ? (
+                  <div className="flex items-center justify-center gap-2 py-3 text-xs text-blue-300 font-bold">
+                    <span className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-300 rounded-full animate-spin" />
+                    {t('plans.proofUploading', 'Envoi en cours…')}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <label
+                      htmlFor="renew-proof-camera"
+                      className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer bg-blue-500/10 text-blue-300 border border-blue-500/30 select-none"
+                    >
+                      <Camera size={14} />
+                      <span>{t('plans.proofCamera', 'Photo')}</span>
+                    </label>
+                    <label
+                      htmlFor="renew-proof-gallery"
+                      className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer bg-white/5 text-gray-300 border border-gray-700 select-none"
+                    >
+                      <ImageIcon size={14} />
+                      <span>{t('plans.proofGallery', 'Galerie')}</span>
+                    </label>
+                  </div>
+                )}
+                <input
+                  id="renew-proof-camera"
+                  type="file" accept="image/*" capture="environment"
+                  onChange={handleProofChange}
+                  disabled={proofUploading}
+                  className="hidden"
+                />
+                <input
+                  id="renew-proof-gallery"
+                  type="file" accept="image/*"
+                  onChange={handleProofChange}
+                  disabled={proofUploading}
+                  className="hidden"
+                />
               </div>
 
               <button

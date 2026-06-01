@@ -380,22 +380,49 @@ service cloud.firestore {
 
     // ─────────────────────────────────────────────────────────
     // SUBSCRIPTION REQUESTS — Demandes d'abonnement
+    // Lifecycle :
+    //   pending → pending_validation (seller, via update — branche existante)
+    //   pending → cancelled          (seller, via CF cancelSubscriptionRequest)
+    //   pending_validation → cancelled (seller, via CF — admin SDK bypasse rules)
+    //   pending → pending (modifié)   (seller, via CF modifySubscriptionRequest)
+    //   * → approved / rejected       (admin uniquement)
+    // Les transitions via CF n'apparaissent pas dans les rules client : l'admin
+    // SDK bypasse les rules. Côté client on conserve la branche minimale.
     // ─────────────────────────────────────────────────────────
     match /subscriptionRequests/{requestId} {
       // Lecture: admin voit tout, seller voit ses propres demandes
       allow read: if isAdmin()
         || (isAuth() && resource.data.userId == request.auth.uid);
 
+      // Hard-gate NIF Grossiste : si planId='grossiste', le seller doit avoir
+      // sellerDetails.hasNif == true ET sellerDetails.nif non vide (string > 0).
+      // Bloque toute création directe Firestore sans NIF, en plus de la
+      // validation côté UI + côté CF modifySubscriptionRequest.
+      //
+      // Rate-limit (P4 du Lot 4) : 1 création max toutes les 60s. Le champ
+      // `sellerDetails.lastSubRequestCreatedAt` est écrit côté client APRÈS
+      // chaque création réussie. Default 0 → première création toujours OK.
       // Création: vendeur authentifié crée sa propre demande
       allow create: if isAuth()
         && isNotSuspended()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasAll(['userId', 'sellerName', 'countryId', 'planId', 'planLabel', 'amount', 'currency', 'status', 'maxProducts']);
+        && request.resource.data.keys().hasAll(['userId', 'sellerName', 'countryId', 'planId', 'planLabel', 'amount', 'currency', 'status', 'maxProducts'])
+        && getUserData().get('sellerDetails', {}).get('lastSubRequestCreatedAt', 0) < request.time.toMillis() - 60000
+        && (
+          request.resource.data.planId != 'grossiste'
+          || (
+            getUserData().get('sellerDetails', {}).get('hasNif', false) == true
+            && getUserData().get('sellerDetails', {}).get('nif', '') is string
+            && getUserData().get('sellerDetails', {}).get('nif', '').size() > 0
+          )
+        );
 
-      // Update: admin peut tout modifier, seller peut seulement confirmer paiement
+      // Update client : seller peut seulement confirmer son paiement
       // (status pending → pending_validation, en attachant transactionRef et
       // optionnellement une preuve de paiement Cloudinary).
+      // Toutes les autres transitions (cancel, modify) passent par Cloud
+      // Functions admin SDK qui bypassent ces rules.
       allow update: if isAdmin()
         || (isAuth()
           && resource.data.userId == request.auth.uid
@@ -404,6 +431,17 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'transactionRef', 'updatedAt', 'proofUrl']));
 
       allow delete: if isAdmin();
+
+      // Sous-collection history — traçabilité du cycle de vie.
+      // Lecture : seller (sa propre) + admin. Écriture : impossible côté client
+      // (les events sont créés par les CF cancelSubscriptionRequest /
+      // modifySubscriptionRequest / approveRenewal / rejectSubscription via
+      // admin SDK).
+      match /history/{eventId} {
+        allow read: if isAdmin()
+          || (isAuth() && get(/databases/$(database)/documents/subscriptionRequests/$(requestId)).data.userId == request.auth.uid);
+        allow write: if false;
+      }
     }
 
     // ─────────────────────────────────────────────────────────

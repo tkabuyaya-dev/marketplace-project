@@ -35,8 +35,9 @@ const FREE_DAILY_QUOTA = 3;
 const CACHE_TTL_DAYS = 7;
 const CACHE_TTL_MS = CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
 
-// Tiers Pro éligibles à l'usage illimité (aligné sur canContactBuyer).
-const PRO_TIERS = new Set(["Business Pro", "Élite", "Grossiste Illimité"]);
+// Plans éligibles à l'usage illimité (aligné sur canContactBuyer).
+// Source de vérité : functions/src/plan-features.ts → PLAN_FEATURES.canContactBuyer.
+import { featuresForLabel } from "./plan-features.js";
 
 interface GenerateInput {
   title?: string;
@@ -164,7 +165,7 @@ export const generateProductDescription = onCall<GenerateInput, Promise<Generate
     };
     const tierLabel = userData.sellerDetails?.tierLabel || "";
     const expiresAt = userData.sellerDetails?.subscriptionExpiresAt || 0;
-    const isProActive = PRO_TIERS.has(tierLabel) && (!expiresAt || Date.now() < expiresAt);
+    const isProActive = featuresForLabel(tierLabel).canContactBuyer && (!expiresAt || Date.now() < expiresAt);
 
     // ── 4. Quota check (Free uniquement) ─────────────────────────────────
     const dateKey = getLocalDateKey();

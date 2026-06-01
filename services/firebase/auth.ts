@@ -191,10 +191,42 @@ export const signInWithGoogle = async (): Promise<User | null> => {
     return null;
   }
 
-  // iOS PWA standalone → /auth-google dans Safari
+  // iOS PWA standalone → signInWithPopup directement.
+  // Sur iOS 16.4+ (mars 2023, donc 99% des iPhones en 2026), Apple a fixé
+  // l'isolation storage en PWA : le popup OAuth s'ouvre comme une SFAuthenticationSession
+  // et le résultat est correctement renvoyé au PWA via postMessage du SDK Firebase.
+  // C'est nettement mieux que `window.open(.../auth-google)` qui ouvrait Safari
+  // (storage isolé) → le user signait dans Safari mais la PWA restait déconnectée.
   if (isIOSStandalone()) {
-    window.open(`${window.location.origin}/auth-google`, '_blank');
-    return null;
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return resolveFirebaseUser(result.user);
+    } catch (err: any) {
+      if (
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request'
+      ) {
+        return null;
+      }
+
+      // Last resort (iOS < 16.4, popup vraiment bloqué) : fallback Safari.
+      // Connu pour être cassé (storage isolé), mais évite l'erreur silencieuse.
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/operation-not-supported-in-this-environment' ||
+        err.code === 'auth/web-storage-unsupported'
+      ) {
+        window.open(`${window.location.origin}/auth-google`, '_blank');
+        const e: any = new Error('Connexion via Safari requise sur cette version d\'iOS. Une fois connecté dans Safari, revenez à l\'app et relancez la connexion.');
+        e.code = 'auth/needs-browser-open';
+        throw e;
+      }
+
+      throw err;
+    }
   }
 
   // Android browser → /auth-google via navigation SPA (caller utilise React Router).
