@@ -17,7 +17,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Camera, Image as ImageIcon, X as XIcon } from 'lucide-react';
 import {
-  SubscriptionRequest, SubscriptionTier, SubscriptionPricing, SubscriptionPeriod,
+  SubscriptionRequest, SubscriptionPricing, SubscriptionPeriod,
 } from '../types';
 import {
   PAYMENT_METHODS, DEFAULT_SUBSCRIPTION_PRICING,
@@ -27,7 +27,6 @@ import {
 import {
   createSubscriptionRequest,
   confirmPayment,
-  subscribeToSubscriptionTiers,
   subscribeToSubscriptionPricing,
 } from '../services/firebase';
 import { uploadImage, UploadError } from '../services/cloudinary';
@@ -61,7 +60,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const { toast } = useToast();
 
   // ── Data ──
-  const [tiers, setTiers] = useState<SubscriptionTier[]>(INITIAL_SUBSCRIPTION_TIERS);
+  const tiers = INITIAL_SUBSCRIPTION_TIERS;
   const [pricing, setPricing] = useState<SubscriptionPricing | null>(null);
 
   // ── UI ──
@@ -95,10 +94,8 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
       setStep('payment');
     }
 
-    const unsubTiers = subscribeToSubscriptionTiers(setTiers);
     const unsubPricing = subscribeToSubscriptionPricing(sellerCountryId, setPricing);
     return () => {
-      unsubTiers();
       unsubPricing();
     };
   }, [isOpen, sellerCountryId]);

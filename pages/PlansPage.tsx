@@ -16,7 +16,7 @@ import {
 } from '../types';
 import {
   createSubscriptionRequest, confirmPayment,
-  subscribeToSubscriptionPricing, subscribeToSubscriptionTiers,
+  subscribeToSubscriptionPricing,
   subscribeToMyRequests,
   cancelMyRequest, modifyMyRequest,
 } from '../services/firebase';
@@ -87,7 +87,7 @@ export const PlansPage: React.FC = () => {
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>('plans');
-  const [tiers, setTiers] = useState<SubscriptionTier[]>(INITIAL_SUBSCRIPTION_TIERS);
+  const tiers = INITIAL_SUBSCRIPTION_TIERS;
   const [pricing, setPricing] = useState<SubscriptionPricing | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier | null>(null);
   const [transactionRef, setTransactionRef] = useState('');
@@ -141,11 +141,9 @@ export const PlansPage: React.FC = () => {
       navigate('/');
       return;
     }
-    const unsubTiers = subscribeToSubscriptionTiers(setTiers);
     const unsubPricing = subscribeToSubscriptionPricing(sellerCountryId, setPricing);
     const unsubRequests = subscribeToMyRequests(currentUser.id, setMyRequests);
     return () => {
-      unsubTiers();
       unsubPricing();
       unsubRequests();
     };
@@ -173,7 +171,6 @@ export const PlansPage: React.FC = () => {
     return base; // 1m — no discount
   };
 
-  const periodMultiplier = (p: SubscriptionPeriod) => (p === '12m' ? 12 : p === '3m' ? 3 : 1);
   const periodDiscount   = (p: SubscriptionPeriod) => (p === '12m' ? '-25%' : p === '3m' ? '-10%' : null);
   const periodSuffix     = (p: SubscriptionPeriod) => (p === '12m' ? '/an' : p === '3m' ? '/trim.' : '/mois');
 

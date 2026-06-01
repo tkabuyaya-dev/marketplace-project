@@ -11,7 +11,6 @@ import {
 } from '../constants';
 import {
   subscribeToSubscriptionPricing,
-  subscribeToSubscriptionTiers,
 } from '../services/firebase';
 import type { SubscriptionTier } from '../types';
 import {
@@ -738,13 +737,12 @@ const BecomeSellerLanding: React.FC = () => {
   const previewCountryId = activeCountry || 'bi';
   const previewCountry = INITIAL_COUNTRIES.find(c => c.id === previewCountryId) || INITIAL_COUNTRIES[0];
 
-  const [tiers, setTiers] = useState<SubscriptionTier[]>(INITIAL_SUBSCRIPTION_TIERS);
+  const tiers = INITIAL_SUBSCRIPTION_TIERS;
   const [pricingData, setPricingData] = useState<{ prices: Record<string, number>; currency: string } | null>(null);
 
   useEffect(() => {
-    const unsubTiers = subscribeToSubscriptionTiers(setTiers);
     const unsubPricing = subscribeToSubscriptionPricing(previewCountryId, setPricingData);
-    return () => { unsubTiers(); unsubPricing(); };
+    return () => { unsubPricing(); };
   }, [previewCountryId]);
 
   const currency = pricingData?.currency

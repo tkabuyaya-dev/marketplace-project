@@ -64,7 +64,6 @@ export const COLLECTIONS = {
   USERS:              'users',
   PRODUCTS:           'products',
   CATEGORIES:         'categories',
-  SUBSCRIPTION_TIERS: 'subscriptionTiers',
   COUNTRIES:          'countries',
   // CONVERSATIONS removed — chat feature deprecated
   MESSAGES:           'messages',

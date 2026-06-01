@@ -3,9 +3,9 @@
  */
 
 import {
-  Category, SubscriptionTier, Country, Currency,
+  Category, Country, Currency,
 } from '../../types';
-import { INITIAL_CATEGORIES, INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES, INITIAL_CURRENCIES } from '../../constants';
+import { INITIAL_CATEGORIES, INITIAL_COUNTRIES, INITIAL_CURRENCIES } from '../../constants';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, writeBatch, onSnapshot, serverTimestamp, COLLECTIONS,
@@ -68,49 +68,6 @@ export const syncCategoriesToFirestore = async (): Promise<number> => {
 
   await batch.commit();
   return INITIAL_CATEGORIES.length;
-};
-
-// ── Subscription Tiers ──
-
-export const getSubscriptionTiers = async (): Promise<SubscriptionTier[]> => {
-  if (!db) return INITIAL_SUBSCRIPTION_TIERS;
-
-  const snap = await getDocs(collection(db, COLLECTIONS.SUBSCRIPTION_TIERS));
-  if (snap.empty) {
-    // Seed Firestore with initial tiers so admin & PlansPage stay in sync
-    const batch = writeBatch(db);
-    INITIAL_SUBSCRIPTION_TIERS.forEach(tier => {
-      batch.set(doc(db, COLLECTIONS.SUBSCRIPTION_TIERS, tier.id), tier);
-    });
-    await batch.commit();
-    return INITIAL_SUBSCRIPTION_TIERS;
-  }
-
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() } as SubscriptionTier))
-    .sort((a, b) => a.min - b.min);
-};
-
-/** Real-time listener for subscription tiers — bypasses persistentLocalCache staleness */
-export const subscribeToSubscriptionTiers = (
-  callback: (tiers: SubscriptionTier[]) => void,
-): (() => void) => {
-  if (!db) {
-    callback(INITIAL_SUBSCRIPTION_TIERS);
-    return () => {};
-  }
-  return onSnapshot(collection(db, COLLECTIONS.SUBSCRIPTION_TIERS), (snap) => {
-    if (snap.empty) {
-      callback(INITIAL_SUBSCRIPTION_TIERS);
-      return;
-    }
-    const tiers = snap.docs
-      .map(d => ({ id: d.id, ...d.data() } as SubscriptionTier))
-      .sort((a, b) => a.min - b.min);
-    callback(tiers);
-  }, () => {
-    callback(INITIAL_SUBSCRIPTION_TIERS);
-  });
 };
 
 // ── Countries ──
@@ -471,10 +428,6 @@ export const seedInitialData = async (): Promise<void> => {
 
   INITIAL_CATEGORIES.forEach(cat => {
     batch.set(doc(db, COLLECTIONS.CATEGORIES, cat.id), { ...cat });
-  });
-
-  INITIAL_SUBSCRIPTION_TIERS.forEach(tier => {
-    batch.set(doc(db, COLLECTIONS.SUBSCRIPTION_TIERS, tier.id), { ...tier });
   });
 
   INITIAL_COUNTRIES.forEach(country => {
