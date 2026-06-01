@@ -71,6 +71,14 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/node_modules/**', 'sw.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // Activate the new SW immediately on install, take over open clients,
+        // and purge precache entries from prior deploys. Without these flags,
+        // browsers keep serving the stale bundle from the active SW until every
+        // tab is closed — which is exactly how the /plans flip-to-legacy bug
+        // survived a hard refresh.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Inject our background-sync + notification handlers into the
         // generated SW. Lets us add behaviors without migrating to
         // injectManifest mode (which would require rewriting all the
