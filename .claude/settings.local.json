@@ -35,7 +35,19 @@
       "Bash(du -sh /c/projets/aurabuja/public/icons/ /c/projets/aurabuja/public/favicon*)",
       "Bash(npx firebase:*)",
       "Bash(find /c/Projets/aurabuja -type f \\\\\\(-name *subscription* -o -name *pricing* -o -name *tier* -o -name *plan* -o -name *upgrade* \\\\\\))",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "PowerShell(npx tsc --noEmit; echo \"ExitCode: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell($pwd.Path; npx --prefix C:\\\\Projets\\\\aurabuja\\\\functions tsc -p C:\\\\Projets\\\\aurabuja\\\\functions --noEmit 2>&1 | Select-Object -Last 20)",
+      "PowerShell(npx --prefix C:\\\\Projets\\\\aurabuja\\\\functions tsc -p C:\\\\Projets\\\\aurabuja\\\\functions --noEmit; \"tsc exit: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit; \"root tsc exit: $LASTEXITCODE\")",
+      "PowerShell(gh run list --limit 3 --workflow=ci.yml 2>&1)",
+      "WebFetch(domain:api.github.com)",
+      "mcp__chrome-devtools__take_snapshot",
+      "PowerShell(cd C:\\\\Projets\\\\aurabuja\\\\functions; npm run build; \"build exit: $LASTEXITCODE\"; npx tsc --noEmit; \"tsc exit: $LASTEXITCODE\")",
+      "mcp__chrome-devtools__fill_form",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)"
     ]
   }
 }

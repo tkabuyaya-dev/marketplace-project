@@ -52,3 +52,18 @@ export const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
 ];
+
+// ─── PHOTO STUDIO (Nunulia Studio) ────────────────────────────────────────
+// Numéro WhatsApp provisoire (compte personnel fondateur, Burundi). Sera
+// remplacé par le numéro pro LIMITEL dès qu'il sera obtenu — pour éviter un
+// redéploiement, la CF photoSessionCreate lit d'abord appSettings/studio
+// (Firestore) et tombe sur cette constante en fallback.
+//
+// Format E.164 (+ + chiffres uniquement, sans 00 ni espaces). La conversion
+// vers le format wa.me (chiffres seuls) se fait dans la CF.
+export const STUDIO_DEFAULT_WHATSAPP = "+25768515135";
+
+// URL publique pour le lien magique envoyé au vendeur sur WhatsApp.
+// Doit matcher ALLOWED_ORIGINS[0] (hosting prod). Pour les previews,
+// utiliser firebase hosting:channel:deploy puis pointer manuellement.
+export const STUDIO_PUBLIC_BASE_URL = "https://nunulia.com";

@@ -118,3 +118,24 @@ export { flagBuyerRequest } from "./flag-buyer-request.js";
 // Notif "produit approuvé" : trigger sur products/{id} quand status
 // passe de pending → approved. Push immédiat au seller avec deep link.
 export { onProductApproved } from "./notify-product-approved.js";
+
+// ─── Photo Studio (Nunulia Studio) ─────────────────────────────────────────
+// 4 callables + 1 cron — flow complet de la création de session à la
+// publication du produit. Toutes les transitions de status passent par ces
+// CFs (rules client = create/update/delete photoSessions interdits).
+//
+// Lifecycle :
+//   photoSessionCreate         (seller) waiting_photos
+//   photoSessionSetProcessing  (admin)  waiting_photos → processing
+//   photoSessionAttach         (admin)  processing → ready  [+ Haiku Vision]
+//   photoSessionPublish        (seller) ready → published [transaction prod]
+//   expirePhotoSessions        (cron)   * → expired         [TTL 48h]
+export { photoSessionCreate } from "./photo-session-create.js";
+export { photoSessionSetProcessing } from "./photo-session-set-processing.js";
+export { photoSessionAttach } from "./photo-session-attach.js";
+export { photoSessionPublish } from "./photo-session-publish.js";
+export { expirePhotoSessions } from "./expire-photo-sessions.js";
+
+// Phase 7 : carte virale 1080×1920 + caption Haiku, déclenchée en async
+// quand session.status passe à 'published'. Découplé de photoSessionPublish.
+export { onPhotoSessionPublished } from "./share-card-trigger.js";

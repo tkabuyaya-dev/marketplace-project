@@ -28,6 +28,14 @@ const result = await build({
     // packages that cannot be require()'d in CJS mode — Firebase CLI's analysis
     // step loads the bundle as CJS, so external ESM packages would crash
     // silently and those functions would be invisible to the deployer.
+    //
+    // @resvg/resvg-js must remain external — il charge des binaires natifs
+    // (.node) qu'esbuild ne sait pas embarquer. À l'exécution, le bundle CJS
+    // fera un require() classique qui résoudra le bon binaire selon la plateforme
+    // (Cloud Functions Linux x64 — paquet @resvg/resvg-js-linux-x64-gnu installé
+    // via optionalDependencies du paquet principal).
+    "@resvg/resvg-js",
+    "@resvg/resvg-js-*",
   ],
 });
 

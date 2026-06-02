@@ -12,10 +12,10 @@ import { PlanFeatures, PlanId } from '../types';
 export const PLAN_IDS: readonly PlanId[] = ['free', 'vendeur', 'pro', 'grossiste'] as const;
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
-  free:      { maxProducts: 5,     canContactBuyer: false, badge: null,        priorityRanking: false, requiresNif: false },
-  vendeur:   { maxProducts: 25,    canContactBuyer: false, badge: null,        priorityRanking: false, requiresNif: false },
-  pro:       { maxProducts: 100,   canContactBuyer: true,  badge: 'pro',       priorityRanking: true,  requiresNif: false },
-  grossiste: { maxProducts: 99999, canContactBuyer: true,  badge: 'grossiste', priorityRanking: true,  requiresNif: true  },
+  free:      { maxProducts: 5,     canContactBuyer: false, badge: null,        priorityRanking: false, requiresNif: false, dailyStudioSessions: 1 },
+  vendeur:   { maxProducts: 25,    canContactBuyer: false, badge: null,        priorityRanking: false, requiresNif: false, dailyStudioSessions: 2 },
+  pro:       { maxProducts: 100,   canContactBuyer: true,  badge: 'pro',       priorityRanking: true,  requiresNif: false, dailyStudioSessions: 3 },
+  grossiste: { maxProducts: 99999, canContactBuyer: true,  badge: 'grossiste', priorityRanking: true,  requiresNif: true,  dailyStudioSessions: 5 },
 };
 
 export const PLAN_LABELS: Record<PlanId, string> = {

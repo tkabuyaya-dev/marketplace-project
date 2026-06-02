@@ -210,6 +210,44 @@ export const DEFAULT_BOOST_PRICING: Record<string, BoostPricing> = {
   ug: { amount: 3700, currency: 'UGX' },
 };
 
+// --- PHOTO STUDIO (Nunulia Studio) ---
+// Le throttling par plan est défini dans utils/planFeatures.ts via PlanFeatures.dailyStudioSessions
+// (source de vérité, mirrorée dans functions/src/plan-features.ts).
+//
+// Free=1, Vendeur=2, Pro=3, Grossiste=5 sessions par jour calendaire UTC+2 (Bujumbura/Kigali).
+
+/** Durée de vie d'une session photo avant expiration auto (cron 06:00 UTC quotidien). */
+export const STUDIO_SESSION_TTL_MS = 48 * 60 * 60 * 1000; // 48h
+
+/** Nombre maximum de photos traitées par session (limite côté admin upload + Rules CF). */
+export const STUDIO_MAX_PHOTOS = 5;
+
+/**
+ * Alphabet sessionId — sans caractères ambigus visuellement sur petit écran :
+ * pas de 0/O, pas de 1/I/l. 32 caractères → 32^6 ≈ 1 milliard de combinaisons,
+ * collision quasi-nulle même à 1000 sessions/jour pendant 10 ans.
+ */
+export const STUDIO_SESSION_ID_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+export const STUDIO_SESSION_ID_LENGTH = 6;
+
+/**
+ * Numéro WhatsApp destination des photos vendeur.
+ * Par défaut : réutilise SUPPORT_WHATSAPP[countryId] existant.
+ * Pour un numéro Studio dédié (recommandé à terme), créer doc Firestore :
+ *   appSettings/studio = { whatsappNumber: '+25768XXXXXX' }
+ * et la CF photo-session-create le lit en priorité avant fallback.
+ */
+export const STUDIO_WHATSAPP_FALLBACK_KEY = 'support';
+
+/**
+ * Message WhatsApp pré-rempli — le vendeur n'a qu'à joindre ses photos.
+ * Variables: {shopName}, {sessionId}, {countryName}.
+ * Si le vendeur n'efface pas le texte (95% des cas observés sur features
+ * similaires), l'admin retrouve la session via le sessionId visible dans le message.
+ */
+export const STUDIO_WHATSAPP_TEMPLATE =
+  '📸 NUNULIA Photo Studio\nVendeur : {shopName}\nSession : #{sessionId}\nPays : {countryName}\nJoignez vos photos ici puis envoyez.';
+
 // --- USERS MOCK ---
 export const MOCK_ADMIN: User = {
   id: 'admin1',

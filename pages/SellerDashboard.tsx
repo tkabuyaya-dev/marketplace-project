@@ -33,6 +33,7 @@ import { VerificationRequestModal } from '../components/VerificationRequestModal
 import { useOfflineQueue, type OfflineDraft, type SyncResult } from '../hooks/useOfflineQueue';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { getInventoryFromIDB, saveInventoryToIDB } from '../services/inventoryIdb';
+import { PhotoStudioCard } from '../components/dashboard/PhotoStudioCard';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
@@ -1306,6 +1307,9 @@ export const SellerDashboard: React.FC = () => {
             <StatCard label={t('dashboard.statTotalLikes')} value={myProducts.reduce((sum, p) => sum + (p.likesCount || 0), 0)} sub={t('dashboard.allListings')} />
             <StatCard label={t('dashboard.statPending')} value={pendingCount} sub={t('dashboard.adminValidation')} gold />
         </div>
+
+        {/* ── Photo Studio Card (Phase 6) ── */}
+        <PhotoStudioCard />
 
         {/* ── Buyer Requests Feature Banner ── */}
         <div

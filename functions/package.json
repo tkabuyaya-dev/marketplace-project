@@ -17,14 +17,17 @@
   "main": "lib/index.js",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
+    "@resvg/resvg-js": "^2.6.2",
     "algoliasearch": "^5.20.3",
     "firebase-admin": "13.0.2",
     "firebase-functions": "6.3.0",
     "ioredis": "^5.4.2",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/qrcode": "^1.5.5",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "esbuild": "^0.27.3",

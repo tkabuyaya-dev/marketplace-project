@@ -100,6 +100,7 @@ export interface PlanFeatures {
   badge: 'pro' | 'grossiste' | null;
   priorityRanking: boolean;        // priorité dans la recherche
   requiresNif: boolean;            // NIF obligatoire à l'inscription
+  dailyStudioSessions: number;     // 📸 Photo Studio — sessions max/jour (Free=1, Vendeur=2, Pro=3, Grossiste=5)
 }
 
 export interface Product {
@@ -224,6 +225,7 @@ export type NotificationType =
   | 'buyer_request_match'
   | 'buyer_request_help'
   | 'buyer_request_suspended'   // Admin alert : 3 sellers ont signalé une demande
+  | 'photo_session_ready'       // 📸 Photo Studio — photos traitées, vendeur peut publier
   | 'system';
 
 export interface AppNotification {
@@ -410,4 +412,76 @@ export interface BoostRequest {
 export interface BoostPricing {
   amount: number;   // prix pour 7 jours
   currency: string; // ex: 'BIF', 'CDF', 'USD'
+}
+
+// ─── Photo Studio (Nunulia Studio) ───────────────────────────────────────────
+// Le vendeur démarre une session, envoie ses photos brutes sur WhatsApp,
+// l'équipe Nunulia les retouche manuellement (PhotoRoom Max) puis renvoie un
+// lien magique /studio/:sessionId où le vendeur publie son produit en
+// remplissant un formulaire pré-rempli par Claude Haiku Vision.
+//
+// Lifecycle (transitions toutes opérées par CFs admin SDK — voir
+// functions/src/photo-session-*.ts) :
+//   waiting_photos → processing → ready → published
+//   waiting_photos | processing | ready → expired  (cron 48h TTL)
+
+export type PhotoSessionStatus =
+  | 'waiting_photos'   // session créée, photos pas encore reçues sur WhatsApp
+  | 'processing'       // admin a démarré le traitement PhotoRoom
+  | 'ready'            // photos traitées uploadées, vendeur peut publier
+  | 'published'        // produit publié, productId stocké
+  | 'expired';         // 48h écoulées sans publication
+
+/**
+ * Pré-remplissage IA depuis les photos traitées (Claude Haiku 4.5 Vision).
+ * Calculé par photo-session-attach.ts au moment où l'admin uploade les
+ * photos traitées. Affiché en pré-rempli sur /studio/:id avec un indicateur
+ * "Suggéré par IA — vérifiez". Vendeur peut tout corriger librement.
+ */
+export interface PhotoSessionVisionSuggestions {
+  title?: string;                                          // 4-6 mots max
+  category?: string;                                       // category slug (FK)
+  condition?: 'new' | 'good' | 'fair';                     // état apparent
+  characteristics?: string[];                              // 3-5 puces visibles
+}
+
+export interface PhotoSession {
+  id: string;                              // sessionId 6 chars alphanum (ex: AM7K2P)
+  vendorId: string;                        // owner — Rules: lecture seller propre + admin
+  vendorName: string;                      // shopName dénormalisé pour file admin
+  vendorPhone: string;                     // pour fallback admin si seller perd l'ID
+  countryId: string;
+  plan: PlanId;                            // snapshot du plan à la création (pour métriques)
+  status: PhotoSessionStatus;
+  createdAt: number;                       // ms — serverTimestamp à la création
+  expiresAt: number;                       // createdAt + STUDIO_SESSION_TTL_MS
+  rawPhotoCount?: number;                  // saisi optionnellement par admin (stats)
+  processedUrls: string[];                 // Cloudinary URLs — max STUDIO_MAX_PHOTOS
+  visionSuggestions?: PhotoSessionVisionSuggestions;
+  attachedAt?: number;                     // ms — admin a uploadé les photos
+  publishedProductId?: string | null;      // set après publishFromStudio
+  publishedAt?: number | null;
+  internalNote?: string;                   // notes admin uniquement (jamais lu par seller)
+  shareCardUrl?: string;                   // carte 1080×1920 avant/après (Cloudinary)
+  shareCaption?: string;                   // texte Haiku pour partage WhatsApp Status
+}
+
+/**
+ * Sous-collection photoSessions/{id}/events/{eventId} — traçabilité du cycle.
+ * Toujours écrite par CF admin SDK. Rules client : write=false.
+ */
+export type PhotoSessionEventAction =
+  | 'created'              // vendeur a démarré la session
+  | 'processing_started'   // admin a cliqué "marquer en traitement"
+  | 'attached'             // admin a uploadé les photos traitées
+  | 'vision_filled'        // Claude Haiku Vision a rempli les suggestions
+  | 'published'            // vendeur a publié le produit
+  | 'expired';             // cron a expiré la session
+
+export interface PhotoSessionEvent {
+  id: string;
+  action: PhotoSessionEventAction;
+  by: { userId: string; role: 'seller' | 'admin' | 'system' };
+  payload?: Record<string, unknown>;
+  timestamp: number;
 }

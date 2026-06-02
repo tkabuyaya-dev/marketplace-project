@@ -181,7 +181,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthTransitioning(true);
         setCurrentUser(user);
         trackLogin('google');
-        if (user.role === 'admin') navigate('/admin');
+        // Photo Studio magic link & autres deep-links : si une cible a été
+        // stockée par la page d'origine avant le login, on y atterrit.
+        const pending = sessionStorage.getItem('redirectAfterLogin');
+        if (pending) {
+          sessionStorage.removeItem('redirectAfterLogin');
+          navigate(pending);
+        } else if (user.role === 'admin') navigate('/admin');
         else navigate('/');
         // Libérer dès le prochain tick (la navigation est déjà déclenchée)
         // onAuthStateChanged libérera aussi via son callback.

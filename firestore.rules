@@ -624,6 +624,44 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
+    // PHOTO SESSIONS — Nunulia Studio (manual photo editing service)
+    //
+    // Le vendeur démarre une session, envoie ses photos brutes via WhatsApp.
+    // L'équipe traite les photos manuellement (PhotoRoom Max) et uploade les
+    // résultats via le dashboard admin. Le vendeur publie ensuite son produit
+    // depuis /studio/:sessionId avec un formulaire pré-rempli par Claude Haiku.
+    //
+    // Lifecycle (transitions toutes via CFs admin SDK — bypass des rules) :
+    //   photoSessionCreate         : vendeur démarre (throttling par plan)
+    //   photoSessionSetProcessing  : admin marque "en traitement"
+    //   photoSessionAttach         : admin uploade photos + Haiku Vision
+    //   photoSessionPublish        : vendeur publie le produit (transaction)
+    //   expirePhotoSessions        : cron 06:00 UTC quotidien (TTL 48h)
+    //
+    // Pourquoi 100% via CFs : validation serveur, throttling par plan, génération
+    // sessionId atomique, transitions de status verrouillées, ownership vérifié.
+    // ─────────────────────────────────────────────────────────
+    match /photoSessions/{sessionId} {
+      // Lecture : admin OU vendeur propriétaire (jamais publique — la session
+      // contient vendorPhone et notes internes admin).
+      allow read: if isAdmin()
+        || (isAuth() && resource.data.vendorId == request.auth.uid);
+
+      // Toutes les écritures client interdites. Les CFs admin SDK bypassent
+      // ces rules. Inclut la création — le vendeur ne peut PAS forger un
+      // sessionId pour contourner le throttling.
+      allow create, update, delete: if false;
+
+      // Sous-collection events — historique du cycle de vie.
+      // Lecture : seller propriétaire + admin. Écriture : CFs uniquement.
+      match /events/{eventId} {
+        allow read: if isAdmin()
+          || (isAuth() && get(/databases/$(database)/documents/photoSessions/$(sessionId)).data.vendorId == request.auth.uid);
+        allow write: if false;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────
     // DENY ALL — Toute collection non listée est bloquée par défaut
     // ─────────────────────────────────────────────────────────
     match /{document=**} {

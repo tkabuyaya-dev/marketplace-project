@@ -26,6 +26,17 @@ n8n_workflows/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+tests/rules/emulator-data/
+
+# Claude Code dev artifacts (jamais à commiter — duplicate repo + screenshots dev)
+.claude/worktrees/
+.claude/audit-screenshots/
+
+# Design references — on garde uniquement les .tsx (exploration design),
+# les HTML/CSS/_files (~16 MB d'assets HTML mockup) ne sont pas du code source.
+design-references/*.html
+design-references/*.css
+design-references/*_files/
 
 # Editor directories and files
 .vscode/*

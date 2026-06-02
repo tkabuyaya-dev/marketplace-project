@@ -30,6 +30,7 @@ const BuyerRequestsAdmin = lazy(() => import('./BuyerRequestsAdmin').then(m => (
 const BuyerRequestsHealth = lazy(() => import('./BuyerRequestsHealth').then(m => ({ default: m.BuyerRequestsHealth })));
 const AuditLogs = lazy(() => import('./AuditLogs').then(m => ({ default: m.AuditLogs })));
 const BoostRequestsAdmin = lazy(() => import('./BoostRequestsAdmin').then(m => ({ default: m.BoostRequestsAdmin })));
+const PhotoStudio = lazy(() => import('./PhotoStudio').then(m => ({ default: m.PhotoStudio })));
 
 const TabLoader = () => (
   <div className="flex items-center justify-center py-20">
@@ -150,6 +151,7 @@ export const AdminDashboard: React.FC = () => {
   const tabs: { id: AdminTab; label: string; badge?: number }[] = [
     { id: 'overview', label: t('admin.tabOverview') },
     { id: 'products', label: t('admin.tabProducts'), badge: pendingCount },
+    { id: 'studio', label: '📸 Photo Studio' },
     { id: 'requests', label: t('admin.tabRequests') },
     { id: 'health', label: '📊 Santé Je Cherche' },
     { id: 'banners', label: t('admin.tabBanners') },
@@ -247,6 +249,9 @@ export const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'boosts' && (
             <BoostRequestsAdmin {...sharedProps} />
+          )}
+          {activeTab === 'studio' && (
+            <PhotoStudio {...sharedProps} />
           )}
         </Suspense>
       </div>

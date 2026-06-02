@@ -11,7 +11,15 @@
       "Bash(echo \"tsc=$?\")",
       "Bash(echo \"eslint=$?\")",
       "Bash(git remote *)",
-      "Bash(firebase --version)"
+      "Bash(firebase --version)",
+      "Bash(git config *)",
+      "Bash(findstr -i \"proxy\\\\|http\\\\|url\")",
+      "mcp__chrome-devtools__get_network_request",
+      "Bash(cd /mnt/c/Projets/aurabuja && npx tsc --noEmit 2>&1 | head -100)",
+      "Read(//mnt/c/Projets/**)",
+      "Bash(ls /)",
+      "Read(//c//**)",
+      "PowerShell(gh run list --limit 3)"
     ]
   }
 }

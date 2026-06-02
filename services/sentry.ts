@@ -155,5 +155,28 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   ensureSentry().then((s) => s?.captureMessage(message, level));
 }
 
+/**
+ * Add a custom breadcrumb (category 'studio', 'payment', etc.).
+ * The auto-breadcrumbs from ui.click/ui.input/console/navigation are filtered out
+ * by beforeBreadcrumb above — only explicit calls like this one stay in the trail.
+ * Useful to leave a forensic trace when an error is captured later.
+ */
+export function addBreadcrumb(
+  category: string,
+  message: string,
+  data?: Record<string, unknown>,
+): void {
+  if (!SENTRY_DSN) return;
+  ensureSentry().then((s) => {
+    s?.addBreadcrumb({
+      category,
+      message,
+      level: 'info',
+      timestamp: Date.now() / 1000,
+      data,
+    });
+  });
+}
+
 // Re-export for components that import { Sentry } directly
 export { Sentry };

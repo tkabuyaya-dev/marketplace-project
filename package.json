@@ -15,6 +15,7 @@
     "test:rules": "cd tests/rules && npm test",
     "test:e2e": "playwright test --config=tests/e2e/playwright.config.ts",
     "test:e2e:headed": "playwright test --config=tests/e2e/playwright.config.ts --headed",
+    "i18n:check": "node scripts/check-i18n-parity.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,css,md}\"",
