@@ -16,6 +16,7 @@
 
 import { onRequest } from "firebase-functions/v2/https";
 import { getDb, getAuth } from "./admin.js";
+import { ALLOWED_ORIGINS } from "./config.js";
 
 const AUDIT_LOGS_COLLECTION = "auditLogs";
 const SUBSCRIPTION_REQUESTS_COLLECTION = "subscriptionRequests";
@@ -25,6 +26,7 @@ export const rejectSubscription = onRequest(
   {
     maxInstances: 5,
     region: "europe-west1",
+    cors: ALLOWED_ORIGINS,
   },
   async (req, res) => {
     // ── Auth check: verify Firebase ID token + admin role ──

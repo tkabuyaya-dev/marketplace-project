@@ -47,6 +47,7 @@ import {
   CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET,
+  ALLOWED_ORIGINS,
 } from "./config.js";
 
 const BATCH_LIMIT = 450;
@@ -135,6 +136,7 @@ export const approveRenewal = onRequest(
   {
     maxInstances: 5,
     region: "europe-west1",
+    cors: ALLOWED_ORIGINS,
     secrets: [CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET],
   },
   async (req, res) => {
