@@ -34,6 +34,8 @@ import { useOfflineQueue, type OfflineDraft, type SyncResult } from '../hooks/us
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 import { getInventoryFromIDB, saveInventoryToIDB } from '../services/inventoryIdb';
 import { PhotoStudioCard } from '../components/dashboard/PhotoStudioCard';
+import { PhotoEnhancementStep } from '../components/PhotoEnhancementStep';
+import { usePhotoEnhancement } from '../hooks/usePhotoEnhancement';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
@@ -248,6 +250,8 @@ export const SellerDashboard: React.FC = () => {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState('');
+  // Photo enhancement (PhotoRoom API) — option facultative dans le form
+  const enhancement = usePhotoEnhancement();
   const [formError, setFormError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
@@ -531,6 +535,7 @@ export const SellerDashboard: React.FC = () => {
       setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
       setImageFiles([]); setImagePreviews([]);
       setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
+      enhancement.reset();
     };
 
     const queueAsDraft = async (): Promise<boolean> => {
@@ -563,13 +568,36 @@ export const SellerDashboard: React.FC = () => {
         return;
       }
 
-      setUploadProgress(t('dashboard.uploadingImages'));
-      const imageUrls = await uploadImages(imageFiles);
+      // Si le vendeur a choisi l'amélioration PhotoRoom et que le hook a déjà
+      // uploadé les originaux + appliqué la retouche, on saute uploadImages
+      // pour ne pas dupliquer la bande passante (Cloudinary garde déjà les
+      // URLs en mémoire dans le hook).
+      let imageUrls: string[];
+      let enhancedFlag = false;
+      let enhancedStyle: Product['enhancementStyle'] | undefined;
+      if (enhancement.hasUploadedUrls()) {
+        imageUrls = enhancement.getFinalUrls();
+        // 'enhanced: true' uniquement si au moins une photo est effectivement
+        // retouchée (mode 'preview' avec ok non-revert). En mode 'failed', le
+        // hook renvoie les URLs originales sans flag enhanced.
+        if (enhancement.mode === 'preview') {
+          const anyEnhanced = enhancement.results.some((r) => r.status === 'ok');
+          if (anyEnhanced) {
+            enhancedFlag = true;
+            enhancedStyle = enhancement.style ?? undefined;
+          }
+        }
+      } else {
+        setUploadProgress(t('dashboard.uploadingImages'));
+        imageUrls = await uploadImages(imageFiles);
+      }
 
       // Guard: never create a Firestore document without images (all uploads must succeed first)
       if (imageUrls.length === 0) throw new Error(t('dashboard.uploadError') || 'Échec upload images');
 
-      // Generate BlurHash from first image (instant placeholder for 2G/3G/offline)
+      // Generate BlurHash from first image (instant placeholder for 2G/3G/offline).
+      // Calculé sur le File original — même quand la photo finale est enhanced,
+      // un blurhash issu de l'original reste un placeholder visuellement proche.
       const blurhash = imageFiles[0] ? await generateBlurhash(imageFiles[0]) : null;
 
       setUploadProgress(t('dashboard.savingProduct'));
@@ -577,6 +605,11 @@ export const SellerDashboard: React.FC = () => {
         ...productData,
         images: imageUrls,
         blurhash: blurhash || undefined,
+        ...(enhancedFlag && enhancedStyle ? {
+          enhanced: true,
+          enhancementStyle: enhancedStyle,
+          enhancedAt: Date.now(),
+        } : {}),
       });
 
       resetForm();
@@ -1934,6 +1967,16 @@ export const SellerDashboard: React.FC = () => {
                       onReorder={reorderImages}
                       compressing={compressing}
                     />
+
+                    {/* Option facultative : retouche photo via PhotoRoom (3 styles) */}
+                    {imageFiles.length > 0 && (
+                      <PhotoEnhancementStep
+                        files={imageFiles}
+                        previews={imagePreviews}
+                        enhancement={enhancement}
+                        disabled={loading}
+                      />
+                    )}
                   </div>
 
                   {formError && (

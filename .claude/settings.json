@@ -19,7 +19,8 @@
       "Read(//mnt/c/Projets/**)",
       "Bash(ls /)",
       "Read(//c//**)",
-      "PowerShell(gh run list --limit 3)"
+      "PowerShell(gh run list --limit 3)",
+      "Bash(findstr /S /I /N /C:\"isAdmin\" /C:\"role.*admin\" /C:\"admin.*notif\" c:\\\\Projets\\\\aurabuja\\\\functions\\\\src\\\\*.ts c:\\\\Projets\\\\aurabuja\\\\services\\\\firebase\\\\subscription-requests.ts)"
     ]
   }
 }

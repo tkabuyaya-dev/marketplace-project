@@ -1540,5 +1540,38 @@
     "errorOffline": "Pas de connexion — votre publication sera envoyée dès le retour du réseau.",
     "ttlNotice": "Vos photos seront traitées sous 24 h.",
     "supportContact": "Contacter le support"
+  },
+  "enhancement": {
+    "title": "Améliorer avec NUNULIA Studio ?",
+    "subtitle": "Fond professionnel automatique en quelques secondes.",
+    "keepOriginal": "Non merci, garder mes photos originales",
+    "keepOriginalHint": "Vos photos seront publiées telles quelles.",
+    "enhance": "Oui, améliorer mes photos",
+    "enhanceHint": "Fond pro, mise en valeur du produit.",
+    "chooseStyle": "Choisissez votre style :",
+    "style": {
+      "white": "Blanc",
+      "branded": "NUNULIA"
+    },
+    "startEnhance": "Améliorer mes photos",
+    "preparing": "Préparation des photos…",
+    "processing": "Amélioration en cours ({{current}}/{{total}})…",
+    "processingHint": "Ne fermez pas la page, ça prend quelques secondes.",
+    "previewTitle": "Aperçu avant publication",
+    "previewSubtitle": "Vous pouvez encore revenir à l'original photo par photo.",
+    "photoAlt": "Photo {{n}}",
+    "photoEnhanced": "Améliorée",
+    "photoOriginal": "Originale",
+    "photoFailed": "Inchangée",
+    "useOriginal": "Garder l'original",
+    "useEnhanced": "Garder l'améliorée",
+    "quotaRemaining": "Utilisations Photo Studio aujourd'hui : {{used}}/{{limit}}",
+    "failedTitle": "Amélioration indisponible",
+    "failedFallback": "L'amélioration n'est pas disponible pour le moment. Vos photos originales seront publiées.",
+    "tryAgain": "Réessayer",
+    "offlineTitle": "Hors-ligne",
+    "offlineSubtitle": "Amélioration indisponible hors-ligne. Vos photos originales seront publiées dès la reconnexion.",
+    "badge": "Photo Pro",
+    "badgeAria": "Photos améliorées avec NUNULIA Studio"
   }
 }

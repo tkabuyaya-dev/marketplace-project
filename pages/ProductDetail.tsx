@@ -10,6 +10,7 @@ import { ProgressiveImage } from '../components/ProgressiveImage';
 import { ReviewSection } from '../components/ReviewSection';
 import { ProductSection } from '../components/ProductSection';
 import { VerifiedBadge } from '../components/VerifiedBadge';
+import { ProductPhotoProBadge } from '../components/ProductPhotoProBadge';
 import { UnverifiedSellerNotice } from '../components/UnverifiedSellerNotice';
 import { StockUrgency } from '../components/StockUrgency';
 import { CountdownTimer } from '../components/CountdownTimer';
@@ -420,6 +421,12 @@ const ProductDetail: React.FC = () => {
         <p className="mt-2.5 text-[18px] font-bold text-[#111318] leading-[1.32] tracking-[-0.015em] line-clamp-2">
           {product.title}
         </p>
+
+        {product.enhanced && (
+          <div className="mt-2">
+            <ProductPhotoProBadge />
+          </div>
+        )}
 
         {/* Lieu + heure + vues */}
         <div className="mt-2 flex items-center gap-2.5 text-[#5C6370] flex-wrap">

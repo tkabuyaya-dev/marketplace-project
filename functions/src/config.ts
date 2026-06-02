@@ -31,6 +31,13 @@ export const CLOUDINARY_API_SECRET = defineSecret("CLOUDINARY_API_SECRET");
 // quand le buyer choisit "Je ne sais pas trop" (cf. notify-buyer-request-match).
 export const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
+// PhotoRoom — retouche photo synchrone optionnelle dans "Ajouter produit".
+// 2 secrets : sandbox pour dev/local, production pour le run réel.
+// La CF choisit la clé en fonction de l'env var PHOTOROOM_USE_SANDBOX
+// (string "true" pour dev, absente/false pour prod).
+export const PHOTOROOM_API_KEY = defineSecret("PHOTOROOM_API_KEY");
+export const PHOTOROOM_SANDBOX_KEY = defineSecret("PHOTOROOM_SANDBOX_KEY");
+
 // Index names
 export const ALGOLIA_PRODUCTS_INDEX = "products";
 export const ALGOLIA_SELLERS_INDEX = "sellers";
