@@ -30,6 +30,7 @@ import {
   subscribeToSubscriptionPricing,
 } from '../services/firebase';
 import { uploadImage, UploadError } from '../services/cloudinary';
+import { planIdFromLabel } from '../utils/planFeatures';
 import { useToast } from './Toast';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -107,8 +108,14 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const paymentMethods = PAYMENT_METHODS[sellerCountryId] || PAYMENT_METHODS['bi'];
   const whatsappNumber = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
 
-  // Find the tier matching the seller's current plan
-  const tier = tiers.find(t => t.label === currentTierLabel) ?? null;
+  // Find the tier matching the seller's current plan.
+  // Why: comptes legacy pré-refonte 2026-06 ont des libellés "Business Pro" /
+  // "Élite" / "Starter" qui ne matchent plus les 4 tiers canoniques. On résout
+  // via planIdFromLabel (mapping legacy → canonical) sinon ces vendeurs
+  // tombent sur le fallback "Contactez l'admin" et ne peuvent plus renouveler
+  // en self-service.
+  const tierId = planIdFromLabel(currentTierLabel);
+  const tier = tierId ? tiers.find(t => t.id === tierId) ?? null : null;
 
   const getPrice = (): number => {
     if (!tier) return 0;
