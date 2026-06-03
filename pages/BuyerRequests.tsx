@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Search, SlidersHorizontal,
@@ -19,7 +19,7 @@ import {
   flagBuyerRequest,
   BuyerRequestFilters, PAGE_SIZE,
 } from '../services/firebase/buyer-requests';
-import { BuyerRequest, BuyerRequestFlagReason } from '../types';
+import { BuyerRequest, BuyerRequestFlagReason, User } from '../types';
 import { useToast } from '../components/Toast';
 import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
@@ -603,16 +603,11 @@ function EmptyState({
 
 /* ─────────────────────── MAIN ──────────────────────── */
 
-export const BuyerRequestsPage: React.FC = () => {
-  const { currentUser } = useAppContext();
+// Le wrapper `BuyerRequestsPage` (en bas du fichier) gère l'attente d'auth et
+// le redirect /login. Ici, `currentUser` est garanti défini et autorisé.
+const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-
-  // Access guard
-  if (!currentUser || (currentUser.role !== 'seller' && currentUser.role !== 'admin')) {
-    navigate('/login');
-    return null;
-  }
 
   const eligible = canContactBuyer(currentUser.sellerDetails);
 
@@ -954,5 +949,48 @@ function FlagModal({
     </div>
   );
 }
+
+/* ─────────────────────── AUTH WRAPPER ──────────────────────── */
+
+// Gate d'auth séparé du contenu pour deux raisons :
+//   1. Clic sur push notif "demande client" au cold-start PWA → `currentUser`
+//      est null pendant 1-3s le temps que Firebase Auth se restaure. Sans
+//      `authReady`, on bouncerait sur /login alors que le vendeur EST connecté.
+//      Le stash `redirectAfterLogin` ramène ensuite sur /demandes après succès.
+//   2. Évite la violation des Rules of Hooks que créait l'early-return original
+//      (les useState/useEffect en dessous n'étaient appelés que conditionnellement).
+export const BuyerRequestsPage: React.FC = () => {
+  const { currentUser, authReady } = useAppContext();
+
+  useEffect(() => {
+    if (authReady && !currentUser) {
+      sessionStorage.setItem('redirectAfterLogin', '/demandes');
+    }
+  }, [authReady, currentUser]);
+
+  if (!authReady) {
+    return (
+      <>
+        <style>{KEYFRAMES}</style>
+        <div className="relative min-h-screen bg-[#F7F8FA] flex flex-col">
+          <header
+            className="sticky top-0 z-30 bg-white border-b border-black/5 px-3.5 pb-3"
+            style={{ paddingTop: 'max(10px, env(safe-area-inset-top))' }}
+          >
+            <h1 className="text-[18px] font-black tracking-tight text-[#111318] leading-tight">
+              Demandes clients
+            </h1>
+          </header>
+          <LoadingSkeleton />
+        </div>
+      </>
+    );
+  }
+  if (!currentUser) return <Navigate to="/login" replace />;
+  if (currentUser.role !== 'seller' && currentUser.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+  return <BuyerRequestsContent currentUser={currentUser} />;
+};
 
 export default BuyerRequestsPage;
