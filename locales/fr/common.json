@@ -320,7 +320,7 @@
     "profileSaved": "Profil mis à jour",
     "notifsActive": "Activées — messages, favoris, prix",
     "notifsBlockedHint": "Bloquées dans le navigateur",
-    "versionFooter": "NUNULIA · Burundi, RDC, Rwanda"
+    "versionFooter": "NUNULIA · Burundi, RDC, Rwanda, Tanzanie"
   },
   "favorites": {
     "title": "Mes favoris",
@@ -1437,7 +1437,7 @@
     "navCTA": "Devenir vendeur",
     "heroEyebrow": "Marketplace des Grands Lacs",
     "heroTitle": "Vendez partout dans les Grands Lacs",
-    "heroSubtitle": "Créez votre boutique en 2 minutes. Touchez des milliers d'acheteurs au Burundi, en RDC et au Rwanda. Encaissez en direct via WhatsApp et Mobile Money.",
+    "heroSubtitle": "Créez votre boutique en 2 minutes. Touchez des milliers d'acheteurs au Burundi, en RDC, au Rwanda et en Tanzanie. Encaissez en direct via WhatsApp et Mobile Money.",
     "heroCTAPrimary": "Commencer gratuitement",
     "heroCTASecondary": "Voir les tarifs",
     "heroBadgeFree": "5 produits gratuits",
@@ -1470,7 +1470,7 @@
     "whyTitle": "Pourquoi NUNULIA ?",
     "whySubtitle": "La marketplace pensée pour les Grands Lacs.",
     "whyLocalTitle": "100% local",
-    "whyLocalDesc": "Conçue pour le Burundi, la RDC et le Rwanda. Devises, langues et habitudes adaptées.",
+    "whyLocalDesc": "Conçue pour le Burundi, la RDC, le Rwanda et la Tanzanie. Devises, langues et habitudes adaptées.",
     "whyWhatsAppTitle": "WhatsApp natif",
     "whyWhatsAppDesc": "Vos clients vous contactent sur WhatsApp. Vous discutez, livrez et encaissez à votre rythme.",
     "whyMomoTitle": "Mobile Money",

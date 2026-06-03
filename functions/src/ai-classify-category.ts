@@ -18,7 +18,7 @@ import * as logger from "firebase-functions/logger";
 import { ANTHROPIC_API_KEY } from "./config.js";
 
 // ── Catalogue des 14 catégories (calibre Haiku, multilingue FR/Kirundi/Kinyarwanda/Swahili) ──
-const SYSTEM_PROMPT = `Tu es un classifieur de demandes d'achats sur Nunulia (marketplace Burundi/RDC/Rwanda).
+const SYSTEM_PROMPT = `Tu es un classifieur de demandes d'achats sur Nunulia (marketplace Burundi/RDC/Rwanda/Tanzanie).
 Les buyers tapent en français, parfois en kirundi, kinyarwanda ou swahili.
 
 Catégories disponibles :

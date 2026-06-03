@@ -58,7 +58,7 @@ const CGU: React.FC = () => (
 
         <p><strong className="text-white">2.2 Responsabilité du compte</strong></p>
         <p>
-          Chaque utilisateur est seul responsable de la sécurité de son compte. Toute activité effectuée depuis votre compte vous est imputable. En cas de compromission, contactez-nous immédiatement : support@nunulia.com
+          Chaque utilisateur est seul responsable de la sécurité de son compte. Toute activité effectuée depuis votre compte vous est imputable. En cas de compromission, contactez-nous immédiatement : contact@nunulia.com
         </p>
 
         <p><strong className="text-white">2.3 Un compte par personne</strong></p>
@@ -212,7 +212,7 @@ const CGU: React.FC = () => (
       {/* Article 11 */}
       <LegalSection title="Article 11 — Contact">
         <ul className="space-y-1">
-          <li>Email : <span className="text-amber-400">support@nunulia.com</span></li>
+          <li>Email : <span className="text-amber-400">contact@nunulia.com</span></li>
           <li>Site web : <span className="text-amber-400">https://nunulia.com</span></li>
           <li>Adresse : Bujumbura, Burundi</li>
         </ul>

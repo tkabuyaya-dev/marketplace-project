@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Heart, MapPin, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
 import { CURRENCY, INITIAL_COUNTRIES, getCountryFlag } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
 import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
 import { ProgressiveImage } from './ProgressiveImage';
@@ -113,7 +114,7 @@ export const ProductCard = memo<ProductCardProps>(({
     if (!phone) return;
     const msg = `Bonjour, je vous contacte depuis NUNULIA pour ${product.title}`;
     window.open(
-      `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`,
+      buildWaUrl(msg, { phone }),
       '_blank',
       'noopener,noreferrer'
     );

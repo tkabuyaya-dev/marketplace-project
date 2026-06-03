@@ -96,7 +96,7 @@ async function getCategoryName(db: FirebaseFirestore.Firestore, slug: string): P
   return slug;
 }
 
-const SYSTEM_PROMPT = `Tu es un copywriter pour Nunulia, marketplace en Afrique de l'Est centrale (Burundi/RDC/Rwanda).
+const SYSTEM_PROMPT = `Tu es un copywriter pour Nunulia, marketplace en Afrique de l'Est centrale (Burundi/RDC/Rwanda/Tanzanie).
 
 Quand un vendeur te donne un titre de produit + sa catégorie, tu génères une description PRO en français.
 

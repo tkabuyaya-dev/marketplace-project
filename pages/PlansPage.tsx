@@ -8,9 +8,10 @@ import {
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import {
-  INITIAL_SUBSCRIPTION_TIERS, PAYMENT_METHODS, SUPPORT_WHATSAPP,
+  INITIAL_SUBSCRIPTION_TIERS, PAYMENT_METHODS,
   DEFAULT_SUBSCRIPTION_PRICING, INITIAL_COUNTRIES, getCountryFlag,
 } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import {
   SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod, SubscriptionPeriod,
 } from '../types';
@@ -112,7 +113,6 @@ export const PlansPage: React.FC = () => {
   const sellerCountryId = currentUser?.sellerDetails?.countryId || 'bi';
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
   const paymentMethods = PAYMENT_METHODS[sellerCountryId] || PAYMENT_METHODS['bi'];
-  const whatsappNumber = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
   const currentTierLabel = currentUser?.sellerDetails?.tierLabel || 'Gratuit';
 
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
@@ -329,14 +329,14 @@ export const PlansPage: React.FC = () => {
   };
 
   const whatsappMessage = selectedPlan
-    ? encodeURIComponent(t('plans.whatsappSubscribe', {
+    ? t('plans.whatsappSubscribe', {
         plan: selectedPlan.label,
         country: country?.name || sellerCountryId,
         amount: formatPrice(getPrice(selectedPlan.id)),
         name: currentUser?.sellerDetails?.shopName || currentUser?.name,
-      }))
-    : encodeURIComponent(t('plans.whatsappGeneric'));
-  const whatsappHref = `https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`;
+      })
+    : t('plans.whatsappGeneric');
+  const whatsappHref = buildWaUrl(whatsappMessage);
 
   if (!currentUser) return null;
 

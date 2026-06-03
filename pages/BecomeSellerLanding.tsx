@@ -154,11 +154,11 @@ function PhoneMockCard() {
           className="flex justify-center gap-2.5 pt-1.5 text-[14px] leading-none border-t"
           style={{ borderStyle: 'dashed', borderColor: 'rgba(0,0,0,0.06)' }}
         >
-          <span>🇧🇮</span><span>🇨🇩</span><span>🇷🇼</span>
+          <span>🇧🇮</span><span>🇨🇩</span><span>🇷🇼</span><span>🇹🇿</span>
         </div>
       </div>
       <p className="mt-2.5 text-[10px] text-[#5C6370] text-center">
-        Plus de 1 200 vendeurs actifs · Burundi, RDC, Rwanda
+        Plus de 1 200 vendeurs actifs · Burundi, RDC, Rwanda, Tanzanie
       </p>
     </div>
   );
@@ -601,7 +601,7 @@ function PricingSection({
 /* ─────────────────────── G. WHY ──────────────────────── */
 
 const WHY_ITEMS = [
-  { emoji: '🌍', title: 'Marché local',    desc: 'Clients au Burundi, RDC et Rwanda' },
+  { emoji: '🌍', title: 'Marché local',    desc: 'Clients au Burundi, RDC, Rwanda et Tanzanie' },
   { emoji: '💬', title: 'WhatsApp direct', desc: 'Aucune commission, contact immédiat' },
   { emoji: '📱', title: 'Mobile Money',    desc: 'Paiements MoMo, Airtel, Lumicash' },
   { emoji: '💸', title: '0 % commission',  desc: 'Gardez 100 % de vos ventes' },

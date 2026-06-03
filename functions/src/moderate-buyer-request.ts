@@ -20,7 +20,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import * as logger from "firebase-functions/logger";
 import { ANTHROPIC_API_KEY } from "./config.js";
 
-const SYSTEM_PROMPT = `Tu es un modérateur de contenu pour Nunulia, une marketplace au Burundi, Rwanda et RDC.
+const SYSTEM_PROMPT = `Tu es un modérateur de contenu pour Nunulia, une marketplace au Burundi, Rwanda, RDC et Tanzanie.
 Les buyers postent en français, parfois en kirundi, kinyarwanda ou swahili.
 
 PRINCIPE GÉNÉRAL : sois PERMISSIF. Ne rejette QUE le manifestement illégal ou dangereusement frauduleux.

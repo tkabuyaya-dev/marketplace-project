@@ -14,7 +14,8 @@ import { BoostProductModal } from '../components/BoostProductModal';
 import { uploadImages, uploadImage, getOptimizedUrl, UploadError } from '../services/cloudinary';
 import { probeConnectivity } from '../utils/connectivity';
 import { generateBlurhash } from '../utils/blurhash';
-import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, FREE_TIER_WARNING_AT, SUPPORT_WHATSAPP } from '../constants';
+import { INITIAL_SUBSCRIPTION_TIERS, CURRENCY, FREE_TIER_WARNING_AT } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import { CITIES_BY_COUNTRY } from '../data/locations';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
@@ -1024,8 +1025,11 @@ export const SellerDashboard: React.FC = () => {
   // --- VIEWS ---
 
   const contactAdmin = () => {
-    const supportNum = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
-    window.open(`https://wa.me/${supportNum.replace('+', '')}?text=${encodeURIComponent('Bonjour, je suis vendeur sur Nunulia et j\'ai besoin d\'aide.')}`, '_blank', 'noopener,noreferrer');
+    window.open(
+      buildWaUrl('Bonjour, je suis vendeur sur NUNULIA et j\'ai besoin d\'aide.'),
+      '_blank',
+      'noopener,noreferrer',
+    );
   };
 
   const renderOverview = () => {
@@ -1268,7 +1272,7 @@ export const SellerDashboard: React.FC = () => {
               </p>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => setShowRenewModal(true)} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
+                <a href={buildWaUrl('Bonjour, je souhaite renouveler mon abonnement NUNULIA.')} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1285,7 +1289,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.expiredLimitMessage')}</p>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => setShowRenewModal(true)} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
+                <a href={buildWaUrl('Bonjour, je souhaite renouveler mon abonnement NUNULIA.')} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1310,7 +1314,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => setShowRenewModal(true)} className={`px-3.5 h-9 rounded-input text-[12.5px] font-bold active:scale-[0.97] transition-transform ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-ink hover:bg-goldHov'}`}>{t('dashboard.renewNow')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite renouveler mon abonnement Nunulia. Mon plan expire dans ${daysRemaining} jour(s).`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
+                <a href={buildWaUrl(`Bonjour, je souhaite renouveler mon abonnement NUNULIA. Mon plan expire dans ${daysRemaining} jour(s).`)} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1327,7 +1331,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.upgradeMessage', { count: currentCount })}</p>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => navigate('/plans')} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.viewPlans')}</button>
-                <a href={`https://wa.me/${SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi']}?text=Bonjour, je souhaite souscrire a un plan Nunulia.`} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
+                <a href={buildWaUrl('Bonjour, je souhaite souscrire à un plan NUNULIA.')} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
           </div>
@@ -1755,7 +1759,7 @@ export const SellerDashboard: React.FC = () => {
                                 {t('dashboard.usedSlots', { max: currentTier.max, label: currentTier.label })}
                             </p>
                             <a
-                              href="https://wa.me/25768515135"
+                              href={buildWaUrl(`Bonjour, je souhaite passer à un plan supérieur sur NUNULIA. Mon plan actuel : ${currentTier.label}.`)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center justify-center gap-2 w-full h-11 rounded-input text-white font-semibold text-[14px] active:scale-[0.97] transition-transform"

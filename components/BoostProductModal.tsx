@@ -14,7 +14,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Product, BoostPricing, BoostRequest } from '../types';
-import { PAYMENT_METHODS, SUPPORT_WHATSAPP } from '../constants';
+import { PAYMENT_METHODS } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import {
   createBoostRequest,
   confirmBoostPayment,
@@ -80,7 +81,6 @@ export const BoostProductModal: React.FC<Props> = ({
 
   // ── Derived ──
   const paymentMethods  = PAYMENT_METHODS[sellerCountryId]  || PAYMENT_METHODS['bi'];
-  const whatsappNumber  = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
   const formattedPrice  = `${pricing.amount.toLocaleString()} ${pricing.currency}`;
 
   const hasPendingBoost = existingRequests.some(
@@ -242,7 +242,7 @@ export const BoostProductModal: React.FC<Props> = ({
 
               <p className="text-center">
                 <a
-                  href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${encodeURIComponent(`Bonjour, je voudrais booster le produit "${product.title}" sur Nunulia (${formattedPrice}).`)}`}
+                  href={buildWaUrl(`Bonjour, je voudrais booster le produit "${product.title}" sur NUNULIA (${formattedPrice}).`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-green-400 text-xs hover:underline"

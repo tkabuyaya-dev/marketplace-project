@@ -21,9 +21,10 @@ import {
 } from '../types';
 import {
   PAYMENT_METHODS, DEFAULT_SUBSCRIPTION_PRICING,
-  INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES, SUPPORT_WHATSAPP,
+  INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES,
   getCountryFlag,
 } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import {
   createSubscriptionRequest,
   confirmPayment,
@@ -106,7 +107,6 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   // ── Derived values ──
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
   const paymentMethods = PAYMENT_METHODS[sellerCountryId] || PAYMENT_METHODS['bi'];
-  const whatsappNumber = SUPPORT_WHATSAPP[sellerCountryId] || SUPPORT_WHATSAPP['bi'];
 
   // Find the tier matching the seller's current plan.
   // Why: comptes legacy pré-refonte 2026-06 ont des libellés "Business Pro" /
@@ -265,7 +265,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
                 {t('dashboard.renewModalContactAdmin')}
               </p>
               <a
-                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${encodeURIComponent(`Bonjour, je souhaite renouveler mon abonnement ${currentTierLabel} sur Nunulia.`)}`}
+                href={buildWaUrl(`Bonjour, je souhaite renouveler mon abonnement ${currentTierLabel} sur NUNULIA.`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-xl transition-colors"
@@ -377,7 +377,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
 
               <p className="text-center">
                 <a
-                  href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${encodeURIComponent(`Bonjour, je souhaite renouveler mon plan ${currentTierLabel} sur Nunulia (${formattedPrice}/mois).`)}`}
+                  href={buildWaUrl(`Bonjour, je souhaite renouveler mon plan ${currentTierLabel} sur NUNULIA (${formattedPrice}/mois).`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-green-400 text-xs hover:underline"

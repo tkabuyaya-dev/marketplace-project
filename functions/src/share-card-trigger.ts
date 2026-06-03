@@ -400,7 +400,7 @@ function getAnthropicClient(): Anthropic {
   return cachedAnthropic;
 }
 
-const CAPTION_SYSTEM_PROMPT = `Tu rédiges un statut WhatsApp pour un vendeur Nunulia (marketplace Burundi/RDC/Rwanda) qui vient de publier un nouveau produit.
+const CAPTION_SYSTEM_PROMPT = `Tu rédiges un statut WhatsApp pour un vendeur Nunulia (marketplace Burundi/RDC/Rwanda/Tanzanie) qui vient de publier un nouveau produit.
 
 Contraintes strictes :
 - 2 phrases courtes maximum (35 mots total max)

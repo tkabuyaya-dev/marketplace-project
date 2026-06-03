@@ -16,6 +16,7 @@ import {
   countPendingBoostRequests,
 } from '../../services/firebase';
 import { useAppContext } from '../../contexts/AppContext';
+import { buildWaUrl } from '../../config/whatsapp.config';
 import type { AdminTab } from './types';
 
 // Lazy sub-components
@@ -145,7 +146,7 @@ export const AdminDashboard: React.FC = () => {
 
   const onContactUser = (user: User) => {
     const num = user.whatsapp || (user as any).sellerDetails?.phone;
-    if (num) window.open(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`, '_blank', 'noopener,noreferrer');
+    if (num) window.open(buildWaUrl(undefined, { phone: num }), '_blank', 'noopener,noreferrer');
   };
 
   const tabs: { id: AdminTab; label: string; badge?: number }[] = [

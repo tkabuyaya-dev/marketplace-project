@@ -15,6 +15,7 @@ import { UnverifiedSellerNotice } from '../components/UnverifiedSellerNotice';
 import { StockUrgency } from '../components/StockUrgency';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { CURRENCY } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import {
   toggleLikeProduct, reportProduct, checkIsLiked,
   incrementProductViews, getProductBySlugOrId,
@@ -230,7 +231,7 @@ const ProductDetail: React.FC = () => {
     if (product.seller.whatsapp) {
       const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
       const message = t('productDetail.whatsappMessage', { title: product.title, url: productUrl });
-      window.open(`https://wa.me/${product.seller.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
+      window.open(buildWaUrl(message, { phone: product.seller.whatsapp }), '_blank');
     } else {
       toast(t('productDetail.noWhatsapp'), 'info');
     }

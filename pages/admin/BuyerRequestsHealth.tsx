@@ -21,6 +21,7 @@ import {
   getRecentContactsForHealth,
 } from '../../services/firebase/buyer-requests';
 import { AdminSharedProps } from './types';
+import { buildWaUrl } from '../../config/whatsapp.config';
 
 interface Props extends AdminSharedProps {
   users: User[];
@@ -383,7 +384,7 @@ export const BuyerRequestsHealth: React.FC<Props> = ({ users }) => {
                   <p className="text-[11px] text-gray-500 truncate">{w.titles.join(' · ')}</p>
                 </div>
                 <a
-                  href={`https://wa.me/${w.whatsapp.replace(/[^0-9+]/g, '')}`}
+                  href={buildWaUrl(undefined, { phone: w.whatsapp })}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[10px] text-green-400 border border-green-600/30 px-2 py-1 rounded-lg hover:bg-green-600/10 transition-colors shrink-0"

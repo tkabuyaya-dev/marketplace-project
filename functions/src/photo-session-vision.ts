@@ -47,7 +47,7 @@ function getClient(): Anthropic {
  * appels répétés (le prompt système ne change pas, seules les images varient).
  */
 const SYSTEM_PROMPT = `Tu reçois les photos d'un produit qu'un vendeur va publier sur Nunulia,
-marketplace au Burundi/RDC/Rwanda. Tu remplis un mini-formulaire à sa place.
+marketplace au Burundi/RDC/Rwanda/Tanzanie. Tu remplis un mini-formulaire à sa place.
 
 Réponds UNIQUEMENT en JSON strict (pas de markdown, pas de prose) :
 {

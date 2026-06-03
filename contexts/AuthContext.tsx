@@ -19,6 +19,7 @@ import { auth } from '../firebase-config';
 import { useNavigate } from 'react-router-dom';
 import { trackLogin, trackContactSeller as analyticsContactSeller, setUserProperties } from '../services/analytics';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
+import { buildWaUrl } from '../config/whatsapp.config';
 import i18n from '../i18n';
 import { usePreferencesContext } from './PreferencesContext';
 
@@ -246,7 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Professional shop greeting message (used for shop profile contact)
     const shopName = seller.sellerDetails?.shopName || seller.name;
     const message = i18n.t('toast.shopContactMessage', { shopName });
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    window.open(buildWaUrl(message, { phone: num }), '_blank', 'noopener,noreferrer');
   };
 
   const handleSellerAccess = () => {

@@ -23,6 +23,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { PhotoSession, PhotoSessionStatus } from '../../types';
+import { buildWaUrl } from '../../config/whatsapp.config';
 import {
   subscribeToStudioQueueForAdmin,
   subscribeToPhotoSession,
@@ -519,7 +520,7 @@ const SessionDetailPanel: React.FC<{
           <span>{countryName(session.countryId)}</span>
           {session.vendorPhone && (
             <a
-              href={`https://wa.me/${session.vendorPhone.replace(/[^0-9]/g, '')}`}
+              href={buildWaUrl(undefined, { phone: session.vendorPhone })}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 hover:text-emerald-400"

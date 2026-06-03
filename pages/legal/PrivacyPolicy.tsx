@@ -22,7 +22,7 @@ const PrivacyPolicy: React.FC = () => (
         <ul className="space-y-1">
           <li>Dénomination : <strong className="text-white">NUNULIA</strong></li>
           <li>Siège : Bujumbura, Burundi</li>
-          <li>Contact DPO : <span className="text-amber-400">support@nunulia.com</span></li>
+          <li>Contact DPO : <span className="text-amber-400">contact@nunulia.com</span></li>
           <li>Site : <span className="text-amber-400">https://nunulia.com</span></li>
         </ul>
       </LegalSection>
@@ -141,7 +141,7 @@ const PrivacyPolicy: React.FC = () => (
           <li><strong className="text-white">Droit à la limitation</strong> — Suspendre temporairement un traitement</li>
         </ol>
         <p className="mt-3">
-          Pour exercer ces droits : <span className="text-amber-400">support@nunulia.com</span><br />
+          Pour exercer ces droits : <span className="text-amber-400">contact@nunulia.com</span><br />
           Délai de réponse garanti : 30 jours maximum.
         </p>
 
@@ -174,7 +174,7 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 11 */}
       <LegalSection title="Article 11 — Protection des Mineurs">
         <p>
-          NUNULIA est strictement réservée aux personnes majeures (18 ans et plus). Nous ne collectons pas sciemment de données relatives à des mineurs. Si vous constatez qu'un mineur a créé un compte, signalez-le immédiatement à : <span className="text-amber-400">support@nunulia.com</span> — Le compte sera supprimé sans délai.
+          NUNULIA est strictement réservée aux personnes majeures (18 ans et plus). Nous ne collectons pas sciemment de données relatives à des mineurs. Si vous constatez qu'un mineur a créé un compte, signalez-le immédiatement à : <span className="text-amber-400">contact@nunulia.com</span> — Le compte sera supprimé sans délai.
         </p>
       </LegalSection>
 
@@ -188,7 +188,7 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 13 */}
       <LegalSection title="Article 13 — Contact et Réclamations">
         <ul className="space-y-1">
-          <li>Email : <span className="text-amber-400">support@nunulia.com</span></li>
+          <li>Email : <span className="text-amber-400">contact@nunulia.com</span></li>
           <li>Site : <span className="text-amber-400">https://nunulia.com</span></li>
           <li>Délai de réponse : 30 jours maximum</li>
         </ul>

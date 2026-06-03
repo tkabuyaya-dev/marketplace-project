@@ -294,6 +294,9 @@ export const enhanceProductPhoto = onCall<EnhanceInput, Promise<EnhanceOutput>>(
     ],
     maxInstances: 10,
     timeoutSeconds: 60,
+    // 1Gi : image processing (download + PhotoRoom roundtrip + Cloudinary upload)
+    // peut dépasser 256Mi sur des photos 5-10MB. OOM = HTTP 500 silencieux.
+    memory: "1GiB",
   },
   async (request) => {
     // ── 1. Auth + role + not suspended ───────────────────────────────────
@@ -361,18 +364,28 @@ export const enhanceProductPhoto = onCall<EnhanceInput, Promise<EnhanceOutput>>(
       const photoroomKey = useSandbox
         ? PHOTOROOM_SANDBOX_KEY.value()
         : PHOTOROOM_API_KEY.value();
+      logger.info("[enhanceProductPhoto] step 1 start", {
+        uid, style, useSandbox, hasKey: !!photoroomKey, keyLen: photoroomKey?.length ?? 0,
+      });
       if (!photoroomKey) {
         throw new HttpsError("failed-precondition", "PhotoRoom non configuré.");
       }
 
+      logger.info("[enhanceProductPhoto] step 2 download", { inputUrl });
       const source = await downloadImage(inputUrl);
+      logger.info("[enhanceProductPhoto] step 3 downloaded", { bytes: source.buffer.length, mime: source.mime });
+
       const enhanced = await callPhotoRoom(source.buffer, source.mime, style, photoroomKey);
+      logger.info("[enhanceProductPhoto] step 4 photoroom OK", { bytes: enhanced.length });
+
+      logger.info("[enhanceProductPhoto] step 5 cloudinary upload", { cloudName });
       const secureUrl = await uploadToCloudinary(
         enhanced,
         cloudName,
         CLOUDINARY_API_KEY.value(),
         CLOUDINARY_API_SECRET.value(),
       );
+      logger.info("[enhanceProductPhoto] step 6 cloudinary OK", { secureUrl: secureUrl.slice(0, 80) });
 
       const finalUrl = style === "branded" ? applyBrandedWatermark(secureUrl) : secureUrl;
 

@@ -3,6 +3,7 @@ import { LegalHeader } from './LegalHeader';
 import { LegalSection } from './LegalSection';
 import { LegalWarningBox } from './LegalWarningBox';
 import { LegalInfoBox } from './LegalInfoBox';
+import { buildWaUrl, NUNULIA_WHATSAPP } from '../../config/whatsapp.config';
 
 const SafetyTips: React.FC = () => (
   <div className="pt-20 md:pt-24 px-4 pb-24">
@@ -81,8 +82,8 @@ const SafetyTips: React.FC = () => (
           En cas d'arnaque, de fraude ou de comportement suspect, contactez immédiatement notre équipe :
         </p>
         <ul className="list-disc list-inside space-y-2 ml-2">
-          <li>Email : <span className="text-amber-400">support@nunulia.com</span></li>
-          <li>WhatsApp : via le bouton de support de l'application</li>
+          <li>Email : <a href={`mailto:${NUNULIA_WHATSAPP.email}`} className="text-amber-400 hover:underline">{NUNULIA_WHATSAPP.email}</a></li>
+          <li>WhatsApp : <a href={buildWaUrl('🚨 Signalement NUNULIA\nType (arnaque / fraude / suspect) :\nDescription :')} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">{NUNULIA_WHATSAPP.e164}</a></li>
         </ul>
         <p>Conservez toutes les preuves (captures d'écran, références de transaction, échanges WhatsApp). Plus votre signalement est précis, plus nous pourrons agir vite.</p>
       </LegalSection>

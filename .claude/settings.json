@@ -20,7 +20,12 @@
       "Bash(ls /)",
       "Read(//c//**)",
       "PowerShell(gh run list --limit 3)",
-      "Bash(findstr /S /I /N /C:\"isAdmin\" /C:\"role.*admin\" /C:\"admin.*notif\" c:\\\\Projets\\\\aurabuja\\\\functions\\\\src\\\\*.ts c:\\\\Projets\\\\aurabuja\\\\services\\\\firebase\\\\subscription-requests.ts)"
+      "Bash(findstr /S /I /N /C:\"isAdmin\" /C:\"role.*admin\" /C:\"admin.*notif\" c:\\\\Projets\\\\aurabuja\\\\functions\\\\src\\\\*.ts c:\\\\Projets\\\\aurabuja\\\\services\\\\firebase\\\\subscription-requests.ts)",
+      "Bash(firebase functions:log --only enhanceProductPhoto --lines 50)",
+      "Bash(firebase functions:log --only enhanceProductPhoto --lines 200)",
+      "Bash(gcloud functions *)",
+      "Bash(firebase functions:log --only enhanceProductPhoto)",
+      "Bash(firebase functions:log --only enhanceProductPhoto --lines 500)"
     ]
   }
 }

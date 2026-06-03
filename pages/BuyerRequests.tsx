@@ -22,6 +22,7 @@ import {
 import { BuyerRequest, BuyerRequestFlagReason } from '../types';
 import { useToast } from '../components/Toast';
 import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import { CITIES_BY_COUNTRY } from '../data/locations';
 
 /* ─────────────────────── KEYFRAMES ──────────────────────── */
@@ -686,11 +687,8 @@ export const BuyerRequestsPage: React.FC = () => {
 
   const handleContact = async (request: BuyerRequest) => {
     await trackWhatsAppContact(request.id, currentUser.id, currentUser.sellerDetails?.tierLabel || 'free');
-    const msg = encodeURIComponent(
-      t('requests.whatsappMessage', { title: request.title, city: request.city })
-    );
-    const phone = request.whatsapp.replace(/[^0-9]/g, '');
-    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank', 'noopener,noreferrer');
+    const msg = t('requests.whatsappMessage', { title: request.title, city: request.city });
+    window.open(buildWaUrl(msg, { phone: request.whatsapp }), '_blank', 'noopener,noreferrer');
   };
 
   const handleFlag = (request: BuyerRequest) => {

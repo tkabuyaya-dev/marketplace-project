@@ -155,11 +155,12 @@ export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
     { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },
     { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
   ],
-  // Placeholders Tanzania — à compléter avant activation
+  // ⚠️ TANZANIE — Faux numéros temporaires (préfixes opérateurs réels TZ).
+  // À REMPLACER par les vrais numéros marchand NUNULIA avant publication marketing.
   tz: [
-    { name: 'M-Pesa',        number: 'Contactez support',  icon: '📱' },
-    { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
-    { name: 'Tigo Pesa',     number: 'Contactez support',  icon: '📱' },
+    { name: 'M-Pesa',        number: '+255 750 000 000',   icon: '📱' },
+    { name: 'Airtel Money',  number: '+255 780 000 000',   icon: '📱' },
+    { name: 'Tigo Pesa',     number: '+255 710 000 000',   icon: '📱' },
   ],
   // Placeholders Kenya
   ke: [
@@ -171,17 +172,6 @@ export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
     { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },
     { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
   ],
-};
-
-// --- SUPPORT WHATSAPP PAR PAYS ---
-// ⚠️ Pays scaffolded : fallback sur le support BI tant que numéro local non fourni.
-export const SUPPORT_WHATSAPP: Record<string, string> = {
-  bi: '+25768515135',
-  cd: '+243979055933',
-  rw: '+25768515135',
-  tz: '+25768515135', // PLACEHOLDER — remplacer par un numéro WhatsApp TZ
-  ke: '+25768515135', // PLACEHOLDER — remplacer par un numéro WhatsApp KE
-  ug: '+25768515135', // PLACEHOLDER — remplacer par un numéro WhatsApp UG
 };
 
 // --- PRIX D'ABONNEMENT PAR PAYS (defaults — admin peut modifier via Firestore) ---
@@ -231,15 +221,6 @@ export const STUDIO_SESSION_ID_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const STUDIO_SESSION_ID_LENGTH = 6;
 
 /**
- * Numéro WhatsApp destination des photos vendeur.
- * Par défaut : réutilise SUPPORT_WHATSAPP[countryId] existant.
- * Pour un numéro Studio dédié (recommandé à terme), créer doc Firestore :
- *   appSettings/studio = { whatsappNumber: '+25768XXXXXX' }
- * et la CF photo-session-create le lit en priorité avant fallback.
- */
-export const STUDIO_WHATSAPP_FALLBACK_KEY = 'support';
-
-/**
  * Message WhatsApp pré-rempli — le vendeur n'a qu'à joindre ses photos.
  * Variables: {shopName}, {sessionId}, {countryName}.
  * Si le vendeur n'efface pas le texte (95% des cas observés sur features
@@ -266,7 +247,6 @@ export const MOCK_USER: User = {
   avatar: 'https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?auto=format&fit=crop&w=200&q=80',
   isVerified: false,
   role: 'buyer', // IMPORTANT: Doit être 'buyer' pour voir le formulaire
-  whatsapp: '25779000000',
   joinDate: 1640995200000,
   productCount: 0 
 };

@@ -320,7 +320,7 @@
     "profileSaved": "Profile updated",
     "notifsActive": "Enabled — messages, favorites, prices",
     "notifsBlockedHint": "Blocked in browser settings",
-    "versionFooter": "NUNULIA · Burundi, DRC, Rwanda"
+    "versionFooter": "NUNULIA · Burundi, DRC, Rwanda, Tanzania"
   },
   "favorites": {
     "title": "My favorites",
@@ -1437,7 +1437,7 @@
     "navCTA": "Become a seller",
     "heroEyebrow": "Great Lakes marketplace",
     "heroTitle": "Sell across the Great Lakes region",
-    "heroSubtitle": "Open your shop in 2 minutes. Reach thousands of buyers in Burundi, DRC and Rwanda. Get paid directly via WhatsApp and Mobile Money.",
+    "heroSubtitle": "Open your shop in 2 minutes. Reach thousands of buyers in Burundi, DRC, Rwanda and Tanzania. Get paid directly via WhatsApp and Mobile Money.",
     "heroCTAPrimary": "Start for free",
     "heroCTASecondary": "See pricing",
     "heroBadgeFree": "5 free listings",
@@ -1470,7 +1470,7 @@
     "whyTitle": "Why NUNULIA?",
     "whySubtitle": "The marketplace built for Great Lakes sellers.",
     "whyLocalTitle": "100% local",
-    "whyLocalDesc": "Built for Burundi, DRC and Rwanda. Local currencies, languages and habits.",
+    "whyLocalDesc": "Built for Burundi, DRC, Rwanda and Tanzania. Local currencies, languages and habits.",
     "whyWhatsAppTitle": "WhatsApp native",
     "whyWhatsAppDesc": "Customers reach you on WhatsApp. Chat, deliver and get paid on your terms.",
     "whyMomoTitle": "Mobile Money",

@@ -18,6 +18,7 @@ import {
   restoreBuyerRequest,
 } from '../../services/firebase/buyer-requests';
 import { AdminSharedProps } from './types';
+import { buildWaUrl } from '../../config/whatsapp.config';
 
 type ModerationFilter = 'all' | 'borderline';
 const FLAG_REASON_LABELS: Record<string, string> = {
@@ -248,7 +249,7 @@ export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) 
                     </div>
                   </div>
                   <a
-                    href={`https://wa.me/${alert.whatsapp.replace(/[^0-9+]/g, '')}`}
+                    href={buildWaUrl(undefined, { phone: alert.whatsapp })}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-shrink-0 text-[10px] text-green-400 border border-green-600/30 px-2 py-1 rounded-lg hover:bg-green-600/10 transition-colors"

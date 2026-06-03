@@ -10,6 +10,7 @@ import { getProductsByIds, toggleLikeProduct } from '../services/firebase';
 import { db, collection, getDocs, query, where, COLLECTIONS } from '../services/firebase/constants';
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
+import { buildWaUrl } from '../config/whatsapp.config';
 
 /* ─────────────────────── TYPES ──────────────────────── */
 
@@ -26,11 +27,8 @@ const fmtPrice = (n: number, currency?: string) =>
 const discountPct = (original: number, current: number) =>
   Math.round((1 - current / original) * 100);
 
-const buildWhatsAppUrl = (phone?: string) => {
-  if (!phone) return null;
-  const digits = phone.replace(/[^0-9]/g, '');
-  return digits ? `https://wa.me/${digits}` : null;
-};
+const buildWhatsAppUrl = (phone?: string) =>
+  phone ? buildWaUrl(undefined, { phone }) : null;
 
 const sellerCity = (item: FavItem) =>
   item.seller.sellerDetails?.commune || item.seller.sellerDetails?.province || '';

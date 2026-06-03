@@ -114,7 +114,7 @@ const Login: React.FC = () => {
 
         {/* Pills pays */}
         <div className="flex flex-wrap justify-center gap-1.5 mt-2.5">
-          {['🇧🇮 Burundi', '🇨🇩 RDC', '🇷🇼 Rwanda'].map((c) => (
+          {['🇧🇮 Burundi', '🇨🇩 RDC', '🇷🇼 Rwanda', '🇹🇿 Tanzanie'].map((c) => (
             <span
               key={c}
               className="px-2.5 py-1 rounded-full bg-white text-[11px] font-semibold text-[#5C6370]"

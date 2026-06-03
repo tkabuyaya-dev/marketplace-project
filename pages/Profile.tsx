@@ -13,7 +13,8 @@ import { updateUserProfile } from '../services/firebase';
 import { useNotificationConsent } from '../hooks/useNotificationConsent';
 import { useToast } from '../components/Toast';
 import { getOptimizedUrl } from '../services/cloudinary';
-import { INITIAL_COUNTRIES, SUPPORT_WHATSAPP, getCountryFlag } from '../constants';
+import { INITIAL_COUNTRIES, getCountryFlag } from '../constants';
+import { buildWaUrl } from '../config/whatsapp.config';
 import { validatePhone, normalizeLocalDigits, getPhoneSpec, PHONE_SPECS } from '../utils/phoneValidation';
 import type { VerificationTier, User } from '../types';
 
@@ -675,8 +676,9 @@ const Profile: React.FC = () => {
   const expiresAt = currentUser.sellerDetails?.subscriptionExpiresAt;
   const hasActiveSubscription = !!(expiresAt && expiresAt > mountedAt);
 
-  const supportPhone = SUPPORT_WHATSAPP[activeCountry] || SUPPORT_WHATSAPP['bi'];
-  const supportHref = `https://wa.me/${supportPhone.replace(/\D/g, '')}`;
+  const supportHref = buildWaUrl(
+    `Bonjour NUNULIA, j'ai besoin d'aide.\nProfil : ${currentUser.role === 'seller' ? 'Vendeur' : 'Acheteur'}\nPays : ${country?.name || activeCountry}`,
+  );
 
   const handleNotifications = async () => {
     if (permission === 'denied') { toast(t('profile.notifsBlocked'), 'info'); return; }
