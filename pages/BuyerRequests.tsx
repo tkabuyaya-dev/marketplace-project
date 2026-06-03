@@ -21,6 +21,7 @@ import {
 } from '../services/firebase/buyer-requests';
 import { BuyerRequest, BuyerRequestFlagReason, User } from '../types';
 import { useToast } from '../components/Toast';
+import { NotificationEnableBanner } from '../components/NotificationEnableBanner';
 import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
 import { CITIES_BY_COUNTRY } from '../data/locations';
@@ -752,6 +753,9 @@ const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) 
           activeCount={activeFilterCount}
           onOpenSheet={openSheet}
         />
+
+        {/* Activation push — critique : sans ça aucune notif système n'arrive */}
+        <NotificationEnableBanner />
 
         {/* Plan gate banner — vendeurs non éligibles */}
         {!eligible && activeRequests.length > 0 && (

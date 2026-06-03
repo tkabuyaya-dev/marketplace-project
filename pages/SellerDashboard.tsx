@@ -37,6 +37,7 @@ import { getInventoryFromIDB, saveInventoryToIDB } from '../services/inventoryId
 import { PhotoStudioCard } from '../components/dashboard/PhotoStudioCard';
 import { PhotoEnhancementStep } from '../components/PhotoEnhancementStep';
 import { usePhotoEnhancement } from '../hooks/usePhotoEnhancement';
+import { NotificationEnableBanner } from '../components/NotificationEnableBanner';
 
 type Tab = 'overview' | 'products' | 'shop' | 'add_product' | 'verification' | 'requests' | 'analytics' | 'boost';
 
@@ -1047,6 +1048,10 @@ export const SellerDashboard: React.FC = () => {
 
     return (
     <div className="space-y-5 animate-fadein">
+        {/* Activation push — sans token FCM, aucune notif système (demande client,
+            approbation produit, etc.) n'arrive sur le téléphone du seller. */}
+        <NotificationEnableBanner />
+
         {/* Offline Queue Banner — auto-syncs in background; manual button forces a retry. */}
         {queueCount > 0 && (
           <div
