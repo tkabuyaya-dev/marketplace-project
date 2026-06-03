@@ -46,9 +46,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
 
   const actionItem = renderActionItem();
 
+  const isSeller = currentUser?.role === 'seller' || currentUser?.role === 'admin';
+
   const navItems = [
     { path: '/', icon: '🏠', label: t('nav.home'), useSellerAccess: false },
     { path: '/favorites', icon: '❤️', label: t('nav.favorites'), useSellerAccess: false },
+    // Réseau B2B — visible uniquement aux vendeurs/admins. Gratuit voit le feed
+    // floutée + overlay de conversion, c'est volontaire.
+    ...(isSeller
+      ? [{ path: '/reseau', icon: '🌍', label: t('nav.b2b'), useSellerAccess: false }]
+      : []),
     actionItem,
     { path: '/profile', icon: '⚙️', label: t('nav.account'), useSellerAccess: false },
   ];

@@ -43,6 +43,7 @@ const BuyerRequestsPage = lazyRetry(() => import('./pages/BuyerRequests'));
 const AuthGooglePage = lazyRetry(() => import('./pages/AuthGoogle'));
 const FcmDebugPage = lazyRetry(() => import('./pages/FcmDebug'));
 const StudioPage = lazyRetry(() => import('./pages/Studio'));
+const B2BPage = lazyRetry(() => import('./pages/B2B'));
 
 // Prefetch critical routes after initial load
 if (typeof window !== 'undefined') {
@@ -121,6 +122,7 @@ export const router = createBrowserRouter([
       { path: 'auth-google', element: <SuspenseWrapper><AuthGooglePage /></SuspenseWrapper> },
       { path: 'fcm-debug', element: <SuspenseWrapper><FcmDebugPage /></SuspenseWrapper> },
       { path: 'studio/:sessionId', element: <SuspenseWrapper><StudioPage /></SuspenseWrapper> },
+      { path: 'reseau', element: <SuspenseWrapper><B2BPage /></SuspenseWrapper> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

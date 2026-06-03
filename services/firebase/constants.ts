@@ -83,6 +83,9 @@ export const COLLECTIONS = {
   BUYER_REQUEST_CONTACTS: 'buyerRequestContacts',
   BOOST_REQUESTS:        'boostRequests',
   BOOST_PRICING:         'boostPricing',
+  B2B_POSTS:             'b2b_posts',
+  B2B_HELPS:             'b2b_helps',
+  B2B_CONFIRMATIONS:     'b2b_confirmations',
 } as const;
 
 /** Converts a Firestore document to User type */
@@ -104,6 +107,8 @@ export function docToUser(docData: any, id: string): User {
     bio:              docData.bio,
     productCount:     docData.productCount || 0,
     sellerDetails:    docData.sellerDetails,
+    b2bLang:          docData.b2bLang,
+    b2bReputation:    typeof docData.b2bReputation === 'number' ? docData.b2bReputation : undefined,
   };
 }
 

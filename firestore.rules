@@ -70,6 +70,23 @@ service cloud.firestore {
 
     // ── Subscription Enforcement (server-side) ──
 
+    // B2B interaction gate. Aligné sur PLAN_FEATURES.canContactBuyer
+    // (Pro + Grossiste, alias legacy inclus). Le JWT ne portant pas le
+    // tier, on lit Firestore — même pattern que canCreateProduct().
+    function canInteractB2B() {
+      let s = getUserData();
+      let tier = s.get('sellerDetails', {}).get('tierLabel', '');
+      let expiresAt = s.get('sellerDetails', {}).get('subscriptionExpiresAt', null);
+      // Plans éligibles : labels canoniques + alias legacy mappant vers Pro/Grossiste.
+      let allowed = tier in [
+        'Pro', 'Business Pro', 'Élite', 'Elite',
+        'Grossiste', 'Grossiste Illimité', 'Illimité'
+      ];
+      // Si abonnement défini ET expiré → refus (free fallback du tier sans accès B2B).
+      let notExpired = expiresAt == null || expiresAt > request.time.toMillis();
+      return allowed && notExpired;
+    }
+
     // Check if seller's subscription allows creating products + rate limiting
     function canCreateProduct() {
       let seller = getUserData();
@@ -117,10 +134,11 @@ service cloud.firestore {
           //   - trustScore : score calculé, jamais auto-déclaré
           //   - verifiedAt : timestamp de vérification
           //   - verificationMethod : méthode utilisée par l'admin
+          //   - b2bReputation : score calculé, écrit uniquement par CF admin SDK
           // + champs d'abonnement (sellerDetails.maxProducts/subscriptionExpiresAt/tierLabel/verifiedAt/verificationMethod)
           (
             !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['role', 'isVerified', 'verificationTier', 'trustScore', 'verifiedAt', 'verificationMethod'])
+              .hasAny(['role', 'isVerified', 'verificationTier', 'trustScore', 'verifiedAt', 'verificationMethod', 'b2bReputation'])
             && (
               !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sellerDetails'])
               || (
@@ -659,6 +677,111 @@ service cloud.firestore {
           || (isAuth() && get(/databases/$(database)/documents/photoSessions/$(sessionId)).data.vendorId == request.auth.uid);
         allow write: if false;
       }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // RÉSEAU B2B — Posts entre vendeurs Pro/Grossiste
+    // b2b_posts            : posts (lecture publique, écriture Pro/Grossiste)
+    // b2b_helps            : "Je peux aider" (id déterministe = postId_helperId)
+    // b2b_confirmations    : "Je confirme ce signal" (id déterministe)
+    //
+    // helpCount / confirmCount / translations sont écrits par les CF admin SDK
+    // (translateB2BPost, onB2bHelp, onB2bConfirmation) — bypass des rules.
+    // L'unicité 1-help-par-post est garantie nativement par l'id composite.
+    // ─────────────────────────────────────────────────────────
+
+    match /b2b_posts/{postId} {
+      // Lecture publique — les Gratuits voient le feed (UI floutée côté front).
+      allow read: if isAuth();
+
+      allow create: if isSeller()
+        && isNotSuspendedStrict()
+        && canInteractB2B()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.helpCount == 0
+        && request.resource.data.confirmCount == 0
+        && request.resource.data.isVerified == false
+        && request.resource.data.translationStatus == 'pending'
+        && request.resource.data.category in ['fournisseur','revendeur','marche','transport']
+        && request.resource.data.originalLang in ['fr','en','sw','rn','rw']
+        && validString(request.resource.data.originalText, 280)
+        && validWhatsapp(request.resource.data.authorWhatsApp)
+        // createdAt en ms, tolérance ±5 min (horloges décalées Android/iOS)
+        && request.resource.data.createdAt is number
+        && request.resource.data.createdAt >= request.time.toMillis() - 300000
+        && request.resource.data.createdAt <= request.time.toMillis() + 300000
+        // expiresAt entre 1 et 31 jours après createdAt
+        && request.resource.data.expiresAt is number
+        && request.resource.data.expiresAt > request.resource.data.createdAt
+        && request.resource.data.expiresAt <= request.resource.data.createdAt + 2678400000
+        && request.resource.data.keys().hasAll([
+            'authorId', 'authorName', 'authorCity', 'authorProvince',
+            'authorCountry', 'authorWhatsApp', 'authorTier',
+            'authorReputationAtPost', 'category', 'originalText',
+            'originalLang', 'translations', 'translationStatus',
+            'helpCount', 'confirmCount', 'uniqueCitiesConfirmed',
+            'isVerified', 'status', 'createdAt', 'updatedAt', 'expiresAt'
+          ]);
+
+      // Le user ne peut que fermer son propre post (open → closed).
+      // helpCount / confirmCount / translations / isVerified : CF only.
+      allow update: if isAdmin()
+        || (isAuth()
+            && resource.data.authorId == request.auth.uid
+            && resource.data.status == 'open'
+            && request.resource.data.status == 'closed'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'updatedAt']));
+
+      allow delete: if isAdmin()
+        || (isAuth() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /b2b_helps/{helpId} {
+      // Lecture limitée à l'auteur du post et à l'admin (la liste ne fuite
+      // pas les WhatsApp des helpers à des Gratuits). Le frontend récupère
+      // postId via le get pour vérifier authorId.
+      allow read: if isAdmin()
+        || (isAuth() && (
+              resource.data.helperId == request.auth.uid
+              || get(/databases/$(database)/documents/b2b_posts/$(resource.data.postId)).data.authorId == request.auth.uid
+            ));
+
+      // Id déterministe = anti-double-help via rule native, zéro race.
+      allow create: if isSeller()
+        && isNotSuspendedStrict()
+        && canInteractB2B()
+        && helpId == request.resource.data.postId + '_' + request.auth.uid
+        && request.resource.data.helperId == request.auth.uid
+        && validWhatsapp(request.resource.data.helperWhatsApp)
+        && validString(request.resource.data.helperName, 100)
+        && request.resource.data.keys().hasAll([
+            'postId', 'helperId', 'helperName', 'helperCity',
+            'helperCountry', 'helperWhatsApp', 'helperTier', 'createdAt'
+          ]);
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /b2b_confirmations/{confirmId} {
+      allow read: if isAdmin()
+        || (isAuth() && (
+              resource.data.confirmerId == request.auth.uid
+              || get(/databases/$(database)/documents/b2b_posts/$(resource.data.postId)).data.authorId == request.auth.uid
+            ));
+
+      allow create: if isSeller()
+        && isNotSuspendedStrict()
+        && canInteractB2B()
+        && confirmId == request.resource.data.postId + '_' + request.auth.uid
+        && request.resource.data.confirmerId == request.auth.uid
+        && validString(request.resource.data.confirmerCity, 100)
+        && request.resource.data.keys().hasAll([
+            'postId', 'confirmerId', 'confirmerCity', 'confirmerCountry', 'createdAt'
+          ]);
+
+      allow update, delete: if isAdmin();
     }
 
     // ─────────────────────────────────────────────────────────

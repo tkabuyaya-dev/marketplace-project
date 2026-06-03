@@ -8,6 +8,7 @@
     "admin": "Admin",
     "login": "Connexion",
     "account": "Compte",
+    "b2b": "Réseau",
     "search": "Rechercher...",
     "shortcut": "Cmd+K",
     "searchTerms": [
@@ -1540,5 +1541,77 @@
     "errorOffline": "Pas de connexion — votre publication sera envoyée dès le retour du réseau.",
     "ttlNotice": "Vos photos seront traitées sous 24 h.",
     "supportContact": "Contacter le support"
+  },
+  "b2b": {
+    "title": "Réseau B2B",
+    "subtitle": "Échangez entre vendeurs : fournisseurs, opportunités, transport.",
+    "publishCta": "Publier un besoin",
+    "publishTitle": "Publier un besoin",
+    "publishing": "Publication…",
+    "publishNow": "Publier maintenant",
+    "publishSuccess": "Votre besoin est publié ✨",
+    "previewTitle": "Aperçu avant publication",
+    "preview": "Aperçu",
+    "categoryLabel": "Catégorie",
+    "textLabel": "Votre besoin",
+    "textPlaceholder": "Décrivez en une phrase claire ce que vous cherchez ou proposez (280 caractères max)",
+    "detectedLang": "Langue détectée : {{lang}}",
+    "willBeTranslated": "Sera traduit automatiquement depuis {{lang}} vers les 4 autres langues",
+    "translatedBy": "traduit par Nunulia IA",
+    "help": "Je peux aider",
+    "helpAria": "Proposer mon aide sur ce besoin",
+    "alreadyHelping": "Vous participez",
+    "alreadyHelpingAria": "Vous avez déjà proposé votre aide",
+    "contactWa": "WhatsApp",
+    "waAria": "Contacter {{name}} sur WhatsApp",
+    "waMessage": "Bonjour {{name}}, je vous contacte au sujet de votre besoin sur Nunulia : « {{text}} »",
+    "confirmSignal": "Je confirme",
+    "confirmAria": "Confirmer ce signal — 3 villes différentes le rendent Validé",
+    "confirmed": "Confirmé",
+    "verified": "Signal Validé",
+    "verifiedAria": "Signal validé par 3 villes différentes",
+    "reputationOf": "Réputation B2B de {{name}}",
+    "closePost": "Fermer",
+    "confirmClose": "Fermer ce post ? Il ne sera plus visible dans le feed.",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer définitivement ce post ?",
+    "loadMore": "Voir plus",
+    "loadingMore": "Chargement…",
+    "emptyFeed": "Aucun post dans cette catégorie pour le moment.",
+    "postAria": "Post B2B de {{name}} — catégorie {{category}}",
+    "cat": {
+      "all": "Tout",
+      "fournisseur": "Fournisseur",
+      "revendeur": "Revendeur",
+      "marche": "Signal marché",
+      "transport": "Transport"
+    },
+    "upsell": {
+      "title": "Le Réseau B2B est réservé aux vendeurs Pro et Grossiste.",
+      "subtitle": "Publiez vos besoins, aidez d'autres vendeurs, recevez des signaux du terrain.",
+      "cta": "Voir les offres",
+      "lockTitle": "Abonnez-vous pour participer",
+      "publishGateTitle": "Publication réservée Pro / Grossiste",
+      "publishGateBody": "Passez à un plan supérieur pour publier vos besoins dans le Réseau B2B."
+    },
+    "helpList": {
+      "title": "{{count}} vendeur(s) peuvent aider",
+      "loading": "Chargement…",
+      "empty": "Personne n'a encore proposé son aide.",
+      "waMessage": "Bonjour, vous avez proposé votre aide sur mon post Réseau B2B Nunulia ({{name}}). Pouvons-nous échanger ?",
+      "waAria": "Contacter {{name}} sur WhatsApp"
+    },
+    "langMenu": {
+      "title": "Langue du Réseau B2B",
+      "hint": "Affichera les posts traduits dans la langue choisie."
+    },
+    "errors": {
+      "textTooShort": "Le texte est trop court.",
+      "noWhatsApp": "Ajoutez un numéro WhatsApp à votre profil pour publier.",
+      "cantPublish": "Vous n'avez pas l'abonnement requis pour publier.",
+      "cantHelp": "Vous n'avez pas l'abonnement requis pour aider.",
+      "cantConfirm": "Vous n'avez pas l'abonnement requis pour confirmer.",
+      "network": "Erreur réseau, réessayez."
+    }
   }
 }

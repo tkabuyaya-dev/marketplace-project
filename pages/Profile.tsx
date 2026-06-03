@@ -15,6 +15,7 @@ import { useToast } from '../components/Toast';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { INITIAL_COUNTRIES, getCountryFlag } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { B2BLanguageMenuItem } from '../components/B2B/B2BLanguageMenuItem';
 import { validatePhone, normalizeLocalDigits, getPhoneSpec, PHONE_SPECS } from '../utils/phoneValidation';
 import type { VerificationTier, User } from '../types';
 
@@ -836,6 +837,7 @@ const Profile: React.FC = () => {
               sub={theme === 'dark' ? t('profile.appearanceDark') : t('profile.appearanceLight')}
               onClick={toggleTheme}
             />
+            {(isSeller || isAdmin) && <B2BLanguageMenuItem />}
           </MenuSection>
 
           {/* Aide & Légal */}

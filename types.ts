@@ -81,6 +81,14 @@ export interface User {
   bio?: string;
   productCount?: number;
   sellerDetails?: SellerDetails;
+  // ── Réseau B2B ─────────────────────────────────────────────────────────
+  // Langue préférée pour la lecture des posts B2B. Écrit côté client via la
+  // rule "mise à jour profil normale". Si absent → fallback i18n actuel.
+  b2bLang?: 'fr' | 'en' | 'sw' | 'rn' | 'rw';
+  // Score de réputation B2B — séparé de trustScore (qui couvre le produit).
+  // Admin-only writable côté rules ; modifié par les CFs onB2bHelp /
+  // onB2bConfirmation / closeExpiredB2BPosts (admin SDK).
+  b2bReputation?: number;
 }
 
 export interface SubscriptionTier {
@@ -226,6 +234,8 @@ export type NotificationType =
   | 'buyer_request_help'
   | 'buyer_request_suspended'   // Admin alert : 3 sellers ont signalé une demande
   | 'photo_session_ready'       // 📸 Photo Studio — photos traitées, vendeur peut publier
+  | 'b2b_help_received'         // 🌍 Réseau B2B — un vendeur propose son aide sur votre post
+  | 'b2b_verified'              // 🌍 Réseau B2B — votre post est passé "Signal Validé" (3 villes)
   | 'system';
 
 export interface AppNotification {
@@ -484,4 +494,86 @@ export interface PhotoSessionEvent {
   by: { userId: string; role: 'seller' | 'admin' | 'system' };
   payload?: Record<string, unknown>;
   timestamp: number;
+}
+
+// ─── Réseau B2B ──────────────────────────────────────────────────────────────
+// Posts publiés par des vendeurs Pro/Grossiste pour adresser d'autres
+// vendeurs : besoins fournisseurs, opportunités revendeurs, signaux marchés,
+// transport. Traduits côté CF en 5 langues (FR/EN/SW/RN/RW) via Claude Haiku.
+
+export type B2BCategory = 'fournisseur' | 'revendeur' | 'marche' | 'transport';
+
+export type B2BLang = 'fr' | 'en' | 'sw' | 'rn' | 'rw';
+
+export type B2BPostStatus = 'open' | 'closed';
+
+export type B2BTranslationStatus = 'pending' | 'done' | 'failed';
+
+export interface B2BTranslations {
+  fr?: string;
+  en?: string;
+  sw?: string;
+  rn?: string;
+  rw?: string;
+}
+
+export interface B2BPost {
+  id: string;
+  authorId: string;
+  authorName: string;            // shopName dénormalisé
+  authorCity: string;            // sellerDetails.commune dénormalisé
+  authorProvince: string;
+  authorCountry: string;         // ISO2 — 'BI' | 'CD' | 'RW' | 'TZ' | 'KE' | 'UG'
+  authorWhatsApp: string;        // E.164 — visible uniquement aux abonnés Pro/Grossiste
+  authorTier: PlanId;            // snapshot à la création
+  authorReputationAtPost: number; // snapshot — évite N reads sur le feed
+  category: B2BCategory;
+  originalText: string;          // 1..280
+  originalLang: B2BLang;
+  translations: B2BTranslations; // populé en async par CF translateB2BPost
+  translationStatus: B2BTranslationStatus;
+  translatedAt: number | null;
+  helpCount: number;
+  confirmCount: number;
+  uniqueCitiesConfirmed: string[]; // borné à 10
+  isVerified: boolean;           // confirmCount >= 3 ET 3 villes différentes
+  status: B2BPostStatus;
+  createdAt: number;
+  updatedAt: number;
+  expiresAt: number;             // createdAt + 30j ; cron close auto
+}
+
+export interface B2BHelp {
+  id: string;                    // ${postId}_${helperId} (déterministe)
+  postId: string;
+  helperId: string;
+  helperName: string;
+  helperCity: string;
+  helperCountry: string;
+  helperWhatsApp: string;
+  helperTier: PlanId;
+  createdAt: number;
+}
+
+export interface B2BConfirmation {
+  id: string;                    // ${postId}_${confirmerId}
+  postId: string;
+  confirmerId: string;
+  confirmerCity: string;
+  confirmerCountry: string;
+  createdAt: number;
+}
+
+/**
+ * Permissions d'accès au Réseau B2B, dérivées du tier de l'utilisateur.
+ * - Gratuit / Vendeur : canView = true, canInteract = canPublish = false (UI floutée).
+ * - Pro / Grossiste actifs : tout à true.
+ * Un abonnement expiré tombe à canInteract=false (mêmes règles que canContactBuyer).
+ */
+export interface B2BAccess {
+  canView: boolean;
+  canInteract: boolean;
+  canPublish: boolean;
+  tier: PlanId;
+  isAuth: boolean;
 }

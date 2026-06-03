@@ -1,0 +1,96 @@
+/* NUNULIA — Réseau B2B — Design tokens scopés.
+ *
+ * Variables CSS appliquées uniquement sur le sous-arbre [data-b2b="true"].
+ * Permet d'avoir une palette dark dédiée sans toucher au thème global de
+ * l'app (qui reste light primaire avec dark optionnel).
+ */
+
+[data-b2b="true"] {
+  --b2b-bg-primary:    #0F1923;
+  --b2b-bg-card:       #1A2632;
+  --b2b-bg-card-hover: #20303E;
+  --b2b-border:        rgba(255, 255, 255, 0.07);
+  --b2b-text-primary:  #F0F4F8;
+  --b2b-text-muted:    #9CA3AF;
+  --b2b-gold:          #D97706;
+  --b2b-gold-strong:   #F59E0B;
+  --b2b-gold-glow:     rgba(245, 158, 11, 0.3);
+  --b2b-verified-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+  --b2b-wa:            #25D366;
+
+  /* Catégories — bande latérale gauche des cards */
+  --b2b-cat-fournisseur: #1E40AF;
+  --b2b-cat-revendeur:   #15803D;
+  --b2b-cat-marche:      #C2410C;
+  --b2b-cat-transport:   #7E22CE;
+}
+
+[data-b2b="true"] .b2b-card {
+  background: var(--b2b-bg-card);
+  border: 1px solid var(--b2b-border);
+  color: var(--b2b-text-primary);
+}
+
+[data-b2b="true"] .b2b-card:hover {
+  background: var(--b2b-bg-card-hover);
+}
+
+[data-b2b="true"] .b2b-verified-glow {
+  box-shadow: var(--b2b-verified-glow);
+}
+
+[data-b2b="true"] .b2b-help-btn {
+  background: var(--b2b-gold);
+  color: #1A1305;
+  box-shadow: 0 4px 14px var(--b2b-gold-glow);
+}
+
+[data-b2b="true"] .b2b-help-btn:hover:not(:disabled) {
+  background: var(--b2b-gold-strong);
+  box-shadow: 0 6px 18px var(--b2b-gold-glow);
+}
+
+[data-b2b="true"] .b2b-help-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+  box-shadow: none;
+}
+
+[data-b2b="true"] .b2b-wa-btn {
+  background: transparent;
+  color: var(--b2b-text-primary);
+  border: 1px solid var(--b2b-wa);
+}
+
+[data-b2b="true"] .b2b-wa-btn:hover {
+  background: rgba(37, 211, 102, 0.12);
+}
+
+/* Conteneur principal — fond sombre pleine hauteur */
+.b2b-shell {
+  background: #0F1923;
+  min-height: 100vh;
+  color: #F0F4F8;
+  transition: background 300ms ease;
+}
+
+/* Gradient de flou pour les Gratuits — overlay de conversion.
+ * Le `mask-image` masque le bas de la card sans cacher le texte du haut. */
+.b2b-upsell-blur {
+  filter: blur(4.5px) saturate(0.85);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 35%, transparent 95%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 35%, transparent 95%);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Animation pulse au clic du bouton Je peux aider */
+@keyframes b2bHelpPulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.b2b-help-pulse {
+  animation: b2bHelpPulse 320ms ease-out;
+}

@@ -8,6 +8,7 @@
     "admin": "Admin",
     "login": "Login",
     "account": "Account",
+    "b2b": "Network",
     "search": "Search...",
     "shortcut": "Cmd+K",
     "searchTerms": [
@@ -1540,5 +1541,77 @@
     "errorOffline": "No connection — your publication will be sent when you're back online.",
     "ttlNotice": "Your photos will be edited within 24h.",
     "supportContact": "Contact support"
+  },
+  "b2b": {
+    "title": "B2B Network",
+    "subtitle": "Connect with other sellers: suppliers, leads, transport.",
+    "publishCta": "Post a request",
+    "publishTitle": "Post a request",
+    "publishing": "Publishing…",
+    "publishNow": "Publish now",
+    "publishSuccess": "Your request is live ✨",
+    "previewTitle": "Preview before publishing",
+    "preview": "Preview",
+    "categoryLabel": "Category",
+    "textLabel": "Your request",
+    "textPlaceholder": "Describe in one clear sentence what you're looking for or offering (max 280 chars)",
+    "detectedLang": "Detected language: {{lang}}",
+    "willBeTranslated": "Will be auto-translated from {{lang}} into the 4 other languages",
+    "translatedBy": "translated by Nunulia AI",
+    "help": "I can help",
+    "helpAria": "Offer your help on this request",
+    "alreadyHelping": "You're helping",
+    "alreadyHelpingAria": "You already offered to help",
+    "contactWa": "WhatsApp",
+    "waAria": "Contact {{name}} on WhatsApp",
+    "waMessage": "Hi {{name}}, I'm reaching out about your Nunulia request: « {{text}} »",
+    "confirmSignal": "I confirm",
+    "confirmAria": "Confirm this signal — 3 different cities make it Verified",
+    "confirmed": "Confirmed",
+    "verified": "Verified Signal",
+    "verifiedAria": "Signal verified by 3 different cities",
+    "reputationOf": "B2B reputation of {{name}}",
+    "closePost": "Close",
+    "confirmClose": "Close this post? It will no longer appear in the feed.",
+    "delete": "Delete",
+    "confirmDelete": "Delete this post permanently?",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "emptyFeed": "No posts in this category yet.",
+    "postAria": "B2B post from {{name}} — category {{category}}",
+    "cat": {
+      "all": "All",
+      "fournisseur": "Supplier",
+      "revendeur": "Reseller",
+      "marche": "Market signal",
+      "transport": "Transport"
+    },
+    "upsell": {
+      "title": "The B2B Network is reserved for Pro and Wholesale sellers.",
+      "subtitle": "Post your needs, help other sellers, receive on-the-ground market signals.",
+      "cta": "View plans",
+      "lockTitle": "Subscribe to join",
+      "publishGateTitle": "Publishing reserved for Pro / Wholesale",
+      "publishGateBody": "Upgrade to publish your needs in the B2B Network."
+    },
+    "helpList": {
+      "title": "{{count}} seller(s) can help",
+      "loading": "Loading…",
+      "empty": "No one has offered help yet.",
+      "waMessage": "Hi, you offered to help on my Nunulia B2B Network post ({{name}}). Can we talk?",
+      "waAria": "Contact {{name}} on WhatsApp"
+    },
+    "langMenu": {
+      "title": "B2B Network language",
+      "hint": "Posts will be shown translated in this language."
+    },
+    "errors": {
+      "textTooShort": "Text is too short.",
+      "noWhatsApp": "Add a WhatsApp number to your profile before publishing.",
+      "cantPublish": "Your plan doesn't allow publishing.",
+      "cantHelp": "Your plan doesn't allow helping.",
+      "cantConfirm": "Your plan doesn't allow confirming.",
+      "network": "Network error, please retry."
+    }
   }
 }

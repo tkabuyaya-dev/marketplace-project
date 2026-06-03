@@ -139,3 +139,16 @@ export { expirePhotoSessions } from "./expire-photo-sessions.js";
 // Phase 7 : carte virale 1080×1920 + caption Haiku, déclenchée en async
 // quand session.status passe à 'published'. Découplé de photoSessionPublish.
 export { onPhotoSessionPublished } from "./share-card-trigger.js";
+
+// ─── Réseau B2B (vendeurs Pro/Grossiste) ────────────────────────────────────
+// 3 triggers Firestore + 1 cron quotidien.
+//
+// Lifecycle :
+//   translateB2BPost      onCreate  b2b_posts        → Claude Haiku 4.5 (4 traductions)
+//   onB2bHelp             onCreate  b2b_helps        → helpCount + notif auteur + rep +1
+//   onB2bConfirmation     onCreate  b2b_confirmations→ confirmCount + isVerified à 3 villes
+//   closeExpiredB2BPosts  cron 06:30 UTC             → close auto à J+30 + rep +2 auteur
+export { translateB2BPost } from "./b2b-translate-post.js";
+export { onB2bHelp } from "./b2b-on-help.js";
+export { onB2bConfirmation } from "./b2b-on-confirmation.js";
+export { closeExpiredB2BPosts } from "./b2b-close-expired.js";
