@@ -21,11 +21,11 @@
       "Read(//c//**)",
       "PowerShell(gh run list --limit 3)",
       "Bash(findstr /S /I /N /C:\"isAdmin\" /C:\"role.*admin\" /C:\"admin.*notif\" c:\\\\Projets\\\\aurabuja\\\\functions\\\\src\\\\*.ts c:\\\\Projets\\\\aurabuja\\\\services\\\\firebase\\\\subscription-requests.ts)",
-      "Bash(firebase functions:log --only enhanceProductPhoto --lines 50)",
-      "Bash(firebase functions:log --only enhanceProductPhoto --lines 200)",
       "Bash(gcloud functions *)",
-      "Bash(firebase functions:log --only enhanceProductPhoto)",
-      "Bash(firebase functions:log --only enhanceProductPhoto --lines 500)"
+      "Bash(Select-String -Pattern \"BuyerRequests\" -Context 1,1)",
+      "Bash(Select-Object -First 50)",
+      "Bash(firebase functions:secrets:access CLOUDINARY_API_KEY)",
+      "Bash(firebase functions:secrets:access CLOUDINARY_CLOUD_NAME)"
     ]
   }
 }

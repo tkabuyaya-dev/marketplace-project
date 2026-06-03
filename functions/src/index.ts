@@ -91,10 +91,6 @@ export { seedNewCategories } from "./seed-new-categories.js";
 // Génération IA de description produit (Claude Haiku 4.5 + cache + quota gating Pro).
 export { generateProductDescription } from "./generate-product-description.js";
 
-// Retouche photo PhotoRoom — option facultative dans "Ajouter produit".
-// 3 styles (white/blur/branded), quota partagé avec Photo Studio asynchrone.
-export { enhanceProductPhoto } from "./enhance-product-photo.js";
-
 // Test push FCM pour la page /fcm-debug — envoie un push à ses propres devices.
 export { sendTestPush } from "./send-test-push.js";
 

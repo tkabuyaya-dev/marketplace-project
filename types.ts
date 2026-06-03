@@ -143,10 +143,6 @@ export interface Product {
   // Boost (mise en avant payante)
   isBoosted?: boolean;
   boostExpiresAt?: number; // timestamp ms
-  // 📸 Photo enhancement (PhotoRoom API — option facultative à la création)
-  enhanced?: boolean;
-  enhancementStyle?: 'white' | 'branded';
-  enhancedAt?: number;
 }
 
 // ─── Currencies ───

@@ -1540,38 +1540,5 @@
     "errorOffline": "No connection — your publication will be sent when you're back online.",
     "ttlNotice": "Your photos will be edited within 24h.",
     "supportContact": "Contact support"
-  },
-  "enhancement": {
-    "title": "Enhance with NUNULIA Studio?",
-    "subtitle": "Professional background automatically applied in seconds.",
-    "keepOriginal": "No thanks, keep my original photos",
-    "keepOriginalHint": "Your photos will be published as-is.",
-    "enhance": "Yes, enhance my photos",
-    "enhanceHint": "Pro background, product front-and-center.",
-    "chooseStyle": "Choose your style:",
-    "style": {
-      "white": "White",
-      "branded": "NUNULIA"
-    },
-    "startEnhance": "Enhance my photos",
-    "preparing": "Preparing photos…",
-    "processing": "Enhancing photos ({{current}}/{{total}})…",
-    "processingHint": "Don't close the page, this takes a few seconds.",
-    "previewTitle": "Preview before publishing",
-    "previewSubtitle": "You can still revert any photo to its original.",
-    "photoAlt": "Photo {{n}}",
-    "photoEnhanced": "Enhanced",
-    "photoOriginal": "Original",
-    "photoFailed": "Unchanged",
-    "useOriginal": "Use original",
-    "useEnhanced": "Use enhanced",
-    "quotaRemaining": "Photo Studio uses today: {{used}}/{{limit}}",
-    "failedTitle": "Enhancement unavailable",
-    "failedFallback": "Enhancement is unavailable right now. Your original photos will be published.",
-    "tryAgain": "Try again",
-    "offlineTitle": "Offline",
-    "offlineSubtitle": "Enhancement is unavailable offline. Your original photos will be published once you're back online.",
-    "badge": "Photo Pro",
-    "badgeAria": "Photos enhanced with NUNULIA Studio"
   }
 }
