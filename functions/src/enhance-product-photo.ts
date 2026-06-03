@@ -193,11 +193,10 @@ async function callPhotoRoom(
   apiKey: string,
 ): Promise<Buffer> {
   // PhotoRoom v1 /segment — Basic plan. Field name: `image_file` (snake_case).
-  // Le paramètre `bg_color` (hex sans #) demande l'ajout d'un fond uni au
-  // résultat sans transparence — supporté nativement par le plan Basic.
+  // `bg_color` exige le format `#RRGGBB` (sans `#` → HTTP 400 wrong_key_value_combination).
   const form = new FormData();
   form.append("image_file", new Blob([new Uint8Array(source)], { type: mime }), "source.jpg");
-  form.append("bg_color", style === "branded" ? NUNULIA_ORANGE_HEX : "FFFFFF");
+  form.append("bg_color", `#${style === "branded" ? NUNULIA_ORANGE_HEX : "FFFFFF"}`);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PHOTOROOM_TIMEOUT_MS);
