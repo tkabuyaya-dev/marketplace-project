@@ -4,34 +4,40 @@
  *
  * Scope: /firebase-cloud-messaging-push-scope (séparé du Workbox SW à '/').
  *
- * Stratégie : on s'abonne au `push` natif du Service Worker EN PLUS du
- * onBackgroundMessage du SDK, comme filet de sécurité. Sur certains
- * Android Chrome récents, le SDK ne déclenche pas l'affichage auto même
- * quand il devrait. L'écoute `push` native garantit l'affichage.
+ * Stratégie : handler `push` natif uniquement, sans dépendance au SDK
+ * firebase-messaging.compat. Pourquoi :
  *
- * Le serveur envoie un payload data-only : `data: { title, body, link, type }`.
- * Pas de champ `notification` → on garde le contrôle total de l'affichage.
+ *   1. Le SDK Web Messaging dispatche `onBackgroundMessage` mais ne garantit
+ *      pas que le callback complète son `showNotification` avant que le SW
+ *      ne shutdown. Symptôme observé en prod : push acquitté par FCM
+ *      (sent=1) mais jamais affiché côté device. La cloche in-app voit
+ *      bien la notif Firestore, le téléphone non.
+ *
+ *   2. Le SDK n'apporte aucune valeur ici : il décodait juste `payload.data`
+ *      qu'on peut récupérer directement via `event.data.json()`.
+ *
+ *   3. L'init `/__/firebase/init.js` faisait un import réseau supplémentaire
+ *      sur un SW qui doit démarrer en <100ms pour ne pas dépasser le délai
+ *      de dispatch du push event.
+ *
+ * Côté page (services/fcm.ts), le SDK reste utilisé pour `getToken()` —
+ * c'est là qu'il a sa raison d'être.
+ *
+ * skipWaiting + clientsClaim : sans ces flags, un device qui a installé le
+ * SW il y a 1 semaine reste bloqué dessus, même après un deploy de fix.
+ * Aligné sur le Workbox SW (cf. commit 81432f5).
+ *
+ * Payload attendu (cf. fcm-send.ts) — DATA-ONLY :
+ *   data: { title, body, link, type }
  */
 
-importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-compat.js');
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
 
-let fcmReady = false;
-try {
-  // Auto-servi par Firebase Hosting (init firebase global avec la config prod).
-  importScripts('/__/firebase/init.js');
-  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    const messaging = firebase.messaging();
-    messaging.onBackgroundMessage((payload) => {
-      console.log('[FCM-SW] onBackgroundMessage', payload);
-      showFromPayload(payload && payload.data);
-    });
-    fcmReady = true;
-    console.log('[FCM-SW] Firebase messaging ready');
-  }
-} catch (e) {
-  console.warn('[FCM-SW] init failed — fallback to native push event:', e);
-}
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
 
 // ── Helper d'affichage ──────────────────────────────────────────────────────
 function showFromPayload(data) {
@@ -55,9 +61,9 @@ function showFromPayload(data) {
   });
 }
 
-// ── Fallback : événement `push` natif ───────────────────────────────────────
-// Garantit l'affichage même si le SDK FCM ne déclenche pas onBackgroundMessage
-// (cas observé sur Android Chrome 130+ avec payloads mixed notification/data).
+// ── Réception du push ───────────────────────────────────────────────────────
+// FCM enveloppe le payload différemment selon la version SDK Admin et le
+// transport. Tolère { data: {...} }, { notification: {...} }, ou plat.
 self.addEventListener('push', (event) => {
   if (!event.data) {
     console.log('[FCM-SW] push event without data — ignored');
@@ -65,17 +71,9 @@ self.addEventListener('push', (event) => {
   }
   let payload = null;
   try { payload = event.data.json(); } catch { /* ignore */ }
-  console.log('[FCM-SW] native push event', payload);
+  console.log('[FCM-SW] push event', payload);
 
-  // FCM enveloppe parfois sous `data` ou `notification`, parfois plat.
   const data = (payload && (payload.data || payload.notification || payload)) || {};
-  // Évite le double-affichage si le SDK a déjà géré le payload.
-  // Heuristique : si le SDK est ready ET qu'on a un payload data-only,
-  // onBackgroundMessage l'a déjà affiché — on skip.
-  if (fcmReady && payload && payload.data && !payload.notification) {
-    console.log('[FCM-SW] SDK already handled this push — skip native fallback');
-    return;
-  }
   event.waitUntil(showFromPayload(data));
 });
 
