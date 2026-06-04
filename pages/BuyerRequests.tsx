@@ -15,15 +15,15 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import {
-  getBuyerRequests, trackWhatsAppContact, canContactBuyer,
-  flagBuyerRequest,
+  getBuyerRequests, canContactBuyer,
+  flagBuyerRequest, getSimilarOpenRequests,
   BuyerRequestFilters, PAGE_SIZE,
 } from '../services/firebase/buyer-requests';
+import { useDemandeReponse } from '../hooks/useDemandeReponse';
 import { BuyerRequest, BuyerRequestFlagReason, User } from '../types';
 import { useToast } from '../components/Toast';
 import { NotificationEnableBanner } from '../components/NotificationEnableBanner';
 import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
-import { buildWaUrl } from '../config/whatsapp.config';
 import { CITIES_BY_COUNTRY } from '../data/locations';
 
 /* ─────────────────────── KEYFRAMES ──────────────────────── */
@@ -359,26 +359,146 @@ function ExpiryPill({ days }: { days: number }) {
   );
 }
 
+/* ─────────────────────── PROGRESS BAR ──────────────────────── */
+
+function ResponseProgress({
+  reponseCount, maxReponses, aDejaRepondu,
+}: {
+  reponseCount: number;
+  maxReponses: number;
+  aDejaRepondu: boolean;
+}) {
+  const { t } = useTranslation();
+  const safeCount = Math.min(reponseCount, maxReponses);
+  const pct = Math.round((safeCount / maxReponses) * 100);
+
+  // 4 états de couleur — gris (0), vert (1-3), orange (4), rouge (5+).
+  let barClass = 'bg-[#E5E7EB]';
+  if (safeCount > 0 && safeCount <= 3) barClass = 'bg-[#22C55E]';
+  else if (safeCount === 4) barClass = 'bg-[#F97316]';
+  else if (safeCount >= 5) barClass = 'bg-[#EF4444]';
+
+  let label = '';
+  if (safeCount === 0) label = `0/${maxReponses} · ⚡ ${t('requests.beFirst')}`;
+  else if (safeCount === 4) label = `${t('requests.progress', { n: safeCount, m: maxReponses })} · 🔥 ${t('requests.lastSlot')}`;
+  else if (safeCount >= 5) label = aDejaRepondu
+    ? `${t('requests.progress', { n: safeCount, m: maxReponses })} ✅`
+    : `${t('requests.progress', { n: safeCount, m: maxReponses })} ✅ ${t('requests.fullSummary', { n: maxReponses })}`;
+  else label = t('requests.progress', { n: safeCount, m: maxReponses });
+
+  return (
+    <div className="mb-2" aria-label={label}>
+      <div className="flex items-center justify-between text-[11px] font-semibold text-[#5C6370] mb-1">
+        <span>{label}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-[#F0F1F4] overflow-hidden">
+        <div
+          className={`${barClass} h-full transition-all duration-300`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────── SIMILAR REQUESTS BLOCK ──────────────────────── */
+
+function SimilarRequests({
+  request, onPickOther,
+}: {
+  request: BuyerRequest;
+  onPickOther: () => void;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [items, setItems] = useState<BuyerRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getSimilarOpenRequests(request.category || '', request.id, 3)
+      .then((list) => { if (!cancelled) { setItems(list); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [request.category, request.id]);
+
+  if (loading) return null;
+  if (items.length === 0) {
+    return (
+      <p className="mt-3 text-[11.5px] text-[#5C6370] text-center">
+        {t('requests.similarNone')}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 border-t border-black/[0.06] pt-3">
+      <p className="text-[11px] font-extrabold text-[#5C6370] uppercase tracking-wider mb-2">
+        {t('requests.similarTitle')}
+      </p>
+      <div className="flex flex-col gap-1.5">
+        {items.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => { onPickOther(); navigate(`#req-${r.id}`); }}
+            className="text-left p-2 rounded-xl bg-[#F7F8FA] hover:bg-[#F0F1F4] transition-colors"
+          >
+            <p className="text-[13px] font-bold text-[#111318] line-clamp-1">{r.title}</p>
+            <p className="text-[11px] text-[#5C6370]">{r.city} · {r.uniqueSellerCount ?? 0}/5</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────── REQUEST CARD ──────────────────────── */
 
 function RequestCard({
-  request, locked, index, eligible, onContact, onUpgrade, onFlag, flagged,
+  request, locked, index, eligible, currentUser, onUpgrade, onFlag, flagged,
 }: {
   request: BuyerRequest;
   locked: boolean;
   index: number;
   eligible: boolean;
-  onContact: (r: BuyerRequest) => void;
+  currentUser: User;
   onUpgrade: () => void;
   onFlag: (r: BuyerRequest) => void;
   flagged: boolean;
 }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const [imgLoaded, setImgLoaded] = useState(false);
   const remaining = daysLeft(request.expiresAt);
   const budget = fmtBudget(request.budget, request.budgetCurrency);
   const flag = countryFlag(request.countryId);
   const location = `${request.city}, ${request.province}`;
-  const showUrgencyBadge = locked && request.contactCount >= 3;
+
+  // Message WhatsApp pré-rempli (cf. §2.6 du plan)
+  const shopName = currentUser.sellerDetails?.shopName || currentUser.name;
+  const whatsappMessage = t('requests.whatsappMessage', {
+    title: request.title,
+    city: request.city,
+    shop: shopName,
+  });
+
+  const { reponseCount, maxReponses, isFull, aDejaRepondu, handleRepondre } = useDemandeReponse({
+    request,
+    sellerId: eligible ? currentUser.id : null,
+    sellerTierId: currentUser.sellerDetails?.tierLabel || 'free',
+    whatsappMessage,
+  });
+
+  const showUrgencyBadge = locked && reponseCount >= 3;
+
+  const onClickContact = async () => {
+    const res = await handleRepondre();
+    if (!res.opened) {
+      if (res.reason === 'full') toast(t('requests.toastFull'), 'error');
+      else toast(t('requests.toastError'), 'error');
+    }
+  };
 
   return (
     <article
@@ -407,7 +527,7 @@ function RequestCard({
                 className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-[#FEF9EC] text-[#A45F00] text-[10px] font-bold"
                 style={{ animation: 'nu-soft-pulse 4s ease-in-out infinite' }}
               >
-                🔥 {request.contactCount} vendeurs ont déjà contacté
+                🔥 {t('requests.urgencyBadge', { n: reponseCount })}
               </span>
             )}
           </div>
@@ -458,6 +578,13 @@ function RequestCard({
       {/* Contact zone */}
       {locked ? (
         <div>
+          {/* Barre de progression : visible même pour les non-éligibles —
+              crée l'envie de débloquer */}
+          <ResponseProgress
+            reponseCount={reponseCount}
+            maxReponses={maxReponses}
+            aDejaRepondu={false}
+          />
           <div className="h-10 px-3 rounded-xl bg-[#F7F8FA] border border-black/[0.06] flex items-center gap-2">
             <Lock size={14} strokeWidth={2} className="text-[#5C6370] shrink-0" />
             <span
@@ -473,18 +600,61 @@ function RequestCard({
             style={{ border: '1.5px solid rgba(245,200,66,0.6)', background: 'transparent' }}
           >
             <Zap size={13} strokeWidth={2.5} />
-            Passer au plan PRO
+            {t('requests.upgradeBtn')}
           </button>
         </div>
       ) : (
-        <button
-          onClick={() => onContact(request)}
-          className="w-full h-11 rounded-xl border-0 inline-flex items-center justify-center gap-2 bg-[#25D366] text-white text-[14px] font-black tracking-tight active:scale-[0.98] transition"
-          style={{ boxShadow: '0 4px 12px rgba(37,211,102,0.35)' }}
-        >
-          <MessageCircle size={16} strokeWidth={2.25} fill="#fff" />
-          Contacter sur WhatsApp
-        </button>
+        <>
+          <ResponseProgress
+            reponseCount={reponseCount}
+            maxReponses={maxReponses}
+            aDejaRepondu={aDejaRepondu}
+          />
+          {/* Bouton — 3 variantes selon (aDejaRepondu, isFull) */}
+          {isFull && !aDejaRepondu ? (
+            <button
+              disabled
+              className="w-full h-11 rounded-xl border-0 inline-flex items-center justify-center gap-2 bg-[#E5E7EB] text-[#5C6370] text-[14px] font-black tracking-tight cursor-not-allowed"
+            >
+              <Lock size={15} strokeWidth={2.5} />
+              {t('requests.full')}
+            </button>
+          ) : aDejaRepondu ? (
+            <button
+              onClick={onClickContact}
+              className="w-full h-11 rounded-xl border-0 inline-flex items-center justify-center gap-2 bg-[#22C55E] text-white text-[14px] font-black tracking-tight active:scale-[0.98] transition"
+              style={{ boxShadow: '0 4px 12px rgba(34,197,94,0.35)' }}
+              aria-label={t('requests.reopenWaAria')}
+            >
+              <MessageCircle size={16} strokeWidth={2.25} fill="#fff" />
+              {t('requests.alreadyResponded')}
+            </button>
+          ) : (
+            <button
+              onClick={onClickContact}
+              className={`w-full h-11 rounded-xl border-0 inline-flex items-center justify-center gap-2 bg-[#25D366] text-white text-[14px] font-black tracking-tight active:scale-[0.98] transition ${
+                reponseCount === 4 ? 'ring-2 ring-orange-300 ring-offset-1' : ''
+              }`}
+              style={{
+                boxShadow: reponseCount === 4
+                  ? '0 4px 16px rgba(249,115,22,0.45)'
+                  : '0 4px 12px rgba(37,211,102,0.35)',
+                animation: reponseCount === 4 ? 'nu-soft-pulse 2.4s ease-in-out infinite' : undefined,
+              }}
+            >
+              <MessageCircle size={16} strokeWidth={2.25} fill="#fff" />
+              {t('requests.contactWa')}
+            </button>
+          )}
+
+          {/* Bloc demandes similaires si plein et pas déjà répondu */}
+          {isFull && !aDejaRepondu && request.category && (
+            <SimilarRequests
+              request={request}
+              onPickOther={() => { /* nav vers l'item: scroll handled by hash */ }}
+            />
+          )}
+        </>
       )}
 
       {/* Flag discret — opt-in pour signaler une demande suspecte */}
@@ -681,12 +851,6 @@ const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) 
     load(true);
   }, [filterCountry, filterCity, filterCategory]);
 
-  const handleContact = async (request: BuyerRequest) => {
-    await trackWhatsAppContact(request.id, currentUser.id, currentUser.sellerDetails?.tierLabel || 'free');
-    const msg = t('requests.whatsappMessage', { title: request.title, city: request.city });
-    window.open(buildWaUrl(msg, { phone: request.whatsapp }), '_blank', 'noopener,noreferrer');
-  };
-
   const handleFlag = (request: BuyerRequest) => {
     setFlagging(request);
   };
@@ -787,7 +951,7 @@ const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) 
                 locked={!eligible}
                 index={i}
                 eligible={eligible}
-                onContact={handleContact}
+                currentUser={currentUser}
                 onUpgrade={() => navigate('/plans')}
                 onFlag={handleFlag}
                 flagged={flaggedIds.has(r.id)}

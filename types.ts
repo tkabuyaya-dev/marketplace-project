@@ -376,7 +376,18 @@ export interface BuyerRequest {
   createdAt: number;
   expiresAt: number;       // createdAt + 7 jours
   viewCount: number;
-  contactCount: number;    // Clics WhatsApp
+  contactCount: number;    // Clics WhatsApp (analytics — peut dépasser 5)
+  // ── Saturation vendeurs (refonte 2026-06-03) ────────────────────────────
+  // Plafond : MAX_SELLERS_PER_REQUEST (constante côté front + rules) vendeurs
+  // distincts peuvent répondre à une demande. La transaction atomique du
+  // service garantit qu'on ne dépasse jamais cette limite, même sous 50 clics
+  // simultanés. uniqueSellerCount/isFull sont écrits via la transaction et
+  // protégés par la rule (`+1 only` sur uniqueSellerCount, `false→true` only
+  // sur isFull). Les demandes créées avant la refonte ont ces champs
+  // initialisés par la CF backfillBuyerRequestCounters.
+  uniqueSellerCount?: number;
+  isFull?: boolean;
+  updatedAt?: number;
   // Modération Claude Haiku 4.5 (cf. functions/src/moderate-buyer-request.ts).
   // Si true, demande publiée mais à vérifier par l'admin (verdict "borderline").
   // Les "reject" ne sont jamais persistés (HttpsError côté CF, audit dans Cloud Logs).

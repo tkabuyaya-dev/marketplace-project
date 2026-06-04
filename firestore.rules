@@ -540,7 +540,10 @@ service cloud.firestore {
       // Mise à jour:
       //   - Admin : tout
       //   - Propriétaire connecté : peut marquer 'fulfilled' ou 'deleted'
-      //   - Vendeur connecté : peut incrémenter viewCount / contactCount de 1
+      //   - Vendeur connecté : peut incrémenter viewCount / contactCount /
+      //     uniqueSellerCount de 1, et faire passer isFull de false à true
+      //     (ces 4 champs sont écrits par la transaction respondToBuyerRequest
+      //     côté service ; updatedAt est libre en ms timestamp).
       allow update: if isAdmin()
         || (isAuth()
             && resource.data.buyerId == request.auth.uid
@@ -548,11 +551,17 @@ service cloud.firestore {
             && request.resource.data.status in ['fulfilled', 'deleted'])
         || (isAuth()
             && request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['viewCount', 'contactCount'])
+                .hasOnly(['viewCount', 'contactCount', 'uniqueSellerCount', 'isFull', 'updatedAt'])
             && (request.resource.data.viewCount == resource.data.viewCount
                 || request.resource.data.viewCount == resource.data.viewCount + 1)
             && (request.resource.data.contactCount == resource.data.contactCount
-                || request.resource.data.contactCount == resource.data.contactCount + 1));
+                || request.resource.data.contactCount == resource.data.contactCount + 1)
+            && (request.resource.data.get('uniqueSellerCount', 0) == resource.data.get('uniqueSellerCount', 0)
+                || request.resource.data.get('uniqueSellerCount', 0) == resource.data.get('uniqueSellerCount', 0) + 1)
+            && request.resource.data.get('uniqueSellerCount', 0) <= 5
+            // isFull : false → true uniquement (jamais true → false côté client)
+            && (request.resource.data.get('isFull', false) == resource.data.get('isFull', false)
+                || (resource.data.get('isFull', false) == false && request.resource.data.get('isFull', false) == true)));
 
       // Suppression physique: admin uniquement (soft-delete via update)
       allow delete: if isAdmin();
@@ -563,10 +572,31 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isAuth() && resource.data.sellerId == request.auth.uid);
 
-      // Création: vendeur connecté, non suspendu, tracking de son propre clic WA
+      // Création :
+      //   1. Vendeur authentifié, non suspendu
+      //   2. Id déterministe ${requestId}_${sellerId} → anti-double-click natif
+      //      (la 2ᵉ tentative serait un update, refusé plus bas)
+      //   3. Plafond serveur : la demande pointée doit avoir
+      //      uniqueSellerCount < 5 ET isFull == false. Aligné avec
+      //      MAX_SELLERS_PER_REQUEST dans services/firebase/buyer-requests.ts.
+      //   4. Double-garde tier Pro/Grossiste actif via canInteractB2B-like
+      //      check sur tierLabel (le JWT ne contient pas subscriptionTier).
       allow create: if isAuth()
         && isNotSuspended()
         && request.resource.data.sellerId == request.auth.uid
+        && contactId == request.resource.data.requestId + '_' + request.auth.uid
+        && getUserData().get('sellerDetails', {}).get('tierLabel', '') in [
+            'Pro', 'Business Pro', 'Élite', 'Elite',
+            'Grossiste', 'Grossiste Illimité', 'Illimité'
+          ]
+        && (
+          getUserData().get('sellerDetails', {}).get('subscriptionExpiresAt', null) == null
+          || getUserData().get('sellerDetails', {}).get('subscriptionExpiresAt', 0) > request.time.toMillis()
+        )
+        && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
+             .data.get('uniqueSellerCount', 0) < 5
+        && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
+             .data.get('isFull', false) == false
         && request.resource.data.keys().hasAll([
             'requestId', 'sellerId', 'sellerTierId', 'timestamp'
           ]);

@@ -19,9 +19,10 @@ import { featuresForLabel } from '../../utils/planFeatures';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, increment,
+  runTransaction, onSnapshot,
   COLLECTIONS,
 } from './constants';
-import type { QueryDocumentSnapshot } from './constants';
+import type { QueryDocumentSnapshot, Unsubscribe } from './constants';
 import { getFirebaseFunctions } from '../../firebase-config';
 import { httpsCallable } from 'firebase/functions';
 
@@ -29,30 +30,44 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_REQUESTS_PER_DAY = 3;
 export const PAGE_SIZE = 20;
 
+/**
+ * Nombre maximum de vendeurs distincts pouvant répondre à une même demande.
+ * Source de vérité unique — la rule Firestore bloque côté serveur, la
+ * transaction client la respecte aussi. Pour changer la valeur, mettre à
+ * jour ici ET dans firestore.rules (la rule utilise 5 en dur — chiffres
+ * désynchronisés = bug silencieux).
+ */
+export const MAX_SELLERS_PER_REQUEST = 5;
+
 // ─── Converters ───────────────────────────────────────────────────────────────
 
 function docToBuyerRequest(data: any, id: string): BuyerRequest {
   return {
     id,
-    title:            data.title || '',
-    description:      data.description || undefined,
-    countryId:        data.countryId || '',
-    province:         data.province || '',
-    city:             data.city || '',
-    category:         data.category || undefined,
-    budget:           data.budget ?? undefined,
-    budgetCurrency:   data.budgetCurrency || undefined,
-    imageUrl:         data.imageUrl || undefined,
-    whatsapp:         data.whatsapp || '',
-    buyerId:          data.buyerId || undefined,
-    buyerName:        data.buyerName || 'Acheteur',
-    status:           data.status || 'active',
-    createdAt:        data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
-    expiresAt:        data.expiresAt?.toMillis?.() || data.expiresAt || Date.now() + SEVEN_DAYS_MS,
-    viewCount:        data.viewCount || 0,
-    contactCount:     data.contactCount || 0,
-    moderationFlag:   data.moderationFlag === true ? true : undefined,
-    moderationReason: data.moderationReason || undefined,
+    title:              data.title || '',
+    description:        data.description || undefined,
+    countryId:          data.countryId || '',
+    province:           data.province || '',
+    city:               data.city || '',
+    category:           data.category || undefined,
+    budget:             data.budget ?? undefined,
+    budgetCurrency:     data.budgetCurrency || undefined,
+    imageUrl:           data.imageUrl || undefined,
+    whatsapp:           data.whatsapp || '',
+    buyerId:            data.buyerId || undefined,
+    buyerName:          data.buyerName || 'Acheteur',
+    status:             data.status || 'active',
+    createdAt:          data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
+    expiresAt:          data.expiresAt?.toMillis?.() || data.expiresAt || Date.now() + SEVEN_DAYS_MS,
+    viewCount:          data.viewCount || 0,
+    contactCount:       data.contactCount || 0,
+    // Lectures défensives : `?? 0` / `?? false` pour les demandes anciennes
+    // pas encore touchées par la CF backfillBuyerRequestCounters.
+    uniqueSellerCount:  typeof data.uniqueSellerCount === 'number' ? data.uniqueSellerCount : 0,
+    isFull:             data.isFull === true,
+    updatedAt:          data.updatedAt?.toMillis?.() || data.updatedAt || undefined,
+    moderationFlag:     data.moderationFlag === true ? true : undefined,
+    moderationReason:   data.moderationReason || undefined,
   };
 }
 
@@ -337,32 +352,152 @@ export async function getAllBuyerRequestsForAdmin(
   };
 }
 
-// ─── WhatsApp Contact Tracking ────────────────────────────────────────────────
+// ─── Realtime subscription ────────────────────────────────────────────────────
 
 /**
- * Records a WhatsApp click from a seller, increments contactCount.
- * Returns the unmasked WhatsApp number.
+ * Abonnement live à une demande pour mettre à jour la barre de progression
+ * et le badge isFull devant les yeux du vendeur. Si un autre vendeur clique,
+ * le compteur s'incrémente sans recharge.
  */
-export async function trackWhatsAppContact(
+export function subscribeBuyerRequest(
+  requestId: string,
+  callback: (req: BuyerRequest | null) => void,
+): Unsubscribe {
+  if (!db) return () => {};
+  return onSnapshot(
+    doc(db, COLLECTIONS.BUYER_REQUESTS, requestId),
+    (snap) => callback(snap.exists() ? docToBuyerRequest(snap.data(), snap.id) : null),
+    () => callback(null),
+  );
+}
+
+// ─── A déjà répondu ? ─────────────────────────────────────────────────────────
+
+/**
+ * Lit le doc déterministe `${requestId}_${sellerId}` dans buyerRequestContacts.
+ * Si présent → ce vendeur a déjà cliqué sur cette demande (on doit ouvrir
+ * WhatsApp sans toucher au compteur).
+ */
+export async function hasSellerResponded(
+  requestId: string,
+  sellerId: string,
+): Promise<boolean> {
+  if (!db) return false;
+  const id = `${requestId}_${sellerId}`;
+  const snap = await getDoc(doc(db, COLLECTIONS.BUYER_REQUEST_CONTACTS, id));
+  return snap.exists();
+}
+
+// ─── Demandes similaires (quand isFull) ──────────────────────────────────────
+
+/**
+ * Retourne jusqu'à 3 autres demandes ouvertes (status=active, isFull=false)
+ * de la même catégorie. Utilisé pour rediriger un vendeur frustré par une
+ * demande déjà saturée vers des alternatives encore disponibles.
+ */
+export async function getSimilarOpenRequests(
+  category: string,
+  excludeId: string,
+  max = 3,
+): Promise<BuyerRequest[]> {
+  if (!db || !category) return [];
+  const q = query(
+    collection(db, COLLECTIONS.BUYER_REQUESTS),
+    where('status', '==', 'active'),
+    where('category', '==', category),
+    where('isFull', '==', false),
+    orderBy('createdAt', 'desc'),
+    limit(max + 5),
+  );
+  const snap = await getDocs(q);
+  const now = Date.now();
+  return snap.docs
+    .map((d) => docToBuyerRequest(d.data(), d.id))
+    .filter((r) => r.id !== excludeId && r.expiresAt > now)
+    .slice(0, max);
+}
+
+// ─── Réponse transactionnelle ─────────────────────────────────────────────────
+
+export type RespondResult =
+  | { ok: true; alreadyResponded: boolean; isFullAfter: boolean }
+  | { ok: false; reason: 'full' };
+
+/**
+ * Transaction atomique : enregistre un vendeur sur une demande en respectant
+ * le plafond MAX_SELLERS_PER_REQUEST.
+ *
+ * Si le vendeur a déjà répondu → no-op transaction (lit, ne touche à rien),
+ * retour `alreadyResponded=true` → l'appelant ouvre WhatsApp sans rien
+ * incrémenter.
+ *
+ * Si le compteur atteint déjà la limite → retour `{ok:false, reason:'full'}`.
+ *
+ * Sinon : crée `buyerRequestContacts/${reqId}_${sellerId}` (id déterministe
+ * = anti-double-click natif côté Rules) ET incrémente atomiquement
+ * uniqueSellerCount + contactCount + bascule isFull à true si on touche la
+ * limite. Les deux writes sont dans la même transaction → état toujours
+ * cohérent même sur 50 clics simultanés.
+ */
+export async function respondToBuyerRequest(
   requestId: string,
   sellerId: string,
   sellerTierId: string,
-): Promise<void> {
-  if (!db) return;
+): Promise<RespondResult> {
+  if (!db) throw new Error('Firebase non initialisé');
 
-  await Promise.all([
-    // Increment contactCount on the request
-    updateDoc(doc(db, COLLECTIONS.BUYER_REQUESTS, requestId), {
-      contactCount: increment(1),
-    }),
-    // Record the contact event
-    addDoc(collection(db, COLLECTIONS.BUYER_REQUEST_CONTACTS), {
+  const reqRef = doc(db, COLLECTIONS.BUYER_REQUESTS, requestId);
+  const contactRef = doc(db, COLLECTIONS.BUYER_REQUEST_CONTACTS, `${requestId}_${sellerId}`);
+
+  return runTransaction<RespondResult>(db, async (tx) => {
+    const [reqSnap, contactSnap] = await Promise.all([tx.get(reqRef), tx.get(contactRef)]);
+
+    // 1) Déjà répondu : open-only path
+    if (contactSnap.exists()) {
+      return { ok: true, alreadyResponded: true, isFullAfter: reqSnap.data()?.isFull === true };
+    }
+
+    // 2) Plafond atteint entre-temps
+    const data = reqSnap.exists() ? reqSnap.data() : null;
+    if (!data) return { ok: false, reason: 'full' };
+    const currentUnique = typeof data.uniqueSellerCount === 'number' ? data.uniqueSellerCount : 0;
+    if (data.isFull === true || currentUnique >= MAX_SELLERS_PER_REQUEST) {
+      return { ok: false, reason: 'full' };
+    }
+
+    // 3) Insertion atomique
+    const newUnique = currentUnique + 1;
+    const becomesFull = newUnique >= MAX_SELLERS_PER_REQUEST;
+    const now = Date.now();
+
+    tx.set(contactRef, {
       requestId,
       sellerId,
       sellerTierId,
-      timestamp: Date.now(),
-    } satisfies Omit<BuyerRequestContact, 'id'>),
-  ]);
+      timestamp: now,
+    } satisfies Omit<BuyerRequestContact, 'id'>);
+
+    tx.update(reqRef, {
+      uniqueSellerCount: newUnique,
+      contactCount: increment(1),
+      isFull: becomesFull,
+      updatedAt: now,
+    });
+
+    return { ok: true, alreadyResponded: false, isFullAfter: becomesFull };
+  });
+}
+
+// ─── DEPRECATED — kept as no-op to avoid breaking other callers ──────────────
+// Le tracker existe désormais via la transaction de respondToBuyerRequest.
+// Si du code legacy l'appelle encore, c'est sans effet (le contact réel a
+// déjà été enregistré par respondToBuyerRequest). À supprimer après audit.
+export async function trackWhatsAppContact(
+  _requestId: string,
+  _sellerId: string,
+  _sellerTierId: string,
+): Promise<void> {
+  /* no-op — voir respondToBuyerRequest */
 }
 
 // ─── Plan Eligibility ─────────────────────────────────────────────────────────

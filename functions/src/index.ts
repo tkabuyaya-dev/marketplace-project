@@ -48,6 +48,10 @@ export { expireBuyerRequests } from "./expire-buyer-requests.js";
 // Buyer request submission — callable, contourne les rules iOS
 export { submitBuyerRequest } from "./submit-buyer-request.js";
 
+// One-shot backfill : ajoute uniqueSellerCount/isFull aux anciennes demandes.
+// À exécuter une seule fois après le déploiement du plafond 5 vendeurs.
+export { backfillBuyerRequestCounters } from "./backfill-buyer-requests.js";
+
 // User activity purge cron (daily at 04:00 UTC — deletes docs older than 90 days)
 export { purgeUserActivity } from "./purge-activity.js";
 

@@ -158,26 +158,33 @@ export const submitBuyerRequest = onCall(
     // ── Création du document (Admin SDK — bypass rules, timestamp serveur) ──
     const now = Date.now();
     const ref = await db.collection(COLLECTION).add({
-      title:          data.title.trim(),
-      description:    data.description?.trim() || null,
-      countryId:      data.countryId,
-      province:       data.province,
-      city:           data.city,
-      category:       data.category || null,
-      budget:         typeof data.budget === "number" ? data.budget : null,
-      budgetCurrency: data.budgetCurrency || null,
-      imageUrl:       data.imageUrl || null,
+      title:             data.title.trim(),
+      description:       data.description?.trim() || null,
+      countryId:         data.countryId,
+      province:          data.province,
+      city:               data.city,
+      category:          data.category || null,
+      budget:            typeof data.budget === "number" ? data.budget : null,
+      budgetCurrency:    data.budgetCurrency || null,
+      imageUrl:          data.imageUrl || null,
       whatsapp,
-      buyerId:        data.buyerId || null,
-      buyerName:      data.buyerName.trim(),
-      status:         "active",
+      buyerId:           data.buyerId || null,
+      buyerName:         data.buyerName.trim(),
+      status:            "active",
       // Timestamps en entiers ms côté serveur — aucun problème de type/horloge
-      createdAt:      now,
-      expiresAt:      now + SEVEN_DAYS_MS,
-      viewCount:      0,
-      contactCount:   0,
+      createdAt:         now,
+      expiresAt:         now + SEVEN_DAYS_MS,
+      viewCount:         0,
+      contactCount:      0,
+      // Saturation vendeurs (refonte 2026-06-03) : MAX_SELLERS_PER_REQUEST=5
+      // dans services/firebase/buyer-requests.ts. La transaction côté front
+      // incrémente uniqueSellerCount et bascule isFull à true. Les rules
+      // protègent contre tout dépassement.
+      uniqueSellerCount: 0,
+      isFull:            false,
+      updatedAt:         now,
       // Timestamp Firestore natif pour les requêtes server-side
-      createdAtTs:    FieldValue.serverTimestamp(),
+      createdAtTs:       FieldValue.serverTimestamp(),
       // Borderline : publié mais flagué pour review admin
       ...(moderation.verdict === "borderline" && {
         moderationFlag: true,
