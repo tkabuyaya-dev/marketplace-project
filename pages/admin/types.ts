@@ -4,7 +4,7 @@
 import { Product, User, Category, Country, Currency } from '../../types';
 import type { BannerData, BannerActionType } from '../../services/firebase';
 
-export type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'currencies' | 'requests' | 'health' | 'audit' | 'boosts' | 'studio';
+export type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'currencies' | 'requests' | 'health' | 'security' | 'audit' | 'boosts' | 'studio';
 
 // Countries et Languages gérés directement via Firebase Console
 

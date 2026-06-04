@@ -10,6 +10,16 @@
  * - L'Admin SDK ignore totalement les security rules → 0 problème de type.
  * - Le timestamp est généré server-side → 0 problème de décalage d'horloge.
  * - Fonctionne sur iOS, Android, tout navigateur, connexion lente.
+ *
+ * REFONTE 2026-06-04 — Gate intelligent + confirmation WhatsApp :
+ *   - Score ≥ 70  → publication directe ('active', visible=true) [comportement historique]
+ *   - Score 40-69 → 'pending_confirmation' (jaune admin)
+ *   - Score < 40  → 'pending_confirmation' (rouge admin)
+ *   - blacklisté  → 'pending_confirmation' + score=0 (honeypot silencieux)
+ * La modération Claude Haiku 4.5 est DÉPLACÉE vers confirm-buyer-request.ts :
+ * on évite de payer ~$0.0005/abuseur qui n'ira jamais au bout du WhatsApp.
+ * Les demandes "active" directes sont des numéros déjà connus + confirmés
+ * passés → risque de spam quasi nul à ce stade.
  */
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -17,11 +27,18 @@ import * as logger from "firebase-functions/logger";
 import { getDb } from "./admin.js";
 import { FieldValue } from "firebase-admin/firestore";
 import { ALLOWED_ORIGINS, ANTHROPIC_API_KEY } from "./config.js";
-import { moderateBuyerRequest } from "./moderate-buyer-request.js";
+import { computeTrustScore, generateConfirmationCode } from "./compute-trust-score.js";
+import type { DeviceFingerprint } from "../../types.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const THIRTY_MIN_MS = 30 * 60 * 1000;
 const MAX_REQUESTS_PER_DAY = 3;
+const MAX_REQUESTS_PER_DEVICE_DAY = 3;
 const COLLECTION = "buyerRequests";
+const FINGERPRINTS_COLLECTION = "deviceFingerprints";
+const BLOCKLIST_COLLECTION = "blocklist";
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const TRUST_THRESHOLD_AUTO_ACTIVE = 70;
 
 interface SubmitBuyerRequestData {
   title: string;
@@ -36,6 +53,9 @@ interface SubmitBuyerRequestData {
   whatsapp: string;
   buyerId?: string | null;
   buyerName: string;
+  // ── Nouveaux champs sécurité (refonte 2026-06-04) ────────────────────
+  deviceId?: string | null;
+  deviceUserAgent?: string | null;
 }
 
 /** Validate WhatsApp format: +XXXXXXXXXXX or XXXXXXXXXXX (7-15 digits) */
@@ -46,6 +66,11 @@ function isValidWhatsapp(phone: string): boolean {
 /** Validate a non-empty string within max length */
 function isValidString(value: unknown, maxLen: number): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.length <= maxLen;
+}
+
+/** Valide un deviceId 16 chars alphanum (cf. utils/deviceFingerprint.ts). */
+function isValidDeviceId(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z0-9]{12,16}$/.test(value);
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -65,7 +90,9 @@ export const submitBuyerRequest = onCall(
     maxInstances: 20,
     cors: ALLOWED_ORIGINS,
     secrets: [ANTHROPIC_API_KEY],
-    // 60s pour couvrir l'appel Anthropic (600-900ms typ.) + rate-limit query + write.
+    // 60s pour couvrir : rate-limit query + lectures historique device/numéro
+    // + score + (rare) modération de fallback + write. La modération principale
+    // est déplacée vers confirm-buyer-request.ts.
     timeoutSeconds: 60,
   },
   async (request) => {
@@ -98,25 +125,52 @@ export const submitBuyerRequest = onCall(
       throw new HttpsError("invalid-argument", "Numéro WhatsApp invalide.");
     }
 
+    // ── Sécurité : lecture deviceId + IP + UA (fail-soft) ────────────
+    const deviceId = isValidDeviceId(data.deviceId) ? data.deviceId : null;
+    const deviceUserAgent = (typeof data.deviceUserAgent === "string"
+      ? data.deviceUserAgent.slice(0, 200)
+      : null);
+    // IP : disponible via request.rawRequest sur 2nd-gen onCall. Peut être null
+    // si proxy mal configuré — score se contentera des autres signaux.
+    const deviceIp = (request.rawRequest as { ip?: string } | undefined)?.ip ?? null;
+
     const db = await getDb();
+    const now = Date.now();
 
     // ── Rate limiting : max 3 demandes par WhatsApp / 24h ────────────
-    // Query "single-field equality" uniquement → utilise l'index auto Firestore,
-    // zéro besoin d'index composite. Le filtrage createdAt + status se fait
-    // en mémoire (volume max ~50 docs : TTL 7j × 3/j = 21, + marge expirées).
-    // FAIL-CLOSED : si la query échoue, on REFUSE — vaut mieux faux positif
-    // qu'ouvrir le spam.
-    const since = Date.now() - 24 * 60 * 60 * 1000;
+    // Query "single-field equality" uniquement → utilise l'index auto Firestore.
+    // FAIL-CLOSED : si la query échoue, on REFUSE.
+    const since = now - 24 * 60 * 60 * 1000;
+    let whatsappHistory: Array<{
+      status: string;
+      confirmedAt?: number | null;
+      createdAt: number;
+      deviceId?: string;
+      countryId?: string;
+      city?: string;
+    }> = [];
     try {
       const rateSnap = await db.collection(COLLECTION)
         .where("whatsapp", "==", whatsapp)
         .get();
 
-      const activeCount = rateSnap.docs.filter((d) => {
-        const data = d.data();
-        const status = data.status;
-        const createdAt = typeof data.createdAt === "number" ? data.createdAt : 0;
-        return (status === "active" || status === "fulfilled") && createdAt >= since;
+      // Compte les actives + fulfilled des 24 dernières heures pour la limite
+      // dure (3/numéro/24h). On les passe aussi au calcul du score.
+      whatsappHistory = rateSnap.docs.map(d => {
+        const x = d.data() as Record<string, unknown>;
+        return {
+          status: typeof x.status === "string" ? x.status : "",
+          confirmedAt: typeof x.confirmedAt === "number" ? x.confirmedAt : null,
+          createdAt: typeof x.createdAt === "number" ? x.createdAt : 0,
+          deviceId: typeof x.deviceId === "string" ? x.deviceId : undefined,
+          countryId: typeof x.countryId === "string" ? x.countryId : undefined,
+          city: typeof x.city === "string" ? x.city : undefined,
+        };
+      });
+
+      const activeCount = whatsappHistory.filter(h => {
+        return (h.status === "active" || h.status === "fulfilled" ||
+                h.status === "pending_confirmation") && h.createdAt >= since;
       }).length;
 
       if (activeCount >= MAX_REQUESTS_PER_DAY) {
@@ -125,44 +179,132 @@ export const submitBuyerRequest = onCall(
           `Maximum ${MAX_REQUESTS_PER_DAY} demandes par 24h atteint pour ce numéro.`
         );
       }
-    } catch (err: any) {
-      if (err?.code === "resource-exhausted") throw err;
-      logger.error("[submitBuyerRequest] Rate-limit check failed — REFUSING request:", err?.message);
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      if (e?.code === "resource-exhausted") throw err;
+      logger.error("[submitBuyerRequest] Rate-limit check failed — REFUSING request:", e?.message);
       throw new HttpsError(
         "unavailable",
         "Service temporairement indisponible. Réessayez dans quelques instants."
       );
     }
 
-    // ── Modération IA (Claude Haiku 4.5) ─────────────────────────────
-    // Bloque les contenus illicites avant publication. Fail-open si Anthropic
-    // est down (cf. moderate-buyer-request.ts) pour ne pas casser le service.
-    const moderation = await moderateBuyerRequest({
-      title: data.title,
-      description: data.description,
-      category: data.category,
-    });
+    // ── Rate limit deviceId : max 3 demandes / device / 24h ──────────
+    // Second axe en plus du numéro (l'abuseur peut changer de numéro).
+    let deviceHistory: DeviceFingerprint | null = null;
+    let ipBurstCount = 0;
+    if (deviceId) {
+      try {
+        const fpRef = db.collection(FINGERPRINTS_COLLECTION).doc(deviceId);
+        const fpSnap = await fpRef.get();
+        if (fpSnap.exists) {
+          deviceHistory = fpSnap.data() as DeviceFingerprint;
+        }
 
-    if (moderation.verdict === "reject") {
-      logger.warn("[submitBuyerRequest] BLOCKED by AI moderation:", {
-        whatsapp: whatsapp.slice(0, 6) + "***",
-        title: data.title.slice(0, 100),
-        reason: moderation.reason,
-      });
-      throw new HttpsError(
-        "invalid-argument",
-        "Demande refusée. Vérifiez le contenu et réessayez."
-      );
+        // Demandes du device dans 24h via une query inversée — on filtre
+        // whatsappHistory ne suffit pas (autres numéros). On scan max 30
+        // depuis l'index buyerId est insuffisant ; on lit via la collection
+        // contre l'index device. Coût plafond : 1 query indexée < 50 docs.
+        const deviceSnap = await db.collection(COLLECTION)
+          .where("deviceId", "==", deviceId)
+          .where("createdAt", ">=", since)
+          .limit(30)
+          .get();
+        const deviceCount24h = deviceSnap.size;
+        if (deviceCount24h >= MAX_REQUESTS_PER_DEVICE_DAY) {
+          // On NE renvoie PAS d'erreur explicite (honeypot doux). On force le
+          // status à pending_confirmation et l'admin sera alerté. L'abuseur
+          // croit que c'est passé mais la demande ne sera jamais visible.
+          // Le retour est identique à un succès normal.
+          logger.warn("[submitBuyerRequest] device rate-limit hit (silent honeypot)", {
+            deviceId,
+            count24h: deviceCount24h,
+          });
+          // On marque deviceHistory comme abusif via abuseFlagged pour que
+          // computeTrustScore sache.
+          if (!deviceHistory) {
+            deviceHistory = {
+              deviceId,
+              firstSeenAt: now,
+              lastSeenAt: now,
+              totalRequests: deviceCount24h,
+              confirmedRequests: 0,
+              abuseFlagged: 1,
+              whatsappNumbers: [whatsapp],
+              status: "watched",
+            };
+          } else {
+            deviceHistory.abuseFlagged = Math.max(1, deviceHistory.abuseFlagged);
+          }
+        }
+      } catch (err: unknown) {
+        const e = err as { message?: string };
+        logger.warn("[submitBuyerRequest] device history read failed (continue with null):", e?.message);
+      }
+
+      // IP burst : compte les demandes de cette IP dans la dernière heure
+      if (deviceIp) {
+        try {
+          const ipSnap = await db.collection(COLLECTION)
+            .where("deviceIp", "==", deviceIp)
+            .where("createdAt", ">=", now - ONE_HOUR_MS)
+            .limit(20)
+            .get();
+          ipBurstCount = ipSnap.size;
+        } catch (err: unknown) {
+          const e = err as { message?: string };
+          logger.warn("[submitBuyerRequest] ip burst read failed:", e?.message);
+        }
+      }
     }
 
-    // ── Création du document (Admin SDK — bypass rules, timestamp serveur) ──
-    const now = Date.now();
-    const ref = await db.collection(COLLECTION).add({
+    // ── Check blocklist deviceId ─────────────────────────────────────
+    let isBlocked = false;
+    if (deviceId) {
+      try {
+        const blockSnap = await db.collection(BLOCKLIST_COLLECTION).doc(deviceId).get();
+        if (blockSnap.exists) {
+          const b = blockSnap.data() as { expiresAt?: number | null };
+          // Permanent (expiresAt=null) OU temporaire non expirée
+          if (b.expiresAt === null || b.expiresAt === undefined || (typeof b.expiresAt === "number" && b.expiresAt > now)) {
+            isBlocked = true;
+            logger.warn("[submitBuyerRequest] device is blacklisted (silent honeypot)", { deviceId });
+          }
+        }
+      } catch (err: unknown) {
+        const e = err as { message?: string };
+        logger.warn("[submitBuyerRequest] blocklist read failed:", e?.message);
+      }
+    }
+
+    // ── Calcul du score de confiance ─────────────────────────────────
+    const trust = computeTrustScore({
+      whatsapp,
+      deviceId,
+      ip: deviceIp,
+      now,
+      whatsappHistory,
+      deviceHistory,
+      ipBurstCount,
+      isBlocked,
+      declaredCountry: data.countryId,
+      declaredCity: data.city,
+    });
+
+    // ── Décision : active directe OU pending_confirmation ────────────
+    // Gate : score >= 70 ET pas blacklisté → active direct (UX préservée).
+    // Sinon : pending_confirmation (TTL 30 min, doit confirmer via WhatsApp).
+    const shouldGoActiveDirect = !isBlocked && trust.score >= TRUST_THRESHOLD_AUTO_ACTIVE;
+
+    const confirmationCode = shouldGoActiveDirect ? null : generateConfirmationCode();
+
+    // ── Création du document ─────────────────────────────────────────
+    const docData: Record<string, unknown> = {
       title:             data.title.trim(),
       description:       data.description?.trim() || null,
       countryId:         data.countryId,
       province:          data.province,
-      city:               data.city,
+      city:              data.city,
       category:          data.category || null,
       budget:            typeof data.budget === "number" ? data.budget : null,
       budgetCurrency:    data.budgetCurrency || null,
@@ -170,34 +312,104 @@ export const submitBuyerRequest = onCall(
       whatsapp,
       buyerId:           data.buyerId || null,
       buyerName:         data.buyerName.trim(),
-      status:            "active",
-      // Timestamps en entiers ms côté serveur — aucun problème de type/horloge
+      status:            shouldGoActiveDirect ? "active" : "pending_confirmation",
+      visible:           shouldGoActiveDirect,    // ⚠️ false sur pending = invisible feed vendeur
       createdAt:         now,
       expiresAt:         now + SEVEN_DAYS_MS,
       viewCount:         0,
       contactCount:      0,
-      // Saturation vendeurs (refonte 2026-06-03) : MAX_SELLERS_PER_REQUEST=5
-      // dans services/firebase/buyer-requests.ts. La transaction côté front
-      // incrémente uniqueSellerCount et bascule isFull à true. Les rules
-      // protègent contre tout dépassement.
       uniqueSellerCount: 0,
       isFull:            false,
       updatedAt:         now,
-      // Timestamp Firestore natif pour les requêtes server-side
       createdAtTs:       FieldValue.serverTimestamp(),
-      // Borderline : publié mais flagué pour review admin
-      ...(moderation.verdict === "borderline" && {
-        moderationFlag: true,
-        moderationReason: moderation.reason,
+      // Sécurité
+      deviceId:          deviceId,
+      deviceIp:          deviceIp,
+      deviceUserAgent:   deviceUserAgent,
+      scoreConfiance:    trust.score,
+      scoreSignals:      trust.signals,
+      // Confirmation (seulement si pending)
+      ...(shouldGoActiveDirect ? {
+        confirmedAt: now,         // active direct = considérée confirmée tout de suite
+      } : {
+        confirmationCode,
+        confirmationExpiresAt: now + THIRTY_MIN_MS,
+        confirmedAt: null,
       }),
-    });
+    };
+
+    const ref = await db.collection(COLLECTION).add(docData);
+
+    // ── Update du fingerprint dénormalisé (best-effort) ──────────────
+    if (deviceId) {
+      try {
+        const fpRef = db.collection(FINGERPRINTS_COLLECTION).doc(deviceId);
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(fpRef);
+          if (!snap.exists) {
+            tx.set(fpRef, {
+              deviceId,
+              firstSeenAt: now,
+              lastSeenAt: now,
+              totalRequests: 1,
+              confirmedRequests: 0,
+              abuseFlagged: 0,
+              lastIp: deviceIp ?? undefined,
+              lastUserAgent: deviceUserAgent ?? undefined,
+              whatsappNumbers: [whatsapp],
+              status: isBlocked ? "blocked" : "normal",
+            } satisfies DeviceFingerprint);
+          } else {
+            const cur = snap.data() as DeviceFingerprint;
+            const numbers = cur.whatsappNumbers || [];
+            const nextNumbers = numbers.includes(whatsapp)
+              ? numbers
+              : [...numbers.slice(-19), whatsapp]; // FIFO max 20
+            tx.update(fpRef, {
+              lastSeenAt: now,
+              totalRequests: (cur.totalRequests || 0) + 1,
+              lastIp: deviceIp ?? undefined,
+              lastUserAgent: deviceUserAgent ?? undefined,
+              whatsappNumbers: nextNumbers,
+              status: cur.status === "blocked" ? "blocked"
+                : (trust.level === "red" ? "watched" : cur.status || "normal"),
+            });
+          }
+        });
+      } catch (err: unknown) {
+        const e = err as { message?: string };
+        logger.warn("[submitBuyerRequest] fingerprint update failed (non-blocking):", e?.message);
+      }
+    }
 
     logger.info("[submitBuyerRequest] Created:", {
       id: ref.id,
       whatsapp: whatsapp.slice(0, 6) + "***",
-      moderation: moderation.verdict,
+      status: docData.status,
+      score: trust.score,
+      level: trust.level,
+      signals: trust.signals.slice(0, 6),
+      hasDevice: !!deviceId,
     });
 
-    return { id: ref.id };
+    // ── Réponse au client ────────────────────────────────────────────
+    // Si pending : on renvoie le code + URL pour que le client affiche
+    // l'écran "Confirmer sur WhatsApp". Si direct : on renvoie juste l'id.
+    if (shouldGoActiveDirect) {
+      return {
+        id: ref.id,
+        requiresConfirmation: false,
+        status: "active" as const,
+      };
+    }
+    return {
+      id: ref.id,
+      requiresConfirmation: true,
+      status: "pending_confirmation" as const,
+      confirmationCode,
+      // L'URL est construite par le client (le frontend connaît son origin),
+      // mais on renvoie le code pour assemblage.
+      expiresInMinutes: 30,
+    };
   }
 );

@@ -45,8 +45,21 @@ export { deleteUserAccount } from "./delete-account.js";
 // Buyer requests expiration cron (daily at 03:00 UTC)
 export { expireBuyerRequests } from "./expire-buyer-requests.js";
 
-// Buyer request submission — callable, contourne les rules iOS
+// Buyer request submission — callable, contourne les rules iOS.
+// Refonte 2026-06-04 : score ≥ 70 → active direct, sinon pending_confirmation.
 export { submitBuyerRequest } from "./submit-buyer-request.js";
+
+// Confirmation pré-publication (refonte 2026-06-04).
+// Appelée depuis /confirmer/:code après que le buyer ait envoyé le code via
+// WhatsApp Nunulia. Lance la modération Claude Haiku puis active la demande.
+export { confirmBuyerRequest } from "./confirm-buyer-request.js";
+
+// Signalement par le vrai propriétaire WhatsApp (refonte 2026-06-04).
+// /signaler/:code → suspend la demande, blacklist auto au 2ᵉ signal du device.
+export { signalBuyerRequest } from "./signal-buyer-request.js";
+
+// Cron 5 min : purge les pending_confirmation après 30 min sans confirmation.
+export { expireUnconfirmedBuyerRequests } from "./expire-unconfirmed.js";
 
 // One-shot backfill : ajoute uniqueSellerCount/isFull aux anciennes demandes.
 // À exécuter une seule fois après le déploiement du plafond 5 vendeurs.

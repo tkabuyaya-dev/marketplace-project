@@ -479,10 +479,25 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
-    // BLOCKLIST — IPs/UIDs bannis (lecture via Cloud Functions)
+    // BLOCKLIST — DeviceIds bannis (lecture admin, écriture CF only)
+    // Refonte 2026-06-04 : on ouvre la lecture aux admins pour piloter le
+    // dashboard sécurité. Toute écriture passe par les CFs admin SDK
+    // (signalBuyerRequest auto, BuyerRequestsSecurity callable admin).
     // ─────────────────────────────────────────────────────────
-    match /blocklist/{entryId} {
-      allow read, write: if false; // Géré uniquement via Admin SDK
+    match /blocklist/{deviceId} {
+      allow read: if isAdmin();
+      allow write: if false; // CFs uniquement
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // DEVICE FINGERPRINTS — Historique dénormalisé par device
+    // Admin-only en lecture (dashboard sécurité + dossier device).
+    // Écriture via CFs uniquement (submitBuyerRequest, confirmBuyerRequest,
+    // signalBuyerRequest, blocklist admin actions).
+    // ─────────────────────────────────────────────────────────
+    match /deviceFingerprints/{deviceId} {
+      allow read: if isAdmin();
+      allow write: if false; // CFs uniquement
     }
 
     // ─────────────────────────────────────────────────────────
@@ -518,10 +533,14 @@ service cloud.firestore {
       // les grands entiers (Date.now() ≈ 1.7×10¹²) tantôt en integer_value, tantôt en
       // double_value selon la plateforme (iOS Safari notamment). La vérification de
       // plage (>= / <=) est la vraie protection sécuritaire — le type exact importe peu.
+      // En pratique 100 % des creates passent par la CF submitBuyerRequest
+      // (Admin SDK bypass), donc cette rule est un filet de sécurité. On
+      // accepte 'active' (historique) ET 'pending_confirmation' (nouveau gate
+      // intelligent) pour ne pas casser la rule si un code legacy l'utilise.
       allow create: if validString(request.resource.data.title, 200)
         && validWhatsapp(request.resource.data.whatsapp)
         && validString(request.resource.data.buyerName, 100)
-        && request.resource.data.status == 'active'
+        && request.resource.data.status in ['active', 'pending_confirmation']
         && request.resource.data.viewCount == 0
         && request.resource.data.contactCount == 0
         // createdAt : nombre de ms — tolérance ±5 min (horloge décalée Android/iOS)
@@ -610,6 +629,14 @@ service cloud.firestore {
                .data.get('uniqueSellerCount', 0) < 5
           && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
                .data.get('isFull', false) == false
+          // Refonte 2026-06-04 : une demande en pending_confirmation NE DOIT PAS
+          // accepter de contacts vendeurs. Le `default true` sur visible évite
+          // une régression sur les anciens docs antérieurs au champ (toutes
+          // étaient publiquement visibles par convention).
+          && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
+               .data.get('visible', true) == true
+          && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
+               .data.status == 'active'
           && request.resource.data.keys().hasAll([
               'requestId', 'sellerId', 'sellerTierId', 'timestamp'
             ])

@@ -29,6 +29,8 @@ import {
   normalizeLocalDigits,
   getPhoneSpec,
 } from '../../utils/phoneValidation';
+import { getDeviceSnapshot } from '../../utils/deviceFingerprint';
+import { buildWaUrl } from '../../config/whatsapp.config';
 
 const LAST_CATEGORY_KEY = 'nunulia_last_category';
 
@@ -38,7 +40,7 @@ interface JeChercheFormProps {
   initialQuery?: string;
 }
 
-type Step = 'form' | 'success';
+type Step = 'form' | 'success' | 'confirm';
 
 export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, initialQuery = '' }) => {
   const { t } = useTranslation();
@@ -79,6 +81,8 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   const [step, setStep]     = useState<Step>('form');
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
+  // Confirmation pré-publication (refonte 2026-06-04)
+  const [confirmationCode, setConfirmationCode] = useState<string>('');
 
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -213,7 +217,13 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         return;
       }
 
-      await createBuyerRequest({
+      // Capture le device fingerprint en parallèle de la création (rapide,
+      // 1-50ms typique). Si la lecture IDB échoue, on envoie null — la CF
+      // gère le score sans deviceId.
+      const snapshot = getDeviceSnapshot();
+      const deviceId = await snapshot.deviceId.catch(() => null);
+
+      const result = await createBuyerRequest({
         title:          trimmedTitle,
         countryId,
         province:       city,
@@ -225,6 +235,8 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         budget:         budget ? parseFloat(budget) : undefined,
         budgetCurrency: selectedCountry?.currency,
         imageUrl:       imageUrl || undefined,
+        deviceId,
+        deviceUserAgent: snapshot.userAgent,
       });
 
       // Mémorise la dernière catégorie réelle utilisée (jamais _help)
@@ -232,7 +244,16 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         try { localStorage.setItem(LAST_CATEGORY_KEY, category); } catch { /* quota */ }
       }
 
-      setStep('success');
+      // Refonte 2026-06-04 : si le score serveur est < 70, la CF crée la
+      // demande en pending_confirmation et nous retourne un code que le
+      // buyer doit envoyer sur WhatsApp Nunulia pour activer sa demande.
+      // Score ≥ 70 ⇒ publication directe (UX historique préservée).
+      if (result.requiresConfirmation) {
+        setConfirmationCode(result.confirmationCode);
+        setStep('confirm');
+      } else {
+        setStep('success');
+      }
     } catch (err: any) {
       setError(err?.message || t('jeCherche.form.errorGeneric'));
     } finally {
@@ -536,6 +557,58 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
               {t('jeCherche.form.privacyNote')}
             </p>
           </form>
+        )}
+
+        {/* ── STEP: CONFIRM (gate intelligent < 70 score) ── */}
+        {step === 'confirm' && confirmationCode && (
+          <div className="text-center py-4 animate-fade-in">
+            <div className="text-5xl mb-3">✅</div>
+            <h3 className="text-xl font-black text-white mb-2">
+              Presque publiée !
+            </h3>
+            <p className="text-sm text-gray-400 mb-5 leading-relaxed">
+              Pour protéger les acheteurs, votre demande doit être confirmée
+              depuis votre WhatsApp.
+            </p>
+
+            {/* Bouton CTA WhatsApp pré-rempli */}
+            <a
+              href={buildWaUrl(`CONFIRMER-${confirmationCode}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3.5 bg-[#25D366] hover:brightness-110 text-white font-black rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] mb-3"
+              style={{ boxShadow: '0 6px 18px rgba(37,211,102,0.45)' }}
+            >
+              💬 Confirmer sur WhatsApp →
+            </a>
+
+            <p className="text-[11px] text-gray-500 leading-relaxed mb-2">
+              Le bouton ouvre WhatsApp avec un message pré-rempli.
+              <br />
+              Envoyez-le et votre demande sera visible des vendeurs en quelques secondes.
+            </p>
+
+            {/* Code apparent en backup (si le bouton ne marche pas, le buyer peut copier) */}
+            <div className="bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2 mb-4">
+              <p className="text-[10px] text-gray-500 mb-1">Code à envoyer manuellement :</p>
+              <p className="font-mono text-base font-bold text-gold-400 tracking-widest">
+                CONFIRMER-{confirmationCode}
+              </p>
+            </div>
+
+            <p className="text-[11px] text-orange-400/90 leading-relaxed mb-4">
+              ⏱️ Délai : <strong>30 minutes</strong>. Sans confirmation, la demande
+              sera automatiquement annulée.
+            </p>
+
+            <button
+              onClick={onClose}
+              type="button"
+              className="w-full py-2.5 text-gray-500 hover:text-gray-300 text-xs font-bold transition-colors"
+            >
+              Fermer (je confirmerai plus tard)
+            </button>
+          </div>
         )}
 
         {/* ── STEP: SUCCESS ── */}

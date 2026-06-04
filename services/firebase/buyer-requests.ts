@@ -41,7 +41,7 @@ export const MAX_SELLERS_PER_REQUEST = 5;
 
 // ─── Converters ───────────────────────────────────────────────────────────────
 
-function docToBuyerRequest(data: any, id: string): BuyerRequest {
+export function docToBuyerRequest(data: any, id: string): BuyerRequest {
   return {
     id,
     title:              data.title || '',
@@ -68,6 +68,23 @@ function docToBuyerRequest(data: any, id: string): BuyerRequest {
     updatedAt:          data.updatedAt?.toMillis?.() || data.updatedAt || undefined,
     moderationFlag:     data.moderationFlag === true ? true : undefined,
     moderationReason:   data.moderationReason || undefined,
+    // ── Sécurité (refonte 2026-06-04) ─────────────────────────────────
+    // Anciens docs : visible absent ⇒ default true (compatibilité)
+    visible:            data.visible === false ? false : (data.visible === true ? true : undefined),
+    confirmationCode:   data.confirmationCode || undefined,
+    confirmationExpiresAt: typeof data.confirmationExpiresAt === 'number' ? data.confirmationExpiresAt : undefined,
+    confirmedAt:        typeof data.confirmedAt === 'number' ? data.confirmedAt : (data.confirmedAt === null ? null : undefined),
+    deviceId:           data.deviceId || undefined,
+    deviceIp:           data.deviceIp || undefined,
+    deviceUserAgent:    data.deviceUserAgent || undefined,
+    deviceConfirmIp:    data.deviceConfirmIp || undefined,
+    deviceConfirmDeviceId: data.deviceConfirmDeviceId || undefined,
+    scoreConfiance:     typeof data.scoreConfiance === 'number' ? data.scoreConfiance : undefined,
+    scoreSignals:       Array.isArray(data.scoreSignals) ? data.scoreSignals : undefined,
+    isAbuse:            data.isAbuse === true ? true : undefined,
+    abuseSignaledAt:    typeof data.abuseSignaledAt === 'number' ? data.abuseSignaledAt : undefined,
+    suspendedReason:    data.suspendedReason || undefined,
+    expiredReason:      data.expiredReason || undefined,
   };
 }
 
@@ -105,9 +122,29 @@ export interface CreateBuyerRequestData {
   whatsapp: string;
   buyerId?: string;
   buyerName: string;
+  // Refonte 2026-06-04 — sécurité confirmation
+  deviceId?: string | null;
+  deviceUserAgent?: string | null;
 }
 
-export async function createBuyerRequest(data: CreateBuyerRequestData): Promise<string> {
+/**
+ * Retour de la CF submitBuyerRequest depuis la refonte 2026-06-04.
+ * - active direct (score ≥ 70)  ⇒ requiresConfirmation=false, pas de code
+ * - pending_confirmation (< 70) ⇒ requiresConfirmation=true + code 8-char
+ */
+export type CreateBuyerRequestResult =
+  | { id: string; requiresConfirmation: false; status: 'active' }
+  | {
+      id: string;
+      requiresConfirmation: true;
+      status: 'pending_confirmation';
+      confirmationCode: string;
+      expiresInMinutes: number;
+    };
+
+export async function createBuyerRequest(
+  data: CreateBuyerRequestData,
+): Promise<CreateBuyerRequestResult> {
   // ╔══════════════════════════════════════════════════════════════════════════╗
   // ║  ⚠️  NE PAS MODIFIER — FIX CRITIQUE iOS Safari                          ║
   // ║                                                                          ║
@@ -125,9 +162,9 @@ export async function createBuyerRequest(data: CreateBuyerRequestData): Promise<
   const fns = await getFirebaseFunctions();
   if (!fns) throw new Error('Firebase Functions not initialized');
 
-  const fn = httpsCallable<CreateBuyerRequestData, { id: string }>(fns, 'submitBuyerRequest');
+  const fn = httpsCallable<CreateBuyerRequestData, CreateBuyerRequestResult>(fns, 'submitBuyerRequest');
   const result = await fn(data);
-  return result.data.id;
+  return result.data;
 }
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
@@ -162,10 +199,14 @@ export async function getBuyerRequests(
   const q = query(collection(db, COLLECTIONS.BUYER_REQUESTS), ...constraints);
   const snap = await getDocs(q);
   const now = Date.now();
-  // Filter out requests whose expiresAt has passed but the cron hasn't run yet (runs at 03:00 UTC once/day)
+  // Filtrage en mémoire :
+  //   - expiresAt passé (cron 03:00 UTC pas encore exécuté)
+  //   - visible === false : refonte 2026-06-04, exclut les pending_confirmation
+  //     (défense en profondeur — la query filtre déjà sur status='active' par défaut).
+  //     Pour les anciens docs sans champ visible, défaut autorisé.
   const requests = snap.docs
     .map(d => docToBuyerRequest(d.data(), d.id))
-    .filter(r => r.expiresAt > now);
+    .filter(r => r.expiresAt > now && r.visible !== false);
   const last = snap.docs[snap.docs.length - 1] ?? null;
 
   return { requests, lastDoc: last };
@@ -457,11 +498,20 @@ export async function respondToBuyerRequest(
       return { ok: true, alreadyResponded: true, isFullAfter: reqSnap.data()?.isFull === true };
     }
 
-    // 2) Plafond atteint entre-temps
+    // 2) Plafond atteint entre-temps, demande invisible ou non-active
     const data = reqSnap.exists() ? reqSnap.data() : null;
     if (!data) return { ok: false, reason: 'full' };
     const currentUnique = typeof data.uniqueSellerCount === 'number' ? data.uniqueSellerCount : 0;
     if (data.isFull === true || currentUnique >= MAX_SELLERS_PER_REQUEST) {
+      return { ok: false, reason: 'full' };
+    }
+    // Refonte 2026-06-04 : la rule serveur bloque déjà, mais on évite un round-trip.
+    // Anciens docs : `visible` absent ⇒ default true (compatibilité).
+    const status = typeof data.status === 'string' ? data.status : 'active';
+    const visible = data.visible === false ? false : true;
+    if (!visible || status !== 'active') {
+      // Identique à "full" pour le client — UI affiche "Demande complète".
+      // On ne révèle pas l'état réel pour rester cohérent avec le honeypot CF.
       return { ok: false, reason: 'full' };
     }
 

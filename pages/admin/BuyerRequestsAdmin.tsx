@@ -30,19 +30,21 @@ const FLAG_REASON_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<BuyerRequestStatus, string> = {
-  active:    'bg-green-500/20 text-green-400 border-green-500/30',
-  fulfilled: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  expired:   'bg-gray-700/40 text-gray-500 border-gray-600/30',
-  deleted:   'bg-red-500/20 text-red-400 border-red-500/30',
-  suspended: 'bg-red-600/30 text-red-300 border-red-600/40',
+  active:               'bg-green-500/20 text-green-400 border-green-500/30',
+  fulfilled:            'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  expired:              'bg-gray-700/40 text-gray-500 border-gray-600/30',
+  deleted:              'bg-red-500/20 text-red-400 border-red-500/30',
+  suspended:            'bg-red-600/30 text-red-300 border-red-600/40',
+  pending_confirmation: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
 };
 
 const STATUS_LABELS: Record<BuyerRequestStatus, string> = {
-  active:    'Active',
-  fulfilled: 'Satisfaite',
-  expired:   'Expirée',
-  deleted:   'Supprimée',
-  suspended: '🚩 Signalée',
+  active:               'Active',
+  fulfilled:            'Satisfaite',
+  expired:              'Expirée',
+  deleted:              'Supprimée',
+  suspended:            '🚩 Signalée',
+  pending_confirmation: '⏳ À confirmer',
 };
 
 export const BuyerRequestsAdmin: React.FC<AdminSharedProps> = ({ currentUser }) => {

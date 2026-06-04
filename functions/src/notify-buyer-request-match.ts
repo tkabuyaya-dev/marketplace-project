@@ -30,7 +30,7 @@
  * - Branche 3 : même que branche 1 mais query mémoire-filtrée sur tierLabel
  */
 
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { FieldValue } from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import { getDb } from "./admin.js";
@@ -67,7 +67,7 @@ type SellerDoc = {
   };
 };
 
-export const onBuyerRequestMatch = onDocumentCreated(
+export const onBuyerRequestMatch = onDocumentWritten(
   {
     document: "buyerRequests/{requestId}",
     region: "europe-west1",
@@ -77,9 +77,54 @@ export const onBuyerRequestMatch = onDocumentCreated(
     timeoutSeconds: 60,
   },
   async (event) => {
-    const req = event.data?.data() as BuyerRequestData | undefined;
     const requestId = event.params.requestId;
-    if (!req) return;
+
+    // Refonte 2026-06-04 : trigger migré de onCreate → onWritten + gate strict.
+    // On notifie les sellers uniquement à la transition `visible: false → true`
+    // (passage de pending_confirmation à active). Cela évite de pousser des
+    // notifs pour des demandes en attente de confirmation qui pourraient
+    // expirer dans 30 min sans publication.
+    //
+    // Compatibilité ascendante :
+    //   - Création directe en `active` + `visible: true` (score ≥ 70)
+    //     → before.exists = false → before.visible undefined (≠ true)
+    //     → after.visible === true ⇒ on notifie. ✅
+    //   - Demandes créées AVANT cette refonte (pas de champ `visible`)
+    //     → before non existe ou before.visible undefined
+    //     → after.visible undefined → on défaut à `true` côté contrôle
+    //     → on notifie comme avant. ✅
+    const after = event.data?.after?.data() as (BuyerRequestData & {
+      visible?: boolean;
+      status?: string;
+    }) | undefined;
+    const before = event.data?.before?.data() as ({
+      visible?: boolean;
+      status?: string;
+    } | undefined);
+
+    // Doc supprimé physiquement : rien à faire.
+    if (!after) return;
+
+    // Default visible = true pour anciens docs sans champ.
+    const afterVisible = after.visible === false ? false : true;
+    const beforeVisible = before === undefined
+      ? false  // create : "avant" est inexistant ⇒ on considère pas visible
+      : (before.visible === false ? false : true);
+
+    // Ne notifier que sur la transition false → true. Préserve toute notif
+    // unique : 1 push par demande devenue visible, jamais de doublon.
+    const isPublicationEvent = !beforeVisible && afterVisible && after.status === "active";
+    if (!isPublicationEvent) {
+      logger.debug("[buyer-request-match] skip — pas de transition de publication", {
+        requestId,
+        beforeVisible,
+        afterVisible,
+        afterStatus: after.status,
+      });
+      return;
+    }
+
+    const req = after;
 
     const rawCategory = (req.category || "").trim();
     const countryId = (req.countryId || "").trim();

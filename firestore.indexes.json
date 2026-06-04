@@ -295,6 +295,46 @@
       ]
     },
     {
+      "collectionGroup": "buyerRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "confirmationExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "buyerRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deviceId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "buyerRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deviceIp", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "deviceFingerprints",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "lastSeenAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "blocklist",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "duration", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "buyerRequestContacts",
       "queryScope": "COLLECTION",
       "fields": [

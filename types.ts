@@ -344,10 +344,27 @@ export interface PaymentMethod {
 }
 
 // ─── Buyer Requests ("Je Cherche") ───
-export type BuyerRequestStatus = 'active' | 'fulfilled' | 'expired' | 'deleted' | 'suspended';
+// 'pending_confirmation' : score < 70 → demande créée mais invisible jusqu'à
+// confirmation WhatsApp via /confirmer/:code. TTL 30 min géré par le cron
+// expireUnconfirmedBuyerRequests (5 min).
+export type BuyerRequestStatus =
+  | 'active'
+  | 'fulfilled'
+  | 'expired'
+  | 'deleted'
+  | 'suspended'
+  | 'pending_confirmation';
 
 /** Raison d'un signalement community. */
 export type BuyerRequestFlagReason = 'spam' | 'illegal' | 'scam' | 'fake_number' | 'other';
+
+/** Raison de suspension/refus, persistée dans suspendedReason ou expiredReason. */
+export type BuyerRequestSuspensionReason =
+  | 'community_flagged'
+  | 'device_blacklisted'
+  | 'abuse_reported'
+  | 'manual_admin'
+  | 'moderation_reject';
 
 export interface BuyerRequestFlag {
   id: string;
@@ -393,6 +410,25 @@ export interface BuyerRequest {
   // Les "reject" ne sont jamais persistés (HttpsError côté CF, audit dans Cloud Logs).
   moderationFlag?: boolean;
   moderationReason?: string;
+  // ── Sécurité / confirmation pré-publication (refonte 2026-06-04) ───────
+  // Gate intelligent : score < 70 ⇒ status='pending_confirmation', visible=false.
+  // Score ≥ 70 ⇒ status='active', visible=true (publication directe, comportement
+  // historique préservé pour les buyers propres).
+  visible?: boolean;                   // false sur pending_confirmation, true sur active
+  confirmationCode?: string;           // 8 chars base32 humain-lisible (sans 0/O/1/I)
+  confirmationExpiresAt?: number;      // createdAt + 30 min
+  confirmedAt?: number | null;
+  deviceId?: string;                   // hash 16 chars fournit par le client à la soumission
+  deviceIp?: string;                   // IP soumission (CF lit request.rawRequest.ip)
+  deviceUserAgent?: string;            // tronqué 200 char (forensics)
+  deviceConfirmIp?: string;            // IP au moment du clic /confirmer
+  deviceConfirmDeviceId?: string;      // deviceId au moment du clic /confirmer
+  scoreConfiance?: number;             // 0-100 (cf. computeTrustScore)
+  scoreSignals?: string[];             // tags lisibles ("device_seen_before:+20", "ip_burst:-30"…)
+  isAbuse?: boolean;                   // true après clic /signaler
+  abuseSignaledAt?: number;
+  suspendedReason?: BuyerRequestSuspensionReason;
+  expiredReason?: 'ttl' | 'unconfirmed';
 }
 
 export interface BuyerRequestContact {
@@ -401,6 +437,43 @@ export interface BuyerRequestContact {
   sellerId: string;
   sellerTierId: string;
   timestamp: number;
+}
+
+// ─── Sécurité : blocklist deviceId + dossier device ──────────────────────
+/**
+ * Un device blacklisté est admin-only en lecture. Toute soumission depuis ce
+ * deviceId est forcée en pending_confirmation + score=0 + admin alerté en
+ * silence (l'abuseur ne sait jamais qu'il est bloqué — honeypot doux).
+ */
+export interface DeviceBlock {
+  deviceId: string;
+  blockedAt: number;
+  blockedBy: 'auto' | 'admin';
+  reason: string;
+  duration: 'permanent' | '24h' | '7j';
+  expiresAt: number | null;            // null = permanent
+  adminId: string | null;
+  lastUserAgent?: string;
+  lastIp?: string;
+  totalRequestsBlocked?: number;
+}
+
+/**
+ * Historique dénormalisé d'un device. Mis à jour à chaque soumission +
+ * chaque confirmation. Permet à l'admin un [Enquêter] instantané sans
+ * scanner toute la table buyerRequests.
+ */
+export interface DeviceFingerprint {
+  deviceId: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  totalRequests: number;
+  confirmedRequests: number;
+  abuseFlagged: number;                // nb de fois où une demande de ce device a été signalée
+  lastIp?: string;
+  lastUserAgent?: string;
+  whatsappNumbers: string[];           // tous les numéros utilisés (max 20, FIFO)
+  status: 'normal' | 'watched' | 'blocked';
 }
 
 export interface SubscriptionPricing {

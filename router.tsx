@@ -40,6 +40,8 @@ const CGUPage = lazyRetry(() => import('./pages/legal/CGU'));
 const PrivacyPolicyPage = lazyRetry(() => import('./pages/legal/PrivacyPolicy'));
 const SafetyTipsPage = lazyRetry(() => import('./pages/legal/SafetyTips'));
 const BuyerRequestsPage = lazyRetry(() => import('./pages/BuyerRequests'));
+const ConfirmBuyerRequestPage = lazyRetry(() => import('./pages/ConfirmBuyerRequest'));
+const SignalBuyerRequestPage = lazyRetry(() => import('./pages/SignalBuyerRequest'));
 const AuthGooglePage = lazyRetry(() => import('./pages/AuthGoogle'));
 const FcmDebugPage = lazyRetry(() => import('./pages/FcmDebug'));
 const StudioPage = lazyRetry(() => import('./pages/Studio'));
@@ -119,6 +121,8 @@ export const router = createBrowserRouter([
       { path: 'politique-confidentialite', element: <SuspenseWrapper><PrivacyPolicyPage /></SuspenseWrapper> },
       { path: 'securite', element: <SuspenseWrapper><SafetyTipsPage /></SuspenseWrapper> },
       { path: 'demandes', element: <SuspenseWrapper><BuyerRequestsPage /></SuspenseWrapper> },
+      { path: 'confirmer/:code', element: <SuspenseWrapper><ConfirmBuyerRequestPage /></SuspenseWrapper> },
+      { path: 'signaler/:code', element: <SuspenseWrapper><SignalBuyerRequestPage /></SuspenseWrapper> },
       { path: 'auth-google', element: <SuspenseWrapper><AuthGooglePage /></SuspenseWrapper> },
       { path: 'fcm-debug', element: <SuspenseWrapper><FcmDebugPage /></SuspenseWrapper> },
       { path: 'studio/:sessionId', element: <SuspenseWrapper><StudioPage /></SuspenseWrapper> },
