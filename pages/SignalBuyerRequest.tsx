@@ -9,10 +9,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getFirebaseFunctions } from '../firebase-config';
-import { getDeviceId } from '../utils/deviceFingerprint';
+import { useAppContext } from '../contexts/AppContext';
 
 const PageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center px-4 py-10">
@@ -24,30 +24,62 @@ const PageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const SignalBuyerRequestPage: React.FC = () => {
   const { code } = useParams<{ code: string }>();
-  const [phase, setPhase] = useState<'loading' | 'done'>('loading');
+  const { currentUser, authReady } = useAppContext();
+  const [phase, setPhase] = useState<'loading' | 'done' | 'unauthorized'>('loading');
+
+  const isAdmin = authReady && currentUser?.role === 'admin';
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Volontairement permissif côté front : on appelle la CF même si le code
-      // est mal formé — la CF renvoie {ok: true} silencieusement.
+      if (!authReady) return;
+      // Refonte Option C : page admin-only. Un visiteur lambda est refusé.
+      if (!isAdmin) {
+        if (!cancelled) setPhase('unauthorized');
+        return;
+      }
       try {
         const fns = await getFirebaseFunctions();
         if (fns && code) {
-          const deviceId = await getDeviceId().catch(() => null);
-          const fn = httpsCallable<{ code: string; deviceId: string | null }, { ok: boolean }>(
+          const fn = httpsCallable<{ code: string }, { ok: boolean }>(
             fns, 'signalBuyerRequest'
           );
-          await fn({ code, deviceId });
+          await fn({ code });
         }
       } catch {
-        /* silent — on affiche le même message dans tous les cas */
+        /* silent — l'admin verra le résultat dans le dashboard */
       } finally {
         if (!cancelled) setPhase('done');
       }
     })();
     return () => { cancelled = true; };
-  }, [code]);
+  }, [code, authReady, isAdmin]);
+
+  if (authReady && !currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (phase === 'unauthorized') {
+    return (
+      <PageShell>
+        <div className="w-16 h-16 mx-auto rounded-full bg-[#F0F1F4] inline-flex items-center justify-center mb-4">
+          <span className="text-3xl">🔒</span>
+        </div>
+        <h1 className="text-[20px] font-black text-[#111318] tracking-tight">
+          Accès réservé
+        </h1>
+        <p className="mt-3 text-[13px] text-[#5C6370] leading-relaxed">
+          Cette page est réservée aux administrateurs Nunulia.
+        </p>
+        <Link
+          to="/"
+          className="mt-6 inline-flex items-center justify-center w-full h-12 rounded-full bg-[#F5C842] text-[#111318] text-[14px] font-black tracking-tight active:scale-[0.98] transition"
+          style={{ boxShadow: '0 6px 18px rgba(245,200,66,0.45)' }}
+        >
+          Retour à l'accueil
+        </Link>
+      </PageShell>
+    );
+  }
 
   if (phase === 'loading') {
     return (

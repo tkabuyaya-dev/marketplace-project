@@ -20,6 +20,8 @@ import {
   getRecentDevices,
   getBlocklist,
   detectMultiNumberAlerts,
+  adminConfirmBuyerRequest,
+  adminSignalBuyerRequest,
 } from '../../services/firebase/security-buyer-requests';
 import { AdminSharedProps } from './types';
 import type {
@@ -64,6 +66,54 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
   const [loading, setLoading] = useState(false);
   const [lastLoaded, setLastLoaded] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  const showFlash = (msg: string) => {
+    setActionMessage(msg);
+    setTimeout(() => setActionMessage(null), 4000);
+  };
+
+  const handleActivate = async (requestId: string) => {
+    if (!confirm('Activer cette demande ? Le numéro WhatsApp émetteur a-t-il bien été vérifié ?')) return;
+    setActingId(requestId);
+    try {
+      const res = await adminConfirmBuyerRequest(requestId);
+      if (res.alreadyConfirmed) {
+        showFlash('⏩ Demande déjà confirmée.');
+      } else {
+        showFlash('✅ Demande activée — visible par les vendeurs.');
+      }
+      // Retire de la liste pending optimistically
+      setData(d => ({ ...d, pending: d.pending.filter(r => r.id !== requestId) }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      showFlash(`❌ Échec activation : ${msg}`);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleSignal = async (requestId: string) => {
+    if (!confirm('Signaler comme abus ? La demande sera suspendue et le device pourra être blacklisté.')) return;
+    setActingId(requestId);
+    try {
+      const res = await adminSignalBuyerRequest(requestId);
+      if (res.alreadyHandled) {
+        showFlash('⏩ Déjà traitée.');
+      } else {
+        showFlash('🛡️ Demande suspendue + abus enregistré.');
+      }
+      setData(d => ({ ...d, pending: d.pending.filter(r => r.id !== requestId) }));
+      // Rafraîchit la blocklist (peut avoir basculé en auto)
+      load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      showFlash(`❌ Échec signalement : ${msg}`);
+    } finally {
+      setActingId(null);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -111,6 +161,23 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {actionMessage && (
+        <div className="bg-gold-400/10 border border-gold-400/30 text-gold-200 text-sm font-bold px-4 py-3 rounded-xl">
+          {actionMessage}
+        </div>
+      )}
+
+      {/* Mémo procédure manuelle (Option C) */}
+      <div className="bg-blue-950/30 border border-blue-700/30 rounded-xl px-4 py-3 text-xs text-blue-200/80 leading-relaxed">
+        <p className="font-bold text-blue-300 mb-1">📋 Procédure activation manuelle</p>
+        <ol className="list-decimal pl-4 space-y-0.5">
+          <li>Ouvrir WhatsApp Business Nunulia <span className="font-mono text-blue-300">+257 61 65 30 00</span></li>
+          <li>Repérer le message <em>« Je confirme ma demande … »</em> du buyer</li>
+          <li>Vérifier que <strong>le numéro WhatsApp émetteur</strong> correspond au numéro déclaré dans la demande pending ci-dessous</li>
+          <li>Si OK → cliquer <strong>✅ Activer</strong>. Si NON (usurpation) → cliquer <strong>🛡️ Suspendre</strong></li>
+        </ol>
+      </div>
+
       {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -225,11 +292,13 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
                   <th className="text-left font-bold py-2 px-1">Soumise</th>
                   <th className="text-left font-bold py-2 px-1">Expire</th>
                   <th className="text-left font-bold py-2 px-1">Device</th>
+                  <th className="text-left font-bold py-2 px-1">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {data.pending.slice(0, 50).map(r => {
                   const mins = r.confirmationExpiresAt ? minutesUntil(r.confirmationExpiresAt) : 0;
+                  const isActing = actingId === r.id;
                   return (
                     <tr key={r.id} className="border-b border-gray-800/40 hover:bg-gray-800/40">
                       <td className="py-2 px-1 text-gray-200 truncate max-w-[180px]">{r.title}</td>
@@ -256,6 +325,26 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
                         ) : (
                           <span className="text-gray-600">—</span>
                         )}
+                      </td>
+                      <td className="py-2 px-1">
+                        <div className="flex gap-1.5">
+                          <button
+                            disabled={isActing}
+                            onClick={() => handleActivate(r.id)}
+                            className="text-[10px] font-bold text-green-300 border border-green-500/30 hover:bg-green-500/10 px-2 py-1 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Activer après vérification du numéro WhatsApp émetteur"
+                          >
+                            {isActing ? '...' : '✅ Activer'}
+                          </button>
+                          <button
+                            disabled={isActing}
+                            onClick={() => handleSignal(r.id)}
+                            className="text-[10px] font-bold text-red-300 border border-red-500/30 hover:bg-red-500/10 px-2 py-1 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Suspendre + flag abus (numéro émetteur ≠ déclaré)"
+                          >
+                            🛡️ Suspendre
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

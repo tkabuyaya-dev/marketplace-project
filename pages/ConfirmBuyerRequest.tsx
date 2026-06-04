@@ -13,12 +13,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, Navigate } from 'react-router-dom';
 import { httpsCallable, FunctionsError } from 'firebase/functions';
 import { getFirebaseFunctions } from '../firebase-config';
-import { getDeviceId } from '../utils/deviceFingerprint';
+import { useAppContext } from '../contexts/AppContext';
 
-type Phase = 'loading' | 'success' | 'expired' | 'not_found' | 'rejected' | 'error';
+type Phase = 'loading' | 'success' | 'expired' | 'not_found' | 'rejected' | 'error' | 'unauthorized';
 
 interface ConfirmResult {
   ok: boolean;
@@ -39,13 +39,23 @@ const PageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const ConfirmBuyerRequestPage: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const { currentUser, authReady } = useAppContext();
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [result, setResult] = useState<ConfirmResult | null>(null);
 
+  // Refonte Option C : la page est admin-only. Un buyer normal n'a aucune
+  // raison d'y arriver (le code n'est plus exposé côté client).
+  const isAdmin = authReady && currentUser?.role === 'admin';
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (!authReady) return;
+      if (!isAdmin) {
+        if (!cancelled) setPhase('unauthorized');
+        return;
+      }
       if (!code || !/^[A-Z0-9]{8}$/.test(code)) {
         if (!cancelled) setPhase('not_found');
         return;
@@ -53,11 +63,10 @@ const ConfirmBuyerRequestPage: React.FC = () => {
       try {
         const fns = await getFirebaseFunctions();
         if (!fns) throw new Error('functions_unavailable');
-        const deviceId = await getDeviceId().catch(() => null);
-        const fn = httpsCallable<{ code: string; deviceId: string | null }, ConfirmResult>(
+        const fn = httpsCallable<{ code: string }, ConfirmResult>(
           fns, 'confirmBuyerRequest'
         );
-        const res = await fn({ code, deviceId });
+        const res = await fn({ code });
         if (cancelled) return;
         setResult(res.data);
         setPhase('success');
@@ -67,13 +76,41 @@ const ConfirmBuyerRequestPage: React.FC = () => {
         const c = (fe?.code || '').toString();
         if (c.includes('deadline-exceeded')) setPhase('expired');
         else if (c.includes('not-found')) setPhase('not_found');
+        else if (c.includes('permission-denied')) setPhase('unauthorized');
+        else if (c.includes('unauthenticated')) setPhase('unauthorized');
         else if (c.includes('invalid-argument')) setPhase('rejected');
         else if (c.includes('failed-precondition')) setPhase('rejected');
         else setPhase('error');
       }
     })();
     return () => { cancelled = true; };
-  }, [code]);
+  }, [code, authReady, isAdmin]);
+
+  if (authReady && !currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (phase === 'unauthorized') {
+    return (
+      <PageShell>
+        <div className="w-16 h-16 mx-auto rounded-full bg-[#F0F1F4] inline-flex items-center justify-center mb-4">
+          <span className="text-3xl">🔒</span>
+        </div>
+        <h1 className="text-[20px] font-black text-[#111318] tracking-tight">
+          Accès réservé
+        </h1>
+        <p className="mt-3 text-[13px] text-[#5C6370] leading-relaxed">
+          Cette page est réservée aux administrateurs Nunulia.
+        </p>
+        <Link
+          to="/"
+          className="mt-6 inline-flex items-center justify-center w-full h-12 rounded-full bg-[#F5C842] text-[#111318] text-[14px] font-black tracking-tight active:scale-[0.98] transition"
+          style={{ boxShadow: '0 6px 18px rgba(245,200,66,0.45)' }}
+        >
+          Retour à l'accueil
+        </Link>
+      </PageShell>
+    );
+  }
 
   if (phase === 'loading') {
     return (

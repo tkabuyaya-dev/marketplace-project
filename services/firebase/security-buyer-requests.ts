@@ -12,6 +12,8 @@ import {
   COLLECTIONS,
 } from './constants';
 import { docToBuyerRequest } from './buyer-requests';
+import { getFirebaseFunctions } from '../../firebase-config';
+import { httpsCallable } from 'firebase/functions';
 import type { BuyerRequest, DeviceBlock, DeviceFingerprint } from '../../types';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -110,6 +112,42 @@ export interface DeviceAlert {
   firstSeen: number;
   lastSeen: number;
   ip?: string;
+}
+
+/**
+ * Active manuellement une demande pending_confirmation (admin only).
+ * Appelle la CF confirmBuyerRequest avec auth admin requise côté serveur.
+ */
+export async function adminConfirmBuyerRequest(requestId: string): Promise<{
+  ok: boolean;
+  alreadyConfirmed: boolean;
+}> {
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase Functions non initialisé');
+  const fn = httpsCallable<
+    { requestId: string },
+    { ok: boolean; alreadyConfirmed: boolean }
+  >(fns, 'confirmBuyerRequest');
+  const res = await fn({ requestId });
+  return res.data;
+}
+
+/**
+ * Signale une demande comme abus (admin only) → suspension + blacklist auto
+ * du device d'origine s'il a déjà été signalé.
+ */
+export async function adminSignalBuyerRequest(requestId: string): Promise<{
+  ok: boolean;
+  alreadyHandled?: boolean;
+}> {
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase Functions non initialisé');
+  const fn = httpsCallable<
+    { requestId: string },
+    { ok: boolean; alreadyHandled?: boolean }
+  >(fns, 'signalBuyerRequest');
+  const res = await fn({ requestId });
+  return res.data;
 }
 
 export function detectMultiNumberAlerts(requests: BuyerRequest[]): DeviceAlert[] {

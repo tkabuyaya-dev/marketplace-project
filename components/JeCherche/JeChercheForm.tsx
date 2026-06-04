@@ -81,8 +81,11 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   const [step, setStep]     = useState<Step>('form');
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
-  // Confirmation pré-publication (refonte 2026-06-04)
-  const [confirmationCode, setConfirmationCode] = useState<string>('');
+  // Refonte 2026-06-04 (Option C) : on stocke juste le titre tapé pour
+  // l'afficher dans le message WhatsApp de confirmation côté Nunulia.
+  // Le code de confirmation n'est plus exposé côté client.
+  const [pendingTitle, setPendingTitle] = useState<string>('');
+  const [pendingPhone, setPendingPhone] = useState<string>('');
 
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -244,12 +247,17 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         try { localStorage.setItem(LAST_CATEGORY_KEY, category); } catch { /* quota */ }
       }
 
-      // Refonte 2026-06-04 : si le score serveur est < 70, la CF crée la
-      // demande en pending_confirmation et nous retourne un code que le
-      // buyer doit envoyer sur WhatsApp Nunulia pour activer sa demande.
+      // Refonte 2026-06-04 (Option C) : si le score serveur est < 70, la
+      // demande est en pending_confirmation côté serveur. Le buyer doit
+      // envoyer un message WhatsApp à Nunulia *depuis le numéro déclaré*,
+      // et l'équipe Nunulia active manuellement la demande après
+      // vérification du numéro émetteur. Le code de confirmation reste
+      // secret (jamais transmis au client) → impossible pour un usurpateur
+      // d'auto-confirmer la demande de quelqu'un d'autre.
       // Score ≥ 70 ⇒ publication directe (UX historique préservée).
       if (result.requiresConfirmation) {
-        setConfirmationCode(result.confirmationCode);
+        setPendingTitle(trimmedTitle);
+        setPendingPhone(fullWhatsapp);
         setStep('confirm');
       } else {
         setStep('success');
@@ -560,41 +568,46 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
         )}
 
         {/* ── STEP: CONFIRM (gate intelligent < 70 score) ── */}
-        {step === 'confirm' && confirmationCode && (
+        {/*
+         * Option C — validation manuelle par l'admin Nunulia.
+         * On n'expose JAMAIS le code côté client : un usurpateur pourrait
+         * l'extraire de la réponse réseau et auto-confirmer la demande
+         * de quelqu'un d'autre. À la place, le buyer envoie un message
+         * générique à Nunulia DEPUIS LE NUMÉRO DÉCLARÉ, et l'admin vérifie
+         * la correspondance avant d'activer.
+         */}
+        {step === 'confirm' && (
           <div className="text-center py-4 animate-fade-in">
             <div className="text-5xl mb-3">✅</div>
             <h3 className="text-xl font-black text-white mb-2">
               Presque publiée !
             </h3>
             <p className="text-sm text-gray-400 mb-5 leading-relaxed">
-              Pour protéger les acheteurs, votre demande doit être confirmée
-              depuis votre WhatsApp.
+              Une dernière étape pour protéger votre numéro WhatsApp et
+              celui des autres acheteurs : envoyez un message de confirmation
+              à Nunulia <strong className="text-white">depuis le numéro {pendingPhone}</strong>.
             </p>
 
-            {/* Bouton CTA WhatsApp pré-rempli */}
+            {/* Bouton CTA WhatsApp — message simple, AUCUN code */}
             <a
-              href={buildWaUrl(`CONFIRMER-${confirmationCode}`)}
+              href={buildWaUrl(
+                `Bonjour, je confirme ma demande Nunulia : "${pendingTitle}".`
+              )}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full py-3.5 bg-[#25D366] hover:brightness-110 text-white font-black rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] mb-3"
               style={{ boxShadow: '0 6px 18px rgba(37,211,102,0.45)' }}
             >
-              💬 Confirmer sur WhatsApp →
+              💬 Ouvrir WhatsApp pour confirmer →
             </a>
 
-            <p className="text-[11px] text-gray-500 leading-relaxed mb-2">
-              Le bouton ouvre WhatsApp avec un message pré-rempli.
+            <p className="text-[11px] text-gray-500 leading-relaxed mb-4">
+              L'équipe Nunulia vérifiera que le numéro émetteur correspond
+              et activera votre demande sous quelques minutes.
               <br />
-              Envoyez-le et votre demande sera visible des vendeurs en quelques secondes.
+              <strong>Important :</strong> envoyez le message depuis le
+              téléphone du numéro déclaré, sinon il sera ignoré.
             </p>
-
-            {/* Code apparent en backup (si le bouton ne marche pas, le buyer peut copier) */}
-            <div className="bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2 mb-4">
-              <p className="text-[10px] text-gray-500 mb-1">Code à envoyer manuellement :</p>
-              <p className="font-mono text-base font-bold text-gold-400 tracking-widest">
-                CONFIRMER-{confirmationCode}
-              </p>
-            </div>
 
             <p className="text-[11px] text-orange-400/90 leading-relaxed mb-4">
               ⏱️ Délai : <strong>30 minutes</strong>. Sans confirmation, la demande

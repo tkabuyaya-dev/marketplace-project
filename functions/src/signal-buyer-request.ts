@@ -1,22 +1,24 @@
 /**
- * NUNULIA — signalBuyerRequest (Callable Cloud Function)
+ * NUNULIA — signalBuyerRequest (Callable Cloud Function — admin only)
  *
- * Endpoint /signaler/:code — le vrai propriétaire du numéro WhatsApp signale
- * une demande qu'il n'a pas postée. Suspend la demande immédiatement et,
- * selon le pattern, blacklist le deviceId d'origine.
+ * Suspension manuelle d'une demande signalée comme usurpation par le vrai
+ * propriétaire du numéro WhatsApp. Refonte Option C 2026-06-04 : l'admin
+ * agit depuis le dashboard après avoir reçu la plainte du vrai propriétaire
+ * via WhatsApp Nunulia. La CF n'est plus appelable publiquement (sinon
+ * un attaquant pourrait suspendre arbitrairement les demandes des autres).
  *
- * Réponse VOLONTAIREMENT MINIMALE :
- *   - Toujours { ok: true } pour ne pas leaker l'état (anti-énumération)
- *   - Honeypot doux : l'abuseur, s'il tape l'URL, voit le même retour
+ * Input accepté :
+ *   - { requestId: string } → cas standard depuis le dashboard
+ *   - { code: string }      → cas secondaire (URL directe)
  *
- * Sécurité :
- *   - Si deviceId origine == deviceId clic → auto-signalement par erreur, ignoré
- *   - Si deviceId origine ≠ deviceId clic ET deviceFingerprints.abuseFlagged >= 1
- *     → blacklist auto 24h du device origine
- *   - Notif admin créée (réutilise pattern notifications/{auto} role=admin)
+ * Action :
+ *   - status='suspended', visible=false, isAbuse=true
+ *   - deviceFingerprints.abuseFlagged++
+ *   - Si 2e abus → blacklist auto 7 jours
+ *   - Notif admin créée
  */
 
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { getDb } from "./admin.js";
 import { FieldValue } from "firebase-admin/firestore";
@@ -32,16 +34,16 @@ const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * TWENTY_FOUR_HOURS_MS;
 
 interface SignalInput {
-  code: string;
-  deviceId?: string | null;
+  requestId?: string;
+  code?: string;
 }
 
 function isValidCode(code: unknown): code is string {
   return typeof code === "string" && /^[A-Z0-9]{8}$/.test(code);
 }
 
-function isValidDeviceId(value: unknown): value is string {
-  return typeof value === "string" && /^[a-z0-9]{12,16}$/.test(value);
+function isValidRequestId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= 100;
 }
 
 export const signalBuyerRequest = onCall(
@@ -52,54 +54,63 @@ export const signalBuyerRequest = onCall(
     timeoutSeconds: 30,
   },
   async (request) => {
+    // ── Gate admin (Option C, 2026-06-04) ────────────────────────────
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Authentification requise.");
+    }
+    if (request.auth.token.role !== "admin") {
+      logger.warn("[signalBuyerRequest] non-admin call refused", {
+        uid: request.auth.uid,
+        role: request.auth.token.role,
+      });
+      throw new HttpsError("permission-denied", "Réservé aux administrateurs.");
+    }
+    const adminUid = request.auth.uid;
+
     const data = request.data as SignalInput;
 
-    // Validation très permissive — on retourne TOUJOURS ok:true (honeypot).
-    if (!isValidCode(data.code)) return { ok: true };
-
-    const clickDeviceId = isValidDeviceId(data.deviceId) ? data.deviceId : null;
-    const clickIp = (request.rawRequest as { ip?: string } | undefined)?.ip ?? null;
+    const hasRequestId = isValidRequestId(data.requestId);
+    const hasCode = isValidCode(data.code);
+    if (!hasRequestId && !hasCode) {
+      throw new HttpsError("invalid-argument", "requestId ou code requis.");
+    }
 
     const db = await getDb();
     const now = Date.now();
 
     // ── Lookup ──────────────────────────────────────────────────────
-    const snap = await db.collection(COLLECTION)
-      .where("confirmationCode", "==", data.code)
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      // Code introuvable — retour silencieux. Code utilisé peut-être déjà nettoyé.
-      logger.info("[signalBuyerRequest] code unknown (silent ok)");
-      return { ok: true };
+    let docSnap: FirebaseFirestore.DocumentSnapshot;
+    if (hasRequestId) {
+      docSnap = await db.collection(COLLECTION).doc(data.requestId as string).get();
+      if (!docSnap.exists) {
+        throw new HttpsError("not-found", "Demande introuvable.");
+      }
+    } else {
+      const snap = await db.collection(COLLECTION)
+        .where("confirmationCode", "==", data.code)
+        .limit(1)
+        .get();
+      if (snap.empty) {
+        throw new HttpsError("not-found", "Code introuvable.");
+      }
+      docSnap = snap.docs[0];
     }
 
-    const docSnap = snap.docs[0];
-    const reqData = docSnap.data();
+    const reqData = docSnap.data() || {};
     const status = reqData.status as string;
 
-    // Déjà suspendue ou supprimée → silencieux
+    // Déjà suspendue ou supprimée → idempotent
     if (status === "suspended" || status === "deleted" || status === "expired") {
-      logger.info("[signalBuyerRequest] already handled (silent ok)", {
+      logger.info("[signalBuyerRequest] already handled", {
         requestId: docSnap.id,
         status,
       });
-      return { ok: true };
+      return { ok: true, alreadyHandled: true };
     }
 
     const originDeviceId = typeof reqData.deviceId === "string" ? reqData.deviceId : null;
     const originIp = typeof reqData.deviceIp === "string" ? reqData.deviceIp : null;
     const title = typeof reqData.title === "string" ? reqData.title : "";
-
-    // ── Auto-signalement par erreur (même device) — on ignore ────────
-    // Le vrai propriétaire n'aurait aucune raison de signaler sa propre demande
-    // depuis son propre device. Si c'est le cas, probablement un clic accidentel.
-    const isSelfSignal = clickDeviceId && originDeviceId && clickDeviceId === originDeviceId;
-    if (isSelfSignal) {
-      logger.info("[signalBuyerRequest] self-signal ignored", { requestId: docSnap.id });
-      return { ok: true };
-    }
 
     // ── Suspension de la demande ─────────────────────────────────────
     await docSnap.ref.update({
@@ -107,6 +118,7 @@ export const signalBuyerRequest = onCall(
       visible: false,
       isAbuse: true,
       abuseSignaledAt: now,
+      abuseSignaledByAdmin: adminUid,
       suspendedReason: "abuse_reported",
       updatedAt: now,
     });
@@ -202,13 +214,12 @@ export const signalBuyerRequest = onCall(
       logger.warn("[signalBuyerRequest] admin notif failed (non-blocking):", e?.message);
     }
 
-    logger.info("[signalBuyerRequest] signaled", {
+    logger.info("[signalBuyerRequest] signaled by admin", {
       requestId: docSnap.id,
+      adminUid,
       originDeviceId,
-      clickDeviceId,
       shouldBlock,
       priorAbuseCount,
-      clickIp,
     });
 
     return { ok: true };

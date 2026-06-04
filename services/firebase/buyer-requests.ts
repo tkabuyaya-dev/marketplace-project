@@ -129,8 +129,9 @@ export interface CreateBuyerRequestData {
 
 /**
  * Retour de la CF submitBuyerRequest depuis la refonte 2026-06-04.
- * - active direct (score ≥ 70)  ⇒ requiresConfirmation=false, pas de code
- * - pending_confirmation (< 70) ⇒ requiresConfirmation=true + code 8-char
+ * - active direct (score ≥ 70)  ⇒ requiresConfirmation=false
+ * - pending_confirmation (< 70) ⇒ requiresConfirmation=true (sans code,
+ *   le code reste secret côté serveur — validation manuelle admin)
  */
 export type CreateBuyerRequestResult =
   | { id: string; requiresConfirmation: false; status: 'active' }
@@ -138,7 +139,6 @@ export type CreateBuyerRequestResult =
       id: string;
       requiresConfirmation: true;
       status: 'pending_confirmation';
-      confirmationCode: string;
       expiresInMinutes: number;
     };
 

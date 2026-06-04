@@ -393,8 +393,16 @@ export const submitBuyerRequest = onCall(
     });
 
     // ── Réponse au client ────────────────────────────────────────────
-    // Si pending : on renvoie le code + URL pour que le client affiche
-    // l'écran "Confirmer sur WhatsApp". Si direct : on renvoie juste l'id.
+    // SÉCURITÉ (Option C, 2026-06-04) : on ne renvoie JAMAIS le code au
+    // buyer. Le code est secret côté serveur — visible uniquement par
+    // l'admin dans `/admin?tab=security`. Le buyer voit juste un message
+    // générique "envoie JE CONFIRME à Nunulia WhatsApp", l'admin valide
+    // ensuite manuellement après vérification du numéro émetteur.
+    //
+    // Pourquoi ce design : si le code était visible côté buyer, un
+    // usurpateur pourrait l'extraire de la réponse réseau et appeler
+    // /confirmer/:code lui-même sans jamais envoyer le WhatsApp depuis
+    // le numéro déclaré → faille critique d'usurpation.
     if (shouldGoActiveDirect) {
       return {
         id: ref.id,
@@ -406,9 +414,6 @@ export const submitBuyerRequest = onCall(
       id: ref.id,
       requiresConfirmation: true,
       status: "pending_confirmation" as const,
-      confirmationCode,
-      // L'URL est construite par le client (le frontend connaît son origin),
-      // mais on renvoie le code pour assemblage.
       expiresInMinutes: 30,
     };
   }

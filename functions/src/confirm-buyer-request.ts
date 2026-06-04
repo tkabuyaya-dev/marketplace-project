@@ -1,21 +1,30 @@
 /**
- * NUNULIA — confirmBuyerRequest (Callable Cloud Function)
+ * NUNULIA — confirmBuyerRequest (Callable Cloud Function — admin only)
  *
- * Confirmation pré-publication d'une demande client. Appelée depuis la page
- * /confirmer/:code (front PWA) après que le buyer ait cliqué sur le lien
- * WhatsApp pré-rempli ou tapé le code dans WhatsApp.
+ * Activation manuelle par l'admin d'une demande en pending_confirmation.
+ * Refonte Option C 2026-06-04 : le code de confirmation n'est plus exposé
+ * au buyer (sinon faille d'usurpation triviale). C'est l'admin qui, après
+ * vérification du numéro émetteur du WhatsApp reçu, active la demande
+ * depuis le dashboard `/admin?tab=security`.
+ *
+ * Input accepté :
+ *   - { requestId: string } → cas standard, l'admin clic "Activer" sur une
+ *     ligne du dashboard
+ *   - { code: string }      → cas secondaire (lien direct depuis WhatsApp
+ *     Business si l'admin veut activer via URL)
  *
  * Flux :
- *   1. Lookup demande par confirmationCode
- *   2. Si expirée (TTL 30 min dépassé) → 410 Gone
- *   3. Si déjà confirmée → idempotent (retour ok)
- *   4. Modération Claude Haiku 4.5 maintenant (déplacée depuis submitBuyerRequest
- *      pour ne pas payer l'IA sur les abuseurs qui n'iront jamais jusqu'ici)
- *   5. Si reject → status='suspended', visible reste false
- *   6. Sinon : status='active', visible=true, confirmedAt, +20 score si même device
- *   7. MAJ deviceFingerprint (confirmedRequests++)
+ *   1. Vérif auth.token.role === 'admin' (sinon permission-denied)
+ *   2. Lookup demande par requestId OU confirmationCode
+ *   3. Si expirée → 410 Gone
+ *   4. Si déjà confirmée → idempotent
+ *   5. Modération Claude Haiku 4.5 (déplacée depuis submitBuyerRequest
+ *      pour économiser sur les abuseurs qui n'iront jamais jusqu'ici)
+ *   6. Si reject → status='suspended', visible reste false
+ *   7. Sinon : status='active', visible=true, confirmedAt
+ *   8. MAJ deviceFingerprint (confirmedRequests++)
  *
- * IDEMPOTENT : 2ᵉ clic sur le même code renvoie {ok: true, alreadyConfirmed: true}.
+ * IDEMPOTENT : 2ᵉ appel sur la même demande renvoie alreadyConfirmed:true.
  */
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -28,17 +37,18 @@ const COLLECTION = "buyerRequests";
 const FINGERPRINTS_COLLECTION = "deviceFingerprints";
 
 interface ConfirmInput {
-  code: string;
-  /** deviceId au moment du clic (peut être différent du device de soumission). */
-  deviceId?: string | null;
+  /** Identifiant Firestore de la demande (chemin standard depuis le dashboard admin). */
+  requestId?: string;
+  /** Code de confirmation 8-char (chemin secondaire, lien direct WhatsApp Business). */
+  code?: string;
 }
 
 function isValidCode(code: unknown): code is string {
   return typeof code === "string" && /^[A-Z0-9]{8}$/.test(code);
 }
 
-function isValidDeviceId(value: unknown): value is string {
-  return typeof value === "string" && /^[a-z0-9]{12,16}$/.test(value);
+function isValidRequestId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= 100;
 }
 
 export const confirmBuyerRequest = onCall(
@@ -50,30 +60,53 @@ export const confirmBuyerRequest = onCall(
     timeoutSeconds: 60,
   },
   async (request) => {
+    // ── Gate admin (Option C, 2026-06-04) ────────────────────────────
+    // La CF est strictement réservée aux admins authentifiés. Aucun
+    // buyer n'a accès au code, et même si un attaquant le devinait,
+    // l'auth claim 'role:admin' verrouille l'accès.
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Authentification requise.");
+    }
+    if (request.auth.token.role !== "admin") {
+      logger.warn("[confirmBuyerRequest] non-admin call refused", {
+        uid: request.auth.uid,
+        role: request.auth.token.role,
+      });
+      throw new HttpsError("permission-denied", "Réservé aux administrateurs.");
+    }
+    const adminUid = request.auth.uid;
+
     const data = request.data as ConfirmInput;
 
-    if (!isValidCode(data.code)) {
-      throw new HttpsError("invalid-argument", "Code de confirmation invalide.");
+    // L'admin peut appeler avec requestId (dashboard) OU code (URL directe).
+    const hasRequestId = isValidRequestId(data.requestId);
+    const hasCode = isValidCode(data.code);
+    if (!hasRequestId && !hasCode) {
+      throw new HttpsError("invalid-argument", "requestId ou code requis.");
     }
-
-    const confirmDeviceId = isValidDeviceId(data.deviceId) ? data.deviceId : null;
-    const confirmIp = (request.rawRequest as { ip?: string } | undefined)?.ip ?? null;
 
     const db = await getDb();
     const now = Date.now();
 
-    // ── Lookup par confirmationCode (index simple sur le champ) ──────
-    const snap = await db.collection(COLLECTION)
-      .where("confirmationCode", "==", data.code)
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      throw new HttpsError("not-found", "Code introuvable ou déjà utilisé.");
+    // ── Lookup direct par requestId, ou via le code ─────────────────
+    let docSnap: FirebaseFirestore.DocumentSnapshot;
+    if (hasRequestId) {
+      docSnap = await db.collection(COLLECTION).doc(data.requestId as string).get();
+      if (!docSnap.exists) {
+        throw new HttpsError("not-found", "Demande introuvable.");
+      }
+    } else {
+      const snap = await db.collection(COLLECTION)
+        .where("confirmationCode", "==", data.code)
+        .limit(1)
+        .get();
+      if (snap.empty) {
+        throw new HttpsError("not-found", "Code introuvable ou déjà utilisé.");
+      }
+      docSnap = snap.docs[0];
     }
 
-    const docSnap = snap.docs[0];
-    const reqData = docSnap.data();
+    const reqData = docSnap.data() || {};
     const status = reqData.status as string;
 
     // ── Idempotence : déjà confirmée ─────────────────────────────────
@@ -144,36 +177,27 @@ export const confirmBuyerRequest = onCall(
     const originScore = typeof reqData.scoreConfiance === "number" ? reqData.scoreConfiance : 50;
     const originSignals = Array.isArray(reqData.scoreSignals) ? reqData.scoreSignals as string[] : [];
 
-    // +20 si le device qui clique = device qui a soumis (signal de confiance fort)
-    const sameDeviceBonus = (confirmDeviceId && originDeviceId && confirmDeviceId === originDeviceId)
-      ? 20 : 0;
-    const finalScore = Math.max(0, Math.min(100, originScore + sameDeviceBonus));
-    const finalSignals = sameDeviceBonus
-      ? [...originSignals, `confirm_same_device:+${sameDeviceBonus}`]
-      : originSignals;
+    // Bonus +10 quand l'activation est faite manuellement par un admin
+    // (signal de confiance humain, distinct du bonus historique +20 same-device
+    // qui n'est plus pertinent en Option C).
+    const adminBonus = 10;
+    const finalScore = Math.max(0, Math.min(100, originScore + adminBonus));
+    const finalSignals = [...originSignals, `admin_confirmed:+${adminBonus}`];
 
     const updatePayload: Record<string, unknown> = {
       status: "active",
       visible: true,
       confirmedAt: now,
-      deviceConfirmIp: confirmIp,
-      deviceConfirmDeviceId: confirmDeviceId,
+      confirmedByAdmin: adminUid,
       scoreConfiance: finalScore,
       scoreSignals: finalSignals,
       updatedAt: now,
-      // Borderline reste tagué si présent — admin tranchera
+      // Borderline reste tagué si présent — l'admin verra le flag
       ...(moderation.verdict === "borderline" && {
         moderationFlag: true,
         moderationReason: moderation.reason,
       }),
     };
-    // Une fois confirmée, le code n'a plus d'utilité — on le retire pour ne
-    // pas réutiliser accidentellement (idempotence repose sur status='active').
-    // On ne fait pas FieldValue.delete() pour rester explicite + admin peut
-    // toujours retracer via les logs. Note: garder le code permet aussi de
-    // re-router /signaler/:code (l'utilisateur peut signaler après confirmation
-    // s'il découvre qu'on lui a usurpé son numéro).
-    // → On le garde.
 
     await docSnap.ref.update(updatePayload);
 
@@ -197,10 +221,10 @@ export const confirmBuyerRequest = onCall(
       }
     }
 
-    logger.info("[confirmBuyerRequest] Confirmed:", {
+    logger.info("[confirmBuyerRequest] Confirmed by admin:", {
       requestId: docSnap.id,
+      adminUid,
       finalScore,
-      sameDeviceBonus,
       moderation: moderation.verdict,
     });
 
