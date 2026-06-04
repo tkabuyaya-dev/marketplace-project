@@ -568,38 +568,52 @@ service cloud.firestore {
     }
 
     match /buyerRequestContacts/{contactId} {
-      // Lecture: admin ou le vendeur lui-même
+      // Lecture :
+      //   - Admin : tout
+      //   - Vendeur (doc existant) : son propre contact
+      //   - Vendeur (doc absent) : autorisé à lire son propre slot
+      //     (contactId se termine par "_<auth.uid>") — sert au hook
+      //     hasSellerResponded() qui doit pouvoir constater l'absence.
+      //     Aucune info sensible n'est exposée puisque le slot n'existe pas.
       allow read: if isAdmin()
-        || (isAuth() && resource.data.sellerId == request.auth.uid);
+        || (isAuth() && resource != null && resource.data.sellerId == request.auth.uid)
+        || (isAuth() && contactId.split('_').size() > 1
+            && contactId.split('_')[1] == request.auth.uid);
 
       // Création :
-      //   1. Vendeur authentifié, non suspendu
-      //   2. Id déterministe ${requestId}_${sellerId} → anti-double-click natif
+      //   1. Admin OU vendeur Pro/Grossiste actif (avec fallback maxProducts ≥ 100
+      //      qui aligne sur canContactBuyer côté client — protège contre les
+      //      tierLabel custom non listés).
+      //   2. Vendeur non suspendu, écrit pour lui-même
+      //   3. Id déterministe ${requestId}_${sellerId} → anti-double-click natif
       //      (la 2ᵉ tentative serait un update, refusé plus bas)
-      //   3. Plafond serveur : la demande pointée doit avoir
-      //      uniqueSellerCount < 5 ET isFull == false. Aligné avec
-      //      MAX_SELLERS_PER_REQUEST dans services/firebase/buyer-requests.ts.
-      //   4. Double-garde tier Pro/Grossiste actif via canInteractB2B-like
-      //      check sur tierLabel (le JWT ne contient pas subscriptionTier).
-      allow create: if isAuth()
-        && isNotSuspended()
-        && request.resource.data.sellerId == request.auth.uid
-        && contactId == request.resource.data.requestId + '_' + request.auth.uid
-        && getUserData().get('sellerDetails', {}).get('tierLabel', '') in [
-            'Pro', 'Business Pro', 'Élite', 'Elite',
-            'Grossiste', 'Grossiste Illimité', 'Illimité'
-          ]
-        && (
-          getUserData().get('sellerDetails', {}).get('subscriptionExpiresAt', null) == null
-          || getUserData().get('sellerDetails', {}).get('subscriptionExpiresAt', 0) > request.time.toMillis()
-        )
-        && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
-             .data.get('uniqueSellerCount', 0) < 5
-        && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
-             .data.get('isFull', false) == false
-        && request.resource.data.keys().hasAll([
-            'requestId', 'sellerId', 'sellerTierId', 'timestamp'
-          ]);
+      //   4. Plafond serveur : uniqueSellerCount < 5 ET isFull == false.
+      //      Aligné avec MAX_SELLERS_PER_REQUEST dans services/firebase/buyer-requests.ts.
+      allow create: if isAdmin()
+        || (
+          isAuth()
+          && isNotSuspended()
+          && request.resource.data.sellerId == request.auth.uid
+          && contactId == request.resource.data.requestId + '_' + request.auth.uid
+          && (
+            getUserData().get('sellerDetails', {}).get('tierLabel', '') in [
+              'Pro', 'Business Pro', 'Élite', 'Elite',
+              'Grossiste', 'Grossiste Illimité', 'Illimité'
+            ]
+            || getUserData().get('sellerDetails', {}).get('maxProducts', 0) >= 100
+          )
+          && (
+            getUserData().get('sellerDetails', {}).get('subscriptionExpiresAt', null) == null
+            || getUserData().get('sellerDetails', {}).get('subscriptionExpiresAt', 0) > request.time.toMillis()
+          )
+          && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
+               .data.get('uniqueSellerCount', 0) < 5
+          && get(/databases/$(database)/documents/buyerRequests/$(request.resource.data.requestId))
+               .data.get('isFull', false) == false
+          && request.resource.data.keys().hasAll([
+              'requestId', 'sellerId', 'sellerTierId', 'timestamp'
+            ])
+        );
 
       allow update, delete: if isAdmin();
     }
