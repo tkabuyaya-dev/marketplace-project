@@ -118,13 +118,26 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [pending, abuse, devices, blocklist] = await Promise.all([
+      // Promise.allSettled (et non Promise.all) : si une query échoue
+      // (ex: index Firestore en cours de build), les autres sections
+      // continuent de s'afficher au lieu de tout faire tomber à 0.
+      const results = await Promise.allSettled([
         getPendingConfirmationRequests(),
         getAbuseReportedRequests(7),
         getRecentDevices(7),
         getBlocklist(),
       ]);
-      setData({ pending, abuse, devices, blocklist });
+      const pick = <T,>(idx: number, fallback: T): T =>
+        results[idx].status === 'fulfilled'
+          ? (results[idx] as PromiseFulfilledResult<T>).value
+          : (console.warn('[Security dashboard] query failed:',
+              (results[idx] as PromiseRejectedResult).reason), fallback);
+      setData({
+        pending:   pick<BuyerRequest[]>(0, []),
+        abuse:     pick<BuyerRequest[]>(1, []),
+        devices:   pick<DeviceFingerprint[]>(2, []),
+        blocklist: pick<DeviceBlock[]>(3, []),
+      });
       setLastLoaded(Date.now());
     } finally {
       setLoading(false);

@@ -319,6 +319,14 @@
       ]
     },
     {
+      "collectionGroup": "buyerRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isAbuse", "order": "ASCENDING" },
+        { "fieldPath": "abuseSignaledAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "deviceFingerprints",
       "queryScope": "COLLECTION",
       "fields": [
