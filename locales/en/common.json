@@ -293,6 +293,8 @@
     "mySubscription": "My subscription",
     "myShop": "My shop",
     "shopWithCount": "{{shopName}} · {{count}} listings",
+    "b2bNetwork": "B2B Network",
+    "b2bNetworkSub": "Seller-to-seller exchange · Pro and Wholesale",
     "support": "Help and support",
     "supportHint": "FAQ, report an issue",
     "appearance": "Appearance",
@@ -789,7 +791,14 @@
     "buyerRequestsUnlocked": "Full access unlocked",
     "buyerRequestsUnlockedDesc": "Your plan allows you to contact buyers directly on WhatsApp.",
     "buyerRequestsStatToday": "new today",
-    "buyerRequestsStatFulfilled": "fulfilled requests"
+    "buyerRequestsStatFulfilled": "fulfilled requests",
+    "b2bBadge": "B2B Network",
+    "b2bCardTitle": "Find suppliers and seller-to-seller opportunities",
+    "b2bCardDesc": "Post your needs, help other sellers, get on-the-ground signals. Pro and Wholesale plans only.",
+    "b2bFeat1": "Suppliers · Resellers",
+    "b2bFeat2": "Market signals",
+    "b2bFeat3": "Translated in 5 languages",
+    "b2bCta": "Open the Network"
   },
   "admin": {
     "console": "Admin Console",

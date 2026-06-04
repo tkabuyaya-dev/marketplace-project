@@ -821,6 +821,14 @@ const Profile: React.FC = () => {
                 onClick={() => handleSellerAccess()}
               />
             )}
+            {(isSeller || isAdmin) && (
+              <MenuItem
+                icon={<span aria-hidden="true" style={{ fontSize: 16 }}>🌍</span>}
+                label={t('profile.b2bNetwork')}
+                sub={t('profile.b2bNetworkSub')}
+                href="/reseau"
+              />
+            )}
           </MenuSection>
 
           {/* Préférences */}

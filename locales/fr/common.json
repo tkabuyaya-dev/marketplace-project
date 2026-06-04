@@ -293,6 +293,8 @@
     "mySubscription": "Mon abonnement",
     "myShop": "Ma boutique",
     "shopWithCount": "{{shopName}} · {{count}} annonces",
+    "b2bNetwork": "Réseau B2B",
+    "b2bNetworkSub": "Échanges entre vendeurs · Pro et Grossiste",
     "support": "Aide et support",
     "supportHint": "FAQ, signaler un problème",
     "appearance": "Apparence",
@@ -789,7 +791,14 @@
     "buyerRequestsUnlocked": "Accès complet débloqué",
     "buyerRequestsUnlockedDesc": "Votre plan vous permet de contacter directement les acheteurs sur WhatsApp.",
     "buyerRequestsStatToday": "nouvelles aujourd'hui",
-    "buyerRequestsStatFulfilled": "demandes résolues"
+    "buyerRequestsStatFulfilled": "demandes résolues",
+    "b2bBadge": "Réseau B2B",
+    "b2bCardTitle": "Trouvez des fournisseurs et opportunités entre vendeurs",
+    "b2bCardDesc": "Publiez vos besoins, aidez d'autres vendeurs, recevez des signaux du terrain. Réservé aux plans Pro et Grossiste.",
+    "b2bFeat1": "Fournisseurs · Revendeurs",
+    "b2bFeat2": "Signaux marché",
+    "b2bFeat3": "Traduit en 5 langues",
+    "b2bCta": "Ouvrir le Réseau"
   },
   "admin": {
     "console": "Admin Console",

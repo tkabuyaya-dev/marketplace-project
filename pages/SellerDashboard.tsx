@@ -1320,6 +1320,48 @@ export const SellerDashboard: React.FC = () => {
         {/* ── Photo Studio Card (Phase 6) ── */}
         <PhotoStudioCard />
 
+        {/* ── Réseau B2B Feature Banner ── */}
+        <div
+          className="rounded-card border shadow-card overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#0F1923 0%, #1A2632 100%)', borderColor: 'rgba(245,158,11,0.30)' }}
+        >
+          <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center gap-5">
+            <div className="flex-1">
+              <div
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
+                style={{ background: 'rgba(245,158,11,0.20)', color: '#FCD34D' }}
+              >
+                🌍 {t('dashboard.b2bBadge')}
+              </div>
+              <h3 className="mt-2 text-[20px] sm:text-[22px] font-black tracking-tight leading-snug text-white">
+                {t('dashboard.b2bCardTitle')}
+              </h3>
+              <p className="mt-1.5 text-[13.5px] text-white/75 max-w-[56ch]">
+                {t('dashboard.b2bCardDesc')}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[
+                  t('dashboard.b2bFeat1'),
+                  t('dashboard.b2bFeat2'),
+                  t('dashboard.b2bFeat3'),
+                ].map(label => (
+                  <span key={label} className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-white/85 bg-white/8 border border-white/15 px-2.5 py-1 rounded-full">
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/reseau')}
+              className="inline-flex items-center justify-center gap-2 px-4 h-11 rounded-input bg-amber-500 text-gray-900 font-semibold text-[14px] active:scale-[0.97] transition-transform hover:bg-amber-400 w-full md:w-auto md:px-5"
+              style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.06), 0 6px 16px rgba(245,158,11,0.45)' }}
+            >
+              {t('dashboard.b2bCta')}
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+
         {/* ── Buyer Requests Feature Banner ── */}
         <div
           className="rounded-card border shadow-card overflow-hidden"
