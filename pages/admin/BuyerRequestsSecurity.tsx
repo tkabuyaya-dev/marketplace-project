@@ -84,8 +84,11 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
       } else {
         showFlash('✅ Demande activée — visible par les vendeurs.');
       }
-      // Retire de la liste pending optimistically
+      // Retire de la liste pending optimistically…
       setData(d => ({ ...d, pending: d.pending.filter(r => r.id !== requestId) }));
+      // …puis recharge pour rafraîchir les compteurs (Confirmés, devices, KPI),
+      // comme handleSignal. Sans ça, "Confirmés" reste figé sur l'ancienne valeur.
+      load();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue';
       showFlash(`❌ Échec activation : ${msg}`);
