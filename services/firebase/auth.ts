@@ -131,11 +131,13 @@ const isDesktop = (): boolean => !isWebView() && !isIOSStandalone() && !isAndroi
  *   d'onglet orphelin à ce niveau, contrairement à Android.
  *
  * MOBILE :
- *   1. Google One Tap — overlay natif, évite le popup/redirect pénible
- *   2. iOS PWA standalone → /auth-google via navigation SPA (in-context). DOIT
+ *   1. Android browser → /auth-google directement (navigation SPA). One Tap est
+ *      court-circuité : il ne complète quasiment jamais sur Chrome Android (FedCM
+ *      silencieux + timeout 5s) et n'ajoutait qu'un écran inutile.
+ *   2. iOS → Google One Tap d'abord (overlay natif, évite popup/redirect)
+ *   3. iOS PWA standalone → /auth-google via navigation SPA (in-context). DOIT
  *      passer AVANT le test WebView : en standalone, l'UA iOS n'a pas "Safari/".
- *   3. WebView réel (FB/Insta/WA) → ouvrir /auth-google dans le navigateur système
- *   4. Android browser → /auth-google via navigation SPA
+ *   4. WebView réel (FB/Insta/WA) → ouvrir /auth-google dans le navigateur système
  *
  * JAMAIS `signInWithRedirect` — "missing initial state" sur Chrome mobile.
  */
@@ -173,7 +175,20 @@ export const signInWithGoogle = async (): Promise<User | null> => {
     }
   }
 
-  // ── MOBILE: One Tap d'abord ──
+  // ── ANDROID browser: court-circuit One Tap ──
+  // Sur Chrome/Samsung Android, One Tap (FedCM) ne complète quasiment jamais la
+  // connexion : ses callbacks d'état renvoient false en silence et le timeout de
+  // 5s gagne presque toujours la course → on retombe de toute façon sur /auth-google.
+  // Le tenter n'ajoutait qu'un écran « feuille de comptes » inutile (l'image 1).
+  // On va donc directement à /auth-google (renderButton + signInWithCredential),
+  // le chemin in-context déjà fiable en prod. Throw dédié → handleLogin navigate().
+  if (isAndroidBrowser()) {
+    const e: any = new Error('Auth page redirect required');
+    e.code = 'auth/needs-auth-page';
+    throw e;
+  }
+
+  // ── MOBILE (iOS): One Tap d'abord ──
   const oneTapResult = await promptOneTap();
   if (oneTapResult) {
     const credential = GoogleAuthProvider.credential(oneTapResult.credential);
@@ -211,16 +226,6 @@ export const signInWithGoogle = async (): Promise<User | null> => {
       throw e;
     }
     return null;
-  }
-
-  // Android browser → /auth-google via navigation SPA (caller utilise React Router).
-  // Un `window.location.href` ici ferait un hard reload → 1-3s d'écran blanc sur 3G/4G
-  // pendant que /auth-google charge. On throw un code dédié pour que le caller
-  // (AuthContext.handleLogin) fasse une transition SPA fluide via `navigate()`.
-  if (isAndroidBrowser()) {
-    const e: any = new Error('Auth page redirect required');
-    e.code = 'auth/needs-auth-page';
-    throw e;
   }
 
   return null;
