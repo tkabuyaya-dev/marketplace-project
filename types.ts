@@ -345,8 +345,8 @@ export interface PaymentMethod {
 
 // ─── Buyer Requests ("Je Cherche") ───
 // 'pending_confirmation' : score < 70 → demande créée mais invisible jusqu'à
-// confirmation WhatsApp via /confirmer/:code. TTL 30 min géré par le cron
-// expireUnconfirmedBuyerRequests (5 min).
+// activation MANUELLE par l'admin (Option C) après réception du WhatsApp du
+// buyer. TTL 48h géré par le cron expireUnconfirmedBuyerRequests (5 min).
 export type BuyerRequestStatus =
   | 'active'
   | 'fulfilled'
@@ -416,7 +416,7 @@ export interface BuyerRequest {
   // historique préservé pour les buyers propres).
   visible?: boolean;                   // false sur pending_confirmation, true sur active
   confirmationCode?: string;           // 8 chars base32 humain-lisible (sans 0/O/1/I)
-  confirmationExpiresAt?: number;      // createdAt + 30 min
+  confirmationExpiresAt?: number;      // createdAt + 48h (PENDING_CONFIRM_TTL_MS)
   confirmedAt?: number | null;
   deviceId?: string;                   // hash 16 chars fournit par le client à la soumission
   deviceIp?: string;                   // IP soumission (CF lit request.rawRequest.ip)

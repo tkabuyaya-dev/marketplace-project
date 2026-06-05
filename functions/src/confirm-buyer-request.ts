@@ -126,7 +126,7 @@ export const confirmBuyerRequest = onCall(
       throw new HttpsError("failed-precondition", "Demande non confirmable.");
     }
 
-    // ── Expirée (TTL 30 min ou cron 5 min) ───────────────────────────
+    // ── Expirée (TTL 48h, cf. PENDING_CONFIRM_TTL_MS, ou cron 5 min) ──
     const confirmationExpiresAt = typeof reqData.confirmationExpiresAt === "number"
       ? reqData.confirmationExpiresAt : 0;
     if (status === "expired" || confirmationExpiresAt > 0 && confirmationExpiresAt < now) {

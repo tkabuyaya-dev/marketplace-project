@@ -83,7 +83,7 @@ export const onBuyerRequestMatch = onDocumentWritten(
     // On notifie les sellers uniquement à la transition `visible: false → true`
     // (passage de pending_confirmation à active). Cela évite de pousser des
     // notifs pour des demandes en attente de confirmation qui pourraient
-    // expirer dans 30 min sans publication.
+    // expirer dans 48h sans publication.
     //
     // Compatibilité ascendante :
     //   - Création directe en `active` + `visible: true` (score ≥ 70)

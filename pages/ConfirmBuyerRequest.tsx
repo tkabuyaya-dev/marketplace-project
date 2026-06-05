@@ -170,7 +170,7 @@ const ConfirmBuyerRequestPage: React.FC = () => {
           Délai dépassé
         </h1>
         <p className="mt-3 text-[13px] text-[#5C6370] leading-relaxed">
-          Le délai de 30 minutes pour confirmer cette demande est dépassé.
+          Le délai de 48 heures pour confirmer cette demande est dépassé.
           Vous pouvez en soumettre une nouvelle, c'est rapide.
         </p>
         <Link

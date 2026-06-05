@@ -58,7 +58,7 @@ export { confirmBuyerRequest } from "./confirm-buyer-request.js";
 // /signaler/:code → suspend la demande, blacklist auto au 2ᵉ signal du device.
 export { signalBuyerRequest } from "./signal-buyer-request.js";
 
-// Cron 5 min : purge les pending_confirmation après 30 min sans confirmation.
+// Cron 5 min : purge les pending_confirmation après 48h sans confirmation.
 export { expireUnconfirmedBuyerRequests } from "./expire-unconfirmed.js";
 
 // One-shot backfill : ajoute uniqueSellerCount/isFull aux anciennes demandes.
