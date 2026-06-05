@@ -145,31 +145,31 @@ export const confirmBuyerRequest = onCall(
       throw new HttpsError("failed-precondition", "Statut incompatible.");
     }
 
-    // ── Modération Claude Haiku 4.5 (déplacée depuis submitBuyerRequest) ──
-    // Le buyer a confirmé son numéro → on dépense les $0.0005 maintenant
-    // au lieu de gaspiller sur les abuseurs qui ne confirment jamais.
+    // ── Modération Claude Haiku 4.5 — ADVISORY uniquement ────────────
+    // L'admin a déjà vérifié manuellement le numéro WhatsApp émetteur et
+    // cliqué "Activer" : c'est LUI l'autorité humaine de décision (cf. le
+    // principe du prompt de modération « l'admin tranche, jamais toi »).
+    // La modération ne BLOQUE donc JAMAIS l'activation — elle pose seulement
+    // un flag visible dans le dashboard pour audit. Sinon un faux positif
+    // (ex : "test activation" classé « Spam évident ») renvoie un 400 et
+    // suspend silencieusement une demande pourtant légitime, alors que
+    // l'admin avait explicitement tranché.
+    // On garde l'appel ici (et non dans submitBuyerRequest) pour ne pas
+    // payer les $0.0005 sur les abuseurs qui ne confirment jamais.
     const moderation = await moderateBuyerRequest({
       title: typeof reqData.title === "string" ? reqData.title : "",
       description: typeof reqData.description === "string" ? reqData.description : null,
       category: typeof reqData.category === "string" ? reqData.category : null,
     });
 
+    // reject OU borderline ⇒ flag advisory (n'empêche pas la publication).
+    const moderationFlagged = moderation.verdict === "reject" || moderation.verdict === "borderline";
     if (moderation.verdict === "reject") {
-      logger.warn("[confirmBuyerRequest] BLOCKED by AI moderation:", {
+      logger.warn("[confirmBuyerRequest] AI moderation 'reject' OVERRIDDEN by admin activation:", {
         requestId: docSnap.id,
+        adminUid,
         reason: moderation.reason,
       });
-      await docSnap.ref.update({
-        status: "suspended",
-        suspendedReason: "moderation_reject",
-        moderationReason: moderation.reason,
-        updatedAt: now,
-        visible: false,
-      });
-      throw new HttpsError(
-        "invalid-argument",
-        "Demande refusée. Vérifiez le contenu et réessayez."
-      );
     }
 
     // ── Confirmation OK : update Firestore ──────────────────────────
@@ -192,8 +192,9 @@ export const confirmBuyerRequest = onCall(
       scoreConfiance: finalScore,
       scoreSignals: finalSignals,
       updatedAt: now,
-      // Borderline reste tagué si présent — l'admin verra le flag
-      ...(moderation.verdict === "borderline" && {
+      // Flag advisory (borderline OU reject) — visible par l'admin, sans
+      // empêcher la publication puisque l'admin a déjà tranché.
+      ...(moderationFlagged && {
         moderationFlag: true,
         moderationReason: moderation.reason,
       }),

@@ -45,15 +45,11 @@ export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  if (!currentUser || currentUser.role !== 'admin') {
-    navigate('/');
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-[3px] border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  // ⚠️ RULES OF HOOKS : aucun early-return AVANT les hooks ci-dessous. Un
+  // changement de rôle (ex : pendant le resync des custom claims admin, ou un
+  // toggle admin→buyer→admin) fait momentanément chuter le nombre de hooks
+  // rendus → React error #300/#310 (crash écran). Le garde admin est donc
+  // appliqué APRÈS la déclaration de tous les hooks (voir plus bas).
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [loading, setLoading] = useState(false);
 
@@ -135,6 +131,14 @@ export const AdminDashboard: React.FC = () => {
     refreshData();
   }, [activeTab]);
 
+  // Garde admin — la redirection se fait en side-effect (jamais pendant le
+  // render) pour ne pas casser l'ordre des hooks. isAdmin recalculé à chaque
+  // render et consommé par le garde de rendu plus bas.
+  const isAdmin = !!currentUser && currentUser.role === 'admin';
+  useEffect(() => {
+    if (!isAdmin) navigate('/');
+  }, [isAdmin, navigate]);
+
   // Computed stats
   const pendingCount = allProducts.filter(p => p.status === 'pending').length;
   const sellerCount = users.filter(u => u.role === 'seller').length;
@@ -167,6 +171,17 @@ export const AdminDashboard: React.FC = () => {
   ];
 
   const sharedProps = { currentUser, refreshData, loading };
+
+  // Garde de rendu : tous les hooks ci-dessus ont déjà tourné, donc retourner
+  // ici ne modifie pas leur nombre d'un render à l'autre (≠ early-return en
+  // tête de composant). Sûr vis-à-vis des rules of hooks.
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-[3px] border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 pt-20 px-4 pb-24">

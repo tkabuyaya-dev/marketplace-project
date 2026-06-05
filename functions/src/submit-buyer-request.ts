@@ -31,7 +31,12 @@ import { computeTrustScore, generateConfirmationCode } from "./compute-trust-sco
 import type { DeviceFingerprint } from "../../types.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-const THIRTY_MIN_MS = 30 * 60 * 1000;
+// TTL d'une demande en pending_confirmation. Option C = activation MANUELLE
+// par l'admin après vérif WhatsApp → l'admin n'est pas un bot 24/7, il faut
+// lui laisser le temps de traiter (ex : demande arrivée la nuit). 48h est un
+// compromis : assez long pour le process manuel, assez court pour que le
+// dashboard /admin?tab=security ne se remplisse pas de demandes mortes.
+const PENDING_CONFIRM_TTL_MS = 48 * 60 * 60 * 1000;
 const MAX_REQUESTS_PER_DAY = 3;
 const MAX_REQUESTS_PER_DEVICE_DAY = 3;
 const COLLECTION = "buyerRequests";
@@ -293,7 +298,7 @@ export const submitBuyerRequest = onCall(
 
     // ── Décision : active directe OU pending_confirmation ────────────
     // Gate : score >= 70 ET pas blacklisté → active direct (UX préservée).
-    // Sinon : pending_confirmation (TTL 30 min, doit confirmer via WhatsApp).
+    // Sinon : pending_confirmation (TTL 48h, l'admin active après vérif WhatsApp).
     const shouldGoActiveDirect = !isBlocked && trust.score >= TRUST_THRESHOLD_AUTO_ACTIVE;
 
     const confirmationCode = shouldGoActiveDirect ? null : generateConfirmationCode();
@@ -333,7 +338,7 @@ export const submitBuyerRequest = onCall(
         confirmedAt: now,         // active direct = considérée confirmée tout de suite
       } : {
         confirmationCode,
-        confirmationExpiresAt: now + THIRTY_MIN_MS,
+        confirmationExpiresAt: now + PENDING_CONFIRM_TTL_MS,
         confirmedAt: null,
       }),
     };

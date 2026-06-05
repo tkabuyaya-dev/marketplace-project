@@ -27,7 +27,8 @@
       "Bash(firebase functions:secrets:access CLOUDINARY_API_KEY)",
       "Bash(firebase functions:secrets:access CLOUDINARY_CLOUD_NAME)",
       "Bash(echo \"FRONT_EXIT=$?\")",
-      "Bash(echo \"FUNCS_EXIT=$?\")"
+      "Bash(echo \"FUNCS_EXIT=$?\")",
+      "Bash(firebase functions:log --only confirmBuyerRequest -n 30)"
     ]
   }
 }

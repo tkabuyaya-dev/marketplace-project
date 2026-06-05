@@ -1,9 +1,13 @@
 /**
  * NUNULIA — expireUnconfirmedBuyerRequests (cron 5 min)
  *
- * Purge les demandes en statut 'pending_confirmation' dont le délai de 30 min
- * est dépassé. Différent du cron quotidien expireBuyerRequests qui s'occupe des
- * demandes actives expirées à J+7.
+ * Purge les demandes en statut 'pending_confirmation' dont le délai (48h,
+ * cf. PENDING_CONFIRM_TTL_MS dans submit-buyer-request) est dépassé sans
+ * activation admin. Différent du cron quotidien expireBuyerRequests qui
+ * s'occupe des demandes actives expirées à J+7.
+ *
+ * Le filtre repose sur confirmationExpiresAt (écrit à la création), donc
+ * allonger le TTL côté submit suffit — ce cron n'a pas besoin de changer.
  *
  * Coût : ~288 runs/jour × ~1 query indexée + batch ≈ $0.03/mois. Acceptable.
  */
