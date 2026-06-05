@@ -4,9 +4,11 @@
  * Strategy:
  * 1. ALL platforms → Google One Tap (native overlay, no popup/redirect)
  * 2. Fallback desktop → signInWithPopup (if One Tap unavailable)
- * 3. Fallback iOS PWA / WebView → /auth-google in Safari
- * 4. NEVER use signInWithRedirect — "missing initial state" on mobile Chrome
- * 5. resolveFirebaseUser creates profile on first login — called from all flows
+ * 3. Fallback iOS PWA standalone → /auth-google in-context (renderButton +
+ *    signInWithCredential) — NEVER window.open (Safari storage is partitioned)
+ * 4. Fallback real WebView (FB/IG/WA) → /auth-google in the system browser
+ * 5. NEVER use signInWithRedirect — "missing initial state" on mobile Chrome
+ * 6. resolveFirebaseUser creates profile on first login — called from all flows
  *
  * Cache user in localStorage for instant app shell on 2G/3G networks.
  */
@@ -130,9 +132,10 @@ const isDesktop = (): boolean => !isWebView() && !isIOSStandalone() && !isAndroi
  *
  * MOBILE :
  *   1. Google One Tap — overlay natif, évite le popup/redirect pénible
- *   2. WebView (FB/Insta/WA) → ouvrir /auth-google dans le navigateur
- *   3. iOS PWA standalone → ouvrir /auth-google dans Safari
- *   4. Android browser → `window.location.href = '/auth-google'`
+ *   2. iOS PWA standalone → /auth-google via navigation SPA (in-context). DOIT
+ *      passer AVANT le test WebView : en standalone, l'UA iOS n'a pas "Safari/".
+ *   3. WebView réel (FB/Insta/WA) → ouvrir /auth-google dans le navigateur système
+ *   4. Android browser → /auth-google via navigation SPA
  *
  * JAMAIS `signInWithRedirect` — "missing initial state" sur Chrome mobile.
  */
@@ -178,9 +181,28 @@ export const signInWithGoogle = async (): Promise<User | null> => {
     return resolveFirebaseUser(result.user);
   }
 
-  // ── Fallbacks mobiles ──
+  // ── Fallbacks mobiles (One Tap indisponible) ──
+  // Tous convergent vers /auth-google, qui rend le bouton GIS puis fait
+  // signInWithCredential : flux 100 % in-context, sans popup ni redirect OAuth.
 
-  // WebView (Facebook, Instagram, WhatsApp) → /auth-google dans le navigateur
+  // iOS PWA standalone → navigation SPA in-context vers /auth-google.
+  // CRITIQUE : ce test DOIT précéder isWebView(). En mode standalone, l'UA iOS
+  // n'inclut ni "Version/" ni "Safari/" — isWebView() le classerait donc à tort
+  // comme WebView et tenterait window.open(...), qui ouvre Safari. Or le storage
+  // de Safari est partitionné : la session Firebase s'écrirait dans Safari et
+  // jamais dans la PWA, donc onAuthStateChanged ne se déclencherait jamais
+  // (connexion bloquée / chargement infini). Rester in-context via /auth-google
+  // (renderButton + signInWithCredential) écrit la session dans l'IndexedDB de
+  // la PWA elle-même. Throw dédié → AuthContext.handleLogin fait navigate().
+  if (isIOSStandalone()) {
+    const e: any = new Error('Auth page redirect required');
+    e.code = 'auth/needs-auth-page';
+    throw e;
+  }
+
+  // WebView réel (Facebook, Instagram, WhatsApp) → ouvrir /auth-google dans le
+  // navigateur système. GIS/FedCM est souvent bloqué dans ces WebViews ; le
+  // navigateur complet est le seul contexte fiable pour terminer la connexion.
   if (isWebView()) {
     const opened = window.open(`${window.location.origin}/auth-google`, '_blank');
     if (!opened) {
@@ -189,44 +211,6 @@ export const signInWithGoogle = async (): Promise<User | null> => {
       throw e;
     }
     return null;
-  }
-
-  // iOS PWA standalone → signInWithPopup directement.
-  // Sur iOS 16.4+ (mars 2023, donc 99% des iPhones en 2026), Apple a fixé
-  // l'isolation storage en PWA : le popup OAuth s'ouvre comme une SFAuthenticationSession
-  // et le résultat est correctement renvoyé au PWA via postMessage du SDK Firebase.
-  // C'est nettement mieux que `window.open(.../auth-google)` qui ouvrait Safari
-  // (storage isolé) → le user signait dans Safari mais la PWA restait déconnectée.
-  if (isIOSStandalone()) {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-      return resolveFirebaseUser(result.user);
-    } catch (err: any) {
-      if (
-        err.code === 'auth/popup-closed-by-user' ||
-        err.code === 'auth/cancelled-popup-request'
-      ) {
-        return null;
-      }
-
-      // Last resort (iOS < 16.4, popup vraiment bloqué) : fallback Safari.
-      // Connu pour être cassé (storage isolé), mais évite l'erreur silencieuse.
-      if (
-        err.code === 'auth/popup-blocked' ||
-        err.code === 'auth/operation-not-supported-in-this-environment' ||
-        err.code === 'auth/web-storage-unsupported'
-      ) {
-        window.open(`${window.location.origin}/auth-google`, '_blank');
-        const e: any = new Error('Connexion via Safari requise sur cette version d\'iOS. Une fois connecté dans Safari, revenez à l\'app et relancez la connexion.');
-        e.code = 'auth/needs-browser-open';
-        throw e;
-      }
-
-      throw err;
-    }
   }
 
   // Android browser → /auth-google via navigation SPA (caller utilise React Router).

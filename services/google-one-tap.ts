@@ -10,6 +10,7 @@ import { captureMessage } from './sentry';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 const SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 const ONE_TAP_TIMEOUT_MS = 5000;
+const SCRIPT_TIMEOUT_MS = 8000;
 
 let scriptLoaded = false;
 let scriptLoading: Promise<void> | null = null;
@@ -23,8 +24,32 @@ function loadGisScript(): Promise<void> {
     el.src = SCRIPT_URL;
     el.async = true;
     el.defer = true;
-    el.onload = () => { scriptLoaded = true; resolve(); };
-    el.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = () => {
+      clearTimeout(timer);
+      el.onload = null;
+      el.onerror = null;
+    };
+
+    el.onload = () => { cleanup(); scriptLoaded = true; resolve(); };
+    el.onerror = () => {
+      cleanup();
+      scriptLoading = null; // autorise une nouvelle tentative au prochain appel
+      reject(new Error('Failed to load Google Identity Services'));
+    };
+
+    // Filet de sécurité : sur réseau 2G/3G ou dans un WebView restreint, il
+    // arrive que ni onload ni onerror ne se déclenchent. Sans ce timeout, le
+    // `await loadGisScript()` de promptOneTap ne résout jamais → signInWithGoogle
+    // reste pendant → le spinner de connexion tourne à l'infini, sans erreur.
+    // On rejette pour que l'appelant bascule sur son fallback.
+    timer = setTimeout(() => {
+      cleanup();
+      scriptLoading = null; // autorise une nouvelle tentative au prochain appel
+      reject(new Error('Google Identity Services load timed out'));
+    }, SCRIPT_TIMEOUT_MS);
+
     document.head.appendChild(el);
   });
 
