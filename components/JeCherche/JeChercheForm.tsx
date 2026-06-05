@@ -255,12 +255,17 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
       // secret (jamais transmis au client) → impossible pour un usurpateur
       // d'auto-confirmer la demande de quelqu'un d'autre.
       // Score ≥ 70 ⇒ publication directe (UX historique préservée).
-      if (result.requiresConfirmation) {
+      // FAIL-SAFE : on n'affiche "publiée" que si le serveur l'AFFIRME
+      // explicitement (requiresConfirmation === false). Dans tout autre cas
+      // — pending_confirmation, OU réponse ambiguë (CF/SDK désynchronisés, champ
+      // absent) — on demande TOUJOURS la confirmation WhatsApp. Jamais de faux
+      // "publiée" sur une demande que le serveur a en réalité mise en attente.
+      if (result.requiresConfirmation === false) {
+        setStep('success');
+      } else {
         setPendingTitle(trimmedTitle);
         setPendingPhone(fullWhatsapp);
         setStep('confirm');
-      } else {
-        setStep('success');
       }
     } catch (err: any) {
       setError(err?.message || t('jeCherche.form.errorGeneric'));
@@ -610,7 +615,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
             </p>
 
             <p className="text-[11px] text-orange-400/90 leading-relaxed mb-4">
-              ⏱️ Délai : <strong>30 minutes</strong>. Sans confirmation, la demande
+              ⏱️ Délai : <strong>48 heures</strong>. Sans confirmation, la demande
               sera automatiquement annulée.
             </p>
 

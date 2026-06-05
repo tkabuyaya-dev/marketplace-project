@@ -419,7 +419,7 @@ export const submitBuyerRequest = onCall(
       id: ref.id,
       requiresConfirmation: true,
       status: "pending_confirmation" as const,
-      expiresInMinutes: 30,
+      expiresInMinutes: PENDING_CONFIRM_TTL_MS / 60000, // 2880 min = 48h
     };
   }
 );
