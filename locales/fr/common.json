@@ -656,6 +656,7 @@
     "approved": "Approuvés",
     "pendingStatus": "En attente",
     "rejected": "Rejetés",
+    "inactiveStatus": "Masqués (expiré)",
     "noProducts": "Aucun produit",
     "startAdding": "Commencez par ajouter votre premier article.",
     "noProductsInCategory": "Aucun produit dans cette catégorie.",

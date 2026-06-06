@@ -195,9 +195,10 @@ export const Products: React.FC<ProductsProps> = ({
                     <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${
                       product.status === 'pending' ? 'bg-yellow-900/40 text-yellow-400 border border-yellow-600/30' :
                       product.status === 'approved' ? 'bg-green-900/40 text-green-400 border border-green-600/30' :
+                      product.status === 'inactive' ? 'bg-gray-800 text-gray-400 border border-gray-600/30' :
                       'bg-red-900/40 text-red-400 border border-red-600/30'
                     }`}>
-                      {product.status === 'pending' ? t('admin.statusPending') : product.status === 'approved' ? t('admin.statusApproved') : t('admin.statusRejected')}
+                      {product.status === 'pending' ? t('admin.statusPending') : product.status === 'approved' ? t('admin.statusApproved') : product.status === 'inactive' ? t('admin.statusInactive') : t('admin.statusRejected')}
                     </span>
                     {product.resubmittedAt && product.status === 'pending' && (
                       <span className="flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-blue-900/40 text-blue-400 border border-blue-600/30">

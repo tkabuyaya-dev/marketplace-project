@@ -102,7 +102,7 @@ export const expireSellers = onRequest(
         const productsSnap = await db
           .collection("products")
           .where("sellerId", "==", sellerId)
-          .where("status", "==", "active")
+          .where("status", "==", "approved")
           .get();
 
         if (!productsSnap.empty) {
@@ -160,7 +160,7 @@ export const expireSellers = onRequest(
         const productsSnap = await db
           .collection("products")
           .where("sellerId", "==", sellerId)
-          .where("status", "==", "active")
+          .where("status", "in", ["approved", "inactive"])
           .get();
 
         if (!productsSnap.empty) {

@@ -65,6 +65,11 @@ export { expireUnconfirmedBuyerRequests } from "./expire-unconfirmed.js";
 // À exécuter une seule fois après le déploiement du plafond 5 vendeurs.
 export { backfillBuyerRequestCounters } from "./backfill-buyer-requests.js";
 
+// One-shot backfill (fix C1) : ré-enrôle les vendeurs expirés dans le pipeline
+// de downgrade avec une horloge de grâce fraîche, pour éviter toute suppression
+// surprise au premier cron post-fix. À exécuter UNE FOIS après le déploiement.
+export { backfillExpiredSellerGrace } from "./backfill-expired-seller-grace.js";
+
 // User activity purge cron (daily at 04:00 UTC — deletes docs older than 90 days)
 export { purgeUserActivity } from "./purge-activity.js";
 

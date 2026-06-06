@@ -439,7 +439,7 @@ export const approveRenewal = onRequest(
 
         for (const productDoc of productsSnap.docs) {
           batch.update(productDoc.ref, {
-            status: "active",
+            status: "approved",
             deleteAt: FieldValue.delete(),
           });
           batchOps++;

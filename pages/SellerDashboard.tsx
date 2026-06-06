@@ -2780,6 +2780,7 @@ export const SellerDashboard: React.FC = () => {
           { value: 'approved' as const, label: t('dashboard.approved'), count: myProducts.filter(p => p.status === 'approved').length },
           { value: 'pending' as const, label: t('dashboard.pendingStatus'), count: myProducts.filter(p => p.status === 'pending').length },
           { value: 'rejected' as const, label: t('dashboard.rejected'), count: myProducts.filter(p => p.status === 'rejected').length },
+          { value: 'inactive' as const, label: t('dashboard.inactiveStatus'), count: myProducts.filter(p => p.status === 'inactive').length },
         ]).map(tab => {
           const active = productStatusFilter === tab.value;
           return (

@@ -1,5 +1,8 @@
 export type Role = 'buyer' | 'seller' | 'admin';
-export type ProductStatus = 'pending' | 'approved' | 'rejected';
+// 'inactive' = produit masqué (abonnement vendeur expiré, downgrade gracieux).
+// Non visible publiquement (la rule Firestore n'autorise que 'approved'), retiré
+// d'Algolia, mais conservé pour réactivation au renouvellement (approveRenewal).
+export type ProductStatus = 'pending' | 'approved' | 'rejected' | 'inactive';
 
 // Niveaux de vérification — gradation de confiance
 // 'none'     : aucune vérification
