@@ -20,16 +20,16 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 1 */}
       <LegalSection title="Article 1 — Responsable du Traitement">
         <ul className="space-y-1">
-          <li>Dénomination : <strong className="text-white">NUNULIA</strong></li>
+          <li>Dénomination : <strong className="text-ink">NUNULIA</strong></li>
           <li>Siège : Bujumbura, Burundi</li>
-          <li>Contact DPO : <span className="text-amber-400">contact@nunulia.com</span></li>
-          <li>Site : <span className="text-amber-400">https://nunulia.com</span></li>
+          <li>Contact DPO : <span className="text-goldText">contact@nunulia.com</span></li>
+          <li>Site : <span className="text-goldText">https://nunulia.com</span></li>
         </ul>
       </LegalSection>
 
       {/* Article 2 */}
       <LegalSection title="Article 2 — Données Collectées">
-        <p><strong className="text-white">2.1 Données fournies directement par l'utilisateur</strong></p>
+        <p><strong className="text-ink">2.1 Données fournies directement par l'utilisateur</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Nom et prénom affichés sur votre profil public</li>
           <li>Adresse email (via authentification Google)</li>
@@ -40,7 +40,7 @@ const PrivacyPolicy: React.FC = () => (
           <li>Photos de produits (hébergées via Cloudinary)</li>
         </ul>
 
-        <p><strong className="text-white">2.2 Données collectées automatiquement</strong></p>
+        <p><strong className="text-ink">2.2 Données collectées automatiquement</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Données de connexion (date, heure, appareil)</li>
           <li>Données de navigation dans l'application</li>
@@ -50,7 +50,7 @@ const PrivacyPolicy: React.FC = () => (
           <li>Requêtes de recherche (via Algolia, anonymisées)</li>
         </ul>
 
-        <p><strong className="text-white">2.3 Données explicitement NON collectées</strong></p>
+        <p><strong className="text-ink">2.3 Données explicitement NON collectées</strong></p>
         <LegalInfoBox>
           NUNULIA ne collecte pas de données bancaires, de numéros de carte de crédit ni de coordonnées de paiement directes. Nous ne collectons pas de géolocalisation en temps réel ni de données biométriques d'aucune sorte.
         </LegalInfoBox>
@@ -75,28 +75,28 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 4 */}
       <LegalSection title="Article 4 — Base Légale du Traitement">
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li><strong className="text-white">Exécution du contrat :</strong> traitement nécessaire à la fourniture du service NUNULIA</li>
-          <li><strong className="text-white">Consentement explicite :</strong> pour communications optionnelles</li>
-          <li><strong className="text-white">Intérêt légitime :</strong> sécurité de la plateforme, prévention des fraudes, amélioration du service</li>
-          <li><strong className="text-white">Obligation légale :</strong> conservation de certaines données imposée par la réglementation applicable</li>
+          <li><strong className="text-ink">Exécution du contrat :</strong> traitement nécessaire à la fourniture du service NUNULIA</li>
+          <li><strong className="text-ink">Consentement explicite :</strong> pour communications optionnelles</li>
+          <li><strong className="text-ink">Intérêt légitime :</strong> sécurité de la plateforme, prévention des fraudes, amélioration du service</li>
+          <li><strong className="text-ink">Obligation légale :</strong> conservation de certaines données imposée par la réglementation applicable</li>
         </ul>
       </LegalSection>
 
       {/* Article 5 */}
       <LegalSection title="Article 5 — Partage des Données">
-        <p><strong className="text-white">5.1 Sous-traitants techniques (uniquement)</strong></p>
+        <p><strong className="text-ink">5.1 Sous-traitants techniques (uniquement)</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li><strong className="text-white">Google Firebase :</strong> base de données, hébergement, authentification</li>
-          <li><strong className="text-white">Algolia :</strong> moteur de recherche interne (données anonymisées)</li>
-          <li><strong className="text-white">Cloudinary :</strong> hébergement des images des annonces</li>
+          <li><strong className="text-ink">Google Firebase :</strong> base de données, hébergement, authentification</li>
+          <li><strong className="text-ink">Algolia :</strong> moteur de recherche interne (données anonymisées)</li>
+          <li><strong className="text-ink">Cloudinary :</strong> hébergement des images des annonces</li>
         </ul>
 
-        <p><strong className="text-white">5.2 Garanties sous-traitants</strong></p>
+        <p><strong className="text-ink">5.2 Garanties sous-traitants</strong></p>
         <p>
           Ces prestataires traitent vos données uniquement sur instruction de NUNULIA et aux fins strictement nécessaires à la fourniture de leurs services techniques.
         </p>
 
-        <p><strong className="text-white">5.3 Engagement de non-vente</strong></p>
+        <p><strong className="text-ink">5.3 Engagement de non-vente</strong></p>
         <LegalWarningBox>
           NUNULIA ne vend, ne loue, ne cède et ne monétise jamais vos données personnelles à des tiers à des fins commerciales ou publicitaires. Aucun annonceur tiers n'accède à vos données via NUNULIA.
         </LegalWarningBox>
@@ -105,12 +105,12 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 6 */}
       <LegalSection title="Article 6 — Durée de Conservation">
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li><strong className="text-white">Compte actif :</strong> pendant toute la durée de l'inscription</li>
-          <li><strong className="text-white">Après suppression du compte :</strong> anonymisation immédiate de toutes les données identifiantes</li>
-          <li><strong className="text-white">Historique des transactions :</strong> 5 ans (obligations légales)</li>
-          <li><strong className="text-white">Logs de sécurité et d'audit :</strong> 12 mois</li>
-          <li><strong className="text-white">Données de facturation :</strong> 7 ans (obligations comptables)</li>
-          <li><strong className="text-white">Photos d'annonces supprimées :</strong> effacement sous 90 jours</li>
+          <li><strong className="text-ink">Compte actif :</strong> pendant toute la durée de l'inscription</li>
+          <li><strong className="text-ink">Après suppression du compte :</strong> anonymisation immédiate de toutes les données identifiantes</li>
+          <li><strong className="text-ink">Historique des transactions :</strong> 5 ans (obligations légales)</li>
+          <li><strong className="text-ink">Logs de sécurité et d'audit :</strong> 12 mois</li>
+          <li><strong className="text-ink">Données de facturation :</strong> 7 ans (obligations comptables)</li>
+          <li><strong className="text-ink">Photos d'annonces supprimées :</strong> effacement sous 90 jours</li>
         </ul>
       </LegalSection>
 
@@ -133,19 +133,19 @@ const PrivacyPolicy: React.FC = () => (
       <LegalSection title="Article 8 — Vos Droits">
         <p>Vous disposez des droits suivants sur vos données :</p>
         <ol className="list-decimal list-inside space-y-2 ml-2">
-          <li><strong className="text-white">Droit d'accès</strong> — Obtenir une copie de vos données</li>
-          <li><strong className="text-white">Droit de rectification</strong> — Corriger des données inexactes</li>
-          <li><strong className="text-white">Droit à l'effacement</strong> — Demander la suppression du compte</li>
-          <li><strong className="text-white">Droit à la portabilité</strong> — Recevoir vos données en format structuré et lisible par machine</li>
-          <li><strong className="text-white">Droit d'opposition</strong> — Vous opposer à certains traitements</li>
-          <li><strong className="text-white">Droit à la limitation</strong> — Suspendre temporairement un traitement</li>
+          <li><strong className="text-ink">Droit d'accès</strong> — Obtenir une copie de vos données</li>
+          <li><strong className="text-ink">Droit de rectification</strong> — Corriger des données inexactes</li>
+          <li><strong className="text-ink">Droit à l'effacement</strong> — Demander la suppression du compte</li>
+          <li><strong className="text-ink">Droit à la portabilité</strong> — Recevoir vos données en format structuré et lisible par machine</li>
+          <li><strong className="text-ink">Droit d'opposition</strong> — Vous opposer à certains traitements</li>
+          <li><strong className="text-ink">Droit à la limitation</strong> — Suspendre temporairement un traitement</li>
         </ol>
         <p className="mt-3">
-          Pour exercer ces droits : <span className="text-amber-400">contact@nunulia.com</span><br />
+          Pour exercer ces droits : <span className="text-goldText">contact@nunulia.com</span><br />
           Délai de réponse garanti : 30 jours maximum.
         </p>
 
-        <p><strong className="text-white">8.1 Suppression de compte — Exercice direct</strong></p>
+        <p><strong className="text-ink">8.1 Suppression de compte — Exercice direct</strong></p>
         <p>
           Disponible directement dans Profil &rarr; Zone Dangereuse. Entraîne l'anonymisation immédiate de toutes les données identifiantes. Certaines données anonymisées peuvent être conservées pour l'intégrité et la sécurité de la plateforme.
         </p>
@@ -155,9 +155,9 @@ const PrivacyPolicy: React.FC = () => (
       <LegalSection title="Article 9 — Cookies et Stockage Local">
         <p>NUNULIA utilise uniquement le stockage local PWA pour :</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li><strong className="text-white">Cache PWA :</strong> fonctionnement hors ligne de l'application</li>
-          <li><strong className="text-white">Préférences :</strong> langue, devise, paramètres d'affichage</li>
-          <li><strong className="text-white">Cache profil :</strong> chargement accéléré des données utilisateur</li>
+          <li><strong className="text-ink">Cache PWA :</strong> fonctionnement hors ligne de l'application</li>
+          <li><strong className="text-ink">Préférences :</strong> langue, devise, paramètres d'affichage</li>
+          <li><strong className="text-ink">Cache profil :</strong> chargement accéléré des données utilisateur</li>
         </ul>
         <p className="mt-2">
           Nous n'utilisons aucun cookie de traçage publicitaire, aucun pixel de suivi tiers, aucune technologie de fingerprinting.
@@ -174,7 +174,7 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 11 */}
       <LegalSection title="Article 11 — Protection des Mineurs">
         <p>
-          NUNULIA est strictement réservée aux personnes majeures (18 ans et plus). Nous ne collectons pas sciemment de données relatives à des mineurs. Si vous constatez qu'un mineur a créé un compte, signalez-le immédiatement à : <span className="text-amber-400">contact@nunulia.com</span> — Le compte sera supprimé sans délai.
+          NUNULIA est strictement réservée aux personnes majeures (18 ans et plus). Nous ne collectons pas sciemment de données relatives à des mineurs. Si vous constatez qu'un mineur a créé un compte, signalez-le immédiatement à : <span className="text-goldText">contact@nunulia.com</span> — Le compte sera supprimé sans délai.
         </p>
       </LegalSection>
 
@@ -188,8 +188,8 @@ const PrivacyPolicy: React.FC = () => (
       {/* Article 13 */}
       <LegalSection title="Article 13 — Contact et Réclamations">
         <ul className="space-y-1">
-          <li>Email : <span className="text-amber-400">contact@nunulia.com</span></li>
-          <li>Site : <span className="text-amber-400">https://nunulia.com</span></li>
+          <li>Email : <span className="text-goldText">contact@nunulia.com</span></li>
+          <li>Site : <span className="text-goldText">https://nunulia.com</span></li>
           <li>Délai de réponse : 30 jours maximum</li>
         </ul>
         <p className="mt-3">
@@ -198,7 +198,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Footer */}
-      <div className="text-center text-xs text-gray-600 border-t border-gray-800 pt-6 mt-8">
+      <div className="text-center text-xs text-ink2 border-t border-black/[0.08] pt-6 mt-8">
         &copy; 2026 NUNULIA — Document officiel — Version 1.0 — 26 mars 2026 — Tous droits réservés.
       </div>
     </div>
