@@ -811,10 +811,11 @@ const Step3Legal: React.FC<Step3Props> = ({
               !
             </div>
             <div>
-              <div className="text-[14.5px] font-black text-ink">Plan Gratuit uniquement</div>
+              <div className="text-[14.5px] font-black text-ink">Plan Grossiste verrouillé</div>
               <div className="text-[12.5px] text-ink2 mt-0.5 leading-relaxed">
-                Sans NIF, votre boutique sera limitée au plan Gratuit (3 produits, badge non
-                vérifié). Vous pouvez compléter plus tard dans votre tableau de bord.
+                Sans NIF, seul le plan Grossiste reste verrouillé. Les plans Découverte,
+                Vendeur et Pro restent accessibles. Vous pourrez ajouter votre NIF plus tard
+                depuis votre tableau de bord.
               </div>
             </div>
           </div>
