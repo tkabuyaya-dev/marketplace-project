@@ -21,7 +21,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
   free:      { maxProducts: 5,     canContactBuyer: false, badge: null,        priorityRanking: false, requiresNif: false, dailyStudioSessions: 1 },
   vendeur:   { maxProducts: 25,    canContactBuyer: false, badge: null,        priorityRanking: false, requiresNif: false, dailyStudioSessions: 2 },
   pro:       { maxProducts: 100,   canContactBuyer: true,  badge: 'pro',       priorityRanking: true,  requiresNif: false, dailyStudioSessions: 3 },
-  grossiste: { maxProducts: 99999, canContactBuyer: true,  badge: 'grossiste', priorityRanking: true,  requiresNif: true,  dailyStudioSessions: 5 },
+  grossiste: { maxProducts: 99999, canContactBuyer: true,  badge: 'grossiste', priorityRanking: true,  requiresNif: false, dailyStudioSessions: 5 },
 };
 
 const LABEL_TO_ID: Record<string, PlanId> = {

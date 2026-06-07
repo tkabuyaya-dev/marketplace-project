@@ -29,7 +29,8 @@ export interface Country {
 
 // Informations légales Vendeur (Burundi + Future)
 export interface SellerDetails {
-  cni: string;
+  /** @deprecated Plus collecté in-app (minimisation des données). Conservé optionnel pour les anciens docs. */
+  cni?: string;
   phone: string;
   countryId: string;
   province: string;
@@ -41,10 +42,14 @@ export interface SellerDetails {
   locationUrl?: string;
   gps?: Coordinates;
   categories: string[];
+  /** @deprecated Numéro NIF plus collecté in-app — fourni via WhatsApp à la validation. Optionnel pour anciens docs. */
   nif?: string;
+  /** @deprecated Plus collecté in-app. Optionnel pour anciens docs. */
   registryNumber?: string;
+  /** Déclaration Oui/Non du vendeur à l'inscription (badge « Entreprise déclarée », non bloquant). */
   hasNif: boolean;
   hasRegistry: boolean;
+  /** @deprecated Documents d'identité plus collectés in-app (scans = risque). Optionnel pour anciens docs à purger. */
   documents?: {
     cniUrl?: string;
     nifUrl?: string;

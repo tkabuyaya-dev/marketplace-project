@@ -12,8 +12,8 @@
  *   - Le montant (`amount`) est **recalculé côté serveur** depuis le pricing
  *     courant (subscriptionPricing/{countryId} ou defaults), JAMAIS depuis le
  *     payload client. Empêche toute manipulation.
- *   - Hard-gate NIF Grossiste : si `planId='grossiste'`, le seller doit avoir
- *     `sellerDetails.hasNif=true` et `sellerDetails.nif` non vide.
+ *   - NIF non bloquant : le plan Grossiste affiche « NIF requis » côté UI, mais
+ *     l'éligibilité n'est plus gatée par le code (l'admin valide + collecte via WhatsApp).
  *   - `transactionRef` réinitialisé à `null` (la modification invalide tout
  *     paiement déjà saisi pour ce plan).
  *
@@ -30,7 +30,6 @@ import { PLAN_FEATURES, planIdFromLabel, type PlanId } from "./plan-features.js"
 const REQUESTS_COLLECTION = "subscriptionRequests";
 const HISTORY_SUBCOLLECTION = "history";
 const SUBSCRIPTION_PRICING_COLLECTION = "subscriptionPricing";
-const USERS_COLLECTION = "users";
 
 // Mêmes valeurs que utils/planFeatures.ts → PLAN_LABELS
 const PLAN_LABELS: Record<PlanId, string> = {
@@ -105,23 +104,10 @@ export const modifySubscriptionRequest = onCall(
 
     const db = await getDb();
 
-    // ── Hard-gate NIF pour Grossiste ─────────────────────────────
+    // NIF non bloquant : le plan Grossiste affiche « NIF requis » côté UI,
+    // mais l'éligibilité n'est plus gatée par le code — l'admin valide la
+    // demande et collecte le NIF via WhatsApp si nécessaire.
     const features = PLAN_FEATURES[planId];
-    if (features.requiresNif) {
-      const userSnap = await db.collection(USERS_COLLECTION).doc(sellerId).get();
-      if (!userSnap.exists) {
-        throw new HttpsError("not-found", "Profil utilisateur introuvable.");
-      }
-      const userData = userSnap.data() as any;
-      const hasNif = userData?.sellerDetails?.hasNif === true;
-      const nif = (userData?.sellerDetails?.nif || "").trim();
-      if (!hasNif || nif.length === 0) {
-        throw new HttpsError(
-          "failed-precondition",
-          "Le plan Grossiste nécessite un NIF valide. Renseignez-le dans votre profil avant de continuer."
-        );
-      }
-    }
 
     const reqRef = db.collection(REQUESTS_COLLECTION).doc(requestId);
 

@@ -412,10 +412,10 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isAuth() && resource.data.userId == request.auth.uid);
 
-      // Hard-gate NIF Grossiste : si planId='grossiste', le seller doit avoir
-      // sellerDetails.hasNif == true ET sellerDetails.nif non vide (string > 0).
-      // Bloque toute création directe Firestore sans NIF, en plus de la
-      // validation côté UI + côté CF modifySubscriptionRequest.
+      // NIF non bloquant : le plan Grossiste affiche « NIF requis » côté UI,
+      // mais la création n'est plus gatée par le NIF (décision produit —
+      // minimisation des données). L'admin valide la demande et collecte le
+      // NIF via WhatsApp si nécessaire.
       //
       // Rate-limit (P4 du Lot 4) : 1 création max toutes les 60s. Le champ
       // `sellerDetails.lastSubRequestCreatedAt` est écrit côté client APRÈS
@@ -426,15 +426,7 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.keys().hasAll(['userId', 'sellerName', 'countryId', 'planId', 'planLabel', 'amount', 'currency', 'status', 'maxProducts'])
-        && getUserData().get('sellerDetails', {}).get('lastSubRequestCreatedAt', 0) < request.time.toMillis() - 60000
-        && (
-          request.resource.data.planId != 'grossiste'
-          || (
-            getUserData().get('sellerDetails', {}).get('hasNif', false) == true
-            && getUserData().get('sellerDetails', {}).get('nif', '') is string
-            && getUserData().get('sellerDetails', {}).get('nif', '').size() > 0
-          )
-        );
+        && getUserData().get('sellerDetails', {}).get('lastSubRequestCreatedAt', 0) < request.time.toMillis() - 60000;
 
       // Update client : seller peut seulement confirmer son paiement
       // (status pending → pending_validation, en attachant transactionRef et

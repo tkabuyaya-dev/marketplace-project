@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Check, ArrowLeft, ArrowRight, Lock, MapPin, Camera, FileText, X,
+  Check, ArrowLeft, ArrowRight, Lock, MapPin, Camera, X,
   ChevronDown, Sparkles, Store, Package, Rocket,
 } from 'lucide-react';
 import { SellerDetails } from '../types';
@@ -253,7 +253,7 @@ const Step1Profile: React.FC<Step1Props> = ({
   const dialCode = COUNTRY_DIAL_CODES[form.countryId] || '';
   const phoneSpec = getPhoneSpec(form.countryId);
   const phoneCheck = validatePhone(form.countryId, form.phone);
-  const canNext = !!name.trim() && !!form.cni.trim() && phoneCheck.valid && !!form.province;
+  const canNext = !!name.trim() && phoneCheck.valid && !!form.province;
   const initials =
     name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 
@@ -324,16 +324,6 @@ const Step1Profile: React.FC<Step1Props> = ({
               className="absolute right-3 top-1/2 -translate-y-1/2 text-ink2 pointer-events-none"
             />
           </div>
-        </div>
-
-        <div>
-          <Label>Numéro CNI / Passeport</Label>
-          <TextInput
-            value={form.cni}
-            onChange={(e) => onChange('cni', e.target.value)}
-            placeholder="Ex : AB 123456"
-            rightAdornment={<Lock size={14} />}
-          />
         </div>
 
         <div>
@@ -697,12 +687,11 @@ interface Step3Props {
   form: SellerDetails;
   nifDecided: boolean;
   setHasNif: (v: boolean) => void;
-  onChange: (field: keyof SellerDetails, value: any) => void;
   onBack: () => void;
   onNext: () => void;
 }
 const Step3Legal: React.FC<Step3Props> = ({
-  form, nifDecided, setHasNif, onChange, onBack, onNext,
+  form, nifDecided, setHasNif, onBack, onNext,
 }) => {
   const yes = nifDecided && form.hasNif === true;
   const no = nifDecided && form.hasNif === false;
@@ -771,16 +760,6 @@ const Step3Legal: React.FC<Step3Props> = ({
           </button>
         </div>
 
-        {yes && (
-          <div className="mt-4 animate-fadein">
-            <Label>Votre numéro NIF</Label>
-            <TextInput
-              value={form.nif || ''}
-              onChange={(e) => onChange('nif', e.target.value)}
-              placeholder="BI-NIF-0044812"
-            />
-          </div>
-        )}
       </div>
 
       {yes ? (
@@ -793,10 +772,10 @@ const Step3Legal: React.FC<Step3Props> = ({
               <Check size={16} strokeWidth={2.5} />
             </div>
             <div>
-              <div className="text-[14.5px] font-black text-ink">Accès illimité aux plans</div>
+              <div className="text-[14.5px] font-black text-ink">Parfait, c'est noté</div>
               <div className="text-[12.5px] text-ink2 mt-0.5 leading-relaxed">
-                Vous pourrez choisir n'importe quel plan (Vendeur, Pro, Grossiste) et
-                accéder à toutes les fonctionnalités vendeur.
+                Vous accédez à tous les plans, y compris Grossiste. Votre NIF pourra
+                vous être demandé à la validation d'un abonnement.
               </div>
             </div>
           </div>
@@ -811,11 +790,10 @@ const Step3Legal: React.FC<Step3Props> = ({
               !
             </div>
             <div>
-              <div className="text-[14.5px] font-black text-ink">Plan Grossiste verrouillé</div>
+              <div className="text-[14.5px] font-black text-ink">Aucun problème</div>
               <div className="text-[12.5px] text-ink2 mt-0.5 leading-relaxed">
-                Sans NIF, seul le plan Grossiste reste verrouillé. Les plans Découverte,
-                Vendeur et Pro restent accessibles. Vous pourrez ajouter votre NIF plus tard
-                depuis votre tableau de bord.
+                Vous accédez à tous les plans. Pour le plan Grossiste, un NIF pourra
+                vous être demandé à la validation (via WhatsApp).
               </div>
             </div>
           </div>
@@ -844,71 +822,9 @@ const Step3Legal: React.FC<Step3Props> = ({
   );
 };
 
-interface UploadZoneProps {
-  label: string;
-  sub: string;
-  file?: File;
-  onFile: (f: File) => void;
-  onRemove: () => void;
-}
-const UploadZone: React.FC<UploadZoneProps> = ({ label, sub, file, onFile, onRemove }) => (
-  <label
-    className="block cursor-pointer rounded-input p-3 transition press"
-    style={{
-      border: file ? '1.5px solid #10B981' : '1.5px dashed rgba(0,0,0,0.12)',
-      background: file ? 'rgba(16,185,129,0.04)' : '#fff',
-    }}
-    onDragOver={(e) => e.preventDefault()}
-    onDrop={(e) => {
-      e.preventDefault();
-      if (e.dataTransfer.files?.[0]) onFile(e.dataTransfer.files[0]);
-    }}
-  >
-    <input
-      type="file"
-      accept="image/*"
-      className="hidden"
-      onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-    />
-    <div className="flex items-center gap-3">
-      <div
-        className={`w-11 h-11 rounded-input flex items-center justify-center shrink-0 ${
-          file ? 'bg-emerald-500/10 text-emerald-600' : 'bg-fieldRest text-ink2'
-        }`}
-      >
-        <FileText size={20} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-bold text-ink truncate">
-          {file ? file.name : label}
-        </div>
-        <div className="text-[11.5px] text-muted">{file ? '✓ Prêt à envoyer' : sub}</div>
-      </div>
-      {file ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            onRemove();
-          }}
-          className="w-8 h-8 rounded-full bg-fieldRest text-red-500 inline-flex items-center justify-center press hover:bg-red-500/10"
-        >
-          <X size={14} />
-        </button>
-      ) : (
-        <span className="inline-flex items-center justify-center h-8 px-3 rounded-full bg-fieldRest text-[12px] font-bold text-ink2">
-          Ajouter
-        </span>
-      )}
-    </div>
-  </label>
-);
-
 interface Step4Props {
   form: SellerDetails;
   name: string;
-  files: { cni?: File; nif?: File; reg?: File; shop?: File };
-  onFile: (field: 'cni' | 'nif' | 'reg' | 'shop', f: File | null) => void;
   terms: boolean;
   setTerms: (v: boolean) => void;
   loading: boolean;
@@ -917,7 +833,7 @@ interface Step4Props {
   countries: CountryOption[];
 }
 const Step4Finalize: React.FC<Step4Props> = ({
-  form, name, files, onFile, terms, setTerms, loading, onBack, onSubmit, countries,
+  form, name, terms, setTerms, loading, onBack, onSubmit, countries,
 }) => {
   const country = countries.find(c => c.id === form.countryId);
   const sellerTypeLabel: Record<string, string> = {
@@ -932,7 +848,7 @@ const Step4Finalize: React.FC<Step4Props> = ({
     { i: '📍', l: 'Ville', v: form.province ? `${form.province} ${country ? getCountryFlag(country) : ''}` : '—' },
     { i: '🏷️', l: 'Type', v: sellerTypeLabel[form.sellerType] || '—' },
     { i: '📦', l: 'Catégories', v: form.categories.join(', ') || '—' },
-    { i: '📋', l: 'NIF', v: form.hasNif ? (form.nif || '—') : 'Non renseigné' },
+    { i: '📋', l: 'NIF', v: form.hasNif ? 'Oui' : 'Non' },
   ];
 
   return (
@@ -968,30 +884,6 @@ const Step4Finalize: React.FC<Step4Props> = ({
               </span>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="mt-5">
-        <Label>Pièces justificatives (optionnel)</Label>
-        <div className="space-y-2.5">
-          <UploadZone
-            label="CNI ou Passeport"
-            sub="JPG, PNG · max 10 MB"
-            file={files.cni}
-            onFile={(f) => onFile('cni', f)}
-            onRemove={() => onFile('cni', null)}
-          />
-          {form.hasNif && (
-            <div className="animate-fadein">
-              <UploadZone
-                label="Justificatif NIF"
-                sub="JPG, PNG · max 10 MB"
-                file={files.nif}
-                onFile={(f) => onFile('nif', f)}
-                onRemove={() => onFile('nif', null)}
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -1166,7 +1058,6 @@ export const SellerRegistration: React.FC = () => {
   const [nifDecided, setNifDecided] = useState(false);
 
   const [formData, setFormData] = useState<SellerDetails>({
-    cni: '',
     phone: '',
     countryId: activeCountry || 'bi',
     province: '',
@@ -1178,11 +1069,9 @@ export const SellerRegistration: React.FC = () => {
     categories: [],
     hasNif: false,
     hasRegistry: false,
-    nif: '',
-    registryNumber: '',
   });
 
-  const [files, setFiles] = useState<{ cni?: File; nif?: File; reg?: File; shop?: File }>({});
+  const [files, setFiles] = useState<{ shop?: File }>({});
   const [gpsLoading, setGpsLoading] = useState(false);
 
   useEffect(() => {
@@ -1215,7 +1104,7 @@ export const SellerRegistration: React.FC = () => {
     }));
   };
 
-  const handleFileChange = (field: 'cni' | 'nif' | 'reg' | 'shop', file: File | null) => {
+  const handleFileChange = (field: 'shop', file: File | null) => {
     setFiles(prev => {
       const next = { ...prev };
       if (file) next[field] = file;
@@ -1238,7 +1127,7 @@ export const SellerRegistration: React.FC = () => {
 
   const setHasNif = (v: boolean) => {
     setNifDecided(true);
-    setFormData(prev => ({ ...prev, hasNif: v, nif: v ? prev.nif : '' }));
+    setFormData(prev => ({ ...prev, hasNif: v }));
   };
 
   const captureGPS = () => {
@@ -1308,21 +1197,11 @@ export const SellerRegistration: React.FC = () => {
         return;
       }
 
-      const documents: any = {};
-      if (files.cni)
-        documents.cniUrl = await uploadImage(files.cni, { folder: 'aurabuja-app-2026/documents' });
-      if (files.nif)
-        documents.nifUrl = await uploadImage(files.nif, { folder: 'aurabuja-app-2026/documents' });
-      if (files.reg)
-        documents.registryUrl = await uploadImage(files.reg, {
-          folder: 'aurabuja-app-2026/documents',
-        });
-
       let shopImageUrl = '';
       if (files.shop)
         shopImageUrl = await uploadImage(files.shop, { folder: 'aurabuja-app-2026/shops' });
 
-      const finalData = { ...formData, documents, shopImage: shopImageUrl };
+      const finalData = { ...formData, shopImage: shopImageUrl };
 
       if (editName.trim() && editName.trim() !== currentUser.name) {
         await updateUserProfile(currentUser.id, { name: editName.trim() });
@@ -1408,7 +1287,6 @@ export const SellerRegistration: React.FC = () => {
               form={formData}
               nifDecided={nifDecided}
               setHasNif={setHasNif}
-              onChange={handleChange}
               onBack={() => setStep(2)}
               onNext={() => setStep(4)}
             />
@@ -1417,8 +1295,6 @@ export const SellerRegistration: React.FC = () => {
             <Step4Finalize
               form={formData}
               name={editName}
-              files={files}
-              onFile={handleFileChange}
               terms={acceptedTerms}
               setTerms={setAcceptedTerms}
               loading={loading}

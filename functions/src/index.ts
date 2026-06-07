@@ -107,6 +107,9 @@ export { backfillVerificationTier } from "./backfill-verification-tier.js";
 // One-shot backfill: sellerShopName on existing products (post-fix denormalization)
 export { backfillSellerShopName } from "./backfill-shop-name.js";
 
+// One-shot scrub: efface cni/nif/registryNumber/documents des users (minimisation NIF)
+export { scrubSellerDocuments } from "./scrub-seller-documents.js";
+
 // One-shot seed: 3 nouvelles catégories Immobilier + Emploi + Événements (V1 expansion 14→17)
 export { seedNewCategories } from "./seed-new-categories.js";
 

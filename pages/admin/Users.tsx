@@ -193,26 +193,8 @@ export const Users: React.FC<UsersProps> = ({
                     <p className="text-gray-500 text-xs">{user.sellerDetails?.shopName} — {user.sellerDetails?.province}</p>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[11px]">
                       <span className="text-gray-500">{t('admin.phoneLabel')}: <span className="text-white">{user.sellerDetails?.phone || user.whatsapp || '—'}</span></span>
-                      <span className="text-gray-500">NIF: <span className={user.sellerDetails?.nif ? 'text-green-400' : 'text-gray-600'}>{user.sellerDetails?.nif || '—'}</span></span>
-                      <span className="text-gray-500">{t('admin.registryLabel')}: <span className={user.sellerDetails?.registryNumber ? 'text-green-400' : 'text-gray-600'}>{user.sellerDetails?.registryNumber || '—'}</span></span>
                       <span className="text-gray-500">{t('admin.sellingType')}: <span className="text-white">{user.sellerDetails?.sellerType || '—'}</span></span>
                     </div>
-                    {(user.sellerDetails?.documents?.cniUrl || user.sellerDetails?.documents?.nifUrl || user.sellerDetails?.documents?.registryUrl) && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {user.sellerDetails?.documents?.cniUrl && (
-                          <a href={user.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-[10px] text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10">🪪 CNI</a>
-                        )}
-                        {user.sellerDetails?.documents?.nifUrl && (
-                          <a href={user.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-[10px] text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10">📄 NIF</a>
-                        )}
-                        {user.sellerDetails?.documents?.registryUrl && (
-                          <a href={user.sellerDetails.documents.registryUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-[10px] text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10">📄 RC</a>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -497,10 +479,6 @@ export const Users: React.FC<UsersProps> = ({
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">{t('admin.personalInfo')}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-gray-800/50 p-2.5 rounded-lg">
-                      <p className="text-[10px] text-gray-500 uppercase">{t('admin.cniPassport')}</p>
-                      <p className="text-sm text-white font-medium">{u.sellerDetails.cni || '—'}</p>
-                    </div>
-                    <div className="bg-gray-800/50 p-2.5 rounded-lg">
                       <p className="text-[10px] text-gray-500 uppercase">{t('admin.phoneLabel')}</p>
                       <p className="text-sm text-white font-medium">{u.sellerDetails.phone || u.whatsapp || '—'}</p>
                     </div>
@@ -573,41 +551,6 @@ export const Users: React.FC<UsersProps> = ({
                       </div>
                     </div>
                   )}
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">{t('admin.legalSection')}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-gray-800/50 p-2.5 rounded-lg">
-                      <p className="text-[10px] text-gray-500 uppercase">{t('admin.nifLabel')}</p>
-                      <p className={`text-sm font-medium ${u.sellerDetails.nif ? 'text-green-400' : 'text-gray-500'}`}>
-                        {u.sellerDetails.nif || t('admin.notProvided')}
-                      </p>
-                    </div>
-                    <div className="bg-gray-800/50 p-2.5 rounded-lg">
-                      <p className="text-[10px] text-gray-500 uppercase">{t('admin.registryLabel')}</p>
-                      <p className={`text-sm font-medium ${u.sellerDetails.registryNumber ? 'text-green-400' : 'text-gray-500'}`}>
-                        {u.sellerDetails.registryNumber || t('admin.notProvided')}
-                      </p>
-                    </div>
-                    {u.sellerDetails.documents?.cniUrl && (
-                      <div className="bg-gray-800/50 p-2.5 rounded-lg">
-                        <p className="text-[10px] text-gray-500 uppercase">{t('admin.cniDocument')}</p>
-                        <a href={u.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">📄 {t('admin.viewDocument')}</a>
-                      </div>
-                    )}
-                    {u.sellerDetails.documents?.nifUrl && (
-                      <div className="bg-gray-800/50 p-2.5 rounded-lg">
-                        <p className="text-[10px] text-gray-500 uppercase">{t('admin.nifDocument')}</p>
-                        <a href={u.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">📄 {t('admin.viewDocument')}</a>
-                      </div>
-                    )}
-                    {u.sellerDetails.documents?.registryUrl && (
-                      <div className="bg-gray-800/50 p-2.5 rounded-lg">
-                        <p className="text-[10px] text-gray-500 uppercase">{t('admin.registryDocument')}</p>
-                        <a href={u.sellerDetails.documents.registryUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">📄 {t('admin.viewDocument')}</a>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             )}

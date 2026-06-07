@@ -71,8 +71,6 @@ export const SellerDashboard: React.FC = () => {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showVerifModal, setShowVerifModal] = useState(false);
   const [verifForm, setVerifForm] = useState({
-    nif: currentUser.sellerDetails?.nif || '',
-    registryNumber: currentUser.sellerDetails?.registryNumber || '',
     phone: currentUser.sellerDetails?.phone || currentUser.whatsapp || '',
   });
   const [verifSubmitting, setVerifSubmitting] = useState(false);
@@ -207,8 +205,6 @@ export const SellerDashboard: React.FC = () => {
       bio: currentUser.bio || '',
       whatsapp: currentUser.whatsapp || '',
       avatar: currentUser.avatar || '',
-      nif: currentUser.sellerDetails?.nif || '',
-      registryNumber: currentUser.sellerDetails?.registryNumber || '',
       locationUrl: currentUser.sellerDetails?.locationUrl || '',
       gps: currentUser.sellerDetails?.gps || null as { lat: number; lng: number } | null,
       sellerType: (currentUser.sellerDetails?.sellerType || 'online') as 'shop' | 'street' | 'online',
@@ -362,7 +358,7 @@ export const SellerDashboard: React.FC = () => {
       .finally(() => setAnalyticsLoading(false));
   }, [activeTab, myProducts]);
 
-  const hasNif = !!currentUser.sellerDetails?.nif;
+  const hasNif = currentUser.sellerDetails?.hasNif === true;
   // Count only active products (approved + pending), not rejected/deleted
   const currentCount = myProducts.filter(p => p.status === 'approved' || p.status === 'pending').length;
 
@@ -837,8 +833,6 @@ export const SellerDashboard: React.FC = () => {
           bio: shopProfile.bio.trim(),
           whatsapp: shopProfile.whatsapp.trim(),
           avatar: avatarUrl,
-          'sellerDetails.nif': shopProfile.nif.trim(),
-          'sellerDetails.registryNumber': shopProfile.registryNumber.trim(),
           'sellerDetails.locationUrl': shopProfile.locationUrl.trim(),
           'sellerDetails.sellerType': shopProfile.sellerType,
           'sellerDetails.categories': shopProfile.categories,
@@ -1161,9 +1155,6 @@ export const SellerDashboard: React.FC = () => {
                       <span className="text-[12.5px] text-ink2 inline-flex items-center gap-1">
                         <MapPin size={12} /> {[currentUser.sellerDetails?.commune, currentUser.sellerDetails?.province].filter(Boolean).join(', ')}
                       </span>
-                    )}
-                    {!hasNif && (
-                      <span className="text-[12px] font-semibold text-yellow-600">{t('dashboard.noNif')}</span>
                     )}
                   </div>
                   <p className="mt-2 text-[13.5px] text-ink2 leading-relaxed max-w-[48ch]">
@@ -1757,32 +1748,20 @@ export const SellerDashboard: React.FC = () => {
 
                     <h2 className="text-[22px] font-black text-ink mb-2">{t('dashboard.limitReachedTitle')}</h2>
 
-                    {!hasNif ? (
-                         <div className="mb-6">
-                            <p className="text-ink2 text-[13.5px] mb-4">{t('dashboard.noNifLimit')}</p>
-                            <button
-                              onClick={() => setActiveTab('shop')}
-                              className="w-full h-11 rounded-input bg-ink hover:bg-black text-white font-semibold text-[14px] active:scale-[0.97] transition-transform"
-                            >
-                                {t('dashboard.addNifNow')}
-                            </button>
-                         </div>
-                    ) : (
-                        <div className="mb-6 space-y-3">
-                            <p className="text-ink2 mb-4 text-[13.5px] leading-relaxed">
-                                {t('dashboard.usedSlots', { max: currentTier.max, label: currentTier.label })}
-                            </p>
-                            <a
-                              href={buildWaUrl(`Bonjour, je souhaite passer à un plan supérieur sur NUNULIA. Mon plan actuel : ${currentTier.label}.`)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center gap-2 w-full h-11 rounded-input text-white font-semibold text-[14px] active:scale-[0.97] transition-transform"
-                              style={{ background: '#25D366' }}
-                            >
-                              <WhatsAppIcon size={16} /> {t('dashboard.whatsappUpgrade')}
-                            </a>
-                        </div>
-                    )}
+                    <div className="mb-6 space-y-3">
+                        <p className="text-ink2 mb-4 text-[13.5px] leading-relaxed">
+                            {t('dashboard.usedSlots', { max: currentTier.max, label: currentTier.label })}
+                        </p>
+                        <a
+                          href={buildWaUrl(`Bonjour, je souhaite passer à un plan supérieur sur NUNULIA. Mon plan actuel : ${currentTier.label}.`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full h-11 rounded-input text-white font-semibold text-[14px] active:scale-[0.97] transition-transform"
+                          style={{ background: '#25D366' }}
+                        >
+                          <WhatsAppIcon size={16} /> {t('dashboard.whatsappUpgrade')}
+                        </a>
+                    </div>
 
                     <button onClick={() => setActiveTab('overview')} className="mt-4 text-[12.5px] font-semibold text-ink2 hover:text-ink underline">
                         {t('dashboard.backToDashboard')}
@@ -2274,38 +2253,6 @@ export const SellerDashboard: React.FC = () => {
               </div>
           </div>
 
-          {/* DOCUMENTS — NIF & REGISTRE */}
-          <div
-            className="rounded-card border p-5 space-y-4"
-            style={{
-              background: !hasNif ? 'rgba(239,68,68,0.04)' : 'rgba(16,185,129,0.04)',
-              borderColor: !hasNif ? 'rgba(239,68,68,0.20)' : 'rgba(16,185,129,0.22)',
-            }}
-          >
-              <SectionTitle sub={t('dashboard.documentsSub', { defaultValue: 'Utiles pour la vérification de votre boutique.' })}>
-                {t('dashboard.nifLabel')}
-              </SectionTitle>
-              <label className="block">
-                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.nifLabel')}</span>
-                <input
-                  className={fieldInputCls}
-                  value={shopProfile.nif}
-                  onChange={(e) => setShopProfile({ ...shopProfile, nif: e.target.value })}
-                  placeholder={!hasNif ? t('dashboard.nifPlaceholder') : t('dashboard.nifRegistered')}
-                />
-                {!hasNif && <span className="block text-[11.5px] text-red-600 mt-1.5">{t('dashboard.addNifHint')}</span>}
-              </label>
-              <label className="block">
-                <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.registryLabel')}</span>
-                <input
-                  className={fieldInputCls}
-                  value={shopProfile.registryNumber}
-                  onChange={(e) => setShopProfile({ ...shopProfile, registryNumber: e.target.value })}
-                  placeholder="Ex: RC/BUJ/2026-xxxx"
-                />
-              </label>
-          </div>
-
           {/* SAVE */}
           <div className="flex items-center justify-end sticky bottom-0 py-3 -mx-4 md:-mx-8 px-4 md:px-8 bg-canvas/90 backdrop-blur border-t border-black/[0.05]">
             <button
@@ -2323,19 +2270,12 @@ export const SellerDashboard: React.FC = () => {
   };
 
   const verificationStatus = currentUser.sellerDetails?.verificationStatus || 'none';
-  const hasDocuments = !!(currentUser.sellerDetails?.documents?.cniUrl);
 
   const handleRequestVerification = async () => {
-    const nif = verifForm.nif.trim();
-    const registry = verifForm.registryNumber.trim();
     const phone = verifForm.phone.trim();
 
     if (!phone) {
       toast(t('dashboard.verifyNeedPhone'), 'error');
-      return;
-    }
-    if (!nif && !registry) {
-      toast(t('dashboard.verifyNeedNifOrRegistry'), 'error');
       return;
     }
 
@@ -2344,8 +2284,6 @@ export const SellerDashboard: React.FC = () => {
       const updates: Record<string, any> = {
         'sellerDetails.verificationStatus': 'pending',
       };
-      if (nif)      updates['sellerDetails.nif'] = nif;
-      if (registry) updates['sellerDetails.registryNumber'] = registry;
       if (phone && phone !== currentUser.sellerDetails?.phone) {
         updates['sellerDetails.phone'] = phone;
       }
@@ -2467,76 +2405,7 @@ export const SellerDashboard: React.FC = () => {
             />
           </label>
 
-          <label className="block">
-            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.verifyNifLabel')}</span>
-            <input
-              type="text"
-              value={verifForm.nif}
-              onChange={(e) => setVerifForm(s => ({ ...s, nif: e.target.value }))}
-              placeholder={t('dashboard.verifyNifPlaceholder')}
-              className={verifInputCls}
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.verifyRegistryLabel')}</span>
-            <input
-              type="text"
-              value={verifForm.registryNumber}
-              onChange={(e) => setVerifForm(s => ({ ...s, registryNumber: e.target.value }))}
-              placeholder={t('dashboard.verifyRegistryPlaceholder')}
-              className={verifInputCls}
-            />
-          </label>
-
-          <p className="text-[11.5px] text-muted leading-relaxed">{t('dashboard.verifyNumbersHint')}</p>
-        </div>
-      )}
-
-      {/* Documents optionnels — accélère la vérification */}
-      {showForm && (
-        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-3">
-          <SectionTitle sub={t('dashboard.verifyDocumentsOptionalHint')}>{t('dashboard.verifyDocumentsOptional')}</SectionTitle>
-          {currentUser.sellerDetails?.documents?.cniUrl && (
-            <div className="flex items-center gap-3 p-3 bg-canvas rounded-input border border-black/[0.06]">
-              <span className="text-xl">🪪</span>
-              <div className="flex-1">
-                <p className="text-[13px] text-ink font-medium">{t('dashboard.verifyCNI')}</p>
-                <p className="text-[11.5px] text-emerald-600">{t('dashboard.verifyUploaded')}</p>
-              </div>
-              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-goldDeep hover:underline">{t('dashboard.verifyView')}</a>
-            </div>
-          )}
-          {currentUser.sellerDetails?.documents?.nifUrl && (
-            <div className="flex items-center gap-3 p-3 bg-canvas rounded-input border border-black/[0.06]">
-              <span className="text-xl">📄</span>
-              <div className="flex-1">
-                <p className="text-[13px] text-ink font-medium">NIF</p>
-                <p className="text-[11.5px] text-emerald-600">{t('dashboard.verifyUploaded')}</p>
-              </div>
-              <a href={currentUser.sellerDetails.documents.nifUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-goldDeep hover:underline">{t('dashboard.verifyView')}</a>
-            </div>
-          )}
-          {!hasDocuments && (
-            <p className="text-[12px] text-muted italic">{t('dashboard.verifyNoDocuments')}</p>
-          )}
-        </div>
-      )}
-
-      {/* Documents déjà soumis — affichage compact pour vendeurs verifiés/pending */}
-      {(verificationStatus === 'verified' || verificationStatus === 'pending') && hasDocuments && (
-        <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-3">
-          <SectionTitle>{t('dashboard.verifyDocuments')}</SectionTitle>
-          {currentUser.sellerDetails?.documents?.cniUrl && (
-            <div className="flex items-center gap-3 p-3 bg-canvas rounded-input border border-black/[0.06]">
-              <span className="text-xl">🪪</span>
-              <div className="flex-1">
-                <p className="text-[13px] text-ink font-medium">{t('dashboard.verifyCNI')}</p>
-                <p className="text-[11.5px] text-emerald-600">{t('dashboard.verifyUploaded')}</p>
-              </div>
-              <a href={currentUser.sellerDetails.documents.cniUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-goldDeep hover:underline">{t('dashboard.verifyView')}</a>
-            </div>
-          )}
+          <p className="text-[11.5px] text-muted leading-relaxed">{t('dashboard.verifyContactHint', { defaultValue: 'Notre équipe vous contactera sur WhatsApp pour finaliser la vérification (visite de votre boutique si nécessaire).' })}</p>
         </div>
       )}
 

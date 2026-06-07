@@ -169,9 +169,11 @@ describe('/subscriptionRequests — lecture', () => {
   });
 });
 
-// ─── Lot 3 : hard-gate NIF Grossiste à la création ───────────────────────────
+// ─── Grossiste : NIF non bloquant (gate retiré — minimisation des données) ───
+// Le plan Grossiste affiche « NIF requis » côté UI, mais la création n'est plus
+// gatée par le NIF. L'admin valide la demande et collecte le NIF via WhatsApp.
 
-describe('/subscriptionRequests — hard-gate NIF Grossiste (Lot 3)', () => {
+describe('/subscriptionRequests — Grossiste sans gate NIF', () => {
   const GROSSISTE_REQUEST = {
     ...BASE_SUB_REQUEST,
     planId: 'grossiste',
@@ -180,19 +182,18 @@ describe('/subscriptionRequests — hard-gate NIF Grossiste (Lot 3)', () => {
     maxProducts: 99999,
   };
 
-  it('vendeur SANS NIF ne peut PAS créer une demande Grossiste', async () => {
+  it('vendeur SANS NIF PEUT créer une demande Grossiste (gate retiré)', async () => {
     // Le seed par défaut a sellerDetails: { maxProducts: 50 } SANS hasNif/nif
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionDenied(
+    await expectPermissionGranted(
       setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-1'), GROSSISTE_REQUEST)
     );
   });
 
-  it('vendeur AVEC NIF valide peut créer une demande Grossiste', async () => {
-    // Override le seed avec NIF valide
+  it('vendeur AVEC hasNif peut aussi créer une demande Grossiste', async () => {
     await seedDoc('users', SELLER_ID, {
       role: 'seller', isSuspended: false, productCount: 2,
-      sellerDetails: { maxProducts: 50, hasNif: true, nif: 'NIF12345' },
+      sellerDetails: { maxProducts: 50, hasNif: true },
     });
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
     await expectPermissionGranted(
@@ -200,19 +201,7 @@ describe('/subscriptionRequests — hard-gate NIF Grossiste (Lot 3)', () => {
     );
   });
 
-  it('vendeur avec hasNif=true mais nif vide ne peut PAS créer Grossiste', async () => {
-    await seedDoc('users', SELLER_ID, {
-      role: 'seller', isSuspended: false, productCount: 2,
-      sellerDetails: { maxProducts: 50, hasNif: true, nif: '' },
-    });
-    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionDenied(
-      setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-3'), GROSSISTE_REQUEST)
-    );
-  });
-
-  it('hard-gate NIF ne bloque PAS les autres plans (Pro / Vendeur / Découverte)', async () => {
-    // SELLER_ID seed default = pas de NIF — mais création Pro doit passer
+  it('les autres plans (Pro / Vendeur / Découverte) restent créables sans NIF', async () => {
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
     await expectPermissionGranted(
       setDoc(doc(db, 'subscriptionRequests', 'sub-pro-1'), {
