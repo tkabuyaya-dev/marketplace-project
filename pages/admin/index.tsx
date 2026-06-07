@@ -27,6 +27,7 @@ const Subscriptions = lazy(() => import('./Subscriptions').then(m => ({ default:
 const Users = lazy(() => import('./Users').then(m => ({ default: m.Users })));
 const Categories = lazy(() => import('./Categories').then(m => ({ default: m.Categories })));
 const Currencies = lazy(() => import('./Currencies').then(m => ({ default: m.Currencies })));
+const Countries = lazy(() => import('./Countries').then(m => ({ default: m.Countries })));
 const BuyerRequestsAdmin = lazy(() => import('./BuyerRequestsAdmin').then(m => ({ default: m.BuyerRequestsAdmin })));
 const BuyerRequestsHealth = lazy(() => import('./BuyerRequestsHealth').then(m => ({ default: m.BuyerRequestsHealth })));
 const BuyerRequestsSecurity = lazy(() => import('./BuyerRequestsSecurity').then(m => ({ default: m.BuyerRequestsSecurity })));
@@ -165,6 +166,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'subs', label: t('admin.tabSubscriptions') },
     { id: 'users', label: t('admin.tabUsers') },
     { id: 'currencies', label: t('admin.tabCurrencies') },
+    { id: 'countries', label: t('admin.tabCountries') },
     { id: 'categories', label: t('admin.tabCategories') },
     { id: 'audit', label: t('admin.tabAudit') },
     { id: 'boosts', label: t('admin.tabBoosts'), badge: pendingBoostCount },
@@ -252,6 +254,9 @@ export const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'currencies' && (
             <Currencies {...sharedProps} currencies={currencies} countries={countries} setCurrencies={setCurrencies} />
+          )}
+          {activeTab === 'countries' && (
+            <Countries {...sharedProps} countries={countries} setCountries={setCountries} />
           )}
           {activeTab === 'categories' && (
             <Categories {...sharedProps} categories={categories} />

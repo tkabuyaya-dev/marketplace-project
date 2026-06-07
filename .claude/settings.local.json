@@ -47,7 +47,8 @@
       "PowerShell(cd C:\\\\Projets\\\\aurabuja\\\\functions; npm run build; \"build exit: $LASTEXITCODE\"; npx tsc --noEmit; \"tsc exit: $LASTEXITCODE\")",
       "mcp__chrome-devtools__fill_form",
       "Skill(claude-api)",
-      "Skill(claude-api:*)"
+      "Skill(claude-api:*)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }

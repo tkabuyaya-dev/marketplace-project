@@ -4,9 +4,9 @@
 import { Product, User, Category, Country, Currency } from '../../types';
 import type { BannerData, BannerActionType } from '../../services/firebase';
 
-export type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'currencies' | 'requests' | 'health' | 'security' | 'audit' | 'boosts' | 'studio';
+export type AdminTab = 'overview' | 'products' | 'subs' | 'users' | 'banners' | 'categories' | 'currencies' | 'countries' | 'requests' | 'health' | 'security' | 'audit' | 'boosts' | 'studio';
 
-// Countries et Languages gérés directement via Firebase Console
+// Languages gérés directement via Firebase Console
 
 export interface AdminSharedProps {
   currentUser: User;
@@ -76,6 +76,11 @@ export interface CurrenciesProps extends AdminSharedProps {
   currencies: Currency[];
   countries: Country[];
   setCurrencies: React.Dispatch<React.SetStateAction<Currency[]>>;
+}
+
+export interface CountriesProps extends AdminSharedProps {
+  countries: Country[];
+  setCountries: React.Dispatch<React.SetStateAction<Country[]>>;
 }
 
 export interface AuditLogsProps extends AdminSharedProps {}
