@@ -17,6 +17,7 @@ import { useToast } from '../Toast';
 import { useB2BAccess } from '../../hooks/useB2BAccess';
 import { useUserLanguage } from '../../hooks/useUserLanguage';
 import { publishB2BPost } from '../../services/firebase/b2b';
+import { detectSocialPlatform, normalizeSocialUrl, SOCIAL_PLATFORM_META } from '../../utils/socialLinks';
 import type { B2BCategory, B2BLang } from '../../types';
 
 const MAX_CHARS = 280;
@@ -59,6 +60,7 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
 
   const [category, setCategory] = useState<B2BCategory | null>(null);
   const [text, setText] = useState('');
+  const [mediaUrl, setMediaUrl] = useState('');
   const [previewing, setPreviewing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,12 +69,17 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
     if (!isOpen) {
       setCategory(null);
       setText('');
+      setMediaUrl('');
       setPreviewing(false);
       setSubmitting(false);
     }
   }, [isOpen]);
 
   const guessedLang = useMemo<B2BLang>(() => guessLang(text, userLang), [text, userLang]);
+
+  const trimmedMedia = mediaUrl.trim();
+  const mediaPlatform = useMemo(() => (trimmedMedia ? detectSocialPlatform(trimmedMedia) : null), [trimmedMedia]);
+  const mediaInvalid = trimmedMedia.length > 0 && !mediaPlatform;
 
   if (!isOpen) return null;
 
@@ -122,6 +129,10 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
       toast(t('b2b.errors.noWhatsApp'), 'error');
       return;
     }
+    if (mediaInvalid) {
+      toast(t('b2b.mediaInvalid'), 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       await publishB2BPost({
@@ -136,6 +147,7 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
         category,
         originalText:            trimmed,
         originalLang:            guessedLang,
+        mediaUrl:                normalizeSocialUrl(trimmedMedia),
       });
       toast(t('b2b.publishSuccess'), 'success');
       onPublished?.();
@@ -216,6 +228,32 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
               <span>{text.length}/{MAX_CHARS}</span>
             </p>
 
+            <label htmlFor="b2b-media" className="text-[11px] uppercase tracking-wider text-white/55 font-bold mb-2 block">
+              {t('b2b.mediaLabel')}
+            </label>
+            <input
+              id="b2b-media"
+              type="url"
+              inputMode="url"
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value.slice(0, 300))}
+              placeholder={t('b2b.mediaPlaceholder')}
+              className={`w-full px-3 py-2.5 rounded-xl bg-black/30 border focus:outline-none text-white text-[14px] mb-1.5 ${
+                mediaInvalid ? 'border-red-400/60' : 'border-white/15 focus:border-amber-400/60'
+              }`}
+            />
+            <p className="text-[11px] mb-4 min-h-[16px]">
+              {mediaInvalid ? (
+                <span className="text-red-300">{t('b2b.mediaInvalid')}</span>
+              ) : mediaPlatform ? (
+                <span className="text-emerald-300">
+                  {SOCIAL_PLATFORM_META[mediaPlatform].emoji} {t('b2b.mediaDetected', { platform: SOCIAL_PLATFORM_META[mediaPlatform].label })}
+                </span>
+              ) : (
+                <span className="text-white/45">{t('b2b.mediaHint')}</span>
+              )}
+            </p>
+
             <div className="flex gap-2 justify-end">
               <button
                 type="button"
@@ -227,7 +265,7 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
               <button
                 type="button"
                 onClick={() => setPreviewing(true)}
-                disabled={!category || text.trim().length < 5}
+                disabled={!category || text.trim().length < 5 || mediaInvalid}
                 className="px-4 py-2 rounded-xl text-[13px] font-extrabold text-gray-900 disabled:opacity-50"
                 style={{ background: '#F59E0B' }}
               >
@@ -252,6 +290,11 @@ export const B2BPublishForm: React.FC<Props> = ({ isOpen, onClose, onPublished }
               <p className="text-[14.5px] leading-snug text-white/95 whitespace-pre-wrap">
                 {text.trim()}
               </p>
+              {mediaPlatform && (
+                <span className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[12px] font-semibold bg-white/10 text-white/90">
+                  {SOCIAL_PLATFORM_META[mediaPlatform].emoji} {t('b2b.viewMedia', { platform: SOCIAL_PLATFORM_META[mediaPlatform].label })}
+                </span>
+              )}
               <p className="text-[10.5px] text-white/45 mt-2">
                 🌍 {t('b2b.willBeTranslated', { lang: guessedLang.toUpperCase() })}
               </p>

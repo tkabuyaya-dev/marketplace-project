@@ -63,6 +63,15 @@ service cloud.firestore {
       return field is string && field.size() > 0 && field.size() <= maxLen;
     }
 
+    // Lien vidéo/réseau autorisé : https + domaine whitelisté (TikTok / Facebook
+    // / Instagram / YouTube). Empêche l'usage du champ comme canal de
+    // contournement du masquage WhatsApp. Miroir de utils/socialLinks.ts.
+    function validSocialUrl(u) {
+      return u is string
+        && u.size() <= 300
+        && u.matches('^https://([a-z0-9-]+[.])?(tiktok[.]com|fb[.]watch|facebook[.]com|instagram[.]com|youtube[.]com|youtu[.]be)/.*$');
+    }
+
     // Valide un prix (positif, raisonnable)
     function validPrice(price) {
       return price is number && price >= 0 && price <= 999999999;
@@ -769,6 +778,9 @@ service cloud.firestore {
         && request.resource.data.category in ['fournisseur','revendeur','marche','transport']
         && request.resource.data.originalLang in ['fr','en','sw','rn','rw']
         && validString(request.resource.data.originalText, 280)
+        // mediaUrl optionnel : si présent, doit être un lien social whitelisté.
+        && (!request.resource.data.keys().hasAny(['mediaUrl'])
+            || validSocialUrl(request.resource.data.mediaUrl))
         && validWhatsapp(request.resource.data.authorWhatsApp)
         // createdAt en ms, tolérance ±5 min (horloges décalées Android/iOS)
         && request.resource.data.createdAt is number

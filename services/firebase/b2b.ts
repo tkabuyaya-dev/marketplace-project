@@ -36,6 +36,7 @@ function docToPost(data: any, id: string): B2BPost {
     authorReputationAtPost:  typeof data.authorReputationAtPost === 'number' ? data.authorReputationAtPost : 0,
     category:                data.category,
     originalText:            data.originalText || '',
+    mediaUrl:                typeof data.mediaUrl === 'string' && data.mediaUrl ? data.mediaUrl : undefined,
     originalLang:            data.originalLang,
     translations:            data.translations || {},
     translationStatus:       data.translationStatus || 'pending',
@@ -239,12 +240,17 @@ export async function publishB2BPost(input: {
   category: B2BCategory;
   originalText: string;
   originalLang: B2BLang;
+  mediaUrl?: string;
 }): Promise<string> {
   if (!db) throw new Error('Firebase non initialisé');
 
   const now = Date.now();
   const ref = doc(collection(db, COLLECTIONS.B2B_POSTS));
+  // mediaUrl n'est écrit que s'il est non vide : la rule create valide alors
+  // le format (whitelist sociale). Absent = aucune validation requise.
+  const media = (input.mediaUrl || '').trim();
   await setDoc(ref, {
+    ...(media ? { mediaUrl: media } : {}),
     authorId:                input.authorId,
     authorName:              input.authorName,
     authorCity:              input.authorCity || '',

@@ -33,6 +33,7 @@ import {
 import { buildWaUrl } from '../../config/whatsapp.config';
 import { B2BReputationRings } from './B2BReputationRings';
 import { B2BUpsellOverlay } from './B2BUpsellOverlay';
+import { detectSocialPlatform, SOCIAL_PLATFORM_META } from '../../utils/socialLinks';
 import type { B2BPost, B2BCategory, B2BLang } from '../../types';
 
 const CATEGORY_COLOR: Record<B2BCategory, string> = {
@@ -102,6 +103,9 @@ export const B2BPostCard: React.FC<Props> = ({ post, onPostUpdated }) => {
     })();
     return () => { cancelled = true; };
   }, [currentUser?.id, post.id, isAuthor]);
+
+  // ── Média social (re-validé à l'affichage : la whitelist prime) ────────
+  const mediaPlatform = post.mediaUrl ? detectSocialPlatform(post.mediaUrl) : null;
 
   // ── Affichage texte traduit ───────────────────────────────────────────
   const displayedText = post.translations?.[userLang] || post.originalText;
@@ -243,6 +247,19 @@ export const B2BPostCard: React.FC<Props> = ({ post, onPostUpdated }) => {
           🌍 {LANG_LABEL[post.originalLang]} → {LANG_LABEL[userLang]} ·{' '}
           {t('b2b.translatedBy')}
         </p>
+      )}
+
+      {mediaPlatform && post.mediaUrl && (
+        <a
+          href={post.mediaUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="b2b-media-link mb-1 inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12.5px] font-semibold bg-white/10 hover:bg-white/15 text-white/90 transition-colors"
+          aria-label={t('b2b.viewMedia', { platform: SOCIAL_PLATFORM_META[mediaPlatform].label })}
+        >
+          {SOCIAL_PLATFORM_META[mediaPlatform].emoji} {t('b2b.viewMedia', { platform: SOCIAL_PLATFORM_META[mediaPlatform].label })}
+          <span className="opacity-60">↗</span>
+        </a>
       )}
 
       <div className="flex items-center gap-2 flex-wrap mt-3">

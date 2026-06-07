@@ -621,6 +621,8 @@ export interface B2BPost {
   authorReputationAtPost: number; // snapshot — évite N reads sur le feed
   category: B2BCategory;
   originalText: string;          // 1..280
+  /** Lien vidéo/réseau optionnel — whitelist TikTok/FB/Insta/YouTube (cf. utils/socialLinks). */
+  mediaUrl?: string;
   originalLang: B2BLang;
   translations: B2BTranslations; // populé en async par CF translateB2BPost
   translationStatus: B2BTranslationStatus;

@@ -76,8 +76,12 @@ Déjà présent dans le projet (réutilisé par `generate-product-description` e
 | Fichier | Rôle |
 | --- | --- |
 | [components/B2B/B2BTab.tsx](components/B2B/B2BTab.tsx) | Conteneur principal : chips, feed paginé cursor-based, FAB Publier. Applique `data-b2b="true"` qui scope les CSS variables dark. |
-| [components/B2B/B2BPostCard.tsx](components/B2B/B2BPostCard.tsx) | Carte d'un post. Affiche `translations[userLang]` ?? `originalText`. Bouton "Je peux aider" héros (gold + pulse), bouton WhatsApp pré-rempli, bouton Confirmer. Pour les non-Pro : contenu flouté + overlay. |
-| [components/B2B/B2BPublishForm.tsx](components/B2B/B2BPublishForm.tsx) | Formulaire 2 étapes (saisie + preview) avec détection heuristique de la langue source. |
+| [components/B2B/B2BPostCard.tsx](components/B2B/B2BPostCard.tsx) | Carte d'un post. Affiche `translations[userLang]` ?? `originalText`. Bouton "Je peux aider" héros (gold + pulse), bouton WhatsApp pré-rempli, bouton Confirmer. Lien vidéo/réseau optionnel (`mediaUrl`) re-validé à l'affichage et ouvert en nouvel onglet (`noopener`). Pour les non-Pro : contenu flouté + overlay. |
+| [components/B2B/B2BPublishForm.tsx](components/B2B/B2BPublishForm.tsx) | Formulaire 2 étapes (saisie + preview) avec détection heuristique de la langue source. Champ `mediaUrl` optionnel avec détection live de la plateforme. |
+
+### Lien vidéo / réseau (`mediaUrl`)
+
+Champ **optionnel** sur `b2b_posts`. Whitelist STRICTE — TikTok / Facebook / Instagram / YouTube uniquement, en `https`. Source unique : [utils/socialLinks.ts](utils/socialLinks.ts), rejouée côté rules via `validSocialUrl()`. But sécurité : empêcher le champ de servir de canal de contournement du masquage WhatsApp. Aucun embed (offline-first) — simple lien ouvert en nouvel onglet.
 | [components/B2B/B2BHelpList.tsx](components/B2B/B2BHelpList.tsx) | Liste des helpers d'un post — visible uniquement par l'auteur (filtrage côté rules). |
 | [components/B2B/B2BCategoryChips.tsx](components/B2B/B2BCategoryChips.tsx) | Filtre horizontal avec compteurs live (one-shot). |
 | [components/B2B/B2BReputationRings.tsx](components/B2B/B2BReputationRings.tsx) | Anneaux SVG concentriques selon le score. |
