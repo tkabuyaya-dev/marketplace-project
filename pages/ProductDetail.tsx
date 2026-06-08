@@ -15,6 +15,7 @@ import { StockUrgency } from '../components/StockUrgency';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { CURRENCY } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { recordContact } from '../services/firebase/deal-loop';
 import {
   toggleLikeProduct, reportProduct, checkIsLiked,
   incrementProductViews, getProductBySlugOrId,
@@ -228,6 +229,14 @@ const ProductDetail: React.FC = () => {
 
   const handleWhatsApp = () => {
     if (product.seller.whatsapp) {
+      // Deal Loop : on journalise le contact en fire-and-forget AVANT d'ouvrir
+      // WhatsApp. Surtout pas d'await — l'ouverture doit être instantanée.
+      void recordContact({
+        productId: product.id,
+        sellerUid: product.seller.id,
+        productSlug: product.slug || null,
+        productTitle: product.title,
+      });
       const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
       const message = t('productDetail.whatsappMessage', { title: product.title, url: productUrl });
       window.open(buildWaUrl(message, { phone: product.seller.whatsapp }), '_blank');

@@ -29,6 +29,7 @@ import { SmartImageUpload } from '../components/SmartImageUpload';
 import { SmartTitleInput } from '../components/SmartTitleInput';
 import { VoiceCaptureButton } from '../components/VoiceCaptureButton';
 import type { VoiceListingResult, VoiceListingError } from '../services/firebase/voice-listing';
+import { DealConfirmCard } from '../components/DealConfirmCard';
 import { ProductQualityScore } from '../components/ProductQualityScore';
 import { ProductPreview } from '../components/ProductPreview';
 import { RenewSubscriptionModal } from '../components/RenewSubscriptionModal';
@@ -3100,6 +3101,8 @@ export const SellerDashboard: React.FC = () => {
            className={`flex-1 px-4 md:px-8 py-4 md:py-8 ${activeTab === 'add_product' ? 'pb-48 md:pb-8' : 'pb-24 md:pb-10'}`}
            style={{ maxWidth: 1180, width: '100%', marginInline: 'auto' }}
          >
+           {/* Deal Loop : carte de confirmation de vente (si arrivé via ?deal=) */}
+           <DealConfirmCard />
            {activeTab === 'overview' && renderOverview()}
            {activeTab === 'analytics' && renderAnalytics()}
            {activeTab === 'products' && renderProducts()}

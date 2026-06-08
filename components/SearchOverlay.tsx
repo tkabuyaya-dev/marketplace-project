@@ -10,6 +10,9 @@ import { useAppContext } from '../contexts/AppContext';
 import { useAdaptiveDebounce } from '../hooks/useAdaptiveDebounce';
 import { getTrendingProducts } from '../services/firebase';
 import { CURRENCY } from '../constants';
+import { Mic, Square, Loader2 } from 'lucide-react';
+import { useAudioRecorder, type RecorderErrorReason } from '../hooks/useAudioRecorder';
+import { transcribeVoiceSearch } from '../services/firebase/voice-search';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -31,6 +34,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
   const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState(-1);
   const [autoProducts, setAutoProducts] = useState<Product[]>([]);
   const [discoverProducts, setDiscoverProducts] = useState<Product[]>([]);
+  const [voiceHint, setVoiceHint] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteAbort = useRef(0);
@@ -52,6 +56,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
       setSuggestions([]);
       setAutoProducts([]);
       setShowSuggestions(false);
+      setVoiceHint('');
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
@@ -124,6 +129,34 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
     setRecentSearches(prev => prev.filter(t => t !== term));
   }, []);
 
+  // ── Voice search : dicter → remplir la barre → lancer la recherche ────────
+  const handleVoiceAudio = useCallback(async (blob: Blob) => {
+    setVoiceHint('');
+    const res = await transcribeVoiceSearch(blob);
+    if (res.ok === false) {
+      setVoiceHint(
+        res.error.kind === 'rate_limited'
+          ? t('search.voiceRateLimited')
+          : t('search.voiceUnavailable'),
+      );
+      return;
+    }
+    const term = res.data.transcript.trim().replace(/[.?!,;:]+$/, '');
+    if (term.length >= 2) {
+      // Remplit, historise et navigue vers les résultats (même flux que la saisie).
+      handleSelectSuggestion(term);
+    } else {
+      setQuery(term);
+      setVoiceHint(t('search.voiceNotUnderstood'));
+    }
+  }, [t, handleSelectSuggestion]);
+
+  const handleVoiceError = useCallback((reason: RecorderErrorReason) => {
+    setVoiceHint(reason === 'mic_permission' ? t('search.voiceMicDenied') : t('search.voiceTryAgain'));
+  }, [t]);
+
+  const voice = useAudioRecorder({ onAudio: handleVoiceAudio, onError: handleVoiceError });
+
   useEffect(() => { setSelectedSuggestionIdx(-1); }, [suggestions]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -194,7 +227,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                 onKeyDown={handleKeyDown}
                 placeholder={t('search.searchPlaceholder')}
                 // WCAG AA : placeholder-gray-600 = 4.69:1 sur fond gray-100
-                className="w-full bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-gold-400/40 focus:border-gold-400 focus:bg-white dark:bg-gray-800/50 dark:border-gray-700/50 dark:text-white dark:placeholder-gray-500 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50 dark:focus:bg-gray-800 rounded-2xl pl-12 pr-20 py-3.5 transition-all outline-none"
+                className="w-full bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-gold-400/40 focus:border-gold-400 focus:bg-white dark:bg-gray-800/50 dark:border-gray-700/50 dark:text-white dark:placeholder-gray-500 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50 dark:focus:bg-gray-800 rounded-2xl pl-12 pr-24 py-3.5 transition-all outline-none"
                 role="combobox"
                 aria-expanded={showSuggestions}
                 aria-autocomplete="list"
@@ -205,6 +238,28 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
                 {query && (
                   <button onClick={() => setQuery('')} aria-label={t('search.clear')} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                )}
+                {voice.isSupported && (
+                  <button
+                    type="button"
+                    onClick={voice.toggle}
+                    disabled={!voice.online || voice.phase === 'processing'}
+                    aria-pressed={voice.phase === 'recording'}
+                    aria-label={t('search.voiceSearch')}
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
+                      voice.phase === 'recording'
+                        ? 'text-white bg-red-500'
+                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {voice.phase === 'processing' ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : voice.phase === 'recording' ? (
+                      <Square size={15} className="fill-current" />
+                    ) : (
+                      <Mic size={18} />
+                    )}
                   </button>
                 )}
               </div>
@@ -271,6 +326,19 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
       {/* --- RESULTS AREA — empty state only (recent + popular) --- */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
+
+          {/* Statut recherche vocale */}
+          {voice.phase === 'recording' && (
+            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-red-500 animate-fade-in">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              {t('search.voiceListening')}
+            </div>
+          )}
+          {voice.phase !== 'recording' && voiceHint && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+              {voiceHint}
+            </div>
+          )}
 
           {showEmptyState && (
             <div className="space-y-6 animate-fade-in">

@@ -119,6 +119,12 @@
     "allProducts": "All products",
     "noProducts": "No products available"
   },
+  "dealLoop": {
+    "question": "Deal done? Did you sell this product to the buyer who contacted you?",
+    "yes": "Yes, sold",
+    "no": "Not yet",
+    "thanks": "Thanks! This helps us highlight trusted sellers."
+  },
   "search": {
     "placeholder": "Search for a product, a shop...",
     "noResults": "No results for",
@@ -140,6 +146,13 @@
     "apply": "Apply",
     "shopSearch": "Search in this shop",
     "searchPlaceholder": "Search products or shops...",
+    "voiceSearch": "Voice search",
+    "voiceListening": "Speak now…",
+    "voiceNotUnderstood": "Didn't catch that. Try again or type.",
+    "voiceRateLimited": "Too many voice searches today. Try again later.",
+    "voiceUnavailable": "Voice search unavailable. Type your search.",
+    "voiceMicDenied": "Microphone denied. Allow it or type your search.",
+    "voiceTryAgain": "Recording too short. Try again.",
     "recentSearches": "Recent searches",
     "popularSearches": "Popular searches",
     "productsCount": "Products ({{count}})",

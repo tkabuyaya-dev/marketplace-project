@@ -860,6 +860,27 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
+    // DEAL LOOP — capture contact + confirmation de vente (CF-only)
+    // contactEvents : écrites/lues uniquement via Admin SDK (recordContact,
+    // dealLoopSweep, confirmDeal). Aucun accès client direct.
+    // ─────────────────────────────────────────────────────────
+    match /contactEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // sellerStats : compteurs de ventes déclarées. Écrites par confirmDeal
+    // (Admin SDK). Le vendeur peut lire SES propres stats ; jamais les écrire.
+    match /sellerStats/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // voiceSearchUsage : compteurs anti-abus de la recherche vocale (Admin SDK).
+    match /voiceSearchUsage/{key} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
     // DENY ALL — Toute collection non listée est bloquée par défaut
     // ─────────────────────────────────────────────────────────
     match /{document=**} {

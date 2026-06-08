@@ -120,6 +120,15 @@ export { generateProductDescription } from "./generate-product-description.js";
 // extraction/traduction FR des champs produit (Claude Haiku 4.5).
 export { transcribeListing } from "./transcribe-listing.js";
 
+// Voice search : transcription STT-only (publique, rate-limit deviceId/IP)
+// → alimente la recherche Algolia existante.
+export { transcribeSearch } from "./transcribe-search.js";
+
+// Deal Loop : capture du contact WhatsApp + confirmation de vente à 48h.
+export { recordContact } from "./record-contact.js";
+export { confirmDeal } from "./confirm-deal.js";
+export { dealLoopSweep } from "./deal-loop-sweep.js";
+
 // Test push FCM pour la page /fcm-debug — envoie un push à ses propres devices.
 export { sendTestPush } from "./send-test-push.js";
 

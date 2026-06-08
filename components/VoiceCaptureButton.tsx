@@ -5,21 +5,16 @@
  * Au relâchement, l'audio part à la CF `transcribeListing` qui renvoie les
  * champs pré-remplis (titre, prix, catégorie…).
  *
- * Principes (alignés offline-first / dégradation propre) :
- *   - Si pas de MediaRecorder / getUserMedia → le bouton ne s'affiche pas
- *     (le clavier reste l'unique voie, rien n'est cassé).
- *   - Hors-ligne (navigator.onLine === false) → bouton désactivé + hint :
- *     la transcription exige le serveur. Le vendeur tape normalement.
- *   - Choix automatique du mimeType supporté (Android = webm/opus,
- *     iOS = mp4/aac). La CF gère les deux via autoDecodingConfig.
- *   - Auto-stop à 30s pour borner coût + taille.
+ * La mécanique d'enregistrement est dans useAudioRecorder (partagée avec la
+ * voice search). Ce composant ne gère que l'appel transcription + l'UI.
  *
- * Le composant ne dépend d'aucun système de toast : il remonte le résultat
- * via onResult et les erreurs via onError, le parent décide de l'affichage.
+ * Dégradation : ne s'affiche pas si l'API micro est absente ; désactivé
+ * hors-ligne (transcription = serveur). Le clavier reste toujours dispo.
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
+import { useAudioRecorder, type RecorderErrorReason } from '../hooks/useAudioRecorder';
 import {
   transcribeVoiceListing,
   type VoiceListingResult,
@@ -35,39 +30,6 @@ interface Props {
   label?: string;
 }
 
-const MAX_RECORDING_MS = 30_000;
-
-/** Le premier mimeType supporté par MediaRecorder dans cet environnement. */
-function pickMimeType(): string | undefined {
-  if (typeof MediaRecorder === 'undefined') return undefined;
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'audio/aac',
-    'audio/ogg;codecs=opus',
-  ];
-  for (const type of candidates) {
-    try {
-      if (MediaRecorder.isTypeSupported(type)) return type;
-    } catch {
-      /* ignore */
-    }
-  }
-  return undefined; // laisse le navigateur choisir son défaut
-}
-
-/** L'API d'enregistrement est-elle disponible ? */
-function isRecordingSupported(): boolean {
-  return (
-    typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices?.getUserMedia &&
-    typeof MediaRecorder !== 'undefined'
-  );
-}
-
-type Phase = 'idle' | 'recording' | 'processing';
-
 export const VoiceCaptureButton: React.FC<Props> = ({
   onResult,
   onError,
@@ -75,115 +37,30 @@ export const VoiceCaptureButton: React.FC<Props> = ({
   disabled,
   label = 'Décrire à la voix',
 }) => {
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [online, setOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true,
-  );
-
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Suivi online/offline pour griser le bouton hors-ligne.
-  useEffect(() => {
-    const up = () => setOnline(true);
-    const down = () => setOnline(false);
-    window.addEventListener('online', up);
-    window.addEventListener('offline', down);
-    return () => {
-      window.removeEventListener('online', up);
-      window.removeEventListener('offline', down);
-    };
-  }, []);
-
-  const cleanupStream = useCallback(() => {
-    if (autoStopRef.current) {
-      clearTimeout(autoStopRef.current);
-      autoStopRef.current = null;
-    }
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  }, []);
-
-  // Stop des pistes au démontage (libère le micro si l'utilisateur navigue).
-  useEffect(() => cleanupStream, [cleanupStream]);
-
-  const startRecording = useCallback(async () => {
-    if (phase !== 'idle' || disabled || !online) return;
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      onError?.({ kind: 'invalid_input', message: 'mic_permission' });
+  const handleAudio = useCallback(async (blob: Blob) => {
+    const res = await transcribeVoiceListing(blob, countryId);
+    if (res.ok === false) {
+      onError?.(res.error);
       return;
     }
-    streamRef.current = stream;
-    chunksRef.current = [];
+    onResult(res.data);
+  }, [countryId, onResult, onError]);
 
-    const mimeType = pickMimeType();
-    let recorder: MediaRecorder;
-    try {
-      recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-    } catch {
-      cleanupStream();
+  const handleRecorderError = useCallback((reason: RecorderErrorReason) => {
+    if (reason === 'unsupported_recorder') {
       onError?.({ kind: 'service_unavailable' });
       return;
     }
-    recorderRef.current = recorder;
+    // 'mic_permission' | 'too_short' → message dédié côté parent.
+    onError?.({ kind: 'invalid_input', message: reason });
+  }, [onError]);
 
-    recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-    };
+  const { phase, online, isSupported, toggle } = useAudioRecorder({
+    onAudio: handleAudio,
+    onError: handleRecorderError,
+  });
 
-    recorder.onstop = async () => {
-      cleanupStream();
-      const type = recorder.mimeType || mimeType || 'audio/webm';
-      const blob = new Blob(chunksRef.current, { type });
-      chunksRef.current = [];
-
-      // Garde-fou : enregistrement vide (clic trop court) → on annule sans appel réseau.
-      if (blob.size < 1200) {
-        setPhase('idle');
-        onError?.({ kind: 'invalid_input', message: 'too_short' });
-        return;
-      }
-
-      setPhase('processing');
-      const res = await transcribeVoiceListing(blob, countryId);
-      setPhase('idle');
-      if (res.ok === false) {
-        onError?.(res.error);
-        return;
-      }
-      onResult(res.data);
-    };
-
-    recorder.start();
-    setPhase('recording');
-
-    // Auto-stop de sécurité.
-    autoStopRef.current = setTimeout(() => {
-      if (recorderRef.current?.state === 'recording') {
-        recorderRef.current.stop();
-      }
-    }, MAX_RECORDING_MS);
-  }, [phase, disabled, online, countryId, onResult, onError, cleanupStream]);
-
-  const stopRecording = useCallback(() => {
-    if (recorderRef.current?.state === 'recording') {
-      recorderRef.current.stop();
-    }
-  }, []);
-
-  const toggle = useCallback(() => {
-    if (phase === 'recording') stopRecording();
-    else startRecording();
-  }, [phase, startRecording, stopRecording]);
-
-  if (!isRecordingSupported()) return null;
+  if (!isSupported) return null;
 
   const isBusy = phase === 'processing';
   const isRecording = phase === 'recording';
@@ -197,9 +74,7 @@ export const VoiceCaptureButton: React.FC<Props> = ({
         disabled={isDisabled}
         aria-pressed={isRecording}
         className={`inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1 rounded-full transition-transform active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed ${
-          isRecording
-            ? 'text-white bg-red-500'
-            : 'text-goldDeep'
+          isRecording ? 'text-white bg-red-500' : 'text-goldDeep'
         }`}
         style={isRecording ? undefined : { background: 'rgba(245,200,66,0.15)' }}
       >

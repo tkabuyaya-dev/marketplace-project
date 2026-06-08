@@ -33,19 +33,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getDb } from "./admin.js";
 import { ALLOWED_ORIGINS, ANTHROPIC_API_KEY } from "./config.js";
 import { featuresForLabel } from "./plan-features.js";
-
-// Région où le modèle Chirp 2 est servi. Surchargeable via env STT_LOCATION
-// (ex: "europe-west4" pour garder la donnée en Europe). Défaut us-central1 :
-// disponibilité Chirp 2 large et stable. La latence n'est pas critique (flux
-// d'ajout produit, pas temps réel).
-const STT_LOCATION = process.env.STT_LOCATION || "us-central1";
-
-// Détection AUTOMATIQUE de langue par Chirp 2 : le modèle identifie seul la
-// langue parlée (FR/EN/swahili/…) puis Claude traduit en FR. On évite ainsi la
-// matrice de support par langue/région, fragile : lister un code non supporté
-// (ex "sw-TZ" à us-central1) fait planter TOUTE la requête en 400 INVALID_ARGUMENT.
-// "auto" est la valeur documentée pour la détection auto avec chirp_2.
-const STT_LANGUAGE_CODES = ["auto"];
+import { transcribeAudioToText, STT_LOCATION, type SttResult } from "./stt.js";
 
 const FREE_DAILY_VOICE_QUOTA = 10;
 // Plafond taille audio (base64). ~2.5M chars ≈ ~1.8 Mo ≈ ~90s de voix Opus.
@@ -102,10 +90,8 @@ RÈGLES :
 5. Si la transcription est inintelligible, renvoie title="" et tout le reste null/[].`;
 
 interface TranscribeInput {
-  /** Audio encodé base64 (sans le préfixe data:). */
+  /** Audio encodé base64 (sans le préfixe data:). Google STT auto-détecte le format. */
   audioBase64?: string;
-  /** Type MIME réel de l'enregistrement (ex: "audio/webm;codecs=opus", "audio/mp4"). */
-  mimeType?: string;
   /** Pays du vendeur (aide la devise par défaut côté extraction). */
   countryId?: string;
 }
@@ -142,99 +128,6 @@ function getClient(): Anthropic {
 function getLocalDateKey(): string {
   const offsetMs = 2 * 60 * 60 * 1000;
   return new Date(Date.now() + offsetMs).toISOString().slice(0, 10);
-}
-
-/** Project ID du runtime (gen2 expose GCLOUD_PROJECT). */
-function getProjectId(): string {
-  const id =
-    process.env.GCLOUD_PROJECT ||
-    process.env.GOOGLE_CLOUD_PROJECT ||
-    "";
-  if (id) return id;
-  try {
-    const cfg = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
-    return cfg.projectId || "";
-  } catch {
-    return "";
-  }
-}
-
-/** Token OAuth du service account du runtime via le metadata server (ADC). */
-async function getAccessToken(): Promise<string> {
-  const url =
-    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
-  const res = await fetch(url, { headers: { "Metadata-Flavor": "Google" } });
-  if (!res.ok) {
-    throw new Error(`metadata token HTTP ${res.status}`);
-  }
-  const data = (await res.json()) as { access_token?: string };
-  if (!data.access_token) throw new Error("metadata token vide");
-  return data.access_token;
-}
-
-interface SttResult {
-  transcript: string;
-  confidence: number;
-  language: string | null;
-}
-
-/** Appel Speech-to-Text v2 recognize (Chirp 2) en REST. */
-async function transcribeAudio(
-  audioBase64: string,
-  projectId: string,
-  token: string,
-): Promise<SttResult> {
-  const endpoint = `https://${STT_LOCATION}-speech.googleapis.com/v2/projects/${projectId}/locations/${STT_LOCATION}/recognizers/_:recognize`;
-  const body = {
-    config: {
-      autoDecodingConfig: {},
-      model: "chirp_2",
-      languageCodes: STT_LANGUAGE_CODES,
-      features: { enableAutomaticPunctuation: true },
-    },
-    content: audioBase64,
-  };
-
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`STT HTTP ${res.status}: ${errText.slice(0, 300)}`);
-  }
-
-  const data = (await res.json()) as {
-    results?: Array<{
-      alternatives?: Array<{ transcript?: string; confidence?: number }>;
-      languageCode?: string;
-    }>;
-  };
-
-  const parts: string[] = [];
-  let confSum = 0;
-  let confN = 0;
-  let language: string | null = null;
-  for (const r of data.results || []) {
-    const alt = r.alternatives?.[0];
-    if (alt?.transcript) parts.push(alt.transcript);
-    if (typeof alt?.confidence === "number") {
-      confSum += alt.confidence;
-      confN += 1;
-    }
-    if (!language && r.languageCode) language = r.languageCode;
-  }
-
-  return {
-    transcript: parts.join(" ").trim(),
-    confidence: confN > 0 ? confSum / confN : 0,
-    language,
-  };
 }
 
 /** Extraction structurée via Claude Haiku — renvoie des champs sûrs/normalisés. */
@@ -374,17 +267,10 @@ export const transcribeListing = onCall<TranscribeInput, Promise<TranscribeOutpu
       }
     }
 
-    // ── 4. Transcription (Google STT v2 Chirp 2) ─────────────────────────
-    const projectId = getProjectId();
-    if (!projectId) {
-      logger.error("[transcribe-listing] projectId introuvable dans l'env runtime");
-      throw new HttpsError("internal", "Configuration serveur incomplète.");
-    }
-
+    // ── 4. Transcription (Google STT v2 Chirp 2 — helper partagé) ────────
     let stt: SttResult;
     try {
-      const token = await getAccessToken();
-      stt = await transcribeAudio(audioBase64, projectId, token);
+      stt = await transcribeAudioToText(audioBase64);
     } catch (err) {
       logger.error("[transcribe-listing] STT error", {
         error: err instanceof Error ? err.message : String(err),

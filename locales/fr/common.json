@@ -119,6 +119,12 @@
     "allProducts": "Tous les produits",
     "noProducts": "Aucun produit disponible"
   },
+  "dealLoop": {
+    "question": "Vente conclue ? Avez-vous vendu ce produit au client qui vous a contacté ?",
+    "yes": "Oui, vendu",
+    "no": "Pas encore",
+    "thanks": "Merci ! Ça nous aide à mettre en avant les bons vendeurs."
+  },
   "search": {
     "placeholder": "Rechercher un produit, une boutique...",
     "noResults": "Aucun résultat pour",
@@ -140,6 +146,13 @@
     "apply": "Appliquer",
     "shopSearch": "Rechercher dans cette boutique",
     "searchPlaceholder": "Rechercher produits ou boutiques...",
+    "voiceSearch": "Recherche vocale",
+    "voiceListening": "Parlez maintenant…",
+    "voiceNotUnderstood": "Pas bien compris. Réessayez ou tapez.",
+    "voiceRateLimited": "Trop de recherches vocales aujourd'hui. Réessayez plus tard.",
+    "voiceUnavailable": "Recherche vocale indisponible. Tapez votre recherche.",
+    "voiceMicDenied": "Micro refusé. Autorisez-le ou tapez votre recherche.",
+    "voiceTryAgain": "Enregistrement trop court. Réessayez.",
     "recentSearches": "Recherches récentes",
     "popularSearches": "Recherches populaires",
     "productsCount": "Produits ({{count}})",
