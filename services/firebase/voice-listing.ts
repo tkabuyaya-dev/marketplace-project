@@ -45,7 +45,6 @@ export type VoiceListingRes =
 
 interface TranscribeRequest {
   audioBase64: string;
-  mimeType: string;
   countryId?: string;
 }
 
@@ -93,7 +92,6 @@ export async function transcribeVoiceListing(
   try {
     const result = await fn({
       audioBase64,
-      mimeType: audioBlob.type || 'audio/webm',
       countryId,
     });
     return { ok: true, data: result.data };
