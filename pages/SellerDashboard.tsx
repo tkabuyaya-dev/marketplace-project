@@ -1889,9 +1889,10 @@ export const SellerDashboard: React.FC = () => {
                        </label>
                     </div>
 
-                    {/* Voice-first listing : décrire le produit à la voix → pré-remplissage IA */}
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[12.5px] font-semibold text-ink2">{t('dashboard.productNameLabel')}</span>
+                    {/* Voice-first listing : décrire le produit à la voix → pré-remplissage IA.
+                        Bouton aligné à droite ; le libellé « Nom du produit » est déjà
+                        rendu par SmartTitleInput juste en dessous (pas de doublon). */}
+                    <div className="flex items-center justify-end mb-1">
                       <VoiceCaptureButton
                         onResult={handleVoiceResult}
                         onError={handleVoiceError}
