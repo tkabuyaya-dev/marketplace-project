@@ -16,7 +16,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Search, Mic, X, SlidersHorizontal, ChevronDown,
+  ArrowLeft, Search, Mic, Square, Loader2, X, SlidersHorizontal, ChevronDown,
   Heart, Star, Eye, BadgeCheck, Clock, Flame,
 } from 'lucide-react';
 import { useSearch, SearchFiltersState } from '../hooks/useSearch';
@@ -34,6 +34,8 @@ import { algoliaAutocompleteProducts } from '../services/algolia';
 import { trackSearchClick } from '../services/algolia-insights';
 import { useAppContext } from '../contexts/AppContext';
 import { JeChercheBlock } from '../components/JeCherche/JeChercheBlock';
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { transcribeVoiceSearch } from '../services/firebase/voice-search';
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * UTILS
@@ -146,13 +148,27 @@ interface StickyHeaderProps {
   inputRef: React.RefObject<HTMLInputElement>;
   activeChips: ActiveChip[];
   onRemoveChip: (id: string) => void;
+  /** Recherche vocale : terme transcrit prêt à lancer. */
+  onVoiceSearch: (term: string) => void;
 }
 
 const StickyHeader: React.FC<StickyHeaderProps> = ({
   inputValue, onInputChange, onSubmit, onBack,
   focused, onFocus, onBlur, inputRef,
-  activeChips, onRemoveChip,
-}) => (
+  activeChips, onRemoveChip, onVoiceSearch,
+}) => {
+  // Recherche vocale : on transcrit puis on lance la recherche (terme ≥ 2),
+  // sinon on remplit juste le champ. Mécanique micro partagée (useAudioRecorder).
+  const handleVoiceAudio = useCallback(async (blob: Blob) => {
+    const res = await transcribeVoiceSearch(blob);
+    if (res.ok === false) return;
+    const term = res.data.transcript.trim().replace(/[.?!,;:]+$/, '');
+    if (term.length >= 2) onVoiceSearch(term);
+    else if (term) onInputChange(term);
+  }, [onVoiceSearch, onInputChange]);
+  const voice = useAudioRecorder({ onAudio: handleVoiceAudio });
+
+  return (
   <header
     className="sticky top-0 z-30 bg-white"
     style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingTop: 'env(safe-area-inset-top, 0px)' }}
@@ -196,13 +212,26 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
             <X size={12} color="#5C6370" strokeWidth={2.5} />
           </button>
         )}
-        <button
-          type="button"
-          aria-label="Recherche vocale"
-          className="w-7 h-7 flex items-center justify-center rounded-full flex-shrink-0 active:bg-black/5"
-        >
-          <Mic size={17} color="#A45F00" strokeWidth={2.25} />
-        </button>
+        {voice.isSupported && (
+          <button
+            type="button"
+            onClick={voice.toggle}
+            disabled={!voice.online || voice.phase === 'processing'}
+            aria-label="Recherche vocale"
+            aria-pressed={voice.phase === 'recording'}
+            className={`w-7 h-7 flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-40 ${
+              voice.phase === 'recording' ? 'bg-red-500' : 'active:bg-black/5'
+            }`}
+          >
+            {voice.phase === 'processing' ? (
+              <Loader2 size={16} className="animate-spin" color="#A45F00" />
+            ) : voice.phase === 'recording' ? (
+              <Square size={13} color="#FFFFFF" fill="#FFFFFF" />
+            ) : (
+              <Mic size={17} color="#A45F00" strokeWidth={2.25} />
+            )}
+          </button>
+        )}
       </div>
     </form>
 
@@ -228,7 +257,8 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
       </div>
     )}
   </header>
-);
+  );
+};
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * SORT / FILTER BAR
@@ -1125,6 +1155,14 @@ const SearchPage: React.FC = () => {
         inputValue={inputValue}
         onInputChange={v => { setInputValue(v); hasUserTyped.current = true; }}
         onSubmit={handleSearch}
+        onVoiceSearch={term => {
+          setInputValue(term);
+          hasUserTyped.current = true;
+          addToSearchHistory(term);
+          setRecentSearches(getSearchHistory().slice(0, 5));
+          setQuery(term);
+          setFocused(false);
+        }}
         onBack={() => navigate(-1)}
         focused={focused}
         onFocus={() => setFocused(true)}
