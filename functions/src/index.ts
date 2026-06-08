@@ -128,6 +128,8 @@ export { transcribeSearch } from "./transcribe-search.js";
 export { recordContact } from "./record-contact.js";
 export { confirmDeal } from "./confirm-deal.js";
 export { dealLoopSweep } from "./deal-loop-sweep.js";
+// Deal Loop : tableau de bord d'intelligence commerciale (admin only).
+export { getDealLoopStats } from "./deal-loop-stats.js";
 
 // Test push FCM pour la page /fcm-debug — envoie un push à ses propres devices.
 export { sendTestPush } from "./send-test-push.js";

@@ -236,6 +236,8 @@ const ProductDetail: React.FC = () => {
         sellerUid: product.seller.id,
         productSlug: product.slug || null,
         productTitle: product.title,
+        productPrice: displayPrice,
+        currency: cur,
       });
       const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
       const message = t('productDetail.whatsappMessage', { title: product.title, url: productUrl });

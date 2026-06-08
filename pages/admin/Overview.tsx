@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { auth } from '../../firebase-config';
 import type { OverviewProps } from './types';
+import { DealLoopInsights } from './DealLoopInsights';
 
 const FUNCTIONS_BASE = import.meta.env.VITE_FUNCTIONS_BASE_URL || '';
 
@@ -72,6 +73,9 @@ export const Overview: React.FC<OverviewProps> = ({
           {t('admin.sellersExpiring', { count: expiringSoonSellers.length })}
         </button>
       )}
+
+      {/* Intelligence commerciale (Deal Loop) */}
+      <DealLoopInsights />
 
       {/* Algolia Reindex */}
       <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">

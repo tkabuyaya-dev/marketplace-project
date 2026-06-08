@@ -29,6 +29,10 @@ interface RecordContactData {
   sellerUid?: string;
   productSlug?: string | null;
   productTitle?: string;
+  /** Prix affiché au moment du contact — sert au calcul du GMV estimé. */
+  productPrice?: number;
+  /** Devise du prix (BIF, CDF, USD, RWF, TZS) — le GMV est agrégé par devise. */
+  currency?: string;
   deviceId?: string | null;
 }
 
@@ -55,6 +59,14 @@ export const recordContact = onCall<RecordContactData>(
 
     const buyerUid = request.auth?.uid ?? null;
     const deviceId = isValidDeviceId(data.deviceId) ? data.deviceId : null;
+    const productPrice =
+      typeof data.productPrice === "number" && isFinite(data.productPrice) && data.productPrice > 0
+        ? data.productPrice
+        : null;
+    const currency =
+      typeof data.currency === "string" && data.currency.trim()
+        ? data.currency.trim().slice(0, 8)
+        : null;
 
     // Self-contact (le vendeur clique son propre produit) → on ignore.
     if (buyerUid && buyerUid === sellerUid) {
@@ -79,6 +91,8 @@ export const recordContact = onCall<RecordContactData>(
             productId,
             productSlug: data.productSlug || null,
             productTitle,
+            productPrice,
+            currency,
             status: "pending",
             createdAt: now,
             updatedAt: now,
