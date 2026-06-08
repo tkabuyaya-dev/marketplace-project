@@ -40,8 +40,12 @@ import { featuresForLabel } from "./plan-features.js";
 // d'ajout produit, pas temps réel).
 const STT_LOCATION = process.env.STT_LOCATION || "us-central1";
 
-// Langues candidates pour l'auto-détection Chirp 2. Ordre = priorité de tie-break.
-const STT_LANGUAGE_CODES = ["fr-FR", "en-US", "sw-TZ", "rw-RW"];
+// Détection AUTOMATIQUE de langue par Chirp 2 : le modèle identifie seul la
+// langue parlée (FR/EN/swahili/…) puis Claude traduit en FR. On évite ainsi la
+// matrice de support par langue/région, fragile : lister un code non supporté
+// (ex "sw-TZ" à us-central1) fait planter TOUTE la requête en 400 INVALID_ARGUMENT.
+// "auto" est la valeur documentée pour la détection auto avec chirp_2.
+const STT_LANGUAGE_CODES = ["auto"];
 
 const FREE_DAILY_VOICE_QUOTA = 10;
 // Plafond taille audio (base64). ~2.5M chars ≈ ~1.8 Mo ≈ ~90s de voix Opus.
