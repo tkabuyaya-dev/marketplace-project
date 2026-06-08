@@ -60,6 +60,7 @@ export async function confirmDeal(eventId: string, answer: 'yes' | 'no'): Promis
 export interface SellerRow {
   sellerUid: string;
   name: string;
+  slug: string | null;
   contacts: number;
   matured: number;
   sold: number;
@@ -89,6 +90,8 @@ export interface DealLoopStats {
   funnel: { stage: string; count: number }[];
   watchSellers: SellerRow[];
   champions: SellerRow[];
+  topSellersByContacts: SellerRow[];
+  topProductsByContacts: ProductRow[];
   unmetDemand: ProductRow[];
   series14d: { day: string; contacts: number }[];
 }

@@ -16,7 +16,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   TrendingUp, ShoppingBag, Percent, Coins, RefreshCw,
-  AlertTriangle, Trophy, Flame, Loader2,
+  AlertTriangle, Trophy, Flame, Loader2, Users, Package,
 } from 'lucide-react';
 import { getDealLoopStats, type DealLoopStats } from '../../services/firebase/deal-loop';
 
@@ -159,6 +159,62 @@ export const DealLoopInsights: React.FC = () => {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* 🔝 Classements bruts — qui/quoi reçoit le plus de contacts (cliquable) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-gray-950/50 rounded-xl border border-gray-800 p-4">
+              <h4 className="text-[12px] font-bold text-blue-400 flex items-center gap-1.5 mb-3">
+                <Package size={13} /> Produits les plus contactés
+              </h4>
+              {stats.topProductsByContacts.length === 0 ? (
+                <p className="text-[12px] text-gray-600">—</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {stats.topProductsByContacts.map((p) => (
+                    <li key={p.productId}>
+                      <a
+                        href={`/product/${p.slug || p.productId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between text-[12.5px] py-1.5 px-1.5 -mx-1.5 rounded-lg hover:bg-gray-800 transition-colors group"
+                      >
+                        <span className="text-gray-200 truncate pr-2 group-hover:text-white">{p.title}</span>
+                        <span className="text-blue-400 font-bold shrink-0">
+                          {nf.format(p.contacts)} contacts{p.sold > 0 ? ` · ${p.sold}✅` : ''}
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="bg-gray-950/50 rounded-xl border border-gray-800 p-4">
+              <h4 className="text-[12px] font-bold text-blue-400 flex items-center gap-1.5 mb-3">
+                <Users size={13} /> Vendeurs les plus contactés
+              </h4>
+              {stats.topSellersByContacts.length === 0 ? (
+                <p className="text-[12px] text-gray-600">—</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {stats.topSellersByContacts.map((s) => (
+                    <li key={s.sellerUid}>
+                      <a
+                        href={`/shop/${s.slug || s.sellerUid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between text-[12.5px] py-1.5 px-1.5 -mx-1.5 rounded-lg hover:bg-gray-800 transition-colors group"
+                      >
+                        <span className="text-gray-200 truncate pr-2 group-hover:text-white">{s.name}</span>
+                        <span className="text-blue-400 font-bold shrink-0">
+                          {nf.format(s.contacts)} contacts{s.sold > 0 ? ` · ${s.sold}✅` : ''}
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 

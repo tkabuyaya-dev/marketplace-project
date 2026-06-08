@@ -160,12 +160,21 @@ export const getDealLoopStats = onCall(
       .sort((a, b) => b.contacts - a.contacts)
       .slice(0, TOP_N);
 
+    // 🔝 Classements bruts (tous, par contacts reçus) — la vue "qui/quoi cartonne".
+    const topProductsByContacts = [...products.values()]
+      .sort((a, b) => b.contacts - a.contacts)
+      .slice(0, TOP_N);
+    const topSellersByContacts = [...sellers.values()]
+      .sort((a, b) => b.contacts - a.contacts)
+      .slice(0, TOP_N);
+
     // Noms des vendeurs apparaissant dans watch + champions (lecture bornée).
     const uidSet = new Set<string>([
       ...watchSellers.map((s) => s.sellerUid),
       ...champions.map((s) => s.sellerUid),
+      ...topSellersByContacts.map((s) => s.sellerUid),
     ]);
-    const names: Record<string, string> = {};
+    const names: Record<string, { name: string; slug: string | null }> = {};
     const uids = [...uidSet];
     for (let i = 0; i < uids.length; i += 30) {
       const batch = uids.slice(i, i + 30);
@@ -174,8 +183,11 @@ export const getDealLoopStats = onCall(
       const docs = await db.getAll(...refs);
       docs.forEach((dd) => {
         if (dd.exists) {
-          const u = dd.data() as { name?: string; sellerDetails?: { shopName?: string } };
-          names[dd.id] = u.sellerDetails?.shopName || u.name || "Vendeur";
+          const u = dd.data() as { name?: string; slug?: string; sellerDetails?: { shopName?: string } };
+          names[dd.id] = {
+            name: u.sellerDetails?.shopName || u.name || "Vendeur",
+            slug: typeof u.slug === "string" ? u.slug : null,
+          };
         }
       });
     }
@@ -189,7 +201,8 @@ export const getDealLoopStats = onCall(
 
     const withName = <T extends { sellerUid: string }>(s: T) => ({
       ...s,
-      name: names[s.sellerUid] || "Vendeur",
+      name: names[s.sellerUid]?.name || "Vendeur",
+      slug: names[s.sellerUid]?.slug || null,
     });
 
     logger.info("[getDealLoopStats] OK", {
@@ -221,6 +234,8 @@ export const getDealLoopStats = onCall(
       ],
       watchSellers: watchSellers.map(withName),
       champions: champions.map(withName),
+      topSellersByContacts: topSellersByContacts.map(withName),
+      topProductsByContacts,
       unmetDemand,
       series14d,
     };
