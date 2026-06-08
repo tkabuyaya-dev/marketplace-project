@@ -27,6 +27,8 @@ import { generateAIDescription } from '../services/firebase/ai-description';
 import { getSubscriptionStatus } from '../utils/subscription';
 import { SmartImageUpload } from '../components/SmartImageUpload';
 import { SmartTitleInput } from '../components/SmartTitleInput';
+import { VoiceCaptureButton } from '../components/VoiceCaptureButton';
+import type { VoiceListingResult, VoiceListingError } from '../services/firebase/voice-listing';
 import { ProductQualityScore } from '../components/ProductQualityScore';
 import { ProductPreview } from '../components/ProductPreview';
 import { RenewSubscriptionModal } from '../components/RenewSubscriptionModal';
@@ -494,6 +496,58 @@ export const SellerDashboard: React.FC = () => {
       'success',
     );
   }, [title, category, currentUser, toast, t]);
+
+  // ── Voice-first listing : pré-remplissage depuis une note vocale ──────────
+  // On n'écrase JAMAIS de façon destructive : titre/prix/catégorie remplacent
+  // les champs ciblés (intention explicite du vendeur), mais la description
+  // n'est posée que si elle est encore vide pour ne pas effacer un texte saisi.
+  const handleVoiceResult = useCallback((data: VoiceListingResult) => {
+    const f = data.fields;
+    if (!f.title) {
+      // Transcription inintelligible (ex: kirundi mal capté) → on n'écrase rien.
+      toast(t('dashboard.voiceNotUnderstood'), 'info');
+      return;
+    }
+    setTitle(f.title);
+    if (f.price != null) setPrice(String(f.price));
+
+    if (f.categorySlug && categoriesList.some(c => c.id === f.categorySlug)) {
+      setCategory(f.categorySlug);
+      // Sous-catégorie seulement si elle correspond à une option valide du select.
+      const subs = categoriesList.find(c => c.id === f.categorySlug)?.subCategories || [];
+      if (f.subCategory && subs.includes(f.subCategory)) {
+        setSubCategory(f.subCategory);
+      }
+    }
+
+    if (f.descriptionSeed) {
+      setDesc(prev => (prev.trim() ? prev : f.descriptionSeed as string));
+    }
+
+    toast(t('dashboard.voicePrefilled'), 'success');
+  }, [categoriesList, toast, t]);
+
+  const handleVoiceError = useCallback((error: VoiceListingError) => {
+    switch (error.kind) {
+      case 'quota_exceeded':
+        toast(t('dashboard.voiceQuotaExceeded'), 'error');
+        break;
+      case 'unauthenticated':
+        toast(t('dashboard.descriptionAuthRequired'), 'error');
+        break;
+      case 'invalid_input':
+        // mic_permission | too_short | autre → message générique non bloquant.
+        toast(
+          error.message === 'mic_permission'
+            ? t('dashboard.voiceMicDenied')
+            : t('dashboard.voiceTryAgain'),
+          'info',
+        );
+        break;
+      default:
+        toast(t('dashboard.voiceUnavailable'), 'info');
+    }
+  }, [toast, t]);
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1833,6 +1887,18 @@ export const SellerDashboard: React.FC = () => {
                             <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink2" />
                           </div>
                        </label>
+                    </div>
+
+                    {/* Voice-first listing : décrire le produit à la voix → pré-remplissage IA */}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[12.5px] font-semibold text-ink2">{t('dashboard.productNameLabel')}</span>
+                      <VoiceCaptureButton
+                        onResult={handleVoiceResult}
+                        onError={handleVoiceError}
+                        countryId={currentUser?.sellerDetails?.countryId}
+                        disabled={isLimitReached}
+                        label={t('dashboard.voiceDescribe')}
+                      />
                     </div>
 
                     {/* Smart Title Input with autocomplete (real component) */}
