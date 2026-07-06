@@ -142,8 +142,11 @@ export const FOUNDERS_SPOTS_REMAINING = 67;
 // numéros opérateurs avant d'activer le pays en Firestore.
 export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
   bi: [
-    { name: 'Lumicash',      number: '68 515 135',         icon: '📱' },
-    { name: 'Ecocash',       number: '68 515 135',         icon: '📱' },
+    // Numéro officiel NUNULIA — ligne LIMITEL/Lumicash (+257 61 653 000).
+    { name: 'Lumicash',      number: '61 653 000',             icon: '📱' },
+    // Pas encore de compte Econet/EcoCash NUNULIA — ne PAS pointer vers le
+    // numéro Lumicash (un paiement EcoCash vers une ligne Lumitel serait perdu).
+    { name: 'Ecocash',       number: 'Contactez via WhatsApp', icon: '📱' },
     { name: 'Bancobu / BCB', number: 'Contactez via WhatsApp', icon: '🏦' },
   ],
   cd: [
