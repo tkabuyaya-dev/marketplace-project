@@ -4,6 +4,7 @@ import { Heart, MapPin, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
 import { CURRENCY, INITIAL_COUNTRIES, getCountryFlag } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { toWhatsAppDigits } from '../utils/phoneValidation';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
 import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
 import { ProgressiveImage } from './ProgressiveImage';
@@ -110,7 +111,10 @@ export const ProductCard = memo<ProductCardProps>(({
   const hasWhatsApp = !!product.seller?.whatsapp;
   const handleWhatsApp = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    const phone = product.seller?.whatsapp;
+    // Normalise le snapshot (numéro legacy possiblement stocké sans indicatif).
+    const phone = product.seller?.whatsapp
+      ? toWhatsAppDigits(product.seller.whatsapp, product.countryId)
+      : null;
     if (!phone) return;
     const msg = `Bonjour, je vous contacte depuis NUNULIA pour ${product.title}`;
     window.open(
@@ -118,7 +122,7 @@ export const ProductCard = memo<ProductCardProps>(({
       '_blank',
       'noopener,noreferrer'
     );
-  }, [product.seller?.whatsapp, product.title]);
+  }, [product.seller?.whatsapp, product.countryId, product.title]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {

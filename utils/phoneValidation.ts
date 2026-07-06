@@ -88,6 +88,45 @@ export function validatePhone(countryId: string, raw: string): PhoneValidationRe
 }
 
 /**
+ * Convertit un numéro stocké (quel que soit son format historique) en chiffres
+ * E.164 prêts pour un lien wa.me — SANS le « + ».
+ *
+ * POURQUOI : `sellerWhatsapp` est un snapshot figé à la publication du produit.
+ * Des données legacy (ou d'anciennes versions de l'app) ont pu stocker le numéro
+ * en LOCAL, sans indicatif pays (ex: "69119242" au lieu de "+25769119242").
+ * wa.me sur 8 chiffres → WhatsApp répond « numéro non valide ». On rajoute donc
+ * l'indicatif du pays quand le numéro stocké est purement local.
+ *
+ * Retourne `null` si aucune interprétation plausible n'est possible.
+ */
+export function toWhatsAppDigits(raw: string, countryId?: string): string | null {
+  let digits = (raw || '').replace(/\D/g, '');
+  if (!digits) return null;
+
+  // Déjà international : commence par un indicatif connu ET longueur cohérente
+  // (indicatif + nombre exact de chiffres locaux). Le test de longueur évite
+  // qu'un numéro local commençant par les mêmes chiffres qu'un indicatif soit
+  // pris à tort pour un international.
+  for (const spec of Object.values(PHONE_SPECS)) {
+    const cc = spec.dialCode.slice(1); // "+257" → "257"
+    if (digits.startsWith(cc) && digits.length === cc.length + spec.digits) {
+      return digits;
+    }
+  }
+
+  // Sinon on suppose un numéro LOCAL → on préfixe avec l'indicatif du pays.
+  const spec = getPhoneSpec(countryId || 'bi');
+  const cc = spec.dialCode.slice(1);
+  if (digits.startsWith('0')) digits = digits.slice(1); // "079..." → "79..."
+  if (digits.length === spec.digits) return cc + digits;
+
+  // Cas ambigu (longueur inattendue) : si ça ressemble déjà à un E.164 plausible
+  // (10–15 chiffres) on tente tel quel, sinon on abandonne proprement.
+  if (digits.length >= 10 && digits.length <= 15) return digits;
+  return null;
+}
+
+/**
  * Format d'affichage léger : "79 12 34 56" — uniquement pour l'aperçu après saisie.
  * Pas un input mask : la saisie reste libre, on n'interfère pas avec le curseur.
  */

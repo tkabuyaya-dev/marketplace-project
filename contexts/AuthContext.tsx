@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { trackLogin, trackContactSeller as analyticsContactSeller, setUserProperties } from '../services/analytics';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { toWhatsAppDigits } from '../utils/phoneValidation';
 import i18n from '../i18n';
 import { usePreferencesContext } from './PreferencesContext';
 
@@ -239,8 +240,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     analyticsContactSeller(seller.id, seller.name, productId);
-    const num = whatsapp.replace(/[^0-9+]/g, '');
-    if (!/^\+?\d{7,15}$/.test(num)) {
+    // Normalise (rajoute l'indicatif si le numéro est stocké en local) : un numéro
+    // legacy sans indicatif passait le test précédent puis échouait côté WhatsApp.
+    const num = toWhatsAppDigits(whatsapp, (seller as any).sellerDetails?.countryId);
+    if (!num) {
       toast(i18n.t('toast.noWhatsapp'), 'error');
       return;
     }

@@ -11,6 +11,7 @@ import { db, collection, getDocs, query, where, COLLECTIONS } from '../services/
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { toWhatsAppDigits } from '../utils/phoneValidation';
 
 /* ─────────────────────── TYPES ──────────────────────── */
 
@@ -27,8 +28,11 @@ const fmtPrice = (n: number, currency?: string) =>
 const discountPct = (original: number, current: number) =>
   Math.round((1 - current / original) * 100);
 
-const buildWhatsAppUrl = (phone?: string) =>
-  phone ? buildWaUrl(undefined, { phone }) : null;
+const buildWhatsAppUrl = (phone?: string, countryId?: string) => {
+  // Normalise le snapshot (numéro legacy possiblement stocké sans indicatif).
+  const digits = phone ? toWhatsAppDigits(phone, countryId) : null;
+  return digits ? buildWaUrl(undefined, { phone: digits }) : null;
+};
 
 const sellerCity = (item: FavItem) =>
   item.seller.sellerDetails?.commune || item.seller.sellerDetails?.province || '';
@@ -705,7 +709,7 @@ export const Favorites: React.FC = () => {
   }, [currentUser]);
 
   const handleContact = useCallback((item: FavItem) => {
-    const url = buildWhatsAppUrl(item.seller.whatsapp);
+    const url = buildWhatsAppUrl(item.seller.whatsapp, item.countryId);
     if (url) window.open(url, '_blank', 'noopener');
   }, []);
 

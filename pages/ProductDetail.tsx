@@ -15,6 +15,7 @@ import { StockUrgency } from '../components/StockUrgency';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { CURRENCY } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { toWhatsAppDigits } from '../utils/phoneValidation';
 import { recordContact } from '../services/firebase/deal-loop';
 import {
   toggleLikeProduct, reportProduct, checkIsLiked,
@@ -228,23 +229,28 @@ const ProductDetail: React.FC = () => {
   const pct = discountPct(displayPrice, originalPrice ?? undefined);
 
   const handleWhatsApp = () => {
-    if (product.seller.whatsapp) {
-      // Deal Loop : on journalise le contact en fire-and-forget AVANT d'ouvrir
-      // WhatsApp. Surtout pas d'await — l'ouverture doit être instantanée.
-      void recordContact({
-        productId: product.id,
-        sellerUid: product.seller.id,
-        productSlug: product.slug || null,
-        productTitle: product.title,
-        productPrice: displayPrice,
-        currency: cur,
-      });
-      const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
-      const message = t('productDetail.whatsappMessage', { title: product.title, url: productUrl });
-      window.open(buildWaUrl(message, { phone: product.seller.whatsapp }), '_blank');
-    } else {
+    // Normalise le numéro (snapshot legacy possiblement stocké sans indicatif :
+    // ex "69119242" → "+25769119242"). Sinon WhatsApp répond « numéro non valide ».
+    const waDigits = product.seller.whatsapp
+      ? toWhatsAppDigits(product.seller.whatsapp, product.countryId)
+      : null;
+    if (!waDigits) {
       toast(t('productDetail.noWhatsapp'), 'info');
+      return;
     }
+    // Deal Loop : on journalise le contact en fire-and-forget AVANT d'ouvrir
+    // WhatsApp. Surtout pas d'await — l'ouverture doit être instantanée.
+    void recordContact({
+      productId: product.id,
+      sellerUid: product.seller.id,
+      productSlug: product.slug || null,
+      productTitle: product.title,
+      productPrice: displayPrice,
+      currency: cur,
+    });
+    const productUrl = `${window.location.origin}/product/${product.slug || product.id}`;
+    const message = t('productDetail.whatsappMessage', { title: product.title, url: productUrl });
+    window.open(buildWaUrl(message, { phone: waDigits }), '_blank');
   };
 
   const handleLike = async () => {
