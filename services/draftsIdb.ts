@@ -50,6 +50,12 @@ export interface DraftRecord {
   attempts?: number;
   lastError?: string;
   nextAttemptAt?: number;
+  /**
+   * True quand l'échec est PERMANENT (refus de règles Firestore = permission-denied) :
+   * réessayer en boucle ne le lèvera jamais. Le brouillon sort alors du cycle de
+   * retry automatique et n'est retenté que sur un « Réessayer » explicite du vendeur.
+   */
+  blocked?: boolean;
   progress?: DraftProgress;
 }
 

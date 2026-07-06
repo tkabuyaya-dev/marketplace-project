@@ -612,6 +612,8 @@
     "searchDelayHint": "Visible dans la recherche après approbation (~5 min)",
     "syncError": "{{count}} brouillon(s) n'ont pas pu être synchronisés",
     "syncErrorHint": "Vérifiez votre connexion puis réessayez.",
+    "syncBlockedHint": "Publication refusée par le serveur (pas un problème de connexion). Reconnectez-vous, vérifiez votre abonnement, puis réessayez.",
+    "syncPermissionDenied": "Publication refusée par le serveur. Vérifiez que le compte n'est pas suspendu et que l'abonnement est actif, reconnectez-vous, puis réessayez. Si le problème persiste, contactez le support.",
     "syncPartialError": "{{count}} brouillon(s) ont échoué à la synchronisation.",
     "retrySync": "Réessayer",
     "syncStatusFailed": "ÉCHEC",

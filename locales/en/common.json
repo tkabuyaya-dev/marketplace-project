@@ -612,6 +612,8 @@
     "searchDelayHint": "Visible in search after approval (~5 min)",
     "syncError": "{{count}} draft(s) failed to sync",
     "syncErrorHint": "Check your connection and try again.",
+    "syncBlockedHint": "Publishing was refused by the server (not a connection issue). Sign out and back in, check your subscription, then retry.",
+    "syncPermissionDenied": "Publishing was refused by the server. Make sure the account isn't suspended and the subscription is active, sign out and back in, then retry. If it persists, contact support.",
     "syncPartialError": "{{count}} draft(s) failed to synchronize.",
     "retrySync": "Retry",
     "syncStatusFailed": "FAILED",

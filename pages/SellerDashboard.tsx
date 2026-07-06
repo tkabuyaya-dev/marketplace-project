@@ -135,7 +135,21 @@ export const SellerDashboard: React.FC = () => {
         { idempotencyKey: draft.id },
       );
     } catch (err: any) {
-      throw new Error(`Sauvegarde Firestore: ${err?.message || err}`);
+      // Un refus des règles Firestore (permission-denied) est PERMANENT : réessayer
+      // ne le lèvera jamais tant que la cause (suspension, abonnement, cooldown,
+      // champ invalide) n'est pas levée. On le tague `permanent` pour que la file
+      // arrête l'auto-retry et affiche la vraie raison, au lieu du trompeur
+      // « Vérifiez votre connexion ».
+      const raw = String(err?.message || err);
+      const isPermission =
+        err?.code === 'permission-denied' ||
+        /insufficient permissions|permission-denied/i.test(raw);
+      if (isPermission) {
+        const e: any = new Error(t('dashboard.syncPermissionDenied'));
+        e.permanent = true;
+        throw e;
+      }
+      throw new Error(`Sauvegarde Firestore: ${raw}`);
     }
   }, [t]);
 
@@ -159,6 +173,9 @@ export const SellerDashboard: React.FC = () => {
   });
 
   const failedDrafts = useMemo(() => offlineQueue.filter(d => d.lastError), [offlineQueue]);
+  // Brouillons en échec PERMANENT (refus règles) : le hint « vérifiez la connexion »
+  // serait faux — on affiche une consigne actionnable à la place.
+  const hasBlockedDraft = useMemo(() => offlineQueue.some(d => d.blocked), [offlineQueue]);
 
   // ─── Background Sync handoff from the SW ────────────────────────────────
   // The SW (public/sw-extras.js) shows a notification when connectivity
@@ -1097,7 +1114,7 @@ export const SellerDashboard: React.FC = () => {
                       </div>
                       <div className={`text-[12.5px] mt-0.5 ${failedDrafts.length > 0 ? 'text-red-700/80' : 'text-amber-800/80'}`}>
                         {failedDrafts.length > 0
-                          ? t('dashboard.syncErrorHint')
+                          ? (hasBlockedDraft ? t('dashboard.syncBlockedHint') : t('dashboard.syncErrorHint'))
                           : syncing
                           ? t('dashboard.syncing')
                           : t('dashboard.willSyncOnline')}

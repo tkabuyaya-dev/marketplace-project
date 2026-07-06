@@ -178,7 +178,10 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
     const snapshot = [...queueRef.current];
     for (const draft of snapshot) {
       const next = draft.nextAttemptAt ?? 0;
-      if (!force && next > now) continue;
+      // Brouillon bloqué (refus permanent des règles) : jamais en auto-retry.
+      // Il n'est retenté que sur un « Réessayer » explicite (force), une fois la
+      // cause levée (reconnexion, abonnement, suspension…).
+      if (!force && (draft.blocked || next > now)) continue;
 
       // Per-draft progress reporter: persists each stage so a tab reload
       // mid-sync surfaces the right "uploading 2/3" text instead of a stale
@@ -197,6 +200,10 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
         setQueue(prev => prev.filter(d => d.id !== draft.id));
         synced++;
       } catch (err: any) {
+        // Refus PERMANENT (règles Firestore) : le syncFn le signale via err.permanent.
+        // On sort le brouillon du cycle de retry auto (blocked) au lieu de le
+        // relancer indéfiniment en affichant à tort « Vérifiez votre connexion ».
+        const permanent = err?.permanent === true;
         const attempt = (latest.attempts ?? 0) + 1;
         const delaySec = BACKOFF_SECONDS[Math.min(attempt - 1, BACKOFF_SECONDS.length - 1)];
         const message = err?.message ? String(err.message) : String(err);
@@ -206,7 +213,9 @@ export function useOfflineQueue(options?: UseOfflineQueueOptions) {
           ...latest,
           attempts: attempt,
           lastError: message,
-          nextAttemptAt: Date.now() + delaySec * 1000,
+          blocked: permanent,
+          // Pas de prochaine tentative programmée si permanent : seul « Réessayer » relance.
+          nextAttemptAt: permanent ? undefined : Date.now() + delaySec * 1000,
           // Clear in-progress stage on failure — the row will render the error,
           // not a stale "uploading" indicator.
           progress: undefined,
