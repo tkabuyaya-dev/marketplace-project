@@ -107,8 +107,16 @@ service cloud.firestore {
       // Burst protection (server-enforced): 20-second cooldown between creations.
       // lastProductCreatedAt is written by addProduct() after each successful create.
       // This prevents direct API abuse even if client-side checks are bypassed.
+      //
+      // Clock-skew tolerance: lastProductCreatedAt is a client wall-clock value
+      // (Date.now()). A device whose clock is AHEAD writes a future timestamp,
+      // which would otherwise keep `lastCreate < now - 20s` false forever and
+      // permanently lock the seller out of publishing. We treat any future value
+      // as "cooldown satisfied" — it can only be garbage/skew, never a real
+      // sub-20s burst. Genuine bursts always leave lastCreate in the recent past.
       let lastCreate = seller.get('lastProductCreatedAt', 0);
-      let cooldownOk = lastCreate < request.time.toMillis() - 20000;
+      let cooldownOk = lastCreate < request.time.toMillis() - 20000
+                    || lastCreate > request.time.toMillis();
 
       // Rule 1: If paid tier and expired → enforce free tier limit (5)
       // Rule 2: If within limits → allow

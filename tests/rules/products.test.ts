@@ -167,6 +167,38 @@ describe('/products — création', () => {
       setDoc(doc(db, 'products', PRODUCT_ID), VALID_PRODUCT_DATA)
     );
   });
+
+  it('cooldown: un vendeur ne peut PAS créer 2 produits en moins de 20s', async () => {
+    // lastProductCreatedAt tout récent → dans la fenêtre de 20s → refus (garde-fou).
+    await seedDoc('users', SELLER_ID, {
+      role: 'seller',
+      isSuspended: false,
+      productCount: 2,
+      lastProductCreatedAt: Date.now(),
+      sellerDetails: { maxProducts: 50, subscriptionExpiresAt: now + 86400000 * 30 },
+    });
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'products', PRODUCT_ID), VALID_PRODUCT_DATA)
+    );
+  });
+
+  it('tolérance horloge: un lastProductCreatedAt dans le FUTUR (téléphone mal réglé) ne bloque PAS la publication', async () => {
+    // Sans tolérance, un timestamp futur garderait `lastCreate < now - 20s` faux
+    // pour toujours → verrouillage permanent. La règle traite le futur (forcément
+    // du bruit/skew, jamais un vrai burst) comme "cooldown satisfait".
+    await seedDoc('users', SELLER_ID, {
+      role: 'seller',
+      isSuspended: false,
+      productCount: 2,
+      lastProductCreatedAt: Date.now() + 86400000, // +1 jour dans le futur
+      sellerDetails: { maxProducts: 50, subscriptionExpiresAt: now + 86400000 * 30 },
+    });
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionGranted(
+      setDoc(doc(db, 'products', PRODUCT_ID), VALID_PRODUCT_DATA)
+    );
+  });
 });
 
 describe('/products — mise à jour (champs limités)', () => {
