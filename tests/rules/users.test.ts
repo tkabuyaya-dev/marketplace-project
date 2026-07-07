@@ -128,6 +128,49 @@ describe('/users — mise à jour', () => {
     );
   });
 
+  // ── S1 — verrou isSuspended (self-update) ──────────────────────────────
+  it('un utilisateur suspendu ne peut PAS se dé-suspendre lui-même', async () => {
+    // Fenêtre de risque : le claim JWT `suspended` peut avoir un TTL (~1h) ;
+    // sans le verrou, un user au claim encore "propre" pourrait remettre
+    // isSuspended:false côté Firestore. Le champ est désormais verrouillé.
+    await seedDoc('users', BUYER_ID, { ...BASE_BUYER, isSuspended: true });
+    const db = authed(BUYER_ID).firestore();
+    await expectPermissionDenied(
+      updateDoc(doc(db, 'users', BUYER_ID), { isSuspended: false })
+    );
+  });
+
+  // ── S1 — anti-bypass paiement à la conversion buyer → seller ───────────
+  it('un buyer devenant seller ne peut PAS s\'auto-attribuer un maxProducts payant', async () => {
+    const db = authed(BUYER_ID).firestore();
+    await expectPermissionDenied(
+      updateDoc(doc(db, 'users', BUYER_ID), {
+        role: 'seller',
+        sellerDetails: { maxProducts: 100, tierLabel: 'Pro' },
+      })
+    );
+  });
+
+  it('un buyer devenant seller ne peut PAS se donner un subscriptionExpiresAt', async () => {
+    const db = authed(BUYER_ID).firestore();
+    await expectPermissionDenied(
+      updateDoc(doc(db, 'users', BUYER_ID), {
+        role: 'seller',
+        sellerDetails: { maxProducts: 5, tierLabel: 'Découverte', subscriptionExpiresAt: Date.now() + 86400000 * 365 },
+      })
+    );
+  });
+
+  it('un buyer PEUT devenir seller avec le tier gratuit par défaut', async () => {
+    const db = authed(BUYER_ID).firestore();
+    await expectPermissionGranted(
+      updateDoc(doc(db, 'users', BUYER_ID), {
+        role: 'seller',
+        sellerDetails: { maxProducts: 5, tierLabel: 'Découverte' },
+      })
+    );
+  });
+
   it('un utilisateur ne peut PAS modifier le profil d\'un autre', async () => {
     const db = authed(OTHER_ID).firestore();
     await seedDoc('users', OTHER_ID, { ...BASE_BUYER, isSuspended: false });

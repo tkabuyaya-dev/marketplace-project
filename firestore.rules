@@ -147,7 +147,7 @@ service cloud.firestore {
           // + champs d'abonnement (sellerDetails.maxProducts/subscriptionExpiresAt/tierLabel/verifiedAt/verificationMethod)
           (
             !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['role', 'isVerified', 'verificationTier', 'trustScore', 'verifiedAt', 'verificationMethod', 'b2bReputation'])
+              .hasAny(['role', 'isVerified', 'verificationTier', 'trustScore', 'verifiedAt', 'verificationMethod', 'b2bReputation', 'isSuspended'])
             && (
               !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sellerDetails'])
               || (
@@ -167,6 +167,12 @@ service cloud.firestore {
             && request.resource.data.get('isVerified', false) == false
             && request.resource.data.get('verificationTier', 'none') == 'none'
             && request.resource.data.keys().hasAll(['sellerDetails'])
+            // S1 — anti-bypass paiement : les valeurs d'abonnement sont forcées au
+            // défaut gratuit. Un buyer ne peut pas s'auto-attribuer un tier payant
+            // en passant seller (le flow légitime écrit maxProducts:5, tierLabel:'Découverte').
+            && request.resource.data.get('sellerDetails', {}).get('maxProducts', 5) == 5
+            && request.resource.data.get('sellerDetails', {}).get('tierLabel', 'Découverte') in ['Découverte', 'Gratuit']
+            && request.resource.data.get('sellerDetails', {}).get('subscriptionExpiresAt', null) == null
           )
         ));
 
