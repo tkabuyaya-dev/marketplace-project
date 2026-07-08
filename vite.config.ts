@@ -49,24 +49,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       filename: 'sw.js',
-      manifest: {
-        name: 'Nunulia — Marketplace',
-        short_name: 'Nunulia',
-        description: 'Le marketplace des Grands Lacs',
-        theme_color: '#111318',
-        background_color: '#111318',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
-        lang: 'fr',
-        categories: ['shopping', 'business'],
-        icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/icons/maskable-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-      },
+      // Manifest UNIQUE : public/manifest.json (lié depuis index.html, URL
+      // stable, copié tel quel dans dist). Avant, le plugin générait un
+      // manifest.webmanifest doublon et injectait un 2e <link rel="manifest">
+      // divergent (sans shortcuts ni apple-touch-icon) dans le HTML buildé.
+      manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/node_modules/**', 'sw.js'],

@@ -37,15 +37,15 @@
   ],
   "shortcuts": [
     {
-      "name": "Accueil",
-      "short_name": "Accueil",
-      "url": "/",
+      "name": "Je cherche un produit",
+      "short_name": "Je cherche",
+      "url": "/demandes",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Messages",
-      "short_name": "Messages",
-      "url": "/messenger",
+      "name": "Ma boutique",
+      "short_name": "Boutique",
+      "url": "/dashboard",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

@@ -77,6 +77,24 @@ self.addEventListener('push', (event) => {
   event.waitUntil(showFromPayload(data));
 });
 
+// ── Rotation de la subscription push ────────────────────────────────────────
+// Certains navigateurs font tourner la subscription (expiration de clé,
+// nettoyage interne). L'ancien token FCM devient alors mort côté serveur
+// (registration-token-not-registered) jusqu'à ce que getToken() soit rappelé.
+// On ne peut PAS régénérer le token ici : l'échange subscription→token FCM
+// passe par le SDK côté page (pas de couche parallèle — cf. mémo verrouillé).
+// Donc : on prévient les onglets ouverts (re-sync immédiat via
+// refreshFcmTokenSilent) ; s'il n'y en a aucun, le refresh silencieux au
+// prochain lancement de l'app rattrape, et fcm-send purge le token mort.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of allClients) {
+      client.postMessage({ type: 'FCM_RESUBSCRIBE' });
+    }
+  })());
+});
+
 // ── Clic sur la notif ───────────────────────────────────────────────────────
 // Chrome `Client.navigate()` est silencieusement cassé depuis Chrome 130+ :
 // le focus marche mais la navigation ne s'exécute pas. On passe par

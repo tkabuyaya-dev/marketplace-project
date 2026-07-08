@@ -131,6 +131,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // que l'import termine, on appellera unsub() dès qu'il existe.
       let cancelled = false;
       let unsubFcm: (() => void) | null = null;
+
+      // Le SW FCM poste FCM_RESUBSCRIBE quand le navigateur fait tourner la
+      // subscription push (pushsubscriptionchange) : on re-synchronise le
+      // token immédiatement au lieu d'attendre le prochain lancement.
+      const uid = currentUser.id;
+      const onSwMessage = (event: MessageEvent) => {
+        if (event.data?.type !== 'FCM_RESUBSCRIBE') return;
+        import('../services/fcm')
+          .then((m) => m.refreshFcmTokenSilent(uid))
+          .catch(() => {});
+      };
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', onSwMessage);
+      }
+
       import('../services/fcm')
         .then(async (m) => {
           await m.refreshFcmTokenSilent(currentUser.id);
@@ -154,20 +169,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Via le SW Workbox, le clic était muet (sw-extras.js ignore
               // tout tag ≠ drafts-sync).
               const reg = await m.getNotificationSwRegistration();
-              await reg.showNotification(title || 'Nunulia', {
+              // renotify : sans lui, une notif remplaçant une autre du même
+              // tag est SILENCIEUSE (ni son ni vibration). Aligné sur le SW
+              // FCM. Absent des types lib.dom mais supporté Chrome/Android.
+              const options: NotificationOptions & { renotify?: boolean } = {
                 body: body || '',
                 icon: '/icons/icon-192.png',
                 badge: '/icons/icon-192.png',
                 tag: data?.type || 'nunulia',
+                renotify: true,
                 data: { link: data?.link || '/' },
-              });
+              };
+              await reg.showNotification(title || 'Nunulia', options);
             } catch { /* navigateur trop restrictif */ }
           });
           if (cancelled) unsub();
           else unsubFcm = unsub;
         })
         .catch(() => {});
-      return () => { cancelled = true; if (unsubFcm) unsubFcm(); };
+      return () => {
+        cancelled = true;
+        if (unsubFcm) unsubFcm();
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.removeEventListener('message', onSwMessage);
+        }
+      };
     } else {
       clearSentryUser();
     }
