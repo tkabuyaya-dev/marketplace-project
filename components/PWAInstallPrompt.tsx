@@ -1,3 +1,27 @@
+/**
+ * NUNULIA — Invitation à installer la PWA (A2HS)
+ *
+ * Deux surfaces, un seul composant :
+ *
+ *   1. OVERLAY plein écran — première visite uniquement (jamais refusé).
+ *      Android/desktop : affiché seulement si `beforeinstallprompt` a été
+ *      capté → le bouton « Installer » déclenche TOUJOURS le prompt natif
+ *      (plus jamais de bouton mort). iOS : instructions manuelles (l'event
+ *      n'existe pas, mais l'install Safari est toujours possible).
+ *
+ *   2. MINI-BANNIÈRE non bloquante — rappel à CHAQUE nouvelle session tant
+ *      que l'app n'est pas installée, après un premier refus. Fermable (X),
+ *      snooze par session (sessionStorage) : elle revient à la prochaine
+ *      ouverture. Positionnée au-dessus de la bottom-nav mobile.
+ *
+ * Ne s'affiche JAMAIS si : app en standalone, install détectée
+ * (`appinstalled` ou flag local), ou navigateur non éligible hors iOS
+ * (Firefox/Safari desktop : pas d'event → pas d'UI → pas de bouton mort).
+ *
+ * L'event `beforeinstallprompt` peut tirer avant le montage React sur les
+ * devices lents (2G/3G) : index.tsx le capture tôt dans window.__nunuliaBip.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -6,74 +30,168 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+/** localStorage — timestamp du premier refus → bascule en mode mini-bannière */
 const DISMISS_KEY = 'nunulia_pwa_dismissed';
-const DISMISS_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 jours
+/** localStorage — '1' quand l'install est faite → plus aucune UI, jamais */
+const INSTALLED_KEY = 'nunulia_pwa_installed';
+/** sessionStorage — '1' quand la bannière est fermée → snooze jusqu'à la prochaine session */
+const SESSION_SNOOZE_KEY = 'nunulia_pwa_snooze_session';
 
 const isIOSDevice = () =>
   /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (navigator as any).standalone === true;
+
+// Storage peut jeter (Safari private mode, quotas) — jamais bloquant.
+const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
+const ssGet = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };
+const ssSet = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } };
+
+type Mode = 'hidden' | 'overlay' | 'banner';
+
 export const PWAInstallPrompt: React.FC = () => {
   const { t } = useTranslation();
-  const [show, setShow] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [mode, setMode] = useState<Mode>('hidden');
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(
+    () => ((window as any).__nunuliaBip as BeforeInstallPromptEvent | undefined) ?? null
+  );
   const [installing, setInstalling] = useState(false);
   const [isIOS] = useState(isIOSDevice);
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) return;
-    if ((navigator as any).standalone) return;
+    if (isStandalone()) {
+      // Déjà en mode app — mémorise pour ne rien re-proposer en onglet navigateur.
+      lsSet(INSTALLED_KEY, '1');
+      return;
+    }
+    if (lsGet(INSTALLED_KEY) === '1') return;
 
-    const dismissed = localStorage.getItem(DISMISS_KEY);
-    if (dismissed && Date.now() - Number(dismissed) < DISMISS_EXPIRY) return;
+    const everDismissed = !!lsGet(DISMISS_KEY);
+    const sessionSnoozed = ssGet(SESSION_SNOOZE_KEY) === '1';
 
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setTimeout(() => setShow(true), 2000);
+    let timer: number | undefined;
+
+    // Première visite → overlay complet. Déjà refusé → mini-bannière,
+    // une fois par session. Délais : laisser le LCP respirer.
+    const schedule = (overlayDelay: number, bannerDelay: number) => {
+      if (!everDismissed) {
+        timer = window.setTimeout(() => setMode('overlay'), overlayDelay);
+      } else if (!sessionSnoozed) {
+        timer = window.setTimeout(() => setMode('banner'), bannerDelay);
+      }
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    const onBip = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      if (timer) clearTimeout(timer);
+      schedule(2000, 4000);
+    };
+    window.addEventListener('beforeinstallprompt', onBip);
 
-    const fallbackTimer = setTimeout(() => {
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
-        const dismissed = localStorage.getItem(DISMISS_KEY);
-        if (!dismissed || Date.now() - Number(dismissed) >= DISMISS_EXPIRY) {
-          setShow(true);
-        }
-      }
-    }, 5000);
+    const onInstalled = () => {
+      lsSet(INSTALLED_KEY, '1');
+      setDeferredPrompt(null);
+      setMode('hidden');
+    };
+    window.addEventListener('appinstalled', onInstalled);
+
+    if ((window as any).__nunuliaBip) {
+      // Event capté avant le montage React (cf. index.tsx).
+      schedule(2000, 4000);
+    } else if (isIOSDevice()) {
+      // iOS : pas d'event, mais l'install Safari est toujours disponible.
+      schedule(5000, 5000);
+    }
+    // Autres cas (Firefox/Safari desktop, critères Chrome non remplis,
+    // app déjà installée mais ouverte en onglet) : aucune UI — un bouton
+    // « Installer » sans prompt natif derrière serait un bouton mort.
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      clearTimeout(fallbackTimer);
+      window.removeEventListener('beforeinstallprompt', onBip);
+      window.removeEventListener('appinstalled', onInstalled);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
+  const dismiss = () => {
+    lsSet(DISMISS_KEY, String(Date.now()));
+    ssSet(SESSION_SNOOZE_KEY, '1');
+    setMode('hidden');
+  };
+
   const handleInstall = async () => {
-    if (deferredPrompt) {
-      setInstalling(true);
+    if (!deferredPrompt) return;
+    setInstalling(true);
+    try {
       await deferredPrompt.prompt();
       const result = await deferredPrompt.userChoice;
       if (result.outcome === 'accepted') {
-        setShow(false);
+        // `appinstalled` confirmera, mais on masque tout de suite.
+        lsSet(INSTALLED_KEY, '1');
+        setMode('hidden');
+      } else {
+        // Refus du prompt natif : l'event est consommé (one-shot) — plus
+        // d'install possible sur cette page. On bascule en mode rappel.
+        dismiss();
       }
+    } finally {
       setInstalling(false);
       setDeferredPrompt(null);
     }
   };
 
-  const handleDismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    setShow(false);
-  };
+  if (mode === 'hidden') return null;
 
-  if (!show) return null;
+  // ── Mini-bannière de rappel (non bloquante) ──────────────────────────────
+  if (mode === 'banner') {
+    return (
+      <div
+        className="fixed left-3 right-3 md:left-auto md:right-6 md:max-w-sm z-[55] animate-fade-in"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+        role="complementary"
+        aria-label={t('pwa.installTitle')}
+      >
+        <div className="flex items-center gap-3 rounded-2xl bg-gray-900/95 backdrop-blur-xl border border-gold-500/30 shadow-2xl shadow-black/40 px-3.5 py-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shrink-0">
+            <span className="text-sm font-black text-gray-900">N</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold text-white leading-tight">{t('pwa.installTitle')}</p>
+            <p className="text-[11px] text-gray-400 leading-snug">{t('pwa.bannerText')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={isIOS ? () => setMode('overlay') : handleInstall}
+            disabled={installing}
+            className="shrink-0 h-8 px-3.5 rounded-full bg-gradient-to-r from-gold-400 to-gold-600 text-gray-900 text-[12px] font-black active:scale-[0.96] transition disabled:opacity-50"
+          >
+            {installing ? '…' : t('pwa.bannerInstall')}
+          </button>
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label={t('pwa.bannerLater')}
+            className="shrink-0 w-7 h-7 rounded-full inline-flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
+  // ── Overlay plein écran (première visite) ────────────────────────────────
   const benefits = [
-    { icon: '\u26A1', text: t('pwa.benefit1') },
-    { icon: '\uD83D\uDCF4', text: t('pwa.benefit2') },
-    { icon: '\uD83D\uDD14', text: t('pwa.benefit3') },
-    { icon: '\uD83D\uDCBE', text: t('pwa.benefit4') },
+    { icon: '⚡', text: t('pwa.benefit1') },
+    { icon: '📴', text: t('pwa.benefit2') },
+    { icon: '🔔', text: t('pwa.benefit3') },
+    { icon: '💾', text: t('pwa.benefit4') },
   ];
 
   // On iOS, show only 2 benefits to save space for the 3 install steps
@@ -141,24 +259,25 @@ export const PWAInstallPrompt: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={handleDismiss}
+              onClick={dismiss}
               className="w-full py-3 bg-gradient-to-r from-gold-400 to-gold-600 text-gray-900 font-bold rounded-2xl text-sm shadow-lg shadow-gold-900/30 active:scale-[0.98] transition-transform"
             >
               {t('pwa.iosGotIt')}
             </button>
           </div>
         ) : (
-          /* Android/Desktop: native install button */
+          /* Android/Desktop: native install button (rendu uniquement quand
+             beforeinstallprompt a été capté → jamais de bouton mort) */
           <div className="space-y-3 pt-1">
             <button
               onClick={handleInstall}
-              disabled={installing}
+              disabled={installing || !deferredPrompt}
               className="w-full py-3.5 bg-gradient-to-r from-gold-400 to-gold-600 text-gray-900 font-bold rounded-2xl text-sm shadow-lg shadow-gold-900/30 active:scale-[0.98] transition-transform disabled:opacity-50"
             >
               {installing ? t('pwa.installing') : t('pwa.installBtn')}
             </button>
             <button
-              onClick={handleDismiss}
+              onClick={dismiss}
               className="w-full py-3 text-gray-500 text-sm hover:text-white transition-colors"
             >
               {t('pwa.continueWeb')}

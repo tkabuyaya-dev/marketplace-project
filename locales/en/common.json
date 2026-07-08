@@ -381,7 +381,10 @@
     "iosStep1": "Tap the Share button",
     "iosStep2": "Scroll down and tap \"Add to Home Screen\"",
     "iosStep3": "Tap \"Add\" to confirm",
-    "iosGotIt": "Got it!"
+    "iosGotIt": "Got it!",
+    "bannerText": "Faster, and works even without internet",
+    "bannerInstall": "Install",
+    "bannerLater": "Later"
   },
   "common": {
     "loading": "Loading...",

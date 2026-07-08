@@ -381,7 +381,10 @@
     "iosStep1": "Appuyez sur le bouton Partager",
     "iosStep2": "Faites défiler et appuyez sur « Sur l'écran d'accueil »",
     "iosStep3": "Appuyez sur « Ajouter » pour confirmer",
-    "iosGotIt": "J'ai compris !"
+    "iosGotIt": "J'ai compris !",
+    "bannerText": "Plus rapide, et fonctionne même sans internet",
+    "bannerInstall": "Installer",
+    "bannerLater": "Plus tard"
   },
   "common": {
     "loading": "Chargement...",

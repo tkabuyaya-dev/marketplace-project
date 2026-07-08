@@ -8,6 +8,15 @@ import { initSentry } from './services/sentry';
 import { initAppCheck } from './firebase-config';
 import { migrateLocalStorage, dropLegacyOfflineQueue } from './utils/migrate-storage';
 
+// Capture précoce de `beforeinstallprompt` : Chrome peut le tirer AVANT le
+// montage React (fréquent sur devices lents 2G/3G où le JS met des secondes
+// à s'évaluer). Sans ça, l'event est perdu et l'invitation d'install ne
+// s'affiche jamais. PWAInstallPrompt le récupère via window.__nunuliaBip.
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  (window as any).__nunuliaBip = e;
+});
+
 // Migrate localStorage keys from AuraBuja → Nunulia (one-time, for existing users)
 migrateLocalStorage();
 // Offline draft queue moved to IndexedDB — drop the dead localStorage key.
