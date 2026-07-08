@@ -21,6 +21,31 @@ import { db, isConfigured } from '../firebase-config';
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
 const TOKEN_LOCAL_KEY = 'nunulia_fcm_token';
 
+/** Scope du SW FCM dédié — séparé du Workbox SW qui occupe '/'. */
+const FCM_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
+
+/**
+ * Registration à utiliser pour AFFICHER une notification dont le clic doit
+ * naviguer dans l'app (focus onglet + NOTIFICATION_NAVIGATE).
+ *
+ * Pourquoi c'est critique : `notificationclick` est dispatché au SW
+ * propriétaire de la registration qui a AFFICHÉ la notif — pas au SW qui
+ * contrôle la page. Le seul SW qui gère ce clic est firebase-messaging-sw.js
+ * (scope FCM_SW_SCOPE). Afficher via le SW Workbox (scope '/') rend le clic
+ * muet : son handler (sw-extras.js) ignore tout tag ≠ drafts-sync, la notif
+ * ne se ferme même pas.
+ *
+ * Fallback `.ready` (SW Workbox) si le SW FCM n'est pas enregistré : la
+ * notif s'affiche quand même — on ne dégrade jamais l'affichage.
+ */
+export async function getNotificationSwRegistration(): Promise<ServiceWorkerRegistration> {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration(FCM_SW_SCOPE);
+    if (reg) return reg;
+  } catch { /* ignore — fallback ci-dessous */ }
+  return navigator.serviceWorker.ready;
+}
+
 /**
  * Feature detection. FCM ne fonctionne pas sur :
  * - Safari iOS < 16.4 (et Safari macOS < 16.4)
@@ -55,11 +80,11 @@ async function fetchToken(uid: string): Promise<string | null> {
     // donc on lui donne son propre scope pour éviter le conflit.
     const swReg = await navigator.serviceWorker.register(
       '/firebase-messaging-sw.js',
-      { scope: '/firebase-cloud-messaging-push-scope' }
+      { scope: FCM_SW_SCOPE }
     );
 
     const { getMessaging, getToken } = await import('firebase/messaging');
-    const { initializeApp, getApps } = await import('firebase/app');
+    const { getApps } = await import('firebase/app');
 
     // Réutilise l'app principale si déjà initialisée
     const app = getApps()[0];

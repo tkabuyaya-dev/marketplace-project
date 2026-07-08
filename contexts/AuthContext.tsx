@@ -147,7 +147,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
               if (!('serviceWorker' in navigator)) return;
-              const reg = await navigator.serviceWorker.ready;
+              // ⚠️ Afficher via la registration du SW FCM, PAS via `.ready`
+              // (SW Workbox). `notificationclick` est dispatché au SW qui a
+              // affiché la notif ; seul firebase-messaging-sw.js gère ce clic
+              // (close + focus + NOTIFICATION_NAVIGATE → App.tsx route).
+              // Via le SW Workbox, le clic était muet (sw-extras.js ignore
+              // tout tag ≠ drafts-sync).
+              const reg = await m.getNotificationSwRegistration();
               await reg.showNotification(title || 'Nunulia', {
                 body: body || '',
                 icon: '/icons/icon-192.png',
@@ -155,9 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 tag: data?.type || 'nunulia',
                 data: { link: data?.link || '/' },
               });
-              // Note : le clic est géré par firebase-messaging-sw.js
-              // (event notificationclick) qui sait ouvrir/focus le bon onglet
-              // et naviguer vers data.link. Pas besoin de handler ici.
             } catch { /* navigateur trop restrictif */ }
           });
           if (cancelled) unsub();

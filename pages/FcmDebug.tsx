@@ -184,7 +184,10 @@ export default function FcmDebug() {
       return;
     }
     try {
-      const reg = await navigator.serviceWorker.ready;
+      // Même registration que les vraies notifs foreground (SW FCM) : le
+      // test valide ainsi l'affichage ET le clic (focus + navigation).
+      const { getNotificationSwRegistration } = await import('../services/fcm');
+      const reg = await getNotificationSwRegistration();
       await reg.showNotification('🧪 Test direct Nunulia', {
         body: `Si tu vois ce popup, l'API Notification marche ! (${at})`,
         icon: '/icons/icon-192.png',
