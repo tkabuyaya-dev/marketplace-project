@@ -386,6 +386,15 @@
     "bannerInstall": "Installer",
     "bannerLater": "Plus tard"
   },
+  "push": {
+    "enable": "Activer",
+    "enabled": "✅ Notifications activées",
+    "later": "Plus tard",
+    "jeChercheText": "Soyez prévenu ici dès qu’un vendeur répond à votre demande",
+    "bellText": "Recevez ces alertes sur votre téléphone",
+    "postInstallTitle": "Nunulia est installée 🎉",
+    "postInstallText": "Dernière étape : activez les alertes pour ne rien manquer"
+  },
   "common": {
     "loading": "Chargement...",
     "error": "Une erreur est survenue",

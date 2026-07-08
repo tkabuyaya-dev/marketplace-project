@@ -151,6 +151,11 @@ export { onLikeCreate, onReviewCreate } from "./notify-on-engagement.js";
 // Pendant offre/demande de la feature "Je Cherche".
 export { onBuyerRequestMatch } from "./notify-buyer-request-match.js";
 
+// Boucle fermée "Je Cherche" : quand un vendeur répond (doc
+// buyerRequestContacts créé), l'acheteur reçoit cloche + push
+// "Un vendeur va vous contacter" via le pipeline onNotificationCreate.
+export { onBuyerRequestContactCreate } from "./notify-buyer-on-contact.js";
+
 // Signalement community : seller flag une demande suspecte.
 // 3 flags indépendants → status='suspended' auto + notif admin.
 export { flagBuyerRequest } from "./flag-buyer-request.js";

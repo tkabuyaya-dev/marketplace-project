@@ -31,8 +31,44 @@ import {
 } from '../../utils/phoneValidation';
 import { getDeviceSnapshot } from '../../utils/deviceFingerprint';
 import { buildWaUrl } from '../../config/whatsapp.config';
+import { usePushOptIn } from '../../hooks/usePushOptIn';
 
 const LAST_CATEGORY_KEY = 'nunulia_last_category';
+
+/**
+ * Opt-in push contextuel — affiché sur les écrans succès/confirmation, LE
+ * moment où l'acheteur veut être alerté (il attend des réponses vendeurs).
+ * Invisible si : pas connecté, permission déjà accordée/refusée, ou iOS
+ * hors PWA (prompt impossible). Le geste part du bouton = jamais de prompt
+ * à froid.
+ */
+const PushOptInCard: React.FC = () => {
+  const { t } = useTranslation();
+  const { eligible, enabling, justEnabled, enable } = usePushOptIn();
+
+  if (!eligible && !justEnabled) return null;
+
+  return (
+    <div className="mb-4 rounded-xl border border-gold-500/30 bg-gray-800/60 p-3.5 flex items-center gap-3 text-left animate-fade-in">
+      <span className="text-xl shrink-0">🔔</span>
+      {justEnabled ? (
+        <p className="text-sm font-bold text-gold-300 flex-1">{t('push.enabled')}</p>
+      ) : (
+        <>
+          <p className="text-xs text-gray-300 flex-1 leading-snug">{t('push.jeChercheText')}</p>
+          <button
+            type="button"
+            onClick={() => void enable()}
+            disabled={enabling}
+            className="shrink-0 h-9 px-4 rounded-full bg-gold-400 hover:bg-gold-300 text-gray-900 text-xs font-black active:scale-[0.96] transition disabled:opacity-50"
+          >
+            {enabling ? '…' : t('push.enable')}
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
 
 interface JeChercheFormProps {
   isOpen: boolean;
@@ -619,6 +655,10 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
               sera automatiquement annulée.
             </p>
 
+            {/* Le chemin majoritaire des nouveaux acheteurs passe ici (score
+                < 70 = pending par design) — c'est donc LA surface d'opt-in. */}
+            <PushOptInCard />
+
             <button
               onClick={onClose}
               type="button"
@@ -635,6 +675,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
             <div className="text-6xl mb-4">🎉</div>
             <h3 className="text-xl font-black text-white mb-3">{t('jeCherche.success.title')}</h3>
             <p className="text-sm text-gray-400 mb-8 leading-relaxed">{t('jeCherche.success.subtitle')}</p>
+            <PushOptInCard />
             <button
               onClick={onClose}
               className="w-full py-3.5 bg-gold-400 hover:bg-gold-300 text-gray-900 font-black rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"

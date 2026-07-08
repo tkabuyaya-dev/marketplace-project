@@ -24,6 +24,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePushOptIn } from '../hooks/usePushOptIn';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -36,6 +37,8 @@ const DISMISS_KEY = 'nunulia_pwa_dismissed';
 const INSTALLED_KEY = 'nunulia_pwa_installed';
 /** sessionStorage — '1' quand la bannière est fermée → snooze jusqu'à la prochaine session */
 const SESSION_SNOOZE_KEY = 'nunulia_pwa_snooze_session';
+/** localStorage — '1' quand la carte notifs post-install a été proposée (one-shot à vie) */
+const NOTIF_ASKED_KEY = 'nunulia_post_install_notif_asked';
 
 const isIOSDevice = () =>
   /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -50,7 +53,7 @@ const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 const ssGet = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };
 const ssSet = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } };
 
-type Mode = 'hidden' | 'overlay' | 'banner';
+type Mode = 'hidden' | 'overlay' | 'banner' | 'notifs';
 
 export const PWAInstallPrompt: React.FC = () => {
   const { t } = useTranslation();
@@ -60,12 +63,37 @@ export const PWAInstallPrompt: React.FC = () => {
   );
   const [installing, setInstalling] = useState(false);
   const [isIOS] = useState(isIOSDevice);
+  // Opt-in notifs post-install : l'utilisateur vient d'installer = pic
+  // d'engagement, et sur iOS le push EXIGE la PWA installée — c'est donc
+  // le premier moment où l'activation devient possible.
+  const { enabling: notifEnabling, justEnabled: notifEnabled, enable: enableNotifs } =
+    usePushOptIn({ requireUser: false });
 
   useEffect(() => {
+    // Carte notifs one-shot : proposée UNE seule fois par device, uniquement
+    // si la permission est encore à 'default'. Retourne l'id du timer (à
+    // nettoyer) ou undefined si rien à proposer.
+    // ⚠️ Le flag one-shot est posé à l'AFFICHAGE (dans le callback), pas au
+    // scheduling : sinon un remontage de l'effect (StrictMode, re-render
+    // parent) annule le timer via cleanup alors que le flag est déjà posé
+    // → la carte ne s'afficherait jamais.
+    const maybeOfferNotifs = (delay: number): number | undefined => {
+      if (typeof Notification === 'undefined') return undefined;
+      if (Notification.permission !== 'default') return undefined;
+      if (lsGet(NOTIF_ASKED_KEY) === '1') return undefined;
+      return window.setTimeout(() => {
+        lsSet(NOTIF_ASKED_KEY, '1');
+        setMode('notifs');
+      }, delay);
+    };
+
     if (isStandalone()) {
-      // Déjà en mode app — mémorise pour ne rien re-proposer en onglet navigateur.
+      // Déjà en mode app — mémorise pour ne rien re-proposer en onglet
+      // navigateur, et propose l'activation des notifs (1er lancement
+      // installé = le moment iOS/Android où ça devient pertinent).
       lsSet(INSTALLED_KEY, '1');
-      return;
+      const notifTimer = maybeOfferNotifs(2500);
+      return () => { if (notifTimer) clearTimeout(notifTimer); };
     }
     if (lsGet(INSTALLED_KEY) === '1') return;
 
@@ -92,10 +120,14 @@ export const PWAInstallPrompt: React.FC = () => {
     };
     window.addEventListener('beforeinstallprompt', onBip);
 
+    let notifTimer: number | undefined;
     const onInstalled = () => {
       lsSet(INSTALLED_KEY, '1');
       setDeferredPrompt(null);
       setMode('hidden');
+      // Enchaînement install → notifs : l'utilisateur est encore là,
+      // au pic d'engagement.
+      notifTimer = maybeOfferNotifs(1200);
     };
     window.addEventListener('appinstalled', onInstalled);
 
@@ -114,6 +146,7 @@ export const PWAInstallPrompt: React.FC = () => {
       window.removeEventListener('beforeinstallprompt', onBip);
       window.removeEventListener('appinstalled', onInstalled);
       if (timer) clearTimeout(timer);
+      if (notifTimer) clearTimeout(notifTimer);
     };
   }, []);
 
@@ -145,6 +178,64 @@ export const PWAInstallPrompt: React.FC = () => {
   };
 
   if (mode === 'hidden') return null;
+
+  // ── Carte notifs post-install (one-shot, non bloquante) ──────────────────
+  if (mode === 'notifs') {
+    const handleEnableNotifs = async () => {
+      const ok = await enableNotifs();
+      if (ok) {
+        // Laisse le ✅ visible un instant, puis disparaît définitivement.
+        setTimeout(() => setMode('hidden'), 2200);
+      } else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+        setMode('hidden');
+      }
+      // Prompt fermé sans choix → la carte reste, l'utilisateur peut retaper.
+    };
+    return (
+      <div
+        className="fixed left-3 right-3 md:left-auto md:right-6 md:max-w-sm z-[55] animate-fade-in"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+        role="complementary"
+        aria-label={t('push.postInstallTitle')}
+      >
+        <div className="flex items-center gap-3 rounded-2xl bg-gray-900/95 backdrop-blur-xl border border-gold-500/30 shadow-2xl shadow-black/40 px-3.5 py-3">
+          <span className="text-xl shrink-0">🔔</span>
+          <div className="flex-1 min-w-0">
+            {notifEnabled ? (
+              <p className="text-[13px] font-bold text-gold-300">{t('push.enabled')}</p>
+            ) : (
+              <>
+                <p className="text-[13px] font-bold text-white leading-tight">{t('push.postInstallTitle')}</p>
+                <p className="text-[11px] text-gray-400 leading-snug">{t('push.postInstallText')}</p>
+              </>
+            )}
+          </div>
+          {!notifEnabled && (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleEnableNotifs()}
+                disabled={notifEnabling}
+                className="shrink-0 h-8 px-3.5 rounded-full bg-gradient-to-r from-gold-400 to-gold-600 text-gray-900 text-[12px] font-black active:scale-[0.96] transition disabled:opacity-50"
+              >
+                {notifEnabling ? '…' : t('push.enable')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('hidden')}
+                aria-label={t('push.later')}
+                className="shrink-0 w-7 h-7 rounded-full inline-flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // ── Mini-bannière de rappel (non bloquante) ──────────────────────────────
   if (mode === 'banner') {

@@ -386,6 +386,15 @@
     "bannerInstall": "Install",
     "bannerLater": "Later"
   },
+  "push": {
+    "enable": "Enable",
+    "enabled": "✅ Notifications enabled",
+    "later": "Later",
+    "jeChercheText": "Get notified here as soon as a seller replies to your request",
+    "bellText": "Get these alerts on your phone",
+    "postInstallTitle": "Nunulia is installed 🎉",
+    "postInstallText": "Last step: enable alerts so you never miss a thing"
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",

@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../contexts/AppContext';
+import { usePushOptIn } from '../hooks/usePushOptIn';
 
 export const NotificationBell: React.FC = () => {
+  const { t } = useTranslation();
   const { notifications, unreadCount, markNotifRead, markAllNotifsRead } = useAppContext();
+  // Opt-in push : qui ouvre la cloche s'intéresse à ses notifications —
+  // c'est le moment idéal pour proposer de les recevoir sur le téléphone.
+  const { eligible: pushEligible, enabling, justEnabled, enable } = usePushOptIn();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -39,6 +45,7 @@ export const NotificationBell: React.FC = () => {
       case 'buyer_request_match': return '🛒';
       case 'buyer_request_help':  return '✨';
       case 'buyer_request_suspended': return '🚩';
+      case 'buyer_request_response': return '🤝';
       default: return '🔔';
     }
   };
@@ -85,6 +92,29 @@ export const NotificationBell: React.FC = () => {
               </button>
             )}
           </div>
+
+          {/* Opt-in push épinglé — visible seulement si la permission est
+              encore à 'default' et qu'un prompt peut réellement aboutir */}
+          {(pushEligible || justEnabled) && (
+            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gold-50 dark:bg-gold-900/10 border-b border-gold-200/70 dark:border-gold-900/30">
+              <span className="text-base shrink-0">📲</span>
+              {justEnabled ? (
+                <p className="text-xs font-bold text-green-700 dark:text-green-400 flex-1">{t('push.enabled')}</p>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 flex-1 leading-snug">{t('push.bellText')}</p>
+                  <button
+                    type="button"
+                    onClick={() => void enable()}
+                    disabled={enabling}
+                    className="shrink-0 h-7 px-3 rounded-full bg-gray-900 dark:bg-gold-400 text-white dark:text-gray-900 text-[11px] font-black active:scale-[0.96] transition disabled:opacity-50"
+                  >
+                    {enabling ? '…' : t('push.enable')}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* List */}
           <div className="overflow-y-auto max-h-[360px] scrollbar-hide">
