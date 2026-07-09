@@ -36,8 +36,9 @@ export { cachedSearch } from "./search-proxy.js";
 // reCAPTCHA v3 verification
 export { verifyRecaptcha } from "./recaptcha.js";
 
-// Subscription expiration cron (daily at 02:00 UTC)
-export { checkSubscriptions } from "./subscription-cron.js";
+// Subscription lifecycle — pipeline unique d'expiration (daily 02:00 UTC).
+// Remplace checkSubscriptions (supprimé — audit C2, Lot B 2026-07-09).
+export { subscriptionLifecycle } from "./subscription-lifecycle.js";
 
 // Account deletion (callable)
 export { deleteUserAccount } from "./delete-account.js";

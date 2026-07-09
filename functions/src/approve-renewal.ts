@@ -315,6 +315,7 @@ export const approveRenewal = onRequest(
           // 2. Activate seller in a single coherent write
           tx.update(sellerRef, {
             status: "active",
+            "sellerDetails.subscriptionState": "active",
             "sellerDetails.maxProducts": maxProducts,
             "sellerDetails.tierLabel": tierLabel,
             "sellerDetails.subscriptionExpiresAt": expiresAt,
@@ -324,6 +325,7 @@ export const approveRenewal = onRequest(
             "sellerDetails.reminderSentJ1": null,
             "sellerDetails.gracePhaseSince": null,
             "sellerDetails.downgradePhase": null,
+            "sellerDetails.graceWarnedAt": null,
           });
 
           // 3. History event
@@ -395,6 +397,7 @@ export const approveRenewal = onRequest(
 
         const manualUpdate: Record<string, unknown> = {
           status: "active",
+          "sellerDetails.subscriptionState": "active",
           "sellerDetails.subscriptionExpiresAt": subscriptionExpiresAt,
           "sellerDetails.reminderSentForExpiry": null,
           "sellerDetails.reminderSentJ7": null,
@@ -402,6 +405,7 @@ export const approveRenewal = onRequest(
           "sellerDetails.reminderSentJ1": null,
           "sellerDetails.gracePhaseSince": null,
           "sellerDetails.downgradePhase": null,
+          "sellerDetails.graceWarnedAt": null,
         };
         if (manualPlanId) {
           resolvedTierLabel = PLAN_LABELS[manualPlanId];
@@ -489,7 +493,15 @@ export const approveRenewal = onRequest(
         }
       }
 
-      // ── Reactivate inactive products (remove deleteAt) ──────────────────
+      // ── Reactivate grace-deactivated products (Lot B, audit I7) ─────────
+      // Seuls les produits masqués PAR LA GRÂCE (deactivatedBy:'grace') sont
+      // republiés — les pauses manuelles du vendeur sont préservées (on leur
+      // retire juste un éventuel deleteAt pour annuler la suppression).
+      // Fallback transition : les vendeurs entrés en grâce AVANT le Lot B
+      // (downgradePhase legacy sans subscriptionState) n'ont pas de marqueur
+      // → comportement historique (tout réactiver), identique à avant.
+      const wasLegacyGrace = !!sellerDetails.downgradePhase && !sellerDetails.subscriptionState;
+
       const productsSnap = await db
         .collection("products")
         .where("sellerId", "==", vendorId)
@@ -503,12 +515,23 @@ export const approveRenewal = onRequest(
         let batchOps = 0;
 
         for (const productDoc of productsSnap.docs) {
-          batch.update(productDoc.ref, {
-            status: "approved",
-            deleteAt: FieldValue.delete(),
-          });
-          batchOps++;
-          productCount++;
+          const p = productDoc.data();
+          if (wasLegacyGrace || p.deactivatedBy === "grace") {
+            batch.update(productDoc.ref, {
+              status: "approved",
+              deleteAt: FieldValue.delete(),
+              deactivatedBy: FieldValue.delete(),
+            });
+            productCount++;
+            batchOps++;
+          } else if (p.deleteAt) {
+            // Pause manuelle programmée pour suppression (grace_3) : on annule
+            // la suppression sans republier le produit.
+            batch.update(productDoc.ref, { deleteAt: FieldValue.delete() });
+            batchOps++;
+          } else {
+            continue; // pause manuelle simple — on n'y touche pas
+          }
 
           if (batchOps >= BATCH_LIMIT) {
             await batch.commit();
@@ -520,7 +543,7 @@ export const approveRenewal = onRequest(
         if (batchOps > 0) await batch.commit();
 
         console.log(
-          `[approveRenewal] ${productCount} product(s) of seller ${vendorId} → active, deleteAt removed`
+          `[approveRenewal] ${productCount} grace product(s) of seller ${vendorId} → active (manual pauses preserved)`
         );
       } else {
         console.log(`[approveRenewal] Seller ${vendorId}: no inactive products to reactivate.`);

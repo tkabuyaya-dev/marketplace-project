@@ -5,6 +5,7 @@ import { SubscriptionRequest, User } from '../../types';
 import {
   getAllSubscriptionRequests,
   getSubscriptionPricing, updateSubscriptionPricing,
+  getLifecycleHeartbeat, LifecycleHeartbeat,
 } from '../../services/firebase';
 import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS, getCountryFlag as getCountryFlagFromConst } from '../../constants';
 import { planIdFromLabel } from '../../utils/planFeatures';
@@ -68,8 +69,13 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
     setAllSubRequests(requests);
   };
 
+  // Heartbeat du cron subscriptionLifecycle (Lot B, audit I6) — un cron mort
+  // ne doit plus passer inaperçu : chip vert/rouge dans l'en-tête.
+  const [heartbeat, setHeartbeat] = useState<LifecycleHeartbeat | null>(null);
+
   useEffect(() => {
     loadSubRequests();
+    getLifecycleHeartbeat().then(setHeartbeat);
   }, []);
 
   useEffect(() => {
@@ -638,10 +644,38 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
       {/* ════════════════════ SECTION 1 — KPIs ════════════════════ */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-white">
-            {t('admin.subDashboardTitle', 'Tableau de bord abonnements')}
-          </h2>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-lg font-bold text-white">
+              {t('admin.subDashboardTitle', 'Tableau de bord abonnements')}
+            </h2>
+            {/* Heartbeat du cron subscriptionLifecycle (rappels + grâce + expirations) */}
+            {(() => {
+              if (!heartbeat) {
+                return (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-800 text-gray-500 border border-gray-700">
+                    {t('admin.lifecycleNoRun', 'Cron : aucun passage')}
+                  </span>
+                );
+              }
+              const hoursAgo = Math.floor((Date.now() - heartbeat.lastRunAt) / 3_600_000);
+              const late = hoursAgo >= 26 || heartbeat.ok === false;
+              return (
+                <span
+                  title={heartbeat.error || undefined}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    late
+                      ? 'bg-red-600/15 text-red-400 border-red-600/30'
+                      : 'bg-green-600/15 text-green-400 border-green-600/30'
+                  }`}
+                >
+                  {late
+                    ? t('admin.lifecycleLate', '⚠ Cron abonnements en retard ({{h}} h)', { h: hoursAgo })
+                    : t('admin.lifecycleOk', 'Cron abonnements : il y a {{h}} h', { h: hoursAgo })}
+                </span>
+              );
+            })()}
+          </div>
           <button
             onClick={loadSubRequests}
             className="text-xs text-blue-400 border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 rounded-lg px-3 py-1.5 transition-colors"

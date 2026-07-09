@@ -19,7 +19,7 @@
  *     côté serveur.
  */
 
-import { db, doc, onSnapshot } from './constants';
+import { db, doc, getDoc, onSnapshot } from './constants';
 import type { Unsubscribe } from './constants';
 
 const APP_SETTINGS_COLLECTION = 'appSettings';
@@ -74,4 +74,30 @@ export function subscribeToStudioSettings(
       cb(DEFAULT_SETTINGS);
     },
   );
+}
+
+// ── Heartbeat du cycle abonnements (Lot B, audit I6) ─────────────────────────
+// Écrit par la CF subscriptionLifecycle à chaque passage (schedule ou manuel).
+// Document `appSettings/subscriptionLifecycle`.
+
+export interface LifecycleHeartbeat {
+  lastRunAt: number;
+  trigger: 'schedule' | 'manual';
+  ok: boolean;
+  error?: string;
+  counts?: Record<string, number>;
+}
+
+/** Dernier passage du cron abonnements — null si jamais exécuté / illisible. */
+export async function getLifecycleHeartbeat(): Promise<LifecycleHeartbeat | null> {
+  if (!db) return null;
+  try {
+    const snap = await getDoc(doc(db, APP_SETTINGS_COLLECTION, 'subscriptionLifecycle'));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    if (typeof data?.lastRunAt !== 'number') return null;
+    return data as LifecycleHeartbeat;
+  } catch {
+    return null;
+  }
 }
