@@ -17,11 +17,17 @@ Assets promotionnels ciblant **Burundi 🇧🇮 · RD Congo 🇨🇩 · Tanzanie
 
 | Fichier | Dimensions | Note |
 |---|---|---|
-| `nunulia-card-front.png` | 1050×600 | Recto — marque (logo + wordmark) |
-| `nunulia-card-back.png` | 1050×600 | Verso — nom, coordonnées, drapeaux, QR |
+| `nunulia-card-front.png` | 1050×600 | Recto sombre — marque (logo + wordmark) |
+| `nunulia-card-back.png` | 1050×600 | Verso sombre — accroche, coordonnées, drapeaux, QR |
+| `nunulia-card-front-light.png` | 1050×600 | Recto **fond clair** |
+| `nunulia-card-back-light.png` | 1050×600 | Verso **fond clair** |
+| `nunulia-card-front-print-bleed3mm.png` | 1122×672 | Recto **prêt imprimeur** (fond perdu 3 mm) |
+| `nunulia-card-back-print-bleed3mm.png` | 1122×672 | Verso **prêt imprimeur** (fond perdu 3 mm) |
 
-- **1050×600 px = 89×51 mm à 300 dpi** (format standard). Pour l'impression avec fond
-  perdu, demander la version avec 3 mm de bleed (1063×613).
+- **Écran / partage** : utiliser les fichiers 1050×600 (89×51 mm à 300 dpi).
+- **Imprimeur** : fournir les fichiers `*-print-bleed3mm` (1122×672 = 89×51 mm de coupe
+  + 3 mm de fond perdu sur chaque bord). Trait de coupe à 3 mm des bords ; le contenu
+  reste dans la zone de sécurité.
 - **Carte de marque** (pas de nom de personne) : accroche « Votre marché, dans votre
   poche », coordonnées, drapeaux et QR. Utilisable par toute l'équipe.
 
