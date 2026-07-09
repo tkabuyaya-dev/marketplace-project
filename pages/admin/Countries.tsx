@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../../components/Toast';
 import { updateCountry } from '../../services/firebase';
 import { getCountryFlag } from '../../constants';
+import { invalidateCountriesCache } from '../../hooks/useActiveCountries';
 import type { CountriesProps } from './types';
 
 export const Countries: React.FC<CountriesProps> = ({
-  countries, setCountries, currentUser,
+  countries, setCountries, currentUser, refreshData,
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -23,6 +24,12 @@ export const Countries: React.FC<CountriesProps> = ({
     try {
       await updateCountry(country.id, { isActive: next }, currentUser.id, currentUser.email);
       setCountries(prev => prev.map(c => (c.id === country.id ? { ...c, isActive: next } : c)));
+      // Purge les caches mémoire/localStorage des sélecteurs pays de CE
+      // navigateur (les autres clients sont mis à jour par onSnapshot).
+      invalidateCountriesCache();
+      // Le toggle cascade sur la devise liée → resynchroniser l'état admin
+      // (onglet Devises) sans attendre un rechargement de page.
+      refreshData().catch(() => { /* non bloquant */ });
       toast(
         t('admin.countryToggled', {
           name: country.name,

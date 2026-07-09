@@ -32,6 +32,7 @@ import {
 import { getDeviceSnapshot } from '../../utils/deviceFingerprint';
 import { buildWaUrl } from '../../config/whatsapp.config';
 import { usePushOptIn } from '../../hooks/usePushOptIn';
+import { useActiveCountries, withActiveCountriesFallback } from '../../hooks/useActiveCountries';
 
 const LAST_CATEGORY_KEY = 'nunulia_last_category';
 
@@ -82,6 +83,9 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
   const { t } = useTranslation();
   const { currentUser } = useAppContext();
   const { categories } = useCategories();
+  // Pays actifs temps réel (toggle admin Firestore) — jamais vide grâce au fallback
+  const { countries: liveActiveCountries } = useActiveCountries();
+  const activeCountries = withActiveCountriesFallback(liveActiveCountries);
 
   const defaultCountry = currentUser?.sellerDetails?.countryId || 'bi';
 
@@ -161,6 +165,16 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
       setImageError('');
     }
   }, [isOpen]);
+
+  // Si le pays sélectionné n'est pas (ou plus) actif — toggle admin temps
+  // réel — on bascule sur le premier pays actif. Même pattern que
+  // SellerRegistration. Dep = ids joints pour éviter les re-runs inutiles.
+  const activeCountryIds = activeCountries.map(c => c.id).join(',');
+  useEffect(() => {
+    if (activeCountries.length > 0 && !activeCountries.some(c => c.id === countryId)) {
+      handleCountryChange(activeCountries[0].id);
+    }
+  }, [activeCountryIds]);
 
   // Upload image immédiatement à la sélection (en arrière-plan)
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,7 +404,7 @@ export const JeChercheForm: React.FC<JeChercheFormProps> = ({ isOpen, onClose, i
                 onChange={e => handleCountryChange(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-gold-400/50 outline-none text-sm cursor-pointer"
               >
-                {INITIAL_COUNTRIES.filter(c => c.isActive).map(c => (
+                {activeCountries.map(c => (
                   <option key={c.id} value={c.id}>{getCountryFlag(c)} {c.name}</option>
                 ))}
               </select>

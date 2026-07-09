@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast';
 import { subscribeToLanguageSettings } from '../services/firebase';
 import type { LanguageSettings } from '../services/firebase/admin-data';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useActiveCountries } from '../hooks/useActiveCountries';
 import { auth } from '../firebase-config';
 import i18n, { loadLanguage } from '../i18n';
 
@@ -52,6 +53,18 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     try { localStorage.setItem('nunulia_active_country', activeCountry); } catch { /* ignore */ }
   }, [activeCountry]);
+
+  // Cohérence toggle admin : si le pays sélectionné est désactivé (Firestore
+  // temps réel), on repasse sur "Tous les pays". Évite un Home/Search filtré
+  // sur un pays dont tous les produits sont masqués (countryDeactivated).
+  // Liste vide = caches pas encore chargés → on ne touche à rien.
+  const { countries: liveActiveCountries } = useActiveCountries();
+  useEffect(() => {
+    if (activeCountry && liveActiveCountries.length > 0
+        && !liveActiveCountries.some(c => c.id === activeCountry)) {
+      setActiveCountry('');
+    }
+  }, [activeCountry, liveActiveCountries]);
 
   // Real-time language settings from admin
   useEffect(() => {

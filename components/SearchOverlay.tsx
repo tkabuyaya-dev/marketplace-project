@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Product, User } from '../types';
 import { algoliaAutocompleteProducts } from '../services/algolia';
 import { getLocalSuggestions, addToSearchHistory, getSearchHistory, removeFromSearchHistory, getPopularSearches } from '../services/popular-searches';
-import { INITIAL_COUNTRIES } from '../constants';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { useAppContext } from '../contexts/AppContext';
 import { useAdaptiveDebounce } from '../hooks/useAdaptiveDebounce';

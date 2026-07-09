@@ -150,6 +150,18 @@ export const updateCountry = async (
       });
       await batch.commit();
     }
+
+    // Cascade devise : la devise nationale suit le statut du pays. Sans elle,
+    // activer un pays laisserait ses vendeurs sans devise dans le sélecteur
+    // produit (SellerDashboard → getActiveCurrencies). USD (intl) non concerné.
+    const currencyId = INITIAL_CURRENCIES.find(c => c.countryId === id)?.id;
+    if (currencyId) {
+      try {
+        await updateDoc(doc(db, COLLECTIONS.CURRENCIES, currencyId), { isActive: updates.isActive });
+      } catch {
+        // Doc devise absent (sera re-seedé par getCurrencies) — non bloquant
+      }
+    }
   }
 
   // Write audit log

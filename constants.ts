@@ -158,12 +158,15 @@ export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
     { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },
     { name: 'Airtel Money',  number: 'Contactez support',  icon: '📱' },
   ],
-  // ⚠️ TANZANIE — Faux numéros temporaires (préfixes opérateurs réels TZ).
-  // À REMPLACER par les vrais numéros marchand NUNULIA avant publication marketing.
+  // 🇹🇿 TANZANIE — En attendant un compte marchand tanzanien : réception via
+  // Airtel Money (ligne Airtel +243 991 736 169, transfert Airtel-à-Airtel
+  // cross-border). Pas de compte NUNULIA M-Pesa/Tigo Pesa — ne PAS pointer
+  // ces méthodes vers la ligne Airtel (paiement perdu) : passer par WhatsApp,
+  // même pattern que Ecocash côté Burundi.
   tz: [
-    { name: 'M-Pesa',        number: '+255 750 000 000',   icon: '📱' },
-    { name: 'Airtel Money',  number: '+255 780 000 000',   icon: '📱' },
-    { name: 'Tigo Pesa',     number: '+255 710 000 000',   icon: '📱' },
+    { name: 'Airtel Money',  number: '+243 991 736 169',       icon: '📱' },
+    { name: 'M-Pesa',        number: 'Contactez via WhatsApp', icon: '📱' },
+    { name: 'Tigo Pesa',     number: 'Contactez via WhatsApp', icon: '📱' },
   ],
   // Placeholders Kenya
   ke: [

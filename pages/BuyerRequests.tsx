@@ -25,6 +25,7 @@ import { useToast } from '../components/Toast';
 import { NotificationEnableBanner } from '../components/NotificationEnableBanner';
 import { INITIAL_COUNTRIES, INITIAL_CATEGORIES, getCountryFlag } from '../constants';
 import { CITIES_BY_COUNTRY } from '../data/locations';
+import { useActiveCountries, withActiveCountriesFallback } from '../hooks/useActiveCountries';
 
 /* ─────────────────────── KEYFRAMES ──────────────────────── */
 
@@ -188,7 +189,9 @@ function FilterSheet({
   onClose: () => void;
 }) {
   const cities = country ? (CITIES_BY_COUNTRY[country] || []) : [];
-  const activeCountries = INITIAL_COUNTRIES.filter(c => c.isActive);
+  // Pays actifs temps réel (toggle admin Firestore) — jamais vide grâce au fallback
+  const { countries: liveActiveCountries } = useActiveCountries();
+  const activeCountries = withActiveCountriesFallback(liveActiveCountries);
 
   if (!open) return null;
 

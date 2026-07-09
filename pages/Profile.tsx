@@ -14,6 +14,7 @@ import { useNotificationConsent } from '../hooks/useNotificationConsent';
 import { useToast } from '../components/Toast';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { INITIAL_COUNTRIES, getCountryFlag } from '../constants';
+import { useActiveCountries, withActiveCountriesFallback } from '../hooks/useActiveCountries';
 import { buildWaUrl } from '../config/whatsapp.config';
 import { B2BLanguageMenuItem } from '../components/B2B/B2BLanguageMenuItem';
 import { validatePhone, normalizeLocalDigits, getPhoneSpec, PHONE_SPECS } from '../utils/phoneValidation';
@@ -660,6 +661,8 @@ const Profile: React.FC = () => {
   const [langSheetOpen, setLangSheetOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [mountedAt] = useState(() => Date.now());
+  // Pays actifs temps réel (toggle admin Firestore) — jamais vide grâce au fallback
+  const { countries: liveActiveCountries } = useActiveCountries();
 
   if (!currentUser) return <Navigate to="/login" replace />;
 
@@ -891,7 +894,7 @@ const Profile: React.FC = () => {
         title={t('profile.country')}
         options={[
           { value: '', label: t('profile.allCountries'), flag: '🌍' },
-          ...INITIAL_COUNTRIES.filter(c => c.isActive).map(c => ({ value: c.id, label: c.name, flag: getCountryFlag(c) })),
+          ...withActiveCountriesFallback(liveActiveCountries).map(c => ({ value: c.id, label: c.name, flag: getCountryFlag(c) })),
         ]}
         value={activeCountry}
         onSelect={setActiveCountry}

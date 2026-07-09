@@ -13,6 +13,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { Country } from '../types';
 import { subscribeToActiveCountries } from '../services/firebase/admin-data';
+import { INITIAL_COUNTRIES } from '../constants';
+
+/**
+ * Garantit une liste de pays actifs jamais vide pour les sélecteurs UI.
+ * Firestore (temps réel) reste la source de vérité ; si tous les caches
+ * sont vides (1ʳᵉ visite, snapshot pas encore arrivé, offline), on retombe
+ * sur les pays actifs de INITIAL_COUNTRIES pour ne jamais rendre un
+ * <select> sans options.
+ */
+export function withActiveCountriesFallback(countries: Country[]): Country[] {
+  return countries.length > 0 ? countries : INITIAL_COUNTRIES.filter(c => c.isActive);
+}
 
 // ── Couche 1 : Cache mémoire (partagé entre tous les composants) ──
 const MEM_TTL = 5 * 60 * 1000; // 5 min
