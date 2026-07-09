@@ -25,19 +25,11 @@ import * as logger from "firebase-functions/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import { getDb } from "./admin.js";
 import { ALLOWED_ORIGINS } from "./config.js";
-import { PLAN_FEATURES, planIdFromLabel, type PlanId } from "./plan-features.js";
+import { PLAN_FEATURES, PLAN_LABELS, planIdFromLabel, type PlanId } from "./plan-features.js";
 
 const REQUESTS_COLLECTION = "subscriptionRequests";
 const HISTORY_SUBCOLLECTION = "history";
 const SUBSCRIPTION_PRICING_COLLECTION = "subscriptionPricing";
-
-// Mêmes valeurs que utils/planFeatures.ts → PLAN_LABELS
-const PLAN_LABELS: Record<PlanId, string> = {
-  free:      "Découverte",
-  vendeur:   "Vendeur",
-  pro:       "Pro",
-  grossiste: "Grossiste",
-};
 
 const VALID_PERIODS = new Set(["1m", "3m", "12m"]);
 type Period = "1m" | "3m" | "12m";

@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../../components/Toast';
 import { User, Country, VerificationTier, VerificationMethod } from '../../types';
 import {
-  deleteUser, updateUserStatus, updateUserSubscription, updateUserProfile,
-  createNotification, renewSubscription,
+  deleteUser, updateUserStatus, updateUserProfile,
+  createNotification, downgradeToFree,
 } from '../../services/firebase';
 import { getOptimizedUrl } from '../../services/cloudinary';
 import { getCountryFlag } from '../../constants';
+import { planIdFromLabel } from '../../utils/planFeatures';
+import { auth } from '../../firebase-config';
 import type { UsersProps } from './types';
 
 // Labels alignés sur INITIAL_SUBSCRIPTION_TIERS — utilisés pour le setter manuel admin.
@@ -18,6 +20,30 @@ const TIER_OPTIONS = [
   { label: 'Pro (jusqu\'à 100)',          maxProducts: 100,   tierLabel: 'Pro'        },
   { label: 'Grossiste (illimité)',        maxProducts: 99999, tierLabel: 'Grossiste'  },
 ];
+
+/**
+ * Lot A (C4) : toute attribution/renouvellement d'un plan PAYANT passe par la
+ * CF approveRenewal (transaction + restauration du tier + reset des phases de
+ * grâce + réactivation produits + audit log). Les writes clients directs
+ * laissaient des états incohérents — expiry sans reset de grâce (produits
+ * supprimés à J14), tier sans expiration (plan payant éternel).
+ */
+async function callApproveRenewal(vendorId: string, planId: string): Promise<void> {
+  const idToken = await auth?.currentUser?.getIdToken();
+  if (!idToken) throw new Error('Not authenticated');
+  const res = await fetch(
+    'https://europe-west1-aurburundi-e2fe2.cloudfunctions.net/approveRenewal',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ vendorId, planId, verifiedVia: 'admin_manual' }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message || `CF status ${res.status}`);
+  }
+}
 
 export const Users: React.FC<UsersProps> = ({
   users, countries, setUsers, currentUser, refreshData, onContactUser,
@@ -45,8 +71,20 @@ export const Users: React.FC<UsersProps> = ({
   };
 
   const handleUpgradeUser = async (userId: string, option: typeof TIER_OPTIONS[0]) => {
+    const planId = planIdFromLabel(option.tierLabel);
+    const isFree = !planId || planId === 'free';
+    // Un plan payant attribué manuellement inclut désormais 30 jours
+    // d'abonnement — un tier sans expiration n'expirait jamais (audit C4).
+    const confirmMsg = isFree
+      ? t('admin.confirmSetFree', 'Repasser ce vendeur au plan Découverte (gratuit) ?')
+      : t('admin.confirmSetPlan', 'Attribuer le plan {{label}} avec 30 jours d\'abonnement ?', { label: option.tierLabel });
+    if (!window.confirm(confirmMsg)) return;
     try {
-      await updateUserSubscription(userId, { maxProducts: option.maxProducts, tierLabel: option.tierLabel });
+      if (isFree) {
+        await downgradeToFree(userId);
+      } else {
+        await callApproveRenewal(userId, planId);
+      }
       await createNotification({
         userId,
         type: 'subscription_change',
@@ -74,18 +112,27 @@ export const Users: React.FC<UsersProps> = ({
     }
   };
 
-  const handleRenewSub = async (userId: string, userName: string) => {
+  const handleRenewSub = async (user: User) => {
+    // Renouvelle le plan payant COURANT via la CF (extension d'expiration,
+    // reset grâce, réactivation produits, audit). Sans plan payant actif,
+    // il n'y a rien à « renouveler » : l'admin choisit d'abord un plan.
+    const planId = planIdFromLabel(user.sellerDetails?.tierLabel);
+    if (!planId || planId === 'free') {
+      toast(t('admin.renewNeedsPlan', 'Pas de plan payant actif — choisissez d\'abord un plan.'), 'info');
+      setUpgradingUser(user.id);
+      return;
+    }
     try {
-      await renewSubscription(userId, 30);
+      await callApproveRenewal(user.id, planId);
       await createNotification({
-        userId,
+        userId: user.id,
         type: 'subscription_change',
         title: t('admin.subscriptionRenewedNotif'),
         body: t('admin.subscriptionRenewedBody'),
         read: false,
         createdAt: Date.now(),
       });
-      toast(t('admin.subscriptionRenewed', { name: userName }), 'success');
+      toast(t('admin.subscriptionRenewed', { name: user.name || 'Vendeur' }), 'success');
       refreshData();
     } catch (err) {
       console.error('Erreur renouvellement:', err);
@@ -353,7 +400,7 @@ export const Users: React.FC<UsersProps> = ({
                       className="px-3 py-1.5 bg-purple-600/20 text-purple-400 border border-purple-600/30 text-xs font-bold rounded-lg hover:bg-purple-600 hover:text-white transition-colors">
                       {upgradingUser === u.id ? t('admin.closeSubscription') : t('admin.manageSubscription')}
                     </button>
-                    <button onClick={() => handleRenewSub(u.id, u.name || 'Vendeur')}
+                    <button onClick={() => handleRenewSub(u)}
                       className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 text-xs font-bold rounded-lg hover:bg-emerald-600 hover:text-white transition-colors">
                       🔄 +30j
                     </button>

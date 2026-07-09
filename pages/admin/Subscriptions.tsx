@@ -7,6 +7,7 @@ import {
   getSubscriptionPricing, updateSubscriptionPricing,
 } from '../../services/firebase';
 import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS, getCountryFlag as getCountryFlagFromConst } from '../../constants';
+import { planIdFromLabel } from '../../utils/planFeatures';
 import { auth } from '../../firebase-config';
 import type { SubscriptionsProps } from './types';
 
@@ -39,6 +40,9 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
   // Vendor 360° drawer
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [forcingRenewal, setForcingRenewal] = useState(false);
+  // Lot A (C3) : plan appliqué par le renouvellement forcé — pré-rempli avec le
+  // tier payant courant du vendeur, sinon sa dernière demande approuvée.
+  const [forcePlanId, setForcePlanId] = useState<string>('vendeur');
 
   // Approve confirmation modal (operator verification — methods are country-specific)
   const [approvingRequest, setApprovingRequest] = useState<SubscriptionRequest | null>(null);
@@ -273,6 +277,21 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       rejectedCount: vendorRequests.filter(r => r.status === 'rejected').length,
       ltvByCurrency,
     };
+  }, [selectedVendorId, vendorRequests]);
+
+  // Lot A (C3) : pré-remplissage du plan de renouvellement forcé.
+  // Tier payant courant > dernière demande approuvée > 'vendeur'.
+  useEffect(() => {
+    if (!selectedVendor) return;
+    const currentPlanId = planIdFromLabel(selectedVendor.sellerDetails?.tierLabel);
+    if (currentPlanId && currentPlanId !== 'free') {
+      setForcePlanId(currentPlanId);
+      return;
+    }
+    const lastApproved = vendorRequests.find(r => r.status === 'approved');
+    setForcePlanId(
+      lastApproved?.planId && lastApproved.planId !== 'free' ? lastApproved.planId : 'vendeur',
+    );
   }, [selectedVendorId, vendorRequests]);
 
   // ─── Analytics (R21) ──────────────────────────────────────────────────────
@@ -580,7 +599,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
    * captures it as an admin override.
    */
   const handleForceRenew = async (vendorId: string) => {
-    if (!window.confirm(t('admin.subForceRenewConfirm', 'Renouveler ce vendeur de 30 jours sans demande client ?'))) return;
+    // Lot A (C3) : le plan est explicite — la CF restaure tierLabel/maxProducts,
+    // un vendeur déjà auto-downgradé retrouve le plan qu'il a payé.
+    const planLabel = INITIAL_SUBSCRIPTION_TIERS.find(x => x.id === forcePlanId)?.label ?? forcePlanId;
+    if (!window.confirm(t('admin.subForceRenewConfirmPlan', 'Renouveler ce vendeur 30 jours sur le plan {{plan}} ?', { plan: planLabel }))) return;
     setForcingRenewal(true);
     try {
       const idToken = await auth?.currentUser?.getIdToken();
@@ -593,7 +615,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
             'Content-Type': 'application/json',
             Authorization: `Bearer ${idToken}`,
           },
-          body: JSON.stringify({ vendorId, verifiedVia: 'admin_manual' }),
+          body: JSON.stringify({ vendorId, planId: forcePlanId, verifiedVia: 'admin_manual' }),
         }
       );
       if (!res.ok) {
@@ -1529,7 +1551,21 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                 </div>
               )}
 
-              {/* Force renew */}
+              {/* Force renew — Lot A (C3) : plan explicite, restauré par la CF */}
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold flex-shrink-0">
+                  {t('admin.subForceRenewPlanLabel', 'Plan')}
+                </label>
+                <select
+                  value={forcePlanId}
+                  onChange={e => setForcePlanId(e.target.value)}
+                  className="flex-1 bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-lg px-3 py-2 outline-none"
+                >
+                  {INITIAL_SUBSCRIPTION_TIERS.filter(x => x.id !== 'free').map(tier => (
+                    <option key={tier.id} value={tier.id}>{tier.label}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 onClick={() => handleForceRenew(selectedVendor.id)}
                 disabled={forcingRenewal}

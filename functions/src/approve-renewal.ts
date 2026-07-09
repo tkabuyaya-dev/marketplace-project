@@ -42,6 +42,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { getDb, getAuth } from "./admin.js";
+import { PLAN_FEATURES, PLAN_LABELS, planIdFromLabel, type PlanId } from "./plan-features.js";
 import { buildReceiptPdf, uploadPdfToCloudinary } from "./generate-receipt.js";
 import {
   CLOUDINARY_CLOUD_NAME,
@@ -58,6 +59,27 @@ function periodToDurationMs(period?: string): number {
   if (period === '3m')  return 90  * 24 * 60 * 60 * 1000;
   if (period === '12m') return 365 * 24 * 60 * 60 * 1000;
   return 30 * 24 * 60 * 60 * 1000; // default 1m
+}
+
+/**
+ * Lot A (C1) : point de départ de la nouvelle expiration.
+ * Renouvellement du MÊME plan avec une expiration encore dans le futur
+ * → on ÉTEND l'expiration courante (le vendeur qui paie à J-7 sur rappel
+ * ne perd plus ses 7 jours). Upgrade/downgrade ou plan expiré → départ
+ * de maintenant (le crédit prorata upgrade arrive au Lot C).
+ */
+function renewalBaseMs(
+  currentTierLabel: unknown,
+  currentExpiresAt: unknown,
+  approvedPlanId: unknown,
+  nowMs: number,
+): number {
+  const currentPlanId = planIdFromLabel(typeof currentTierLabel === "string" ? currentTierLabel : null);
+  const samePlan = currentPlanId !== null && currentPlanId === approvedPlanId;
+  if (samePlan && typeof currentExpiresAt === "number" && currentExpiresAt > nowMs) {
+    return currentExpiresAt;
+  }
+  return nowMs;
 }
 
 function periodMultiplier(period?: string): number {
@@ -214,6 +236,9 @@ export const approveRenewal = onRequest(
       let resolvedMaxProducts: number | null = null;
       let reqDataAfterCommit: Record<string, any> = {};
       let amountValidation: AmountValidation | null = null;
+      // Lot A (C1) : millisecondes de l'ancien cycle reportées sur le nouveau
+      // (0 si plan expiré ou changement de plan). Tracé dans l'audit log.
+      let carriedOverMs = 0;
 
       if (requestId) {
         const reqRef = db.collection("subscriptionRequests").doc(requestId);
@@ -255,6 +280,7 @@ export const approveRenewal = onRequest(
               expiresAt: existingExpiresAt,
               tierLabel: (reqData.planLabel as string) ?? "",
               maxProducts: (reqData.maxProducts as number) ?? 0,
+              carriedOverMs: 0,
             };
           }
           // Refus si déjà rejected ou cancelled (statut terminal)
@@ -266,7 +292,14 @@ export const approveRenewal = onRequest(
             };
           }
 
-          const expiresAt = Date.now() + periodToDurationMs(reqData.period);
+          // Lot A (C1) : lecture du seller DANS la transaction pour étendre
+          // l'expiration courante si c'est un renouvellement du même plan.
+          const sellerTxSnap = await tx.get(sellerRef);
+          const sd = (sellerTxSnap.data() ?? {}).sellerDetails ?? {};
+          const nowMs = Date.now();
+          const baseMs = renewalBaseMs(sd.tierLabel, sd.subscriptionExpiresAt, reqData.planId ?? null, nowMs);
+
+          const expiresAt = baseMs + periodToDurationMs(reqData.period);
           const tierLabel = reqData.planLabel as string;
           const maxProducts = reqData.maxProducts as number;
 
@@ -315,6 +348,7 @@ export const approveRenewal = onRequest(
             expiresAt,
             tierLabel,
             maxProducts,
+            carriedOverMs: baseMs - nowMs,
           };
         });
 
@@ -327,16 +361,39 @@ export const approveRenewal = onRequest(
         subscriptionExpiresAt = txResult.expiresAt;
         resolvedTierLabel = txResult.tierLabel;
         resolvedMaxProducts = txResult.maxProducts;
+        carriedOverMs = txResult.carriedOverMs;
         if (txResult.alreadyApproved) {
           console.log(`[approveRenewal] Idempotent — request ${requestId} already approved`);
         }
       } else {
-        // ── Path "admin_manual" sans requestId : flow legacy ────────────────
-        // Renouvellement forcé par l'admin (vendeur sans demande active).
-        // On garde l'ancien comportement : on calcule expiresAt = now + 30j et
-        // on met le seller actif. Pas de transaction multi-doc requise.
-        subscriptionExpiresAt = Date.now() + periodToDurationMs(undefined);
-        await sellerRef.update({
+        // ── Path "admin_manual" sans requestId ──────────────────────────────
+        // Renouvellement forcé par l'admin (paiement reçu hors-app). Lot A :
+        //   C3 — si `planId` est fourni, tierLabel/maxProducts sont restaurés :
+        //        un vendeur déjà auto-downgradé retrouve le plan qu'il a payé.
+        //   C1 — renouvellement du même plan → extension de l'expiration.
+        // Sans planId (ancien front pendant la fenêtre de deploy) : ancien
+        // comportement (status + expiry seulement), avec extension.
+        const bodyPlanIdRaw = typeof req.body?.planId === "string" ? req.body.planId.trim() : "";
+        const manualPlanId: PlanId | null =
+          bodyPlanIdRaw && bodyPlanIdRaw !== "free" && PLAN_FEATURES[bodyPlanIdRaw as PlanId]
+            ? (bodyPlanIdRaw as PlanId)
+            : null;
+        const bodyPeriodRaw = typeof req.body?.period === "string" ? req.body.period : "1m";
+        const manualPeriod = ["1m", "3m", "12m"].includes(bodyPeriodRaw) ? bodyPeriodRaw : "1m";
+
+        const sd = (sellerSnap.data() ?? {}).sellerDetails ?? {};
+        const nowMs = Date.now();
+        // Sans planId explicite, la sémantique legacy est « renouveler le plan
+        // courant » → on étend l'expiration courante quelle qu'elle soit.
+        const baseMs = manualPlanId
+          ? renewalBaseMs(sd.tierLabel, sd.subscriptionExpiresAt, manualPlanId, nowMs)
+          : (typeof sd.subscriptionExpiresAt === "number" && sd.subscriptionExpiresAt > nowMs
+              ? sd.subscriptionExpiresAt
+              : nowMs);
+        carriedOverMs = baseMs - nowMs;
+        subscriptionExpiresAt = baseMs + periodToDurationMs(manualPeriod);
+
+        const manualUpdate: Record<string, unknown> = {
           status: "active",
           "sellerDetails.subscriptionExpiresAt": subscriptionExpiresAt,
           "sellerDetails.reminderSentForExpiry": null,
@@ -345,7 +402,14 @@ export const approveRenewal = onRequest(
           "sellerDetails.reminderSentJ1": null,
           "sellerDetails.gracePhaseSince": null,
           "sellerDetails.downgradePhase": null,
-        });
+        };
+        if (manualPlanId) {
+          resolvedTierLabel = PLAN_LABELS[manualPlanId];
+          resolvedMaxProducts = PLAN_FEATURES[manualPlanId].maxProducts;
+          manualUpdate["sellerDetails.tierLabel"] = resolvedTierLabel;
+          manualUpdate["sellerDetails.maxProducts"] = resolvedMaxProducts;
+        }
+        await sellerRef.update(manualUpdate);
       }
 
       console.log(
@@ -369,6 +433,7 @@ export const approveRenewal = onRequest(
             tierLabel: resolvedTierLabel ?? sellerDetails.tierLabel ?? null,
             maxProducts: resolvedMaxProducts ?? sellerDetails.maxProducts ?? null,
             subscriptionExpiresAt,
+            carriedOverMs,
             verifiedVia,
             amountValidation: amountValidation ?? null,
           },

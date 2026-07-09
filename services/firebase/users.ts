@@ -83,17 +83,6 @@ export const updateUserProfile = async (
   await updateDoc(doc(db, COLLECTIONS.USERS, userId), updates);
 };
 
-export const updateUserSubscription = async (
-  userId: string,
-  tierUpdate: { maxProducts: number; tierLabel: string }
-): Promise<void> => {
-  if (!db) return;
-  await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
-    'sellerDetails.maxProducts': tierUpdate.maxProducts,
-    'sellerDetails.tierLabel': tierUpdate.tierLabel,
-  });
-};
-
 export const getFirstAdmin = async (): Promise<User | null> => {
   if (!db) return null;
   const q = query(

@@ -26,6 +26,7 @@ function periodLabel(period?: SubscriptionPeriod | string): string {
 import {
   DEFAULT_SUBSCRIPTION_PRICING,
 } from '../../constants';
+import { planIdFromLabel } from '../../utils/planFeatures';
 import {
   db, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc,
   query, where, orderBy, limit, serverTimestamp, onSnapshot, runTransaction,
@@ -282,8 +283,19 @@ export const approveSubscriptionRequest = async (
     if (request.status === 'approved') throw new Error('Demande déjà approuvée');
     if (request.status === 'rejected') throw new Error('Demande déjà refusée');
 
-    const expiresAt = Date.now() + periodToDurationMs(request.period);
     const userRef = doc(db!, COLLECTIONS.USERS, request.userId);
+
+    // Lot A (C1) — aligné sur la CF approveRenewal : un renouvellement du
+    // même plan ÉTEND l'expiration courante au lieu de l'écraser.
+    const userSnap = await tx.get(userRef);
+    const sd = (userSnap.data() as any)?.sellerDetails ?? {};
+    const nowMs = Date.now();
+    const samePlan = planIdFromLabel(sd.tierLabel) !== null
+      && planIdFromLabel(sd.tierLabel) === (request.planId ?? null);
+    const baseMs = samePlan && typeof sd.subscriptionExpiresAt === 'number' && sd.subscriptionExpiresAt > nowMs
+      ? sd.subscriptionExpiresAt
+      : nowMs;
+    const expiresAt = baseMs + periodToDurationMs(request.period);
 
     // 1. Mark request approved
     tx.update(requestRef, {

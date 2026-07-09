@@ -413,21 +413,24 @@ const seedCurrencies = async (): Promise<void> => {
 };
 
 // ── Subscription Expiration ──
+// Lot A (C4) : `renewSubscription` supprimé — il n'écrivait que
+// subscriptionExpiresAt sans reset des phases de grâce ni audit, laissant
+// deleteAt se déclencher à J14 sur un vendeur pourtant payé. Tout plan payant
+// passe désormais par la CF approveRenewal (transaction + audit).
 
-export const renewSubscription = async (userId: string, days: number = 30): Promise<void> => {
-  if (!db) return;
-  const expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
-  await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
-    'sellerDetails.subscriptionExpiresAt': expiresAt,
-  });
-};
-
+/**
+ * Retour manuel au plan gratuit (admin). Reset aussi les phases de grâce :
+ * un vendeur repassé volontairement en Découverte ne doit pas voir ses
+ * produits supprimés par le compte à rebours d'une grâce antérieure.
+ */
 export const downgradeToFree = async (userId: string): Promise<void> => {
   if (!db) return;
   await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
     'sellerDetails.maxProducts': 5,
     'sellerDetails.tierLabel': 'Découverte',
     'sellerDetails.subscriptionExpiresAt': null,
+    'sellerDetails.gracePhaseSince': null,
+    'sellerDetails.downgradePhase': null,
   });
 };
 
