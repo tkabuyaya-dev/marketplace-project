@@ -15,12 +15,17 @@ Assets promotionnels ciblant **Burundi 🇧🇮 · RD Congo 🇨🇩 · Tanzanie
 
 | Format | Dimensions | Usage | Fichiers |
 |---|---|---|---|
-| Post | 1080×1080 | Instagram / Facebook feed | `nunulia-post-{lang}-{dark\|light}.png` · `nunulia-post-{lang}-global.png` |
-| Story | 1080×1920 | Story / Reels / WhatsApp Status | `nunulia-story-{lang}-{dark\|light}.png` · `nunulia-story-{lang}-global.png` |
-| Bannière | 1200×630 | Aperçu de lien (WhatsApp/FB/OG), couverture | `nunulia-banner-{lang}.png` · `nunulia-banner-{lang}-global.png` |
+| Post | 1080×1080 | Instagram / Facebook feed | `nunulia-post-{lang}-{dark\|light}[-global].png` |
+| Story | 1080×1920 | Story / Reels / WhatsApp Status | `nunulia-story-{lang}-{dark\|light}[-global].png` |
+| Bannière | 1200×630 | Aperçu de lien (WhatsApp/FB/OG), couverture | `nunulia-banner-{lang}[-global].png` (sombre) |
 
 `{lang}` = `fr` · `en` · `sw` (Swahili) · `rn` (Kirundi).
-Les versions **globales** sont fournies en thème sombre (les 4 langues).
+Suffixe `-global` = version neutre (voir plus haut). Posts & stories : **globale
+disponible en sombre ET clair**. Bannières : thème sombre uniquement.
+
+## 🗂️ Planche récap
+`nunulia-apercu-planche.png` — contact sheet de tous les visuels (vignettes + noms),
+pour tout voir d'un coup d'œil et choisir.
 
 ## 💳 Carte de visite (prête à imprimer)
 
