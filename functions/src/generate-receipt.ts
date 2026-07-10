@@ -24,6 +24,8 @@ export interface ReceiptData {
   verifiedVia: string | null;
   approvedAt: number;      // ms timestamp
   expiresAt: number;       // ms timestamp
+  /** Lot C (D1) : jours offerts lors d'un upgrade en cours de cycle. */
+  upgradeCreditDays?: number;
 }
 
 // ─── PDF ─────────────────────────────────────────────────────────────────────
@@ -111,6 +113,10 @@ export async function buildReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
   }
   if (d.verifiedVia) {
     drawRow(page, fontRegular, fontBold, "Mode de paiement", d.verifiedVia, 40, y, BLACK, GREY);
+    y -= 18;
+  }
+  if (d.upgradeCreditDays && d.upgradeCreditDays > 0) {
+    drawRow(page, fontRegular, fontBold, "Credit upgrade", `+${d.upgradeCreditDays} jour(s) offerts (prorata ancien plan)`, 40, y, BLACK, GREY);
     y -= 18;
   }
   y -= 20;

@@ -143,17 +143,17 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const formattedPrice = `${price.toLocaleString()} ${currency}`;
   const periodDiscount = (p: SubscriptionPeriod) => (p === '12m' ? '-25%' : p === '3m' ? '-10%' : null);
 
-  const hasPendingForPlan = tier
-    ? existingRequests.some(
-        r => r.planId === tier.id && (r.status === 'pending' || r.status === 'pending_validation')
-      )
-    : false;
+  // Lot C (I1) : une seule demande ouverte à la fois — TOUS plans confondus
+  // (aligné sur PlansPage + garde service + garde serveur approveRenewal).
+  const hasOpenRequest = existingRequests.some(
+    r => r.status === 'pending' || r.status === 'pending_validation'
+  );
 
   // ── Handlers ──
 
   const handleCreateRequest = async () => {
     if (!tier) return;
-    if (hasPendingForPlan) {
+    if (hasOpenRequest) {
       toast(t('plans.alreadyPending'), 'error');
       return;
     }
@@ -176,8 +176,12 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
       setRequestId(id);
       setStep('confirm');
       toast(t('plans.requestCreated'), 'success');
-    } catch {
-      toast(t('plans.requestCreateError'), 'error');
+    } catch (err) {
+      // Garde service I1 (message FR explicite) → l'afficher tel quel
+      const msg = err instanceof Error && err.message.startsWith('Vous avez déjà')
+        ? err.message
+        : t('plans.requestCreateError');
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -360,7 +364,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
               </div>
 
               {/* Pending guard */}
-              {hasPendingForPlan ? (
+              {hasOpenRequest ? (
                 <button disabled className="w-full py-3 bg-yellow-600/20 text-yellow-400 text-sm font-bold rounded-xl border border-yellow-600/30">
                   {t('plans.pendingRequest')}
                 </button>

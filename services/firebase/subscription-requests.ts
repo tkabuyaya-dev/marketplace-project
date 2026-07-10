@@ -50,6 +50,27 @@ export const createSubscriptionRequest = async (
 ): Promise<string> => {
   if (!db) throw new Error('Firebase non initialisé');
 
+  // Lot C (I1) : une seule demande ouverte à la fois, TOUS plans confondus.
+  // Deux demandes ouvertes en parallèle = deux paiements possibles pour un
+  // seul plan actif (last-write-wins à l'approbation). L'UI bloque déjà en
+  // amont ; ceci est la ceinture, et approveRenewal porte les bretelles
+  // (garde anti double-approbation transactionnelle côté serveur).
+  const openSnap = await getDocs(query(
+    collection(db, COLLECTIONS.SUBSCRIPTION_REQUESTS),
+    where('userId', '==', request.userId),
+    orderBy('createdAt', 'desc'),
+    limit(20),
+  ));
+  const open = openSnap.docs.find(d => {
+    const s = (d.data() as SubscriptionRequest).status;
+    return s === 'pending' || s === 'pending_validation';
+  });
+  if (open) {
+    throw new Error(
+      'Vous avez déjà une demande en cours. Modifiez-la ou annulez-la avant d\'en créer une nouvelle.',
+    );
+  }
+
   // Auto-détection isUpgrade : lecture du profil seller pour vérifier
   // s'il a déjà un plan payant non expiré.
   let isUpgrade = false;

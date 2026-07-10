@@ -22,6 +22,12 @@ import {
   cancelMyRequest, modifyMyRequest,
 } from '../services/firebase';
 import { uploadImage, UploadError } from '../services/cloudinary';
+import { planIdFromLabel } from '../utils/planFeatures';
+import { UpgradeRecap } from '../components/UpgradeRecap';
+
+// Ordre des plans — utilisé pour verrouiller les downgrades (D2) et détecter
+// les upgrades (D1). Doit rester aligné sur PLAN_RANK de approve-renewal.ts.
+const PLAN_RANK: Record<string, number> = { free: 0, vendeur: 1, pro: 2, grossiste: 3 };
 
 type Step = 'plans' | 'payment' | 'confirmation' | 'done';
 
@@ -135,6 +141,34 @@ export const PlansPage: React.FC = () => {
   const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 7;
   const isExpired = daysRemaining === 0;
 
+  // ── Lot C — dérivés de politique upgrade/downgrade ──────────────────────
+  // Plan courant résolu par planId (tolère les labels legacy Élite/Starter…)
+  const currentPlanId = planIdFromLabel(currentTierLabel);
+  const hasActivePaid =
+    currentPlanId !== null && currentPlanId !== 'free' &&
+    daysRemaining !== null && daysRemaining > 0;
+  // I1 : une seule demande ouverte à la fois, tous plans confondus
+  const hasAnyOpenRequest = myRequests.some(
+    r => r.status === 'pending' || r.status === 'pending_validation'
+  );
+  const planRank = (id: string) => PLAN_RANK[id] ?? 0;
+  // D2/I3 : un plan inférieur au plan actif est verrouillé jusqu'à expiration
+  const isLowerThanCurrent = (tierId: string) =>
+    hasActivePaid && currentPlanId !== null && planRank(tierId) < planRank(currentPlanId);
+  const isUpgradeOfCurrent = (tierId: string) =>
+    hasActivePaid && currentPlanId !== null && planRank(tierId) > planRank(currentPlanId);
+  const expiryDateStr = subscriptionExpiresAt
+    ? new Date(subscriptionExpiresAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '';
+  // D1/I2 : estimation du crédit prorata (même formule que le serveur, plafond 90 j)
+  const estimateCreditDays = (newTierId: string): number => {
+    if (!hasActivePaid || !currentPlanId || daysRemaining === null) return 0;
+    const oldMonthly = getPrice(currentPlanId);
+    const newMonthly = getPrice(newTierId);
+    if (oldMonthly <= 0 || newMonthly <= 0) return 0;
+    return Math.min(90, Math.ceil(daysRemaining * (oldMonthly / newMonthly)));
+  };
+
   useEffect(() => {
     if (!authReady) return;
     if (!currentUser || currentUser.role === 'buyer') {
@@ -198,8 +232,14 @@ export const PlansPage: React.FC = () => {
       setStep('confirmation');
       return;
     }
-    if (hasPendingRequest(tier.id)) {
-      toast(t('plans.alreadyPending'), 'error');
+    // I1 : une seule demande ouverte à la fois — tous plans confondus
+    if (hasAnyOpenRequest) {
+      toast(t('plans.openRequestBanner', 'Vous avez déjà une demande en cours — finalisez, modifiez ou annulez-la avant d\'en créer une autre.'), 'error');
+      return;
+    }
+    // D2/I3 : pas d'achat d'un plan inférieur pendant un plan actif
+    if (isLowerThanCurrent(tier.id)) {
+      toast(t('plans.downgradeLockedToast', 'Plan disponible à l\'expiration de votre plan {{label}} ({{date}}).', { label: currentTierLabel, date: expiryDateStr }), 'error');
       return;
     }
     setSelectedPlan(tier);
@@ -227,8 +267,12 @@ export const PlansPage: React.FC = () => {
       setCurrentRequestId(requestId);
       setStep('confirmation');
       toast(t('plans.requestCreated'), 'success');
-    } catch {
-      toast(t('plans.requestCreateError'), 'error');
+    } catch (err) {
+      // Garde service I1 (message FR explicite) → l'afficher tel quel
+      const msg = err instanceof Error && err.message.startsWith('Vous avez déjà')
+        ? err.message
+        : t('plans.requestCreateError');
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -418,7 +462,7 @@ export const PlansPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSelectPlan(currentPaidTier)}
-                  disabled={hasPendingRequest(currentPaidTier.id)}
+                  disabled={hasAnyOpenRequest}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl
                              text-left transition-all duration-150 active:scale-[0.99]
                              disabled:opacity-60 disabled:cursor-not-allowed"
@@ -443,7 +487,7 @@ export const PlansPage: React.FC = () => {
                       {currentPaidTier.label}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      {hasPendingRequest(currentPaidTier.id)
+                      {hasAnyOpenRequest
                         ? t('plans.alreadyPending')
                         : t('plans.tapToRenew', 'Touchez pour renouveler 30 jours')}
                     </p>
@@ -509,6 +553,21 @@ export const PlansPage: React.FC = () => {
               </div>
             )}
 
+            {/* I1 — une seule demande ouverte : bannière d'orientation */}
+            {hasAnyOpenRequest && (
+              <div className="px-4 pt-4">
+                <div
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+                  style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.25)' }}
+                >
+                  <Info size={14} color="#3b82f6" className="flex-shrink-0" />
+                  <p className="text-[11px] text-gray-600 leading-snug">
+                    {t('plans.openRequestBanner', 'Vous avez déjà une demande en cours — finalisez, modifiez ou annulez-la avant d\'en créer une autre.')}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Sélecteur de période */}
             <div className="flex items-center gap-1.5 px-4 pt-5 pb-1">
               {(['1m', '3m', '12m'] as SubscriptionPeriod[]).map(p => {
@@ -548,7 +607,9 @@ export const PlansPage: React.FC = () => {
                   r => r.planId === tier.id && r.status === 'pending' && !r.transactionRef
                 );
                 const isPopular = tier.id === 'pro';
-                const isDisabled = isCurrentPlan || (isPending && !isResumable);
+                const isLowerPlan = isLowerThanCurrent(tier.id);
+                const isDisabled = isCurrentPlan || (isPending && !isResumable)
+                  || isLowerPlan || (hasAnyOpenRequest && !isPending);
 
                 return (
                   <div
@@ -742,20 +803,28 @@ export const PlansPage: React.FC = () => {
                         {t('plans.pendingShort')}
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        disabled={isDisabled}
-                        onClick={() => !isDisabled && handleSelectPlan(tier)}
-                        className="w-full py-2.5 rounded-xl text-[11px] font-black
-                                   transition-all duration-150 active:scale-95 disabled:cursor-default"
-                        style={{
-                          background: isDisabled ? '#F0F1F4' : isPopular ? '#F5C842' : '#F0F1F4',
-                          color: isDisabled ? '#BCC1CA' : isPopular ? '#111318' : '#5C6370',
-                          boxShadow: isPopular && !isDisabled ? '0 2px 8px rgba(245,200,66,0.3)' : 'none',
-                        }}
-                      >
-                        {isCurrentPlan ? t('plans.currentPlan') : t('plans.chooseShort')}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => !isDisabled && handleSelectPlan(tier)}
+                          className="w-full py-2.5 rounded-xl text-[11px] font-black
+                                     transition-all duration-150 active:scale-95 disabled:cursor-default"
+                          style={{
+                            background: isDisabled ? '#F0F1F4' : isPopular ? '#F5C842' : '#F0F1F4',
+                            color: isDisabled ? '#BCC1CA' : isPopular ? '#111318' : '#5C6370',
+                            boxShadow: isPopular && !isDisabled ? '0 2px 8px rgba(245,200,66,0.3)' : 'none',
+                          }}
+                        >
+                          {isCurrentPlan ? t('plans.currentPlan') : t('plans.chooseShort')}
+                        </button>
+                        {/* D2/I3 : downgrade verrouillé jusqu'à expiration du plan actif */}
+                        {isLowerPlan && (
+                          <p className="text-[9px] text-gray-400 text-center leading-snug -mt-1">
+                            {t('plans.downgradeLocked', 'Disponible à l\'expiration de votre plan {{label}} ({{date}})', { label: currentTierLabel, date: expiryDateStr })}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 );
@@ -940,6 +1009,21 @@ export const PlansPage: React.FC = () => {
                 <p className="text-[10px] text-gray-400">{getCurrency()}{t('plans.perMonth')}</p>
               </div>
             </div>
+
+            {/* D1/I2 — upgrade en cours de cycle : le temps restant est crédité */}
+            {isUpgradeOfCurrent(selectedPlan.id) && daysRemaining !== null && (
+              <UpgradeRecap
+                currentLabel={currentTierLabel}
+                newLabel={selectedPlan.label}
+                remainingDays={daysRemaining}
+                creditDays={estimateCreditDays(selectedPlan.id)}
+                estimatedUntil={
+                  Date.now()
+                  + (period === '12m' ? 365 : period === '3m' ? 90 : 30) * 24 * 60 * 60 * 1000
+                  + estimateCreditDays(selectedPlan.id) * 24 * 60 * 60 * 1000
+                }
+              />
+            )}
 
             {/* Payment methods */}
             <div className="rounded-2xl overflow-hidden bg-white border border-black/[0.07] shadow-sm">
@@ -1257,16 +1341,21 @@ export const PlansPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-1.5">
                   {paidTiers.map(tier => {
                     const active = modifyPlanId === tier.id;
+                    // D2/I3 : pas de bascule vers un plan inférieur au plan actif
+                    const lockedLower = isLowerThanCurrent(tier.id);
                     return (
                       <button
                         key={tier.id}
                         type="button"
-                        onClick={() => setModifyPlanId(tier.id)}
-                        disabled={modifyLoading}
-                        className="py-2 rounded-lg text-[11px] font-bold transition-all"
+                        onClick={() => !lockedLower && setModifyPlanId(tier.id)}
+                        disabled={modifyLoading || lockedLower}
+                        title={lockedLower
+                          ? t('plans.downgradeLockedToast', 'Plan disponible à l\'expiration de votre plan {{label}} ({{date}}).', { label: currentTierLabel, date: expiryDateStr })
+                          : undefined}
+                        className="py-2 rounded-lg text-[11px] font-bold transition-all disabled:cursor-not-allowed"
                         style={{
                           background: active ? '#F5C842' : '#F4F5F7',
-                          color: active ? '#111318' : '#5C6370',
+                          color: lockedLower ? '#BCC1CA' : active ? '#111318' : '#5C6370',
                           border: active ? '1.5px solid #F5C842' : '1.5px solid transparent',
                         }}
                       >

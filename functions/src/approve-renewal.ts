@@ -54,6 +54,11 @@ import {
 const BATCH_LIMIT = 450;
 const AUDIT_LOGS_COLLECTION = "auditLogs";
 const HISTORY_SUBCOLLECTION = "history";
+const DAY_MS = 24 * 60 * 60 * 1000;
+const UPGRADE_CREDIT_CAP_DAYS = 90;
+
+// Ordre des plans — un rang inférieur pendant un plan actif = downgrade (bloqué, D2).
+const PLAN_RANK: Record<string, number> = { free: 0, vendeur: 1, pro: 2, grossiste: 3 };
 
 function periodToDurationMs(period?: string): number {
   if (period === '3m')  return 90  * 24 * 60 * 60 * 1000;
@@ -108,6 +113,29 @@ interface AmountValidation {
 }
 
 /**
+ * Grille mensuelle applicable à un pays : override admin Firestore
+ * (subscriptionPricing/{countryId}) prioritaire, sinon defaults embarqués.
+ * Utilisée pour la validation de montant (P5) ET le crédit prorata upgrade (D1).
+ */
+async function loadBasePrices(
+  db: FirebaseFirestore.Firestore,
+  countryId: string,
+): Promise<{ prices: Record<string, number> | null; source: AmountValidation['source'] }> {
+  try {
+    const overrideSnap = await db.collection('subscriptionPricing').doc(countryId).get();
+    if (overrideSnap.exists) {
+      const prices = (overrideSnap.data() as any)?.prices ?? null;
+      if (prices) return { prices, source: 'override' };
+    }
+  } catch {
+    // ignore — fallback defaults
+  }
+  const fallback = DEFAULT_PRICING[countryId];
+  if (fallback) return { prices: fallback.prices, source: 'defaults' };
+  return { prices: null, source: 'no_pricing' };
+}
+
+/**
  * Calcule le montant attendu pour un (countryId, planId, period) et compare
  * avec ce qui a été soumis par le vendeur. Tolérance : 1%.
  */
@@ -120,25 +148,7 @@ async function validateRequestAmount(
   const planId = (reqData.planId || '') as string;
   const period = (reqData.period || '1m') as string;
 
-  // 1. Override admin Firestore prioritaire
-  let basePrices: Record<string, number> | null = null;
-  let source: AmountValidation['source'] = 'no_pricing';
-  try {
-    const overrideSnap = await db.collection('subscriptionPricing').doc(countryId).get();
-    if (overrideSnap.exists) {
-      basePrices = (overrideSnap.data() as any)?.prices ?? null;
-      source = 'override';
-    }
-  } catch {
-    // ignore
-  }
-  if (!basePrices) {
-    const fallback = DEFAULT_PRICING[countryId];
-    if (fallback) {
-      basePrices = fallback.prices;
-      source = 'defaults';
-    }
-  }
+  const { prices: basePrices, source } = await loadBasePrices(db, countryId);
 
   if (!basePrices) {
     return { passed: false, expected: 0, submitted, diffPct: 0, source: 'no_pricing' };
@@ -239,14 +249,20 @@ export const approveRenewal = onRequest(
       // Lot A (C1) : millisecondes de l'ancien cycle reportées sur le nouveau
       // (0 si plan expiré ou changement de plan). Tracé dans l'audit log.
       let carriedOverMs = 0;
+      // Lot C (D1) : jours offerts lors d'un upgrade en cours de cycle
+      // (valeur restante de l'ancien plan convertie au tarif du nouveau).
+      let upgradeCreditDays = 0;
 
       if (requestId) {
         const reqRef = db.collection("subscriptionRequests").doc(requestId);
 
         // P5 : amount validation (hors transaction — c'est de la lecture seulement)
+        // + grille mensuelle pour le crédit prorata upgrade (D1).
+        let creditPrices: Record<string, number> | null = null;
         const reqSnapPreview = await reqRef.get();
         if (reqSnapPreview.exists) {
           const reqDataPreview = reqSnapPreview.data() ?? {};
+          creditPrices = (await loadBasePrices(db, (reqDataPreview.countryId as string) || "bi")).prices;
           amountValidation = await validateRequestAmount(db, reqDataPreview);
           if (!amountValidation.passed) {
             console.warn(
@@ -281,6 +297,7 @@ export const approveRenewal = onRequest(
               tierLabel: (reqData.planLabel as string) ?? "",
               maxProducts: (reqData.maxProducts as number) ?? 0,
               carriedOverMs: 0,
+              upgradeCreditDays: 0,
             };
           }
           // Refus si déjà rejected ou cancelled (statut terminal)
@@ -292,14 +309,84 @@ export const approveRenewal = onRequest(
             };
           }
 
-          // Lot A (C1) : lecture du seller DANS la transaction pour étendre
-          // l'expiration courante si c'est un renouvellement du même plan.
+          // Lot C (I1) : anti double-approbation. Si une AUTRE demande du même
+          // vendeur a été approuvée pendant que celle-ci était ouverte, les
+          // deux coexistaient → double paiement probable. On refuse (409) et
+          // l'admin arbitre (rejet ou geste commercial).
+          const recentReqsSnap = await tx.get(
+            db.collection("subscriptionRequests")
+              .where("userId", "==", vendorId)
+              .orderBy("createdAt", "desc")
+              .limit(30),
+          );
+          const conflicting = recentReqsSnap.docs.find(d => {
+            if (d.id === requestId) return false;
+            const r = d.data() as any;
+            return r.status === "approved" && (r.updatedAt ?? 0) >= (reqData.createdAt ?? 0);
+          });
+          if (conflicting) {
+            const other = conflicting.data() as any;
+            return {
+              ok: false as const,
+              code: 409,
+              msg: `Conflit : la demande "${other.planLabel}" de ce vendeur a déjà été approuvée ` +
+                `pendant que celle-ci était ouverte (double paiement probable). ` +
+                `Vérifiez le paiement puis rejetez cette demande ou contactez le vendeur.`,
+            };
+          }
+
+          // Lecture du seller DANS la transaction (Lot A C1 / Lot C D1-D2).
           const sellerTxSnap = await tx.get(sellerRef);
           const sd = (sellerTxSnap.data() ?? {}).sellerDetails ?? {};
           const nowMs = Date.now();
-          const baseMs = renewalBaseMs(sd.tierLabel, sd.subscriptionExpiresAt, reqData.planId ?? null, nowMs);
 
-          const expiresAt = baseMs + periodToDurationMs(reqData.period);
+          const currentPlanId = planIdFromLabel(typeof sd.tierLabel === "string" ? sd.tierLabel : null);
+          const currentExpiresAt = typeof sd.subscriptionExpiresAt === "number" ? sd.subscriptionExpiresAt : null;
+          const paidActive = currentPlanId !== null && currentPlanId !== "free"
+            && (sd.maxProducts ?? 0) > 5
+            && currentExpiresAt !== null && currentExpiresAt > nowMs;
+          const approvedPlanId = (reqData.planId ?? null) as string | null;
+
+          let baseMs = nowMs;
+          let creditDays = 0;
+          if (paidActive && approvedPlanId && PLAN_RANK[approvedPlanId] !== undefined) {
+            const curRank = PLAN_RANK[currentPlanId as string] ?? 0;
+            const newRank = PLAN_RANK[approvedPlanId];
+            if (newRank < curRank) {
+              // D2/I3 : downgrade volontaire bloqué tant qu'un plan supérieur est actif
+              return {
+                ok: false as const,
+                code: 409,
+                msg: `Downgrade bloqué : le vendeur a un plan "${sd.tierLabel}" actif jusqu'au ` +
+                  `${new Date(currentExpiresAt as number).toLocaleDateString("fr-FR")}. ` +
+                  `Le passage à un plan inférieur se fait à l'expiration — rejetez cette demande.`,
+              };
+            }
+            if (newRank === curRank) {
+              // C1 : renouvellement du même plan → extension de l'expiration
+              baseMs = currentExpiresAt as number;
+            } else {
+              // D1/I2 : upgrade en cours de cycle → crédit prorata en jours,
+              // arrondi supérieur, plafonné (valeur restante ÷ tarif du nouveau plan).
+              const oldMonthly = creditPrices?.[currentPlanId as string];
+              const newMonthly = creditPrices?.[approvedPlanId];
+              if (typeof oldMonthly === "number" && oldMonthly > 0
+                  && typeof newMonthly === "number" && newMonthly > 0) {
+                const remainingDays = ((currentExpiresAt as number) - nowMs) / DAY_MS;
+                creditDays = Math.min(
+                  UPGRADE_CREDIT_CAP_DAYS,
+                  Math.ceil(remainingDays * (oldMonthly / newMonthly)),
+                );
+              } else {
+                // Fail-safe : pas de grille fiable → pas de crédit (jamais bloquant)
+                console.warn(
+                  `[approveRenewal] D1 credit skipped — pricing introuvable (${currentPlanId} → ${approvedPlanId})`
+                );
+              }
+            }
+          }
+
+          const expiresAt = baseMs + periodToDurationMs(reqData.period) + creditDays * DAY_MS;
           const tierLabel = reqData.planLabel as string;
           const maxProducts = reqData.maxProducts as number;
 
@@ -339,6 +426,7 @@ export const approveRenewal = onRequest(
               period: reqData.period ?? null,
               amount: reqData.amount ?? null,
               verifiedVia,
+              upgradeCreditDays: creditDays,
             },
             timestamp: Date.now(),
           });
@@ -351,6 +439,7 @@ export const approveRenewal = onRequest(
             tierLabel,
             maxProducts,
             carriedOverMs: baseMs - nowMs,
+            upgradeCreditDays: creditDays,
           };
         });
 
@@ -364,6 +453,7 @@ export const approveRenewal = onRequest(
         resolvedTierLabel = txResult.tierLabel;
         resolvedMaxProducts = txResult.maxProducts;
         carriedOverMs = txResult.carriedOverMs;
+        upgradeCreditDays = txResult.upgradeCreditDays;
         if (txResult.alreadyApproved) {
           console.log(`[approveRenewal] Idempotent — request ${requestId} already approved`);
         }
@@ -438,6 +528,7 @@ export const approveRenewal = onRequest(
             maxProducts: resolvedMaxProducts ?? sellerDetails.maxProducts ?? null,
             subscriptionExpiresAt,
             carriedOverMs,
+            upgradeCreditDays,
             verifiedVia,
             amountValidation: amountValidation ?? null,
           },
@@ -445,6 +536,22 @@ export const approveRenewal = onRequest(
         });
       } catch (auditErr: any) {
         console.warn("[approveRenewal] Audit log write failed:", auditErr?.message);
+      }
+
+      // ── Notification crédit upgrade (D1, best-effort) ───────────────────
+      if (requestId && upgradeCreditDays > 0) {
+        try {
+          await db.collection("notifications").add({
+            userId: vendorId,
+            type: "subscription_change",
+            title: "Crédit upgrade appliqué",
+            body: `Votre plan ${resolvedTierLabel ?? ""} démarre avec ${upgradeCreditDays} jour(s) offert(s), issus du temps restant de votre ancien plan.`,
+            read: false,
+            createdAt: Date.now(),
+          });
+        } catch (creditNotifErr: any) {
+          console.warn("[approveRenewal] Credit notification failed:", creditNotifErr?.message);
+        }
       }
 
       // ── Generate PDF receipt + notify seller (best-effort) ──────────────
@@ -464,6 +571,7 @@ export const approveRenewal = onRequest(
             verifiedVia:    verifiedVia,
             approvedAt:     Date.now(),
             expiresAt:      subscriptionExpiresAt,
+            upgradeCreditDays,
           });
 
           const publicId  = `receipt_${vendorId}_${Date.now()}`;
