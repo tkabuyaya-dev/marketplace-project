@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { Camera, Image as ImageIcon, X as XIcon } from 'lucide-react';
 import {
@@ -60,6 +61,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // ── Data ──
   const tiers = INITIAL_SUBSCRIPTION_TIERS;
@@ -115,7 +117,12 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   // tombent sur le fallback "Contactez l'admin" et ne peuvent plus renouveler
   // en self-service.
   const tierId = planIdFromLabel(currentTierLabel);
-  const tier = tierId ? tiers.find(t => t.id === tierId) ?? null : null;
+  // Un plan gratuit ne se « renouvelle » pas (la CF refuse planId=free) —
+  // on propose l'upgrade vers /plans à la place (bug remonté 2026-07-10 :
+  // tout vendeur expiré finit en Découverte à J+3 et tombait sur un modal
+  // « Renouveler — Gratuit, 0 BIF »).
+  const isFreeTier = tierId === 'free';
+  const tier = tierId && !isFreeTier ? tiers.find(t => t.id === tierId) ?? null : null;
 
   const getPrice = (): number => {
     if (!tier) return 0;
@@ -262,8 +269,24 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
 
         <div className="px-5 py-4 space-y-4">
 
+          {/* ── Plan gratuit : rien à renouveler → proposer l'upgrade ── */}
+          {!tier && isFreeTier && (
+            <div className="text-center py-6 space-y-3">
+              <p className="text-sm text-gray-400">
+                {t('dashboard.renewModalFreeTier', 'Votre plan Découverte est gratuit — il n\'y a rien à renouveler. Passez à un plan payant pour débloquer plus de produits et de fonctionnalités.')}
+              </p>
+              <button
+                type="button"
+                onClick={() => { onClose(); navigate('/plans'); }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-400 hover:bg-gold-300 text-gray-900 text-sm font-black rounded-xl transition-colors"
+              >
+                {t('dashboard.renewModalSeePlans', 'Voir les plans')}
+              </button>
+            </div>
+          )}
+
           {/* ── No matching tier (edge case: plan set by admin with custom label) ── */}
-          {!tier && (
+          {!tier && !isFreeTier && (
             <div className="text-center py-6 space-y-3">
               <p className="text-sm text-gray-400">
                 {t('dashboard.renewModalContactAdmin')}

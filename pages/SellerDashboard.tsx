@@ -25,6 +25,7 @@ import { useProductScore } from '../hooks/useProductScore';
 import { compressImages } from '../utils/imageCompressor';
 import { generateAIDescription } from '../services/firebase/ai-description';
 import { getSubscriptionStatus } from '../utils/subscription';
+import { planIdFromLabel } from '../utils/planFeatures';
 import { SmartImageUpload } from '../components/SmartImageUpload';
 import { SmartTitleInput } from '../components/SmartTitleInput';
 import { VoiceCaptureButton } from '../components/VoiceCaptureButton';
@@ -72,6 +73,21 @@ export const SellerDashboard: React.FC = () => {
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | ProductStatus>('all');
   const [subRequests, setSubRequests] = useState<SubscriptionRequest[]>([]);
   const [showRenewModal, setShowRenewModal] = useState(false);
+
+  // Un vendeur Découverte (ou au tier non résolu) n'a rien à « renouveler » :
+  // on l'envoie choisir un plan sur /plans (upgrade). Tout vendeur expiré
+  // finit en Découverte à J+3 (pipeline subscriptionLifecycle) — sans ce
+  // guard, le modal aboutissait à « Renouveler — Gratuit, 0 BIF » et la CF
+  // refusait (bug remonté 2026-07-10).
+  const openRenewFlow = () => {
+    const currentPlanId = planIdFromLabel(currentUser.sellerDetails?.tierLabel);
+    if (!currentPlanId || currentPlanId === 'free') {
+      navigate('/plans');
+      return;
+    }
+    setShowRenewModal(true);
+  };
+
   const [showVerifModal, setShowVerifModal] = useState(false);
   const [verifForm, setVerifForm] = useState({
     phone: currentUser.sellerDetails?.phone || currentUser.whatsapp || '',
@@ -1256,7 +1272,7 @@ export const SellerDashboard: React.FC = () => {
                   <Progress value={currentTier.max === null ? 100 : Math.min(progressPercentage, 100)} />
                 </div>
                 <button
-                  onClick={() => (isExpired ? setShowRenewModal(true) : navigate('/plans'))}
+                  onClick={() => (isExpired ? openRenewFlow() : navigate('/plans'))}
                   className="mt-3 w-full h-9 rounded-input bg-ink text-white text-[12.5px] font-semibold active:scale-[0.97] transition-transform hover:bg-black inline-flex items-center justify-center gap-1.5"
                 >
                   {isExpired ? t('dashboard.subRenew') : isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')} <ArrowRight size={12} />
@@ -1306,7 +1322,7 @@ export const SellerDashboard: React.FC = () => {
                   : t('dashboard.gracePh2Body', 'Seuls 5 de vos produits sont encore visibles. Renouvelez pour les réactiver tous.')}
               </p>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => setShowRenewModal(true)} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
+                <button onClick={() => openRenewFlow()} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
                 <a href={buildWaUrl('Bonjour, je souhaite renouveler mon abonnement NUNULIA.')} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
@@ -1323,7 +1339,7 @@ export const SellerDashboard: React.FC = () => {
               <p className="text-[14px] text-red-800 font-black">{t('dashboard.subscriptionExpired')}</p>
               <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.expiredLimitMessage')}</p>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => setShowRenewModal(true)} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
+                <button onClick={() => openRenewFlow()} className="px-3.5 h-9 rounded-input bg-gold-400 text-ink text-[12.5px] font-bold active:scale-[0.97] transition-transform hover:bg-goldHov">{t('dashboard.renewPlan')}</button>
                 <a href={buildWaUrl('Bonjour, je souhaite renouveler mon abonnement NUNULIA.')} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
@@ -1348,7 +1364,7 @@ export const SellerDashboard: React.FC = () => {
               </p>
               <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => setShowRenewModal(true)} className={`px-3.5 h-9 rounded-input text-[12.5px] font-bold active:scale-[0.97] transition-transform ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-ink hover:bg-goldHov'}`}>{t('dashboard.renewNow')}</button>
+                <button onClick={() => openRenewFlow()} className={`px-3.5 h-9 rounded-input text-[12.5px] font-bold active:scale-[0.97] transition-transform ${showUrgentWarning ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gold-400 text-ink hover:bg-goldHov'}`}>{t('dashboard.renewNow')}</button>
                 <a href={buildWaUrl(`Bonjour, je souhaite renouveler mon abonnement NUNULIA. Mon plan expire dans ${daysRemaining} jour(s).`)} target="_blank" rel="noopener noreferrer" className="px-3.5 h-9 rounded-input text-white text-[12.5px] font-bold inline-flex items-center gap-1.5" style={{ background: '#25D366' }}><WhatsAppIcon size={13} /> WhatsApp</a>
               </div>
             </div>
@@ -1533,7 +1549,7 @@ export const SellerDashboard: React.FC = () => {
                 {t('dashboard.subPendingRequest')}
               </button>
             ) : isExpired ? (
-              <button onClick={() => setShowRenewModal(true)} className="w-full h-11 rounded-input bg-red-600 hover:bg-red-500 text-white text-[13px] font-bold active:scale-[0.97] transition-transform">{t('dashboard.subRenew')}</button>
+              <button onClick={() => openRenewFlow()} className="w-full h-11 rounded-input bg-red-600 hover:bg-red-500 text-white text-[13px] font-bold active:scale-[0.97] transition-transform">{t('dashboard.subRenew')}</button>
             ) : (
               <button onClick={() => navigate('/plans')} className="w-full h-11 rounded-input bg-ink hover:bg-black text-white text-[13px] font-bold active:scale-[0.97] transition-transform">{isPaidTier ? t('dashboard.subChangePlan') : t('dashboard.subUpgrade')}</button>
             )}
