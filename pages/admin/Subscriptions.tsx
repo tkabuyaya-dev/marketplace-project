@@ -546,6 +546,9 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       // surface cleanly. Lot 4 P1 : un seul appel CF atomique par demande.
       let done = 0;
       let failed = 0;
+      // D-2 (audit I4) : les écarts de montant détectés par P5 ne partent plus
+      // en console.warn silencieux — ils remontent à l'admin après le lot.
+      const amountMismatches: { name: string; expected: number; submitted: number }[] = [];
       for (const req of selectedRequests) {
         try {
           const res = await fetch(
@@ -566,6 +569,12 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
           if (!res.ok) {
             console.warn('[bulkApprove] approveRenewal returned', res.status, 'for', req.id);
             failed++;
+          } else {
+            const body = await res.json().catch(() => ({} as any));
+            const v = body?.amountValidation;
+            if (v && v.passed === false) {
+              amountMismatches.push({ name: req.sellerName || req.userId, expected: v.expected, submitted: v.submitted });
+            }
           }
           done++;
         } catch (err) {
@@ -583,6 +592,18 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         toast(t('admin.subBulkPartial', '{{ok}} approuvée(s), {{ko}} échec(s)', { ok: succeeded, ko: failed }), 'error');
       } else {
         toast(t('admin.subBulkAllFail', 'Toutes les approbations ont échoué'), 'error');
+      }
+
+      // Alerte montants non conformes (validation logguée côté serveur)
+      if (amountMismatches.length > 0) {
+        const first = amountMismatches[0];
+        console.warn('[bulkApprove] amount mismatches:', amountMismatches);
+        toast(
+          t('admin.subBulkAmountMismatch',
+            '⚠ {{count}} montant(s) non conforme(s) — ex. {{name}} : {{submitted}} au lieu de {{expected}}. Détail dans l\'audit log.',
+            { count: amountMismatches.length, name: first.name, submitted: first.submitted, expected: first.expected }),
+          'error',
+        );
       }
 
       clearSelection();

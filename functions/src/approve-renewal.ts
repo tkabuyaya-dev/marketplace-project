@@ -43,6 +43,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { getDb, getAuth } from "./admin.js";
 import { PLAN_FEATURES, PLAN_LABELS, planIdFromLabel, type PlanId } from "./plan-features.js";
+import { loadBasePrices, periodToDurationMs, periodMultiplier } from "./pricing.js";
 import { buildReceiptPdf, uploadPdfToCloudinary } from "./generate-receipt.js";
 import {
   CLOUDINARY_CLOUD_NAME,
@@ -59,12 +60,6 @@ const UPGRADE_CREDIT_CAP_DAYS = 90;
 
 // Ordre des plans — un rang inférieur pendant un plan actif = downgrade (bloqué, D2).
 const PLAN_RANK: Record<string, number> = { free: 0, vendeur: 1, pro: 2, grossiste: 3 };
-
-function periodToDurationMs(period?: string): number {
-  if (period === '3m')  return 90  * 24 * 60 * 60 * 1000;
-  if (period === '12m') return 365 * 24 * 60 * 60 * 1000;
-  return 30 * 24 * 60 * 60 * 1000; // default 1m
-}
 
 /**
  * Lot A (C1) : point de départ de la nouvelle expiration.
@@ -87,52 +82,12 @@ function renewalBaseMs(
   return nowMs;
 }
 
-function periodMultiplier(period?: string): number {
-  if (period === '3m')  return 3 * 0.9;    // -10%
-  if (period === '12m') return 12 * 0.75;  // -25%
-  return 1;
-}
-
-// Miroir minimal de DEFAULT_SUBSCRIPTION_PRICING (constants.ts).
-// Sync à maintenir : toute modification frontend doit être appliquée ici.
-const DEFAULT_PRICING: Record<string, { prices: Record<string, number>; currency: string }> = {
-  bi: { prices: { vendeur: 9900,  pro: 29000, grossiste: 75000 }, currency: "BIF" },
-  cd: { prices: { vendeur: 6000,  pro: 19000, grossiste: 42000 }, currency: "CDF" },
-  rw: { prices: { vendeur: 2500,  pro: 7800,  grossiste: 17000 }, currency: "RWF" },
-  tz: { prices: { vendeur: 4500,  pro: 15500, grossiste: 34000 }, currency: "TZS" },
-  ke: { prices: { vendeur: 650,   pro: 2000,  grossiste: 5000   }, currency: "KES" },
-  ug: { prices: { vendeur: 18500, pro: 55500, grossiste: 140000 }, currency: "UGX" },
-};
-
 interface AmountValidation {
   passed: boolean;
   expected: number;
   submitted: number;
   diffPct: number;
   source: 'override' | 'defaults' | 'no_pricing';
-}
-
-/**
- * Grille mensuelle applicable à un pays : override admin Firestore
- * (subscriptionPricing/{countryId}) prioritaire, sinon defaults embarqués.
- * Utilisée pour la validation de montant (P5) ET le crédit prorata upgrade (D1).
- */
-async function loadBasePrices(
-  db: FirebaseFirestore.Firestore,
-  countryId: string,
-): Promise<{ prices: Record<string, number> | null; source: AmountValidation['source'] }> {
-  try {
-    const overrideSnap = await db.collection('subscriptionPricing').doc(countryId).get();
-    if (overrideSnap.exists) {
-      const prices = (overrideSnap.data() as any)?.prices ?? null;
-      if (prices) return { prices, source: 'override' };
-    }
-  } catch {
-    // ignore — fallback defaults
-  }
-  const fallback = DEFAULT_PRICING[countryId];
-  if (fallback) return { prices: fallback.prices, source: 'defaults' };
-  return { prices: null, source: 'no_pricing' };
 }
 
 /**

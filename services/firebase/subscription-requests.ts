@@ -28,7 +28,7 @@ import {
 } from '../../constants';
 import { planIdFromLabel } from '../../utils/planFeatures';
 import {
-  db, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc,
+  db, collection, doc, getDoc, getDocs, setDoc,
   query, where, orderBy, limit, serverTimestamp, onSnapshot, runTransaction,
   COLLECTIONS,
   Unsubscribe,
@@ -38,82 +38,28 @@ import { createNotification } from './notifications';
 // ── Create Subscription Request ──
 
 /**
- * Crée une demande d'abonnement.
+ * Crée une demande d'abonnement via la CF `createSubscriptionRequest` (Lot D).
  *
- * Détection automatique `isUpgrade` : si le vendeur a déjà un plan payant
- * actif (subscriptionExpiresAt dans le futur), la demande est marquée
- * `isUpgrade: true`. Permet à l'admin de différencier "NOUVEAU" vs "UPGRADE"
- * dans la file de validation. Le plan actif reste actif jusqu'à approbation.
+ * Le serveur calcule/vérifie TOUT : montant (grille admin), rate-limit 60s,
+ * demande unique (I1), anti-downgrade (D2), isUpgrade, event history.
+ * La signature accepte toujours l'objet complet (compat appelants PlansPage /
+ * RenewSubscriptionModal) mais seuls `planId` et `period` sont transmis —
+ * le reste est recalculé côté serveur.
+ *
+ * La création client directe est verrouillée par les rules (`allow create:
+ * if false`) — le montant ne peut plus être manipulé (audit I4/A5).
  */
 export const createSubscriptionRequest = async (
   request: Omit<SubscriptionRequest, 'id' | 'createdAt' | 'updatedAt' | 'approvedBy' | 'expiresAt' | 'rejectionReason'>
 ): Promise<string> => {
-  if (!db) throw new Error('Firebase non initialisé');
-
-  // Lot C (I1) : une seule demande ouverte à la fois, TOUS plans confondus.
-  // Deux demandes ouvertes en parallèle = deux paiements possibles pour un
-  // seul plan actif (last-write-wins à l'approbation). L'UI bloque déjà en
-  // amont ; ceci est la ceinture, et approveRenewal porte les bretelles
-  // (garde anti double-approbation transactionnelle côté serveur).
-  const openSnap = await getDocs(query(
-    collection(db, COLLECTIONS.SUBSCRIPTION_REQUESTS),
-    where('userId', '==', request.userId),
-    orderBy('createdAt', 'desc'),
-    limit(20),
-  ));
-  const open = openSnap.docs.find(d => {
-    const s = (d.data() as SubscriptionRequest).status;
-    return s === 'pending' || s === 'pending_validation';
-  });
-  if (open) {
-    throw new Error(
-      'Vous avez déjà une demande en cours. Modifiez-la ou annulez-la avant d\'en créer une nouvelle.',
-    );
-  }
-
-  // Auto-détection isUpgrade : lecture du profil seller pour vérifier
-  // s'il a déjà un plan payant non expiré.
-  let isUpgrade = false;
-  try {
-    const userSnap = await getDoc(doc(db, COLLECTIONS.USERS, request.userId));
-    if (userSnap.exists()) {
-      const sellerDetails = (userSnap.data() as any)?.sellerDetails;
-      const expiresAt = sellerDetails?.subscriptionExpiresAt;
-      const maxProducts = sellerDetails?.maxProducts ?? 0;
-      // Plan payant = maxProducts > 5 ET non expiré
-      if (maxProducts > 5 && typeof expiresAt === 'number' && expiresAt > Date.now()) {
-        isUpgrade = true;
-      }
-    }
-  } catch {
-    // Best-effort — si la lecture échoue, on crée la demande sans flag (défaut sûr).
-  }
-
-  const docRef = await addDoc(collection(db, COLLECTIONS.SUBSCRIPTION_REQUESTS), {
-    ...request,
-    status: 'pending',
-    approvedBy: null,
-    expiresAt: null,
-    rejectionReason: null,
-    isUpgrade,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-
-  // P4 (Lot 4) : write-after rate-limit guard. Le rule sur create exige que
-  // lastSubRequestCreatedAt soit antérieur de >60s à la prochaine création.
-  // Best-effort : si l'update échoue, la rate-limit est juste désactivée pour
-  // ce vendeur jusqu'au prochain create réussi. Pas bloquant.
-  try {
-    await updateDoc(doc(db, COLLECTIONS.USERS, request.userId), {
-      'sellerDetails.lastSubRequestCreatedAt': Date.now(),
-    });
-  } catch {
-    // Non bloquant — la demande est créée, le rate-limit deviendra effectif
-    // au prochain update réussi des sellerDetails.
-  }
-
-  return docRef.id;
+  const fns = await getFirebaseFunctions();
+  if (!fns) throw new Error('Firebase non initialisé');
+  const fn = httpsCallable<
+    { planId: string; period?: SubscriptionPeriod },
+    { ok: boolean; requestId: string; amount: number; currency: string; planLabel: string }
+  >(fns, 'createSubscriptionRequest');
+  const res = await fn({ planId: request.planId, period: request.period });
+  return res.data.requestId;
 };
 
 // ── Lifecycle actions via Cloud Functions ──

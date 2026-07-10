@@ -96,6 +96,9 @@ export { expireSellers } from "./expire-sellers.js";
 export { deleteProducts } from "./delete-products.js";
 export { approveRenewal } from "./approve-renewal.js";
 export { rejectSubscription } from "./reject-subscription.js";
+// Lot D (I4/A5) : création de demande via CF — montant serveur + rate-limit
+// serveur + demande unique. La rule client `allow create` est verrouillée.
+export { createSubscriptionRequest } from "./create-subscription-request.js";
 
 // Seller lifecycle actions sur ses propres demandes d'abonnement (callables).
 // Atomicité transaction + écriture sous-collection history (admin SDK only).

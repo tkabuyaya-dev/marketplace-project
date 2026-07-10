@@ -176,12 +176,12 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
       setRequestId(id);
       setStep('confirm');
       toast(t('plans.requestCreated'), 'success');
-    } catch (err) {
-      // Garde service I1 (message FR explicite) → l'afficher tel quel
-      const msg = err instanceof Error && err.message.startsWith('Vous avez déjà')
-        ? err.message
-        : t('plans.requestCreateError');
-      toast(msg, 'error');
+    } catch (err: any) {
+      // CF createSubscriptionRequest : messages métier FR (demande unique,
+      // rate-limit, downgrade bloqué) → affichés tels quels au vendeur
+      const businessError = ['functions/failed-precondition', 'functions/resource-exhausted', 'functions/invalid-argument']
+        .includes(err?.code || '');
+      toast(businessError && err?.message ? err.message : t('plans.requestCreateError'), 'error');
     } finally {
       setLoading(false);
     }

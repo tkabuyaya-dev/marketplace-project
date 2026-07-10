@@ -53,11 +53,15 @@ beforeEach(async () => {
 });
 
 // ─── Subscription Requests ───────────────────────────────────────────────────
+// Lot D (audit I4/A5) : la création client est VERROUILLÉE (`allow create: if
+// false`). Toute création passe par la CF `createSubscriptionRequest` (admin
+// SDK) qui calcule le montant serveur, applique le rate-limit et la règle
+// « une seule demande ouverte ». Les tests ci-dessous verrouillent ce contrat.
 
-describe('/subscriptionRequests — création', () => {
-  it('vendeur peut créer sa propre demande d\'abonnement (status=pending)', async () => {
+describe('/subscriptionRequests — création client verrouillée (Lot D)', () => {
+  it('vendeur ne peut PLUS créer sa propre demande côté client (CF only)', async () => {
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionGranted(
+    await expectPermissionDenied(
       setDoc(doc(db, 'subscriptionRequests', 'sub-001'), BASE_SUB_REQUEST)
     );
   });
@@ -73,6 +77,20 @@ describe('/subscriptionRequests — création', () => {
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
     await expectPermissionDenied(
       setDoc(doc(db, 'subscriptionRequests', 'sub-001'), { ...BASE_SUB_REQUEST, status: 'approved' })
+    );
+  });
+
+  it('vendeur ne peut PAS créer avec un montant manipulé (raison du verrou I4)', async () => {
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-001'), { ...BASE_SUB_REQUEST, amount: 1 })
+    );
+  });
+
+  it('même un admin ne crée PAS côté client (uniformité — CF/admin SDK only)', async () => {
+    const db = authed(ADMIN_ID, { role: 'admin' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'subscriptionRequests', 'sub-001'), BASE_SUB_REQUEST)
     );
   });
 
@@ -169,79 +187,20 @@ describe('/subscriptionRequests — lecture', () => {
   });
 });
 
-// ─── Grossiste : NIF non bloquant (gate retiré — minimisation des données) ───
-// Le plan Grossiste affiche « NIF requis » côté UI, mais la création n'est plus
-// gatée par le NIF. L'admin valide la demande et collecte le NIF via WhatsApp.
+// ─── Lot D : rate-limit + gate NIF + montant — désormais appliqués DANS la CF
+// createSubscriptionRequest (admin SDK). Les anciennes rules de création
+// (rate-limit P4, création libre sans NIF) n'existent plus côté client : la
+// création est refusée quel que soit l'état du user. Un seul test de
+// non-régression : même un vendeur « parfaitement en règle » est refusé.
 
-describe('/subscriptionRequests — Grossiste sans gate NIF', () => {
-  const GROSSISTE_REQUEST = {
-    ...BASE_SUB_REQUEST,
-    planId: 'grossiste',
-    planLabel: 'Grossiste',
-    amount: 75000,
-    maxProducts: 99999,
-  };
-
-  it('vendeur SANS NIF PEUT créer une demande Grossiste (gate retiré)', async () => {
-    // Le seed par défaut a sellerDetails: { maxProducts: 50 } SANS hasNif/nif
-    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionGranted(
-      setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-1'), GROSSISTE_REQUEST)
-    );
-  });
-
-  it('vendeur AVEC hasNif peut aussi créer une demande Grossiste', async () => {
-    await seedDoc('users', SELLER_ID, {
-      role: 'seller', isSuspended: false, productCount: 2,
-      sellerDetails: { maxProducts: 50, hasNif: true },
-    });
-    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionGranted(
-      setDoc(doc(db, 'subscriptionRequests', 'sub-grossiste-2'), GROSSISTE_REQUEST)
-    );
-  });
-
-  it('les autres plans (Pro / Vendeur / Découverte) restent créables sans NIF', async () => {
-    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionGranted(
-      setDoc(doc(db, 'subscriptionRequests', 'sub-pro-1'), {
-        ...BASE_SUB_REQUEST, planId: 'pro', planLabel: 'Pro', amount: 29000, maxProducts: 100,
-      })
-    );
-  });
-});
-
-// ─── Lot 4 : rate-limit createSubscriptionRequest (P4) ───────────────────────
-
-describe('/subscriptionRequests — rate-limit (Lot 4 P4)', () => {
-  it('vendeur peut créer une demande la première fois (lastSubRequestCreatedAt absent)', async () => {
-    // SELLER_ID seed default = pas de lastSubRequestCreatedAt (= 0)
-    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionGranted(
-      setDoc(doc(db, 'subscriptionRequests', 'sub-rl-1'), BASE_SUB_REQUEST)
-    );
-  });
-
-  it('vendeur ne peut PAS créer 2 demandes en <60s (rate-limit)', async () => {
-    // Simule un lastSubRequestCreatedAt très récent (= maintenant)
-    await seedDoc('users', SELLER_ID, {
-      role: 'seller', isSuspended: false, productCount: 2,
-      sellerDetails: { maxProducts: 50, lastSubRequestCreatedAt: Date.now() },
-    });
-    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionDenied(
-      setDoc(doc(db, 'subscriptionRequests', 'sub-rl-2'), BASE_SUB_REQUEST)
-    );
-  });
-
-  it('vendeur peut créer après 60s écoulées', async () => {
-    // Simule un lastSubRequestCreatedAt >60s dans le passé
+describe('/subscriptionRequests — création refusée même en règle (Lot D)', () => {
+  it('vendeur avec rate-limit OK (>60s) est quand même refusé côté client', async () => {
     await seedDoc('users', SELLER_ID, {
       role: 'seller', isSuspended: false, productCount: 2,
       sellerDetails: { maxProducts: 50, lastSubRequestCreatedAt: Date.now() - 90 * 1000 },
     });
     const db = authed(SELLER_ID, { role: 'seller' }).firestore();
-    await expectPermissionGranted(
+    await expectPermissionDenied(
       setDoc(doc(db, 'subscriptionRequests', 'sub-rl-3'), BASE_SUB_REQUEST)
     );
   });

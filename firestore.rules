@@ -435,21 +435,14 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isAuth() && resource.data.userId == request.auth.uid);
 
-      // NIF non bloquant : le plan Grossiste affiche « NIF requis » côté UI,
-      // mais la création n'est plus gatée par le NIF (décision produit —
-      // minimisation des données). L'admin valide la demande et collecte le
-      // NIF via WhatsApp si nécessaire.
-      //
-      // Rate-limit (P4 du Lot 4) : 1 création max toutes les 60s. Le champ
-      // `sellerDetails.lastSubRequestCreatedAt` est écrit côté client APRÈS
-      // chaque création réussie. Default 0 → première création toujours OK.
-      // Création: vendeur authentifié crée sa propre demande
-      allow create: if isAuth()
-        && isNotSuspended()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasAll(['userId', 'sellerName', 'countryId', 'planId', 'planLabel', 'amount', 'currency', 'status', 'maxProducts'])
-        && getUserData().get('sellerDetails', {}).get('lastSubRequestCreatedAt', 0) < request.time.toMillis() - 60000;
+      // Création verrouillée (Lot D 2026-07-10, audit I4/A5 — validé user) :
+      // la création passe par la CF `createSubscriptionRequest` (admin SDK,
+      // bypasse les rules) qui calcule le montant côté serveur, applique le
+      // rate-limit 60s, la règle « une seule demande ouverte » (I1) et
+      // l'anti-downgrade (D2). Un client ne peut donc plus soumettre un
+      // `amount` manipulé ni contourner le rate-limit. Strictement plus
+      // restrictif que l'ancienne rule (create client autorisé).
+      allow create: if false;
 
       // Update client : seller peut seulement confirmer son paiement
       // (status pending → pending_validation, en attachant transactionRef et

@@ -24,6 +24,7 @@ import {
 import { uploadImage, UploadError } from '../services/cloudinary';
 import { planIdFromLabel } from '../utils/planFeatures';
 import { UpgradeRecap } from '../components/UpgradeRecap';
+import { SubscriptionHistory } from '../components/SubscriptionHistory';
 
 // Ordre des plans — utilisé pour verrouiller les downgrades (D2) et détecter
 // les upgrades (D1). Doit rester aligné sur PLAN_RANK de approve-renewal.ts.
@@ -267,12 +268,12 @@ export const PlansPage: React.FC = () => {
       setCurrentRequestId(requestId);
       setStep('confirmation');
       toast(t('plans.requestCreated'), 'success');
-    } catch (err) {
-      // Garde service I1 (message FR explicite) → l'afficher tel quel
-      const msg = err instanceof Error && err.message.startsWith('Vous avez déjà')
-        ? err.message
-        : t('plans.requestCreateError');
-      toast(msg, 'error');
+    } catch (err: any) {
+      // CF createSubscriptionRequest : messages métier FR (demande unique,
+      // rate-limit, downgrade bloqué) → affichés tels quels au vendeur
+      const businessError = ['functions/failed-precondition', 'functions/resource-exhausted', 'functions/invalid-argument']
+        .includes(err?.code || '');
+      toast(businessError && err?.message ? err.message : t('plans.requestCreateError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -959,6 +960,9 @@ export const PlansPage: React.FC = () => {
                 </div>
               );
             })()}
+
+            {/* Historique des paiements (Lot D, A6) */}
+            <SubscriptionHistory requests={myRequests} />
 
             {/* WhatsApp help card */}
             <div className="px-4 mt-4">
