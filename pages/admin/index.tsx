@@ -54,6 +54,18 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [loading, setLoading] = useState(false);
 
+  // Deep link admin : /admin?tab=subs ouvre directement l'onglet demandé
+  // (utilisé par le message WhatsApp post-paiement des vendeurs pour amener
+  // l'admin droit sur la file de validation).
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab') as AdminTab | null;
+    const validTabs: AdminTab[] = [
+      'overview', 'products', 'subs', 'users', 'banners', 'categories',
+      'currencies', 'countries', 'requests', 'health', 'security', 'audit', 'boosts', 'studio',
+    ];
+    if (tab && validTabs.includes(tab)) setActiveTab(tab);
+  }, []);
+
   // Shared data
   const [users, setUsers] = useState<User[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);

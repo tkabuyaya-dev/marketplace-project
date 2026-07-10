@@ -479,6 +479,16 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────
+    // PAYMENT METHODS — Numéros Mobile Money par pays (admin gère,
+    // public lit). Bloc ADDITIF 2026-07-10 — même pattern que
+    // subscriptionPricing. Fallback constants.ts si doc absent.
+    // ─────────────────────────────────────────────────────────
+    match /paymentMethods/{countryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────
     // AUDIT LOGS — Lecture seule admin (écriture via Cloud Functions)
     // ─────────────────────────────────────────────────────────
     match /auditLogs/{logId} {

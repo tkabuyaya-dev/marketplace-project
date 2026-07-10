@@ -8,9 +8,10 @@ import {
 import { useAppContext } from '../contexts/AppContext';
 import { useToast } from '../components/Toast';
 import {
-  INITIAL_SUBSCRIPTION_TIERS, PAYMENT_METHODS,
+  INITIAL_SUBSCRIPTION_TIERS,
   DEFAULT_SUBSCRIPTION_PRICING, INITIAL_COUNTRIES, getCountryFlag,
 } from '../constants';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { buildWaUrl } from '../config/whatsapp.config';
 import {
   SubscriptionRequest, SubscriptionTier, SubscriptionPricing, PaymentMethod, SubscriptionPeriod,
@@ -119,7 +120,8 @@ export const PlansPage: React.FC = () => {
 
   const sellerCountryId = currentUser?.sellerDetails?.countryId || 'bi';
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
-  const paymentMethods = PAYMENT_METHODS[sellerCountryId] || PAYMENT_METHODS['bi'];
+  // Méthodes Mobile Money temps réel — éditables depuis l'admin sans redéploiement
+  const paymentMethods = usePaymentMethods(sellerCountryId);
   const currentTierLabel = currentUser?.sellerDetails?.tierLabel || 'Gratuit';
 
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
@@ -373,13 +375,27 @@ export const PlansPage: React.FC = () => {
     }
   };
 
+  // Message WhatsApp contextuel : une fois le paiement soumis (étapes
+  // confirmation/done), le vendeur A payé — le message le dit clairement,
+  // inclut le numéro payeur/référence et le lien direct vers la file de
+  // validation admin (bug de formulation remonté le 2026-07-10).
+  const hasSubmittedPayment = step === 'confirmation' || step === 'done';
   const whatsappMessage = selectedPlan
-    ? t('plans.whatsappSubscribe', {
-        plan: selectedPlan.label,
-        country: country?.name || sellerCountryId,
-        amount: formatPrice(getPrice(selectedPlan.id)),
-        name: currentUser?.sellerDetails?.shopName || currentUser?.name,
-      })
+    ? (hasSubmittedPayment
+        ? t('plans.whatsappPaid', {
+            plan: selectedPlan.label,
+            country: country?.name || sellerCountryId,
+            amount: `${getPeriodPrice(selectedPlan.id, period).toLocaleString()} ${getCurrency()}`,
+            name: currentUser?.sellerDetails?.shopName || currentUser?.name,
+            ref: transactionRef.trim() || '—',
+            link: 'https://nunulia.com/admin?tab=subs',
+          })
+        : t('plans.whatsappSubscribe', {
+            plan: selectedPlan.label,
+            country: country?.name || sellerCountryId,
+            amount: formatPrice(getPrice(selectedPlan.id)),
+            name: currentUser?.sellerDetails?.shopName || currentUser?.name,
+          }))
     : t('plans.whatsappGeneric');
   const whatsappHref = buildWaUrl(whatsappMessage);
 

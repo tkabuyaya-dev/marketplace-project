@@ -14,8 +14,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Product, BoostPricing, BoostRequest } from '../types';
-import { PAYMENT_METHODS } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import {
   createBoostRequest,
   confirmBoostPayment,
@@ -49,6 +49,9 @@ export const BoostProductModal: React.FC<Props> = ({
 }) => {
   const { t }     = useTranslation();
   const { toast } = useToast();
+  // Méthodes Mobile Money temps réel (éditables admin) — hook appelé AVANT le
+  // return conditionnel `!isOpen` (règle des hooks React).
+  const paymentMethods = usePaymentMethods(sellerCountryId);
 
   const [pricing, setPricing]           = useState<BoostPricing | null>(null);
   const [step, setStep]                 = useState<Step>('payment');
@@ -80,7 +83,6 @@ export const BoostProductModal: React.FC<Props> = ({
   if (!isOpen || !pricing) return null;
 
   // ── Derived ──
-  const paymentMethods  = PAYMENT_METHODS[sellerCountryId]  || PAYMENT_METHODS['bi'];
   const formattedPrice  = `${pricing.amount.toLocaleString()} ${pricing.currency}`;
 
   const hasPendingBoost = existingRequests.some(

@@ -23,3 +23,4 @@ export * from './boost-requests';
 export * from './photo-sessions';
 export * from './app-settings';
 export * from './b2b';
+export * from './payment-methods';

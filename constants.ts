@@ -149,10 +149,11 @@ export const PAYMENT_METHODS: Record<string, PaymentMethod[]> = {
     { name: 'Ecocash',       number: 'Contactez via WhatsApp', icon: '📱' },
     { name: 'Bancobu / BCB', number: 'Contactez via WhatsApp', icon: '🏦' },
   ],
+  // 🇨🇩 RDC — Seul Airtel Money est disponible (2026-07-10). Orange Money et
+  // M-Pesa viendront plus tard : l'admin les ajoutera via l'éditeur
+  // « Méthodes de paiement » (Firestore paymentMethods/cd, temps réel).
   cd: [
     { name: 'Airtel Money',  number: '+243 979 055 933',   icon: '📱' },
-    { name: 'Orange Money',  number: '+243 979 055 933',   icon: '📱' },
-    { name: 'M-Pesa',        number: '+243 979 055 933',   icon: '📱' },
   ],
   rw: [
     { name: 'MTN MoMo',      number: 'Contactez support',  icon: '📱' },

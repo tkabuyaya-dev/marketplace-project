@@ -6,7 +6,10 @@ import {
   getAllSubscriptionRequests,
   getSubscriptionPricing, updateSubscriptionPricing,
   getLifecycleHeartbeat, LifecycleHeartbeat,
+  subscribeToAllPaymentMethods,
 } from '../../services/firebase';
+import { PaymentMethod } from '../../types';
+import { PaymentMethodsEditor } from './PaymentMethodsEditor';
 import { INITIAL_COUNTRIES, PAYMENT_METHODS, INITIAL_SUBSCRIPTION_TIERS, getCountryFlag as getCountryFlagFromConst } from '../../constants';
 import { planIdFromLabel } from '../../utils/planFeatures';
 import { auth } from '../../firebase-config';
@@ -73,9 +76,15 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
   // ne doit plus passer inaperçu : chip vert/rouge dans l'en-tête.
   const [heartbeat, setHeartbeat] = useState<LifecycleHeartbeat | null>(null);
 
+  // Méthodes Mobile Money par pays — temps réel (éditables via l'éditeur
+  // ci-dessous). Les modals d'approbation lisent la même source que les vendeurs.
+  const [methodsByCountry, setMethodsByCountry] = useState<Record<string, PaymentMethod[]>>(PAYMENT_METHODS);
+
   useEffect(() => {
     loadSubRequests();
     getLifecycleHeartbeat().then(setHeartbeat);
+    const unsub = subscribeToAllPaymentMethods(setMethodsByCountry);
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -504,8 +513,8 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
   const bulkMethods = useMemo(() => {
     if (!bulkCountryId) return null;
-    return PAYMENT_METHODS[bulkCountryId] || PAYMENT_METHODS['bi'];
-  }, [bulkCountryId]);
+    return methodsByCountry[bulkCountryId] || methodsByCountry['bi'];
+  }, [bulkCountryId, methodsByCountry]);
 
   const toggleSelectRequest = (req: SubscriptionRequest) => {
     if (req.status !== 'pending_validation') return; // safety
@@ -1183,6 +1192,9 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         )}
       </section>
 
+      {/* ════════════ SECTION 4b — Méthodes de paiement par pays ════════════ */}
+      <PaymentMethodsEditor />
+
       {/* ════════════════════ SECTION 5 — Analytics ════════════════════ */}
       <section className="space-y-3">
         <h2 className="text-white text-base font-black px-1">
@@ -1708,7 +1720,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
       {/* ════════════════════ Operator Verification (Approve) Modal ════════════════════ */}
       {approvingRequest && (() => {
-        const methods = PAYMENT_METHODS[approvingRequest.countryId] || PAYMENT_METHODS['bi'];
+        const methods = methodsByCountry[approvingRequest.countryId] || methodsByCountry['bi'];
         const country = INITIAL_COUNTRIES.find(c => c.id === approvingRequest.countryId);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">

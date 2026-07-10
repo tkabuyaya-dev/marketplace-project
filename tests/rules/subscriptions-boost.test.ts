@@ -344,6 +344,43 @@ describe('/boostRequests — lecture', () => {
 
 // ─── Boost Pricing ────────────────────────────────────────────────────────────
 
+// ─── Payment Methods (2026-07-10 : éditables admin, lecture publique) ────────
+
+describe('/paymentMethods — admin gère, public lit', () => {
+  beforeEach(async () => {
+    await seedDoc('paymentMethods', 'cd', {
+      methods: [{ name: 'Airtel Money', number: '+243 979 055 933', icon: '📱' }],
+    });
+  });
+
+  it('non-auth peut lire les méthodes de paiement (public)', async () => {
+    const db = anon().firestore();
+    await expectPermissionGranted(getDoc(doc(db, 'paymentMethods', 'cd')));
+  });
+
+  it('vendeur ne peut PAS modifier les méthodes de paiement', async () => {
+    const db = authed(SELLER_ID, { role: 'seller' }).firestore();
+    await expectPermissionDenied(
+      setDoc(doc(db, 'paymentMethods', 'cd'), {
+        methods: [{ name: 'Hack', number: '000', icon: '📱' }],
+      })
+    );
+  });
+
+  it('admin peut modifier les méthodes de paiement', async () => {
+    const db = authed(ADMIN_ID, { role: 'admin' }).firestore();
+    await expectPermissionGranted(
+      setDoc(doc(db, 'paymentMethods', 'cd'), {
+        methods: [
+          { name: 'Airtel Money', number: '+243 979 055 933', icon: '📱' },
+          { name: 'Orange Money', number: '+243 900 000 000', icon: '📱' },
+        ],
+        updatedAt: Date.now(),
+      })
+    );
+  });
+});
+
 describe('/boostPricing — accès public', () => {
   beforeEach(async () => {
     await seedDoc('boostPricing', 'bi', { amount: 5000, currency: 'BIF' });

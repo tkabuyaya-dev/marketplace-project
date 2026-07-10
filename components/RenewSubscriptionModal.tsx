@@ -21,10 +21,11 @@ import {
   SubscriptionRequest, SubscriptionPricing, SubscriptionPeriod,
 } from '../types';
 import {
-  PAYMENT_METHODS, DEFAULT_SUBSCRIPTION_PRICING,
+  DEFAULT_SUBSCRIPTION_PRICING,
   INITIAL_SUBSCRIPTION_TIERS, INITIAL_COUNTRIES,
   getCountryFlag,
 } from '../constants';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { buildWaUrl } from '../config/whatsapp.config';
 import {
   createSubscriptionRequest,
@@ -62,6 +63,9 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
+  // Méthodes Mobile Money temps réel (éditables admin) — hook appelé AVANT le
+  // return conditionnel `!isOpen` (règle des hooks React).
+  const paymentMethods = usePaymentMethods(sellerCountryId);
 
   // ── Data ──
   const tiers = INITIAL_SUBSCRIPTION_TIERS;
@@ -108,7 +112,6 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
 
   // ── Derived values ──
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
-  const paymentMethods = PAYMENT_METHODS[sellerCountryId] || PAYMENT_METHODS['bi'];
 
   // Find the tier matching the seller's current plan.
   // Why: comptes legacy pré-refonte 2026-06 ont des libellés "Business Pro" /
@@ -404,7 +407,16 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
 
               <p className="text-center">
                 <a
-                  href={buildWaUrl(`Bonjour, je souhaite renouveler mon plan ${currentTierLabel} sur NUNULIA (${formattedPrice}/mois).`)}
+                  href={buildWaUrl(step === 'payment'
+                    ? `Bonjour, je souhaite renouveler mon plan ${currentTierLabel} sur NUNULIA (${formattedPrice}).`
+                    : t('plans.whatsappPaid', {
+                        plan: currentTierLabel,
+                        country: country?.name || sellerCountryId,
+                        amount: formattedPrice,
+                        name: sellerName,
+                        ref: transactionRef.trim() || '—',
+                        link: 'https://nunulia.com/admin?tab=subs',
+                      }))}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-green-400 text-xs hover:underline"
