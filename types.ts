@@ -68,6 +68,12 @@ export interface SellerDetails {
   reminderSentJ1?: number;           // equals subscriptionExpiresAt when J-1 reminder was sent
   gracePhaseSince?: number;          // ms timestamp when downgrade phase 1 started (expiry date)
   downgradePhase?: 1 | 2 | 3;       // 1=J0-J3 products visible / 2=J3-J14 top-5 / 3=deletion scheduled
+  /** État d'abonnement explicite — écrit uniquement par les CFs (Lot B audit). */
+  subscriptionState?: 'active' | 'grace_1' | 'grace_2' | 'grace_3' | 'free';
+  /** Coach vendeur : opt-out des rappels (toggle Profil). */
+  coachOptOut?: boolean;
+  /** Coach vendeur : guards internes écrits par la CF sellerCoach — ne pas modifier côté client. */
+  coachState?: Record<string, unknown>;
 }
 
 export interface User {

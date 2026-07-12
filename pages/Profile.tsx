@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   User as UserIcon, Globe, Bell, Shield, HelpCircle, LogOut,
   ChevronRight, ChevronLeft, Check, Camera, CreditCard, Store, Zap, FileText,
-  Trash2, Sun, Moon, Languages, Home as HomeIcon, Search, Heart, Plus,
+  Trash2, Sun, Moon, Languages, Home as HomeIcon, Search, Heart, Plus, Sparkles,
 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -705,6 +705,24 @@ const Profile: React.FC = () => {
     : permission === 'denied' ? t('profile.notifsBlockedHint')
     : t('profile.enableNotifs');
 
+  // Coach vendeur : opt-out des rappels « prochaine meilleure action ».
+  // Champ sellerDetails.coachOptOut — autorisé en self-update par les rules
+  // (seuls maxProducts/tierLabel/expiry/verifiedAt/verificationMethod sont verrouillés).
+  const handleToggleCoach = async () => {
+    const next = !currentUser.sellerDetails?.coachOptOut;
+    try {
+      await updateUserProfile(currentUser.id, { 'sellerDetails.coachOptOut': next });
+      toast(
+        next
+          ? t('profile.coachDisabled', 'Conseils du Coach désactivés.')
+          : t('profile.coachEnabled', 'Conseils du Coach activés — max 2 par semaine.'),
+        'success',
+      );
+    } catch {
+      toast(t('profile.coachError', 'Modification impossible pour le moment.'), 'error');
+    }
+  };
+
   const planSub =
     tier === 'free' ? t('profile.upgradeFromFree')
     : t('profile.activePlan', { tier: t(`profile.tier${tier.charAt(0).toUpperCase() + tier.slice(1)}` as any) });
@@ -842,6 +860,16 @@ const Profile: React.FC = () => {
               sub={notifSub}
               onClick={handleNotifications}
             />
+            {isSeller && (
+              <MenuItem
+                icon={<Sparkles size={17} />}
+                label={t('profile.coachTitle', 'Conseils du Coach')}
+                sub={currentUser.sellerDetails?.coachOptOut
+                  ? t('profile.coachOff', 'Désactivés — vous ne recevez plus de rappels')
+                  : t('profile.coachOn', 'Activés — max 2 rappels utiles par semaine')}
+                onClick={handleToggleCoach}
+              />
+            )}
             <MenuItem
               icon={theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />}
               label={t('profile.appearance')}

@@ -58,12 +58,19 @@ export const AdminDashboard: React.FC = () => {
   // (utilisé par le message WhatsApp post-paiement des vendeurs pour amener
   // l'admin droit sur la file de validation).
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get('tab') as AdminTab | null;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab') as AdminTab | null;
     const validTabs: AdminTab[] = [
       'overview', 'products', 'subs', 'users', 'banners', 'categories',
       'currencies', 'countries', 'requests', 'health', 'security', 'audit', 'boosts', 'studio',
     ];
     if (tab && validTabs.includes(tab)) setActiveTab(tab);
+    // &filter=pending : la notification admin « produit à valider » atterrit
+    // directement sur la file de modération pré-filtrée.
+    const filter = params.get('filter');
+    if (tab === 'products' && (filter === 'pending' || filter === 'approved' || filter === 'rejected')) {
+      setProductFilter(filter);
+    }
   }, []);
 
   // Shared data

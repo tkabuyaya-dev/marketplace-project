@@ -167,6 +167,10 @@ export { flagBuyerRequest } from "./flag-buyer-request.js";
 // Notif "produit approuvé" : trigger sur products/{id} quand status
 // passe de pending → approved. Push immédiat au seller avec deep link.
 export { onProductApproved } from "./notify-product-approved.js";
+// Notification admin « produit à valider » (throttle 10 min + compteur agrégé)
+export { onProductPendingNotifyAdmin } from "./notify-admin-on-product.js";
+// Coach vendeur — prochaine meilleure action (cron 16:00 UTC, caps stricts)
+export { sellerCoach } from "./seller-coach.js";
 
 // ─── Photo Studio (Nunulia Studio) ─────────────────────────────────────────
 // 4 callables + 1 cron — flow complet de la création de session à la

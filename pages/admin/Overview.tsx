@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { auth } from '../../firebase-config';
 import type { OverviewProps } from './types';
 import { DealLoopInsights } from './DealLoopInsights';
+import { CoachSettingsCard } from './CoachSettingsCard';
 
 const FUNCTIONS_BASE = import.meta.env.VITE_FUNCTIONS_BASE_URL || '';
 
@@ -76,6 +77,9 @@ export const Overview: React.FC<OverviewProps> = ({
 
       {/* Intelligence commerciale (Deal Loop) */}
       <DealLoopInsights />
+
+      {/* Coach vendeur — kill switch + fréquence + télémétrie */}
+      <CoachSettingsCard />
 
       {/* Algolia Reindex */}
       <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">

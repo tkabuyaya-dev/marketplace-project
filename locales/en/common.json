@@ -333,6 +333,12 @@
     "editPersonalInfoTitle": "Personal information",
     "profileSaved": "Profile updated",
     "notifsActive": "Enabled — messages, favorites, prices",
+    "coachTitle": "Coach tips",
+    "coachOn": "Enabled — max 2 useful reminders per week",
+    "coachOff": "Disabled — you no longer receive reminders",
+    "coachEnabled": "Coach tips enabled — max 2 per week.",
+    "coachDisabled": "Coach tips disabled.",
+    "coachError": "Change failed, please try again.",
     "notifsBlockedHint": "Blocked in browser settings",
     "versionFooter": "NUNULIA · Burundi, DRC, Rwanda, Tanzania"
   },

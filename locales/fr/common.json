@@ -333,6 +333,12 @@
     "editPersonalInfoTitle": "Informations personnelles",
     "profileSaved": "Profil mis à jour",
     "notifsActive": "Activées — messages, favoris, prix",
+    "coachTitle": "Conseils du Coach",
+    "coachOn": "Activés — max 2 rappels utiles par semaine",
+    "coachOff": "Désactivés — vous ne recevez plus de rappels",
+    "coachEnabled": "Conseils du Coach activés — max 2 par semaine.",
+    "coachDisabled": "Conseils du Coach désactivés.",
+    "coachError": "Modification impossible pour le moment.",
     "notifsBlockedHint": "Bloquées dans le navigateur",
     "versionFooter": "NUNULIA · Burundi, RDC, Rwanda, Tanzanie"
   },

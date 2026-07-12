@@ -234,8 +234,11 @@ export async function runSubscriptionLifecycle(db: Db, trigger: "schedule" | "ma
       .get();
 
     if (!productsSnap.empty) {
+      // Champ réel = `views` (types.ts / incrementProductViews). L'ancien code
+      // (hérité de expire-sellers R19) triait par `viewCount`, inexistant →
+      // le « top 5 conservé » était arbitraire. Corrigé 2026-07-10.
       const sorted = [...productsSnap.docs].sort((a, b) =>
-        ((b.data().viewCount as number) ?? 0) - ((a.data().viewCount as number) ?? 0));
+        ((b.data().views as number) ?? 0) - ((a.data().views as number) ?? 0));
       // I7 : marquage 'grace' — seuls ces produits seront réactivés au renouvellement
       await updateProductsInBatches(db, sorted.slice(GRACE_KEEP_TOP),
         () => ({ status: "inactive", deactivatedBy: "grace" }));
