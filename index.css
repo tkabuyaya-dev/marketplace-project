@@ -54,6 +54,51 @@
   100% { transform: scale(1); }
 }
 
+/* Barre de progression autoplay du BannerCarousel (P7) */
+@keyframes nuBannerProgress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/*
+ * View Transitions (P1) — continuité visuelle entre pages.
+ * - Racine : fondu + micro-glissement (sortie 0.16s, entrée 0.22s)
+ * - product-hero : l'image produit cliquée SE TRANSFORME en la galerie
+ *   de la page détail (élément partagé, même nom des deux côtés).
+ * Navigateurs sans support : navigation classique, zéro changement.
+ */
+@keyframes nuVtOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes nuVtIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+::view-transition-old(root) {
+  animation: nuVtOut 0.16s ease both;
+}
+::view-transition-new(root) {
+  animation: nuVtIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+::view-transition-group(product-hero) {
+  animation-duration: 0.3s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Les snapshots du héros remplissent la boîte du groupe pendant le morph */
+::view-transition-old(product-hero),
+::view-transition-new(product-hero) {
+  height: 100%;
+  object-fit: cover;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
+}
+
 @layer utilities {
   /* Safe area pour les téléphones avec encoche/barre de navigation */
   .pb-safe {

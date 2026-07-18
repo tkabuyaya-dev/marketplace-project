@@ -34,7 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
 
   const handleProductClick = (product: Product) => {
     setIsSearchOpen(false);
-    navigate(`/product/${product.slug || product.id}`);
+    navigate(`/product/${product.slug || product.id}`, { viewTransition: true });
   };
 
   const renderActionItem = () => {

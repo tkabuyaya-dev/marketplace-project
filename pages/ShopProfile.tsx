@@ -560,7 +560,7 @@ const ShopProfile: React.FC = () => {
   };
 
   const onProductClick = (product: Product) => {
-    navigate(`/product/${product.slug || product.id}`, { state: { product } });
+    navigate(`/product/${product.slug || product.id}`, { state: { product }, viewTransition: true });
   };
 
   // Derived data

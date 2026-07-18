@@ -8,6 +8,7 @@ import { toWhatsAppDigits } from '../utils/phoneValidation';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
 import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
 import { tapHaptic } from '../utils/haptics';
+import { markHeroElement } from '../utils/viewTransition';
 import { ProgressiveImage } from './ProgressiveImage';
 import { VerifiedBadge } from './VerifiedBadge';
 
@@ -42,6 +43,13 @@ export const ProductCard = memo<ProductCardProps>(({
 }) => {
   const { t } = useTranslation();
   const cardRef = useRef<HTMLDivElement>(null);
+  const imgZoneRef = useRef<HTMLDivElement>(null);
+
+  // P1 — l'image de la carte devient le héros du morphing vers la page produit
+  const handleOpen = useCallback(() => {
+    markHeroElement(imgZoneRef.current);
+    onClick();
+  }, [onClick]);
   const [liked, setLiked] = useState(initialLiked ?? false);
   const [isVisible, setIsVisible] = useState(false);
   // Captured at mount to keep render pure (cards unmount on navigation, so freshness is fine)
@@ -129,7 +137,7 @@ export const ProductCard = memo<ProductCardProps>(({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onClick();
+      handleOpen();
     }
   };
 
@@ -138,7 +146,7 @@ export const ProductCard = memo<ProductCardProps>(({
       ref={cardRef}
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClick={handleOpen}
       onKeyDown={handleKeyDown}
       className="group relative bg-white shadow-sm border border-black/[0.06]
                  dark:bg-gray-900 dark:border-gray-800/60 dark:shadow-none
@@ -149,7 +157,7 @@ export const ProductCard = memo<ProductCardProps>(({
                  focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-xl">
+      <div ref={imgZoneRef} className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-xl">
         {!isVisible ? (
           <div className="absolute inset-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
             <div

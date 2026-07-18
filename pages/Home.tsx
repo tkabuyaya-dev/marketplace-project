@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Search, SlidersHorizontal, Heart, ChevronRight, ChevronDown,
-  Home as HomeIcon, Plus, User as UserIcon, BadgeCheck, X, Store,
+  BadgeCheck, X, Store,
 } from 'lucide-react';
 import { Product, User } from '../types';
 import { ProductCard } from '../components/ProductCard';
@@ -11,6 +11,7 @@ import { NotificationBell } from '../components/NotificationBell';
 import { ProductCardSkeleton } from '../components/Skeleton';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
+import { BottomNav } from '../components/BottomNav';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
 import {
@@ -28,6 +29,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useGeolocation, haversineDistance, formatDistance } from '../hooks/useGeolocation';
 import { useRotatingPlaceholder } from '../hooks/useRotatingPlaceholder';
 import { tapHaptic } from '../utils/haptics';
+import { markHeroElement } from '../utils/viewTransition';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 import { getCountryFlag } from '../constants';
 
@@ -382,14 +384,15 @@ function TrendingCard({
     ? product.price.toLocaleString('fr-FR')
     : String(product.price ?? '');
   const currency = product.currency || '';
+  const imgZoneRef = useRef<HTMLDivElement>(null);
 
   return (
     <div
       className="flex-shrink-0 w-[152px] flex flex-col rounded-2xl overflow-hidden bg-white cursor-pointer active:scale-[0.98] transition-transform"
       style={{ border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-      onClick={onClick}
+      onClick={() => { markHeroElement(imgZoneRef.current); onClick(); }}
     >
-      <div className="relative w-full" style={{ paddingTop: '75%' }}>
+      <div ref={imgZoneRef} className="relative w-full" style={{ paddingTop: '75%' }}>
         {imgUrl ? (
           <ProgressiveImage
             src={imgUrl}
@@ -605,85 +608,6 @@ function ModeBanner({ mode, onDisable, t }: { mode: 'wholesale' | 'nearby'; onDi
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUB-COMPONENT — BottomNav (fixed, real routing)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function BottomNav({ navigate, onSell }: { navigate: (p: string) => void; onSell: () => void }) {
-  const tabs = [
-    { id: 'home',      label: 'Accueil',  Icon: HomeIcon,  path: '/' },
-    { id: 'search',    label: 'Chercher', Icon: Search,    path: '/search' },
-    { id: 'sell',      label: 'Vendre',   Icon: Plus,      path: '' },
-    { id: 'favorites', label: 'Favoris',  Icon: Heart,     path: '/favorites' },
-    { id: 'profile',   label: 'Profil',   Icon: UserIcon,  path: '/profile' },
-  ] as const;
-
-  return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white"
-      style={{
-        borderTop: '1px solid rgba(0,0,0,0.06)',
-        boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
-    >
-      <div className="flex items-stretch justify-around h-16 px-1">
-        {tabs.map(({ id, label, Icon, path }) => {
-          const isActive = id === 'home';
-          const isCenter = id === 'sell';
-
-          if (isCenter) {
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={onSell}
-                aria-label={label}
-                className="flex flex-col items-center justify-center gap-1 flex-1 bg-transparent border-none cursor-pointer"
-              >
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center -mt-3.5"
-                  style={{
-                    background: 'linear-gradient(135deg,#F5C842 0%,#E8A800 100%)',
-                    boxShadow: '0 4px 16px rgba(245,200,66,0.5)',
-                  }}
-                >
-                  <Plus size={22} color="#111318" strokeWidth={3} />
-                </div>
-                <span className="text-[10px] font-bold text-[#111318]">{label}</span>
-              </button>
-            );
-          }
-
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => navigate(path)}
-              aria-label={label}
-              aria-current={isActive ? 'page' : undefined}
-              className="flex flex-col items-center justify-center gap-1 flex-1 bg-transparent border-none cursor-pointer"
-            >
-              <Icon
-                size={22}
-                color={isActive ? '#A45F00' : '#5C6370'}
-                strokeWidth={isActive ? 2.5 : 2}
-                fill={(id as string) === 'favorites' && isActive ? '#A45F00' : 'none'}
-              />
-              <span
-                className="text-[10px]"
-                style={{ color: isActive ? '#A45F00' : '#5C6370', fontWeight: isActive ? 800 : 600 }}
-              >
-                {label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT — Home
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -701,7 +625,7 @@ export const Home: React.FC = () => {
   const { term: rotatingTerm, visible: termVisible } = useRotatingPlaceholder(searchTerms);
 
   const onProductClick = (product: Product) => {
-    navigate(`/product/${product.slug || product.id}`, { state: { product } });
+    navigate(`/product/${product.slug || product.id}`, { state: { product }, viewTransition: true });
   };
 
   const cacheKey = (cat: string, country: string, wholesale: boolean) =>
@@ -1188,7 +1112,7 @@ export const Home: React.FC = () => {
         </div>
       </main>
 
-      <BottomNav navigate={navigate} onSell={handleSellerAccess} />
+      <BottomNav onSell={handleSellerAccess} />
     </div>
   );
 };

@@ -27,7 +27,7 @@ export const FeaturedVendorCard: React.FC<FeaturedVendorCardProps> = ({ seller, 
   };
 
   const goToProduct = (p: Product) => {
-    navigate(`/product/${p.slug || p.id}`, { state: { product: p } });
+    navigate(`/product/${p.slug || p.id}`, { state: { product: p }, viewTransition: true });
   };
 
   return (

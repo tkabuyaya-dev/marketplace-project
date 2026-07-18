@@ -714,7 +714,7 @@ export const Favorites: React.FC = () => {
   }, []);
 
   const handleCardClick = useCallback((item: FavItem) => {
-    navigate(`/product/${item.slug || item.id}`, { state: { product: item } });
+    navigate(`/product/${item.slug || item.id}`, { state: { product: item }, viewTransition: true });
   }, [navigate]);
 
   const enterSelectionMode = useCallback((id: string) => {

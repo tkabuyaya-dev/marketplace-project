@@ -18,6 +18,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 import { ProgressiveImage } from './ProgressiveImage';
 import { getOptimizedUrl, getThumbnailUrl } from '../services/cloudinary';
+import { HERO_VT_NAME } from '../utils/viewTransition';
 
 // ── Lightbox plein écran (pinch-zoom / double-tap / pan / swipe) ─────────────
 
@@ -316,6 +317,9 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               key={img || i}
               className="relative w-full h-full shrink-0 snap-center overflow-hidden cursor-zoom-in"
               onClick={() => setLightboxOpen(true)}
+              // P1 — cible du morphing carte→galerie (un seul héros par page)
+              data-vt-hero={i === active ? '1' : undefined}
+              style={i === active ? ({ viewTransitionName: HERO_VT_NAME } as React.CSSProperties) : undefined}
             >
               {/* Fond ambiant : micro-thumbnail Cloudinary flou étiré (aucune bande vide) */}
               <img

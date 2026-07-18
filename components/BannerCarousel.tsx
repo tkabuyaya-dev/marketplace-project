@@ -40,10 +40,18 @@ const DEFAULT_BANNERS: Banner[] = [
   },
 ];
 
+const AUTOPLAY_MS = 5000;
+const RESUME_AFTER_TOUCH_MS = 4000;
+
 interface BannerCarouselProps {
   banners?: Banner[];
 }
 
+/**
+ * Carrousel scroll-snap natif (P7) : glissement au doigt avec inertie,
+ * autoplay 5s avec barre de progression, pause au toucher.
+ * Zéro lib, fonctionne offline, même moteur que la galerie produit.
+ */
 export const BannerCarousel: React.FC<BannerCarouselProps> = ({
   banners: propBanners,
 }) => {
@@ -52,54 +60,57 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
     .filter(b => b.isActive)
     .sort((a, b) => a.order - b.order);
 
-  const [current, setCurrent] = useState(0);
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const count = activeBanners.length;
+  const trackRef = useRef<HTMLDivElement>(null);
+  const rafId = useRef(0);
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  const goTo = useCallback((index: number) => {
-    setCurrent(((index % count) + count) % count);
+  const scrollToIndex = useCallback((i: number, smooth = true) => {
+    const el = trackRef.current;
+    if (!el || el.clientWidth === 0 || count === 0) return;
+    const idx = ((i % count) + count) % count;
+    el.scrollTo({ left: idx * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
   }, [count]);
 
-  const next = useCallback(() => goTo(current + 1), [current, goTo]);
-
-  // Auto-advance every 5s
+  // Autoplay — l'intervalle repart à chaque changement de slide, la barre
+  // de progression (keyed sur `current`) est donc toujours synchrone.
   useEffect(() => {
-    if (count <= 1) return;
-    intervalRef.current = setInterval(next, 5000);
-    return () => clearInterval(intervalRef.current);
-  }, [next, count]);
+    if (count <= 1 || paused) return;
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      scrollToIndex(current + 1);
+    }, AUTOPLAY_MS);
+    return () => clearInterval(id);
+  }, [current, paused, count, scrollToIndex]);
 
-  // Reset interval on user interaction
-  const resetInterval = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(next, 5000);
+  // Sync scroll → slide courante (throttlé rAF)
+  const onScroll = () => {
+    if (rafId.current) return;
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = 0;
+      const el = trackRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      if (i !== current && i >= 0 && i < count) setCurrent(i);
+    });
   };
 
-  // Touch handlers for swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientX);
-    setIsDragging(true);
+  // Pause au toucher, reprise après inactivité
+  const pauseAutoplay = () => {
+    setPaused(true);
+    clearTimeout(resumeTimer.current);
+  };
+  const scheduleResume = () => {
+    clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => setPaused(false), RESUME_AFTER_TOUCH_MS);
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    setTouchDelta(e.touches[0].clientX - touchStart);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    if (Math.abs(touchDelta) > 80) {
-      if (touchDelta > 0) goTo(current - 1);
-      else goTo(current + 1);
-      resetInterval();
-    }
-    setTouchDelta(0);
-  };
+  useEffect(() => () => {
+    cancelAnimationFrame(rafId.current);
+    clearTimeout(resumeTimer.current);
+  }, []);
 
   const handleBannerClick = (banner: Banner) => {
     const actionType = banner.ctaActionType || 'none';
@@ -115,7 +126,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         navigate(`/?category=${encodeURIComponent(target)}`);
         break;
       case 'product':
-        navigate(`/product/${target}`);
+        navigate(`/product/${target}`, { viewTransition: true });
         break;
       case 'page':
         navigate(target);
@@ -126,17 +137,16 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
   if (count === 0) return null;
 
   return (
-    <div className="relative rounded-2xl overflow-hidden" ref={containerRef}>
-      {/* Slides container */}
+    <div className="relative rounded-2xl overflow-hidden">
+      {/* Track scroll-snap */}
       <div
-        className="flex transition-transform duration-500 ease-out"
-        style={{
-          transform: `translateX(calc(-${current * 100}% + ${isDragging ? touchDelta : 0}px))`,
-          transitionDuration: isDragging ? '0ms' : '500ms',
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        ref={trackRef}
+        onScroll={onScroll}
+        onPointerDown={pauseAutoplay}
+        onPointerUp={scheduleResume}
+        onPointerCancel={scheduleResume}
+        className="flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
         {activeBanners.map((banner, bannerIdx) => {
           const hasAction = banner.ctaActionType && banner.ctaActionType !== 'none' && banner.ctaAction?.trim();
@@ -144,7 +154,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
           return (
             <div
               key={banner.id}
-              className={`w-full flex-shrink-0 relative h-44 sm:h-56 md:h-64 ${hasAction ? 'cursor-pointer' : ''}`}
+              className={`w-full flex-shrink-0 snap-center relative h-44 sm:h-56 md:h-64 ${hasAction ? 'cursor-pointer' : ''}`}
               onClick={() => handleBannerClick(banner)}
             >
               {/* Background image */}
@@ -158,6 +168,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
                   loading="eager"
                   decoding={isFirst ? 'sync' : 'async'}
                   fetchPriority={isFirst ? 'high' : 'low'}
+                  draggable={false}
                 />
               </div>
               {/* Subtle left-to-right gradient — keeps image vivid (paid ad space)
@@ -204,13 +215,30 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         })}
       </div>
 
+      {/* Barre de progression de l'autoplay — fine ligne or, resynchronisée
+          à chaque slide (key), figée quand l'utilisateur touche le carrousel */}
+      {count > 1 && (
+        <div className="absolute bottom-0 left-0 right-0 z-20 h-[3px]" style={{ background: 'rgba(255,255,255,0.25)' }}>
+          <div
+            key={`${current}-${paused}`}
+            className="h-full"
+            style={{
+              background: '#F5C842',
+              transformOrigin: 'left',
+              animation: paused ? 'none' : `nuBannerProgress ${AUTOPLAY_MS}ms linear forwards`,
+              transform: paused ? 'scaleX(0)' : undefined,
+            }}
+          />
+        </div>
+      )}
+
       {/* Dots indicator — bottom-center, gold expanding pill */}
       {count > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
           {activeBanners.map((_, i) => (
             <button
               key={i}
-              onClick={() => { goTo(i); resetInterval(); }}
+              onClick={e => { e.stopPropagation(); pauseAutoplay(); scrollToIndex(i); scheduleResume(); }}
               aria-label={`Slide ${i + 1}`}
               className="border-none cursor-pointer p-0 transition-all duration-200"
               style={{

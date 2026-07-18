@@ -204,7 +204,7 @@ const ShopSearch: React.FC<ShopSearchProps> = ({ products, sellerId, sellerName,
   };
 
   const onProductClick = (product: Product) => {
-    navigate(`/product/${product.slug || product.id}`, { state: { product } });
+    navigate(`/product/${product.slug || product.id}`, { state: { product }, viewTransition: true });
   };
 
   // Determine which results to show

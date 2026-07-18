@@ -1104,7 +1104,7 @@ const SearchPage: React.FC = () => {
   const handleProductClick = useCallback((product: Product, position: number) => {
     if (query.trim()) addToSearchHistory(query.trim());
     trackSearchClick(product.id, queryID, position);
-    navigate(`/product/${product.slug || product.id}`, { state: { product } });
+    navigate(`/product/${product.slug || product.id}`, { state: { product }, viewTransition: true });
   }, [navigate, query, queryID]);
 
   const handleSearch = useCallback((e: React.FormEvent) => {

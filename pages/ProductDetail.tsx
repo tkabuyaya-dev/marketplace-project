@@ -166,7 +166,7 @@ const ProductDetail: React.FC = () => {
   useEffect(() => { setActiveImage(0); }, [product?.id]);
 
   const onProductClick = (p: Product) => {
-    navigate(`/product/${p.slug || p.id}`, { state: { product: p } });
+    navigate(`/product/${p.slug || p.id}`, { state: { product: p }, viewTransition: true });
     setProduct(p);
     setLikeCount(p.likesCount || 0);
     setLiked(false);
