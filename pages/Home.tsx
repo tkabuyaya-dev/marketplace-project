@@ -395,13 +395,18 @@ function TrendingCard({
     >
       <div ref={imgZoneRef} className="relative w-full" style={{ paddingTop: '75%' }}>
         {imgUrl ? (
-          <ProgressiveImage
-            src={imgUrl}
-            alt={product.title}
-            blurhash={product.blurhash}
-            originalUrl={product.images?.[0]}
-            className="absolute inset-0 w-full h-full"
-          />
+          // Calque absolu obligatoire : le wrapper de ProgressiveImage est
+          // position:relative — sans ce calque, l'image sort du ratio 4:3
+          // et une photo portrait étire toute la rangée du rail.
+          <div className="absolute inset-0">
+            <ProgressiveImage
+              src={imgUrl}
+              alt={product.title}
+              blurhash={product.blurhash}
+              originalUrl={product.images?.[0]}
+              className="w-full h-full"
+            />
+          </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#F0F1F4' }}>
             <Store size={26} color="#5C6370" strokeWidth={1.5} />

@@ -331,15 +331,17 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
                 style={{ filter: 'blur(26px) saturate(1.15)', transform: 'scale(1.2)', opacity: 0.6 }}
               />
               {/* Photo entière, jamais rognée */}
-              <ProgressiveImage
-                src={getOptimizedUrl(img, 900)}
-                alt={`${title} — photo ${i + 1}`}
-                blurhash={i === 0 ? blurhash : undefined}
-                originalUrl={img}
-                fit="contain"
-                className="absolute inset-0 w-full h-full"
-                loading={i === 0 ? 'eager' : 'lazy'}
-              />
+              <div className="absolute inset-0">
+                <ProgressiveImage
+                  src={getOptimizedUrl(img, 900)}
+                  alt={`${title} — photo ${i + 1}`}
+                  blurhash={i === 0 ? blurhash : undefined}
+                  originalUrl={img}
+                  fit="contain"
+                  className="w-full h-full"
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                />
+              </div>
             </div>
           ))}
         </div>
