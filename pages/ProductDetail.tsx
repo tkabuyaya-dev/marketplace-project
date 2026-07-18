@@ -6,7 +6,7 @@ import {
   ShieldCheck, Star, ChevronRight, Package, MessageCircle, Eye,
 } from 'lucide-react';
 import { Product, User } from '../types';
-import { ProgressiveImage } from '../components/ProgressiveImage';
+import { ProductGallery } from '../components/ProductGallery';
 import { ReviewSection } from '../components/ReviewSection';
 import { ProductSection } from '../components/ProductSection';
 import { VerifiedBadge } from '../components/VerifiedBadge';
@@ -71,24 +71,6 @@ function FloatingBtn({
     >
       {children}
     </button>
-  );
-}
-
-function DotIndicators({ count, active }: { count: number; active: number }) {
-  return (
-    <div className="absolute z-[4] bottom-3.5 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-full transition-all duration-200"
-          style={
-            i === active
-              ? { width: 8, height: 8, background: '#F5C842', boxShadow: '0 0 0 2px rgba(245,200,66,0.25)' }
-              : { width: 4, height: 4, background: 'rgba(255,255,255,0.7)', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }
-          }
-        />
-      ))}
-    </div>
   );
 }
 
@@ -337,30 +319,13 @@ const ProductDetail: React.FC = () => {
     <div className="relative min-h-screen bg-[#F7F8FA]" style={{ paddingBottom: 88 }}>
 
       {/* ── 1. GALERIE ── */}
-      <div
-        className="relative w-full"
-        style={{ height: '52vw', minHeight: 240, maxHeight: 320 }}
-        onTouchStart={e => { (e.currentTarget as any)._tx = e.touches[0].clientX; }}
-        onTouchEnd={e => {
-          const sx = (e.currentTarget as any)._tx;
-          if (sx == null || product.images.length <= 1) return;
-          const diff = sx - e.changedTouches[0].clientX;
-          if (Math.abs(diff) > 60) {
-            setActiveImage(prev =>
-              diff > 0
-                ? Math.min(prev + 1, product.images.length - 1)
-                : Math.max(prev - 1, 0)
-            );
-          }
-        }}
-      >
-        <ProgressiveImage
-          src={getOptimizedUrl(product.images[activeImage] || product.images[0], 800)}
-          alt={product.title}
+      <div className="relative w-full">
+        <ProductGallery
+          images={product.images}
+          title={product.title}
           blurhash={product.blurhash}
-          originalUrl={product.images[activeImage] || product.images[0]}
-          className="w-full h-full object-cover"
-          loading="eager"
+          active={activeImage}
+          onActiveChange={setActiveImage}
         />
 
         {/* Floating buttons */}
@@ -397,17 +362,6 @@ const ProductDetail: React.FC = () => {
             {BADGE_CFG[badgeType].label}
           </div>
         )}
-
-        {/* Counter */}
-        {product.images.length > 1 && (
-          <div className="absolute z-[4] bottom-3.5 right-3.5 px-2.5 py-1 rounded-full text-white text-[10px] font-bold tracking-[0.03em]"
-            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
-            {activeImage + 1} / {product.images.length}
-          </div>
-        )}
-
-        {/* Dots */}
-        {product.images.length > 1 && <DotIndicators count={product.images.length} active={activeImage} />}
       </div>
 
       {/* ── 2. CARTE INFO PRINCIPALE ── */}
@@ -415,6 +369,34 @@ const ProductDetail: React.FC = () => {
         className="relative z-[2] -mt-4 bg-white rounded-t-[20px] px-[18px] pt-5 pb-4"
         style={{ boxShadow: '0 -2px 12px rgba(0,0,0,0.04)' }}
       >
+        {/* Miniatures — toutes les photos visibles d'un coup d'œil */}
+        {product.images.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto mb-3.5 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+            {product.images.map((img, i) => (
+              <button
+                key={img || i}
+                type="button"
+                onClick={() => setActiveImage(i)}
+                aria-label={`Photo ${i + 1}`}
+                aria-current={i === activeImage}
+                className="w-[52px] h-[52px] rounded-xl overflow-hidden shrink-0 transition-all duration-150"
+                style={{
+                  border: i === activeImage ? '2px solid #F5C842' : '2px solid rgba(0,0,0,0.06)',
+                  boxShadow: i === activeImage ? '0 2px 8px rgba(245,200,66,0.35)' : undefined,
+                  opacity: i === activeImage ? 1 : 0.72,
+                }}
+              >
+                <img
+                  src={getOptimizedUrl(img, 120, 'auto', 'auto', true)}
+                  alt=""
+                  draggable={false}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Prix */}
         <div className="flex items-baseline gap-2.5 flex-wrap">
           <span className="text-[28px] font-black text-[#111318] tracking-[-0.035em] leading-none">

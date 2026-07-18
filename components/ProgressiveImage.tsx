@@ -25,6 +25,8 @@ interface ProgressiveImageProps {
   className?: string;
   imgClassName?: string;
   loading?: 'lazy' | 'eager';
+  /** 'cover' (défaut, cartes/rails) ou 'contain' (page produit : montrer le produit ENTIER) */
+  fit?: 'cover' | 'contain';
   onLoad?: () => void;
 }
 
@@ -38,6 +40,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = memo(({
   className = '',
   imgClassName = '',
   loading = 'lazy',
+  fit = 'cover',
   onLoad,
 }) => {
   const [loaded, setLoaded] = useState(false);
@@ -109,7 +112,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = memo(({
         decoding="async"
         onLoad={handleLoad}
         draggable={false}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
+        className={`w-full h-full ${fit === 'contain' ? 'object-contain' : 'object-cover'} transition-opacity duration-300 ${
           loaded ? 'opacity-100' : 'opacity-0'
         } ${imgClassName}`}
       />
