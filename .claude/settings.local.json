@@ -48,7 +48,14 @@
       "mcp__chrome-devtools__fill_form",
       "Skill(claude-api)",
       "Skill(claude-api:*)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(npm --prefix functions run build:tsc)",
+      "Bash(npm --prefix functions run build)",
+      "Bash(Select-String -Pattern \"VoiceCaptureButton\")",
+      "Bash(timeout 60 npx firebase-tools functions:log --only transcribeListing -n 30)",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "WebFetch(domain:nunulia.com)"
     ]
   }
 }

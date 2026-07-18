@@ -308,9 +308,6 @@
     "b2bNetworkSub": "Seller-to-seller exchange · Pro and Wholesale",
     "support": "Help and support",
     "supportHint": "FAQ, report an issue",
-    "appearance": "Appearance",
-    "appearanceLight": "Light",
-    "appearanceDark": "Dark",
     "tierFree": "Free",
     "tierStarter": "Starter",
     "tierPro": "Pro",
@@ -1461,13 +1458,6 @@
     "bannerTitle": "Unverified seller",
     "banner": "This seller has not been verified by our team yet. Check our safety tips before buying.",
     "safetyTips": "See safety tips"
-  },
-  "theme": {
-    "switchToLight": "Switch to light mode",
-    "switchToDark": "Switch to dark mode",
-    "appearance": "Appearance",
-    "light": "Light",
-    "dark": "Dark"
   },
   "becomeSellerLanding": {
     "back": "Back",

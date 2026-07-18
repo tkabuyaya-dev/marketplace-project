@@ -4,11 +4,10 @@ import { useTranslation } from 'react-i18next';
 import {
   User as UserIcon, Globe, Bell, Shield, HelpCircle, LogOut,
   ChevronRight, ChevronLeft, Check, Camera, CreditCard, Store, Zap, FileText,
-  Trash2, Sun, Moon, Languages, Sparkles,
+  Trash2, Languages, Sparkles,
 } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { useAppContext } from '../contexts/AppContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { updateUserProfile } from '../services/firebase';
 import { useNotificationConsent } from '../hooks/useNotificationConsent';
@@ -588,7 +587,6 @@ const Profile: React.FC = () => {
   const { currentUser, handleLogout, handleSellerAccess, activeCountry, setActiveCountry } = useAppContext();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { theme, toggleTheme } = useTheme();
   const { permission, requestPermission } = useNotificationConsent();
   const { toast } = useToast();
 
@@ -807,12 +805,6 @@ const Profile: React.FC = () => {
                 onClick={handleToggleCoach}
               />
             )}
-            <MenuItem
-              icon={theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />}
-              label={t('profile.appearance')}
-              sub={theme === 'dark' ? t('profile.appearanceDark') : t('profile.appearanceLight')}
-              onClick={toggleTheme}
-            />
             {(isSeller || isAdmin) && <B2BLanguageMenuItem />}
           </MenuSection>
 

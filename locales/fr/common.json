@@ -308,9 +308,6 @@
     "b2bNetworkSub": "Échanges entre vendeurs · Pro et Grossiste",
     "support": "Aide et support",
     "supportHint": "FAQ, signaler un problème",
-    "appearance": "Apparence",
-    "appearanceLight": "Clair",
-    "appearanceDark": "Sombre",
     "tierFree": "Gratuit",
     "tierStarter": "Starter",
     "tierPro": "Pro",
@@ -1461,13 +1458,6 @@
     "bannerTitle": "Vendeur non vérifié",
     "banner": "Ce vendeur n'est pas encore vérifié par notre équipe. Consultez nos conseils avant tout achat.",
     "safetyTips": "Voir les conseils de sécurité"
-  },
-  "theme": {
-    "switchToLight": "Passer en mode clair",
-    "switchToDark": "Passer en mode sombre",
-    "appearance": "Apparence",
-    "light": "Clair",
-    "dark": "Sombre"
   },
   "becomeSellerLanding": {
     "back": "Retour",

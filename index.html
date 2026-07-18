@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <!-- Theme color: warm white default, gray-950 when user chose dark -->
     <meta name="theme-color" content="#F7F7F5" id="theme-color-meta" />
     <meta name="description" content="Nunulia — Le marketplace des Grands Lacs." />
     <meta name="application-name" content="Nunulia" />
@@ -16,20 +15,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nunulia" />
     <meta name="msapplication-TileColor" content="#F7F7F5" />
-    <!-- Theme bootstrap: applies dark class BEFORE paint to prevent FOUC.
-         Default is 'light' — first-time visitors always see light mode. -->
-    <script>
-      (function() {
-        try {
-          var t = localStorage.getItem('nunulia_theme');
-          if (t === 'dark') {
-            document.documentElement.classList.add('dark');
-            var m = document.querySelector('meta[name="theme-color"]');
-            if (m) m.setAttribute('content', '#111318');
-          }
-        } catch (e) { /* localStorage blocked — light default applies */ }
-      })();
-    </script>
     <!-- DNS + TCP pre-connections pour les ressources critiques -->
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -61,10 +46,6 @@
         --text-app: #111318;  /* gray-950 */
         --gold-400: #F5C842;
         --gold-600: #D4941A;
-      }
-      html.dark {
-        --bg-app: #111318;    /* gray-950 */
-        --text-app: #f3f4f6;  /* gray-100 */
       }
       *, *::before, *::after { box-sizing: border-box; }
       body {

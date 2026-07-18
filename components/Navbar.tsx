@@ -7,7 +7,6 @@ import { NotificationBell } from './NotificationBell';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { SearchOverlay } from './SearchOverlay';
 import { CountrySwitcher } from './CountrySwitcher';
-import { ThemeToggle } from './ThemeToggle';
 import { useRotatingPlaceholder } from '../hooks/useRotatingPlaceholder';
 
 const openJeCherche = () => window.dispatchEvent(new CustomEvent('open-je-cherche'));
@@ -140,7 +139,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
 
           <LanguageSwitcher />
           <CountrySwitcher />
-          <ThemeToggle />
           {currentUser && <NotificationBell />}
 
           <div className="flex gap-6">

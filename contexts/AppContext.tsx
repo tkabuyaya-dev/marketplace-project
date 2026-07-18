@@ -14,7 +14,6 @@
  */
 import React from 'react';
 import { PreferencesProvider, usePreferencesContext } from './PreferencesContext';
-import { ThemeProvider } from './ThemeContext';
 import { AuthProvider, useAuthContext } from './AuthContext';
 import { NotificationProvider, useNotificationContext } from './NotificationContext';
 import { useLocation } from 'react-router-dom';
@@ -45,14 +44,12 @@ const PageViewTracker: React.FC = () => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ThemeProvider>
-    <PreferencesProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <PageViewTracker />
-          {children}
-        </NotificationProvider>
-      </AuthProvider>
-    </PreferencesProvider>
-  </ThemeProvider>
+  <PreferencesProvider>
+    <AuthProvider>
+      <NotificationProvider>
+        <PageViewTracker />
+        {children}
+      </NotificationProvider>
+    </AuthProvider>
+  </PreferencesProvider>
 );

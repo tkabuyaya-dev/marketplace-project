@@ -12,6 +12,7 @@ import { ProductCardSkeleton } from '../components/Skeleton';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { BottomNav } from '../components/BottomNav';
+import { PullToRefresh } from '../components/PullToRefresh';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
 import {
@@ -663,6 +664,26 @@ export const Home: React.FC = () => {
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
 
+  // ── Pull-to-refresh (P9) ────────────────────────────────────────────────
+  // Invalide uniquement les caches mémoire puis rejoue le flux de chargement
+  // existant (IDB → Firestore cache → réseau) via refreshNonce. Le pipeline
+  // offline-first n'est PAS modifié. isPullRefreshRef évite le flash skeleton
+  // (le contenu courant reste affiché pendant le re-fetch).
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const isPullRefreshRef = useRef(false);
+  const refreshResolverRef = useRef<(() => void) | null>(null);
+  const handlePullRefresh = useCallback(() => {
+    return new Promise<void>(resolve => {
+      _homeCache = null;
+      _railsCache = null;
+      isPullRefreshRef.current = true;
+      refreshResolverRef.current = resolve;
+      setRefreshNonce(n => n + 1);
+      // Garde-fou : le spinner ne reste jamais bloqué plus de 10s
+      setTimeout(() => { refreshResolverRef.current?.(); refreshResolverRef.current = null; }, 10000);
+    });
+  }, []);
+
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
@@ -704,7 +725,7 @@ export const Home: React.FC = () => {
       setProducts(hit.products); setLastDoc(hit.lastDoc); setHasMore(hit.hasMore);
       setBanners(hit.banners); setLikedMap(hit.likedMap); setBoostedProducts(hit.boostedProducts || []);
       setLoading(false);
-    } else {
+    } else if (!isPullRefreshRef.current) {
       setLoading(true);
     }
 
@@ -753,10 +774,15 @@ export const Home: React.FC = () => {
         prefetchProductImages(fetchedProducts.slice(6).flatMap(p => p.images?.slice(0, 1) ?? []), networkQuality === 'slow');
       } catch {
         if (mountedRef.current) setLoading(false);
+      } finally {
+        // Fin du pull-to-refresh (succès ou échec) → l'indicateur se replie
+        isPullRefreshRef.current = false;
+        refreshResolverRef.current?.();
+        refreshResolverRef.current = null;
       }
     };
     loadData();
-  }, [activeCategory, activeCountry, wholesaleMode, isCountryReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeCategory, activeCountry, wholesaleMode, isCountryReady, refreshNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateRailsCache = useCallback((patch: Partial<Omit<RailsCache, 'userId' | 'ts'>>) => {
     const uid = currentUser?.id ?? null;
@@ -784,7 +810,7 @@ export const Home: React.FC = () => {
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.id, isCountryReady, updateRailsCache]);
+  }, [currentUser?.id, isCountryReady, updateRailsCache, refreshNonce]);
 
   useEffect(() => {
     if (!isCountryReady) return;
@@ -800,7 +826,7 @@ export const Home: React.FC = () => {
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [isCountryReady, updateRailsCache]);
+  }, [isCountryReady, updateRailsCache, refreshNonce]);
 
   useEffect(() => {
     if (!currentUser?.id || currentUser.role !== 'seller') { setSellerLatest([]); return; }
@@ -817,7 +843,7 @@ export const Home: React.FC = () => {
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.id, currentUser?.role, updateRailsCache]);
+  }, [currentUser?.id, currentUser?.role, updateRailsCache, refreshNonce]);
 
   useEffect(() => {
     if (!isCountryReady || !currentUser?.id) { setRecommended([]); return; }
@@ -834,7 +860,7 @@ export const Home: React.FC = () => {
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.id, isCountryReady, recentlyViewed, updateRailsCache]);
+  }, [currentUser?.id, isCountryReady, recentlyViewed, updateRailsCache, refreshNonce]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
@@ -921,6 +947,7 @@ export const Home: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F8FA]">
+      <PullToRefresh onRefresh={handlePullRefresh} />
       <CountrySheet
         open={countrySheetOpen}
         onClose={() => setCountrySheetOpen(false)}
