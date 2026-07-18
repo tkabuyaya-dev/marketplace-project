@@ -1,51 +1,42 @@
 import React from 'react';
 
-interface SkeletonProps {
-  className?: string;
-}
+/**
+ * Skeletons — design system light NUNULIA.
+ * Base #EAECF0 (canvas foncé d'un cran) + shimmer doré très subtil,
+ * cohérent avec les placeholders ProgressiveImage.
+ */
 
-export const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => (
+const Shimmer: React.FC = () => (
   <div
-    className={`bg-gray-800/60 rounded-lg animate-pulse ${className}`}
-    aria-hidden="true"
+    className="absolute inset-0 animate-shimmer"
+    style={{
+      background:
+        'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 45%, rgba(245,200,66,0.08) 55%, transparent 100%)',
+      willChange: 'transform',
+    }}
   />
 );
 
 export const ProductCardSkeleton: React.FC = () => {
-  const bar = 'bg-gray-200 dark:bg-gray-800/60 rounded-lg animate-pulse';
+  const bar = 'rounded-lg';
   return (
     <div
-      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800/60 rounded-xl overflow-hidden"
+      className="bg-white rounded-xl overflow-hidden"
+      style={{ border: '1px solid rgba(0,0,0,0.06)' }}
       aria-hidden="true"
     >
-      <div className={`${bar} aspect-square w-full rounded-none rounded-t-xl`} />
-      <div className="p-2 space-y-1">
-        <div className={`${bar} h-5 w-1/2`} />
-        <div className={`${bar} h-4 w-full`} />
-        <div className={`${bar} h-4 w-3/4`} />
-        <div className={`${bar} h-3 w-2/3`} />
+      <div className="relative aspect-square w-full overflow-hidden" style={{ background: '#EAECF0' }}>
+        <Shimmer />
       </div>
-      <div className="relative h-8 bg-green-200 dark:bg-green-900/40 rounded-b-xl overflow-hidden">
-        <div
-          className="absolute inset-0 animate-shimmer"
-          style={{
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-            willChange: 'transform',
-          }}
-        />
+      <div className="p-2 space-y-1.5">
+        <div className={`${bar} h-5 w-1/2`} style={{ background: '#EAECF0' }} />
+        <div className={`${bar} h-4 w-full`} style={{ background: '#F0F1F4' }} />
+        <div className={`${bar} h-4 w-3/4`} style={{ background: '#F0F1F4' }} />
+        <div className={`${bar} h-3 w-2/3`} style={{ background: '#F0F1F4' }} />
+      </div>
+      <div className="relative h-8 overflow-hidden" style={{ background: '#EAECF0' }}>
+        <Shimmer />
       </div>
     </div>
   );
 };
-
-export const ProductGridSkeleton: React.FC<{ count?: number }> = ({ count = 8 }) => (
-  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-    {Array.from({ length: count }).map((_, i) => (
-      <ProductCardSkeleton key={i} />
-    ))}
-  </div>
-);
-
-export const BannerSkeleton: React.FC = () => (
-  <Skeleton className="w-full aspect-[21/9] rounded-2xl" />
-);

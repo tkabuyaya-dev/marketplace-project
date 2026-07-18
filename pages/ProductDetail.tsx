@@ -16,6 +16,7 @@ import { CountdownTimer } from '../components/CountdownTimer';
 import { CURRENCY } from '../constants';
 import { buildWaUrl } from '../config/whatsapp.config';
 import { toWhatsAppDigits } from '../utils/phoneValidation';
+import { tapHaptic } from '../utils/haptics';
 import { recordContact } from '../services/firebase/deal-loop';
 import {
   toggleLikeProduct, reportProduct, checkIsLiked,
@@ -238,6 +239,7 @@ const ProductDetail: React.FC = () => {
   const handleLike = async () => {
     if (!currentUser) return toast(t('productDetail.loginToLike'), 'info');
     const newLiked = !liked;
+    if (newLiked) tapHaptic();
     setLiked(newLiked);
     setLikeCount(c => newLiked ? c + 1 : c - 1);
     try {
@@ -341,11 +343,13 @@ const ProductDetail: React.FC = () => {
           topPx={56}
           side="right"
         >
-          <Heart
-            size={14}
-            strokeWidth={2}
-            className={liked ? 'text-[#EF4444] fill-[#EF4444]' : 'text-[#111318]'}
-          />
+          <span key={liked ? 'on' : 'off'} className={`inline-flex ${liked ? 'nu-heart-pop' : ''}`}>
+            <Heart
+              size={14}
+              strokeWidth={2}
+              className={liked ? 'text-[#EF4444] fill-[#EF4444]' : 'text-[#111318]'}
+            />
+          </span>
         </FloatingBtn>
 
         {/* Badge */}
@@ -718,11 +722,13 @@ const ProductDetail: React.FC = () => {
           className="w-[52px] h-[52px] rounded-2xl bg-white flex items-center justify-center shrink-0 transition-all duration-200 active:scale-95"
           style={{ border: liked ? '1.5px solid #EF4444' : '1.5px solid #F5C842' }}
         >
-          <Heart
-            size={20}
-            strokeWidth={2}
-            className={liked ? 'text-[#EF4444] fill-[#EF4444]' : 'text-[#A45F00]'}
-          />
+          <span key={liked ? 'on' : 'off'} className={`inline-flex ${liked ? 'nu-heart-pop' : ''}`}>
+            <Heart
+              size={20}
+              strokeWidth={2}
+              className={liked ? 'text-[#EF4444] fill-[#EF4444]' : 'text-[#A45F00]'}
+            />
+          </span>
         </button>
 
         {/* WhatsApp */}

@@ -9,6 +9,7 @@ import { Product, User } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { NotificationBell } from '../components/NotificationBell';
 import { ProductCardSkeleton } from '../components/Skeleton';
+import { ProgressiveImage } from '../components/ProgressiveImage';
 import { BannerCarousel, Banner } from '../components/BannerCarousel';
 import { JeChercheInlineCard } from '../components/home/JeChercheInlineCard';
 import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
@@ -25,6 +26,8 @@ import { prefetchProductImages } from '../utils/prefetch';
 import { useAppContext } from '../contexts/AppContext';
 import { useCategories } from '../hooks/useCategories';
 import { useGeolocation, haversineDistance, formatDistance } from '../hooks/useGeolocation';
+import { useRotatingPlaceholder } from '../hooks/useRotatingPlaceholder';
+import { tapHaptic } from '../utils/haptics';
 import { useActiveCountries } from '../hooks/useActiveCountries';
 import { getCountryFlag } from '../constants';
 
@@ -196,7 +199,11 @@ function StickyHeader({
 // SUB-COMPONENT — StickySearchBar
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StickySearchBar({ onClick }: { onClick: () => void }) {
+function StickySearchBar({ onClick, term, termVisible }: {
+  onClick: () => void;
+  term?: string;
+  termVisible?: boolean;
+}) {
   return (
     <div className="sticky top-14 z-20 bg-white px-4 pt-1.5 pb-3">
       <div
@@ -205,8 +212,16 @@ function StickySearchBar({ onClick }: { onClick: () => void }) {
         onClick={onClick}
       >
         <Search size={17} color="#5C6370" strokeWidth={2} />
-        <span className="flex-1 text-[13px] font-medium text-[#5C6370] select-none">
-          Rechercher sur Nunulia…
+        <span className="flex-1 text-[13px] font-medium text-[#5C6370] select-none overflow-hidden whitespace-nowrap">
+          {term ? (
+            <span
+              className={`inline-block transition-all duration-300 ${termVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5'}`}
+            >
+              {term}
+            </span>
+          ) : (
+            'Rechercher sur Nunulia…'
+          )}
         </span>
         <div
           className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center"
@@ -250,8 +265,17 @@ function CategoryChips({
     color: active ? (bg === '#F5C842' ? '#111318' : '#FFFFFF') : '#5C6370',
   });
 
+  // La chip active défile automatiquement dans le champ de vision
+  // (retour sur la Home avec une catégorie déjà sélectionnée, ou tap sur
+  // une chip en bord d'écran). block:'nearest' = jamais de scroll vertical.
+  const stripRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = stripRef.current?.querySelector<HTMLElement>('[data-chip-active="true"]');
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeCategory, nearbyMode, wholesaleMode]);
+
   return (
-    <div className="overflow-x-auto pt-3 pb-2 px-4" style={{ scrollbarWidth: 'none' }}>
+    <div ref={stripRef} className="overflow-x-auto pt-3 pb-2 px-4" style={{ scrollbarWidth: 'none' }}>
       <style>{`.nu-chips::-webkit-scrollbar { display: none }`}</style>
       <div className="nu-chips flex gap-2">
         <button
@@ -261,6 +285,7 @@ function CategoryChips({
           }}
           className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold border-none"
           style={chip(nearbyMode, '#10B981', '0 2px 8px rgba(16,185,129,0.35)')}
+          data-chip-active={nearbyMode}
         >
           {geoLoading
             ? <span className="w-3 h-3 border-2 border-current/40 border-t-current rounded-full animate-spin" />
@@ -272,6 +297,7 @@ function CategoryChips({
           onClick={() => { setWholesaleMode(!wholesaleMode); if (!wholesaleMode) setActiveCategory('all'); }}
           className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold border-none"
           style={chip(wholesaleMode, '#6366F1', '0 2px 8px rgba(99,102,241,0.35)')}
+          data-chip-active={wholesaleMode}
         >
           <span className="text-[13px]">🏭</span>
           {t('home.wholesale')}
@@ -281,6 +307,7 @@ function CategoryChips({
           onClick={() => { setActiveCategory('all'); setNearbyMode(false); }}
           className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold border-none"
           style={chip(activeCategory === 'all' && !nearbyMode, '#F5C842', '0 2px 8px rgba(245,200,66,0.35)')}
+          data-chip-active={activeCategory === 'all' && !nearbyMode}
         >
           <span className="text-[13px]">🛍️</span>
           {t('home.all')}
@@ -294,6 +321,7 @@ function CategoryChips({
               onClick={() => { setActiveCategory(cat.id); setNearbyMode(false); }}
               className="flex-shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full cursor-pointer transition-all duration-150 whitespace-nowrap text-[12px] font-extrabold border-none"
               style={chip(active, '#F5C842', '0 2px 8px rgba(245,200,66,0.35)')}
+              data-chip-active={active}
             >
               {cat.icon && <span className="text-[13px]">{cat.icon}</span>}
               {cat.name}
@@ -363,12 +391,12 @@ function TrendingCard({
     >
       <div className="relative w-full" style={{ paddingTop: '75%' }}>
         {imgUrl ? (
-          <img
+          <ProgressiveImage
             src={imgUrl}
             alt={product.title}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-            decoding="async"
+            blurhash={product.blurhash}
+            originalUrl={product.images?.[0]}
+            className="absolute inset-0 w-full h-full"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#F0F1F4' }}>
@@ -382,7 +410,9 @@ function TrendingCard({
           className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center border-none cursor-pointer backdrop-blur-sm transition-all active:scale-90"
           style={{ background: liked ? 'rgba(239,68,68,0.30)' : 'rgba(0,0,0,0.28)' }}
         >
-          <Heart size={13} color={liked ? '#ef4444' : '#fff'} fill={liked ? '#ef4444' : 'none'} strokeWidth={2} />
+          <span key={liked ? 'on' : 'off'} className={`inline-flex ${liked ? 'nu-heart-pop' : ''}`}>
+            <Heart size={13} color={liked ? '#ef4444' : '#fff'} fill={liked ? '#ef4444' : 'none'} strokeWidth={2} />
+          </span>
         </button>
       </div>
       <div className="flex flex-col gap-0.5 px-2.5 pt-2 pb-2.5">
@@ -662,6 +692,14 @@ export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
+  // Placeholder rotatif — mêmes termes que la Navbar (nav.searchTerms)
+  const searchTerms = useMemo(
+    () => (t('nav.searchTerms', { returnObjects: true }) as string[]) ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
+  );
+  const { term: rotatingTerm, visible: termVisible } = useRotatingPlaceholder(searchTerms);
+
   const onProductClick = (product: Product) => {
     navigate(`/product/${product.slug || product.id}`, { state: { product } });
   };
@@ -888,6 +926,7 @@ export const Home: React.FC = () => {
   const handleToggleLike = useCallback(async (productId: string, currentlyLiked: boolean) => {
     if (!currentUser) { navigate('/login'); return; }
     const next = !currentlyLiked;
+    if (next) tapHaptic();
     setLikedMap(prev => ({ ...prev, [productId]: next }));
     if (_homeCache) _homeCache = { ..._homeCache, likedMap: { ..._homeCache.likedMap, [productId]: next } };
     try {
@@ -972,7 +1011,11 @@ export const Home: React.FC = () => {
         onCountryClick={() => setCountrySheetOpen(true)}
       />
 
-      <StickySearchBar onClick={() => navigate('/search')} />
+      <StickySearchBar
+        onClick={() => navigate('/search')}
+        term={rotatingTerm || undefined}
+        termVisible={termVisible}
+      />
 
       <main className="flex-1 pb-24">
         <CategoryChips

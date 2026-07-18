@@ -7,6 +7,7 @@ import { buildWaUrl } from '../config/whatsapp.config';
 import { toWhatsAppDigits } from '../utils/phoneValidation';
 import { toggleLikeProduct, checkIsLiked } from '../services/firebase';
 import { getOptimizedUrl, getResponsiveSrcSet } from '../services/cloudinary';
+import { tapHaptic } from '../utils/haptics';
 import { ProgressiveImage } from './ProgressiveImage';
 import { VerifiedBadge } from './VerifiedBadge';
 
@@ -65,6 +66,7 @@ export const ProductCard = memo<ProductCardProps>(({
     if (!currentUserId) return;
     const next = !liked;
     setLiked(next);
+    if (next) tapHaptic();
     try { await toggleLikeProduct(product.id, currentUserId); }
     catch { setLiked(!next); }
   }, [liked, currentUserId, product.id]);
@@ -202,7 +204,9 @@ export const ProductCard = memo<ProductCardProps>(({
                         ? 'bg-red-500/30 text-red-500 dark:bg-red-500/35 dark:text-red-400'
                         : 'bg-black/30 text-white hover:bg-black/50'}`}
         >
-          <Heart size={16} fill={liked ? 'currentColor' : 'none'} strokeWidth={2} />
+          <span key={liked ? 'on' : 'off'} className={`inline-flex ${liked ? 'nu-heart-pop' : ''}`}>
+            <Heart size={16} fill={liked ? 'currentColor' : 'none'} strokeWidth={2} />
+          </span>
         </button>
 
         {imageCount > 1 && (
