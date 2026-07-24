@@ -6,6 +6,7 @@ import {
   Product, ProductStatus, SearchFilters,
 } from '../../types';
 import { generateUniqueSlug } from '../../utils/slug';
+import { normalizeSocialUrl } from '../../utils/socialLinks';
 import { Timestamp } from 'firebase/firestore';
 import {
   db, auth, collection, doc, addDoc, setDoc, getDoc, getDocs, getDocsFromCache, updateDoc, deleteDoc,
@@ -370,6 +371,11 @@ export const addProduct = async (
   const title = (productData.title || '').trim();
   const slug = generateUniqueSlug(title);
 
+  // Vitrine Vidéo — re-normalisation défensive : si l'URL ne passe pas la
+  // whitelist (TikTok/YouTube/FB/Insta), on la drop silencieusement plutôt
+  // que de faire échouer toute la publication sur le miroir Firestore rules.
+  const videoUrl = normalizeSocialUrl(productData.videoUrl || '') || null;
+
   const newProduct = {
     title,
     slug,
@@ -403,6 +409,8 @@ export const addProduct = async (
     minOrderQuantity: productData.minOrderQuantity || null,
     wholesalePrice:  productData.wholesalePrice || null,
     blurhash:        productData.blurhash || null,
+    videoUrl,
+    hasVideo:        !!videoUrl,
     createdAt:       serverTimestamp(),
   };
 
@@ -430,6 +438,49 @@ export const addProduct = async (
     console.error('[addProduct] Échec write/updateDoc:', err.code, err.message);
     throw err;
   }
+};
+
+/**
+ * Vitrine Vidéo — attache (ou détache avec null) la vidéo sociale d'un
+ * produit existant. Utilisé par le Web Share Target (/share-video) et le
+ * dashboard. Les Firestore rules valident l'URL (whitelist) et que le
+ * produit appartient bien au vendeur.
+ */
+export const attachProductVideo = async (
+  productId: string,
+  rawUrl: string | null,
+): Promise<void> => {
+  if (!db || !auth?.currentUser) throw new Error('Non authentifié');
+  const videoUrl = rawUrl ? normalizeSocialUrl(rawUrl) : '';
+  if (rawUrl && !videoUrl) throw new Error('VIDEO_URL_INVALID');
+  await updateDoc(doc(db, COLLECTIONS.PRODUCTS, productId), {
+    videoUrl: videoUrl || null,
+    hasVideo: !!videoUrl,
+  });
+};
+
+/**
+ * Rail Home « Vu en vidéo » — derniers produits approuvés avec vidéo.
+ * Requête composite (status + hasVideo + createdAt) → index dans
+ * firestore.indexes.json. Filtre pays côté client (évite un 2e index).
+ */
+export const getVideoProducts = async (
+  countryId?: string,
+  max: number = 10,
+): Promise<Product[]> => {
+  if (!db) return [];
+  const snap = await getDocs(query(
+    collection(db, COLLECTIONS.PRODUCTS),
+    where('status', '==', 'approved'),
+    where('hasVideo', '==', true),
+    orderBy('createdAt', 'desc'),
+    limit(24),
+  ));
+  return snap.docs
+    .filter(d => !isHiddenProduct(d.data()))
+    .map(d => docToProduct(d.data(), d.id))
+    .filter(p => !countryId || !p.countryId || p.countryId === countryId)
+    .slice(0, max);
 };
 
 export const deleteProduct = async (productId: string): Promise<void> => {

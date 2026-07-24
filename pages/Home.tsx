@@ -18,6 +18,7 @@ import { FeaturedVendorCard } from '../components/home/FeaturedVendorCard';
 import {
   getProducts, getProductsFromCache, getBanners, checkIsLikedBatch,
   getBoostedProducts, getProductsByIds, getSellerAllProducts, toggleLikeProduct,
+  getVideoProducts,
 } from '../services/firebase';
 import { getOptimizedUrl } from '../services/cloudinary';
 import { getRecentlyViewedIds, getPopular, getPersonalizedRecommendations } from '../services/recommendations';
@@ -56,6 +57,7 @@ interface RailsCache {
   popularProducts: Product[];
   recommended: Product[];
   sellerLatest: Product[];
+  videoProducts: Product[];
   ts: number;
 }
 let _railsCache: RailsCache | null = null;
@@ -665,6 +667,7 @@ export const Home: React.FC = () => {
   const [popularProducts, setPopularProducts] = useState<Product[]>(railsHydrate?.popularProducts ?? []);
   const [recommended, setRecommended] = useState<Product[]>(railsHydrate?.recommended ?? []);
   const [sellerLatest, setSellerLatest] = useState<Product[]>(railsHydrate?.sellerLatest ?? []);
+  const [videoProducts, setVideoProducts] = useState<Product[]>(railsHydrate?.videoProducts ?? []);
 
   const [nearbyMode, setNearbyMode] = useState(false);
   const { position, loading: geoLoading, requestLocation } = useGeolocation();
@@ -793,7 +796,7 @@ export const Home: React.FC = () => {
     const uid = currentUser?.id ?? null;
     const base: RailsCache = _railsCache && _railsCache.userId === uid
       ? _railsCache
-      : { userId: uid, recentlyViewed: [], popularProducts: [], recommended: [], sellerLatest: [], ts: Date.now() };
+      : { userId: uid, recentlyViewed: [], popularProducts: [], recommended: [], sellerLatest: [], videoProducts: [], ts: Date.now() };
     _railsCache = { ...base, ...patch, userId: uid, ts: Date.now() };
   }, [currentUser?.id]);
 
@@ -867,6 +870,25 @@ export const Home: React.FC = () => {
     return () => { cancelled = true; };
   }, [currentUser?.id, isCountryReady, recentlyViewed, updateRailsCache, refreshNonce]);
 
+  // Rail « Vu en vidéo » — produits approuvés avec vidéo sociale liée.
+  // Même pattern cache/TTL que les autres rails ; échec silencieux (le rail
+  // est simplement absent — jamais de skeleton bloquant).
+  useEffect(() => {
+    if (!isCountryReady) return;
+    const isFresh = _railsCache && _railsCache.userId === (currentUser?.id ?? null) && Date.now() - _railsCache.ts < RAILS_CACHE_TTL && _railsCache.videoProducts.length > 0;
+    if (isFresh) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const prods = await getVideoProducts(activeCountry, 10);
+        if (cancelled) return;
+        setVideoProducts(prods);
+        updateRailsCache({ videoProducts: prods });
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, isCountryReady, activeCountry, updateRailsCache, refreshNonce]);
+
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
     setLoadingMore(true);
@@ -935,20 +957,26 @@ export const Home: React.FC = () => {
     () => boostedProducts.filter(p => !sellerLatest.some(s => s.id === p.id)),
     [boostedProducts, sellerLatest],
   );
-  const trendingDeduped = useMemo(() => {
+  // « Vu en vidéo » juste sous Sponsorisé dans la hiérarchie de dédup :
+  // c'est la récompense visible des vendeurs qui lient leur vidéo.
+  const videoDeduped = useMemo(() => {
     const upper = new Set<string>([...sellerLatest, ...boostedDeduped].map(p => p.id));
+    return videoProducts.filter(p => !upper.has(p.id)).slice(0, 8);
+  }, [videoProducts, sellerLatest, boostedDeduped]);
+  const trendingDeduped = useMemo(() => {
+    const upper = new Set<string>([...sellerLatest, ...boostedDeduped, ...videoDeduped].map(p => p.id));
     return trendingProducts.filter(p => !upper.has(p.id));
-  }, [trendingProducts, sellerLatest, boostedDeduped]);
+  }, [trendingProducts, sellerLatest, boostedDeduped, videoDeduped]);
   const recommendedDeduped = useMemo(() => {
-    const upper = new Set<string>([...sellerLatest, ...boostedDeduped, ...trendingDeduped].map(p => p.id));
+    const upper = new Set<string>([...sellerLatest, ...boostedDeduped, ...videoDeduped, ...trendingDeduped].map(p => p.id));
     return recommended.filter(p => !upper.has(p.id)).slice(0, 8);
-  }, [recommended, sellerLatest, boostedDeduped, trendingDeduped]);
+  }, [recommended, sellerLatest, boostedDeduped, videoDeduped, trendingDeduped]);
   const recentlyViewedDeduped = useMemo(() => {
     const upper = new Set<string>([
-      ...sellerLatest, ...boostedDeduped, ...trendingDeduped, ...recommendedDeduped,
+      ...sellerLatest, ...boostedDeduped, ...videoDeduped, ...trendingDeduped, ...recommendedDeduped,
     ].map(p => p.id));
     return recentlyViewed.filter(p => !upper.has(p.id)).slice(0, 8);
-  }, [recentlyViewed, sellerLatest, boostedDeduped, trendingDeduped, recommendedDeduped]);
+  }, [recentlyViewed, sellerLatest, boostedDeduped, videoDeduped, trendingDeduped, recommendedDeduped]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F8FA]">
@@ -1005,6 +1033,14 @@ export const Home: React.FC = () => {
           <>
             <SectionHeader emoji="⚡" title={t('home.sections.sponsored')} />
             <TrendingRail products={boostedDeduped} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
+          </>
+        )}
+
+        {/* Vu en vidéo — produits avec vidéo sociale liée (Vitrine Vidéo) */}
+        {videoDeduped.length > 0 && (
+          <>
+            <SectionHeader emoji="🎥" title={t('home.sections.video')} />
+            <TrendingRail products={videoDeduped} likedMap={likedMap} onProductClick={onProductClick} onToggleLike={handleToggleLike} />
           </>
         )}
 

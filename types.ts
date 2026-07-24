@@ -165,6 +165,12 @@ export interface Product {
   // Boost (mise en avant payante)
   isBoosted?: boolean;
   boostExpiresAt?: number; // timestamp ms
+  // Vitrine Vidéo — lien vers la vidéo du produit hébergée sur un réseau
+  // social whitelisté (TikTok/YouTube/Facebook/Instagram, cf. utils/socialLinks).
+  // La vidéo n'est JAMAIS hébergée chez Nunulia.
+  videoUrl?: string;
+  /** Flag dénormalisé pour le rail Home « Vu en vidéo » (requête composite). */
+  hasVideo?: boolean;
 }
 
 // ─── Currencies ───

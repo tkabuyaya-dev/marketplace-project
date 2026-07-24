@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Product, User } from '../types';
 import { ProductGallery } from '../components/ProductGallery';
+import { ProductVideo } from '../components/ProductVideo';
 import { ReviewSection } from '../components/ReviewSection';
 import { ProductSection } from '../components/ProductSection';
 import { VerifiedBadge } from '../components/VerifiedBadge';
@@ -399,6 +400,11 @@ const ProductDetail: React.FC = () => {
               </button>
             ))}
           </div>
+        )}
+
+        {/* Vitrine Vidéo — façade zéro-coût, lecture intégrée au tap */}
+        {product.videoUrl && (
+          <ProductVideo videoUrl={product.videoUrl} productTitle={product.title} />
         )}
 
         {/* Prix */}

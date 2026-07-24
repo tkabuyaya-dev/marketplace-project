@@ -201,6 +201,10 @@ export { onPhotoSessionPublished } from "./share-card-trigger.js";
 //   onB2bHelp             onCreate  b2b_helps        → helpCount + notif auteur + rep +1
 //   onB2bConfirmation     onCreate  b2b_confirmations→ confirmCount + isVerified à 3 villes
 //   closeExpiredB2BPosts  cron 06:30 UTC             → close auto à J+30 + rep +2 auteur
+// Vitrine Vidéo : sweep hebdo anti-liens-morts (lundi 04:30 UTC).
+// 2 échecs oEmbed consécutifs → hasVideo:false + notification vendeur.
+export { videoLinkSweep } from "./video-link-sweep.js";
+
 export { translateB2BPost } from "./b2b-translate-post.js";
 export { onB2bHelp } from "./b2b-on-help.js";
 export { onB2bConfirmation } from "./b2b-on-confirmation.js";

@@ -171,5 +171,8 @@ export function docToProduct(docData: any, id: string): Product {
     // Boost (mise en avant payante)
     isBoosted:         docData.isBoosted || false,
     boostExpiresAt:    docData.boostExpiresAt?.toMillis?.() || docData.boostExpiresAt || undefined,
+    // Vitrine Vidéo
+    videoUrl:          docData.videoUrl || undefined,
+    hasVideo:          docData.hasVideo || false,
   } as Product;
 }

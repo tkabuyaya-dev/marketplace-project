@@ -5,8 +5,10 @@ import {
   LayoutGrid, Package, BarChart2, Zap, ShoppingCart, Palette, ShieldCheck,
   Plus, RefreshCw, Lock, Sparkles, Crown, Camera, Check, Eye, ChevronDown,
   Clock, Upload, X, Menu, MapPin, ArrowRight, ArrowUp, ArrowDown, Trash2,
-  Star, MoreHorizontal, Wifi, BadgeCheck,
+  Star, MoreHorizontal, Wifi, BadgeCheck, ClipboardPaste, Video,
 } from 'lucide-react';
+import { getProductVideoInfo } from '../utils/productVideo';
+import { detectSocialPlatform } from '../utils/socialLinks';
 import { Button } from '../components/Button';
 import { Product, User, ProductStatus, Category, Currency, SubscriptionRequest, BoostRequest } from '../types';
 import { addProduct, getSellerProducts, getSellerAllProducts, deleteProduct, syncProductCount, getCategories, updateUserProfile, resubmitProduct, editAndResubmitProduct, getActiveCurrencies, subscribeToMyRequests, getProductActivityLast30Days, ActivityEntry, MAX_RESUBMIT_ATTEMPTS, subscribeToMyBoostRequests, getBuyerRequestStats, canContactBuyer } from '../services/firebase';
@@ -289,6 +291,8 @@ export const SellerDashboard: React.FC = () => {
   const [isWholesale, setIsWholesale] = useState(false);
   const [minOrderQty, setMinOrderQty] = useState('');
   const [wholesalePrice, setWholesalePrice] = useState('');
+  // Vitrine Vidéo — lien vers la vidéo sociale du produit (optionnel)
+  const [videoUrl, setVideoUrl] = useState('');
   // Product Quality Score
   const productScore = useProductScore({
     title, description: desc, price, category, subCategory, originalPrice,
@@ -611,12 +615,16 @@ export const SellerDashboard: React.FC = () => {
       isWholesale,
       minOrderQuantity: isWholesale && minOrderQty ? Number(minOrderQty) : undefined,
       wholesalePrice: isWholesale && wholesalePrice ? Number(wholesalePrice) : undefined,
+      // Vitrine Vidéo : uniquement si le lien passe la whitelist (le champ
+      // affiche déjà l'état invalide ; on ne bloque jamais la publication).
+      videoUrl: detectSocialPlatform(videoUrl) ? videoUrl.trim() : undefined,
     };
 
     const resetForm = () => {
       setTitle(''); setPrice(''); setOriginalPrice(''); setDesc(''); setCategory(''); setSubCategory('');
       setImageFiles([]); setImagePreviews([]);
       setIsWholesale(false); setMinOrderQty(''); setWholesalePrice('');
+      setVideoUrl('');
     };
 
     const queueAsDraft = async (): Promise<boolean> => {
@@ -2065,6 +2073,74 @@ export const SellerDashboard: React.FC = () => {
                       onReorder={reorderImages}
                       compressing={compressing}
                     />
+                  </div>
+
+                  {/* ── Vitrine Vidéo — lien social optionnel (jamais hébergé chez nous) ── */}
+                  <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <SectionTitle><Video size={15} className="inline mr-1 -mt-0.5" />{t('dashboard.videoCardTitle')}</SectionTitle>
+                      <span className="ml-auto text-[10.5px] font-bold text-ink2 bg-canvas px-2 py-0.5 rounded-full">
+                        {t('dashboard.videoOptional')}
+                      </span>
+                    </div>
+                    <label className="block">
+                      <span className="text-[12.5px] font-semibold text-ink2 mb-1.5 block">{t('dashboard.videoLabel')}</span>
+                      <div className="relative">
+                        <input
+                          type="url"
+                          inputMode="url"
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={videoUrl}
+                          onChange={e => setVideoUrl(e.target.value)}
+                          className={`${inputCls} pr-24 ${videoUrl.trim() && !detectSocialPlatform(videoUrl) ? '!border-red-400 !ring-red-400/20' : ''}`}
+                          placeholder="https://www.tiktok.com/@…/video/…"
+                        />
+                        {/* Bouton Coller — 1 tap au lieu d'appui long + coller */}
+                        {'clipboard' in navigator && !!(navigator.clipboard as any)?.readText && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const txt = await navigator.clipboard.readText();
+                                if (txt) setVideoUrl(txt.trim());
+                              } catch { /* permission refusée — le champ reste éditable à la main */ }
+                            }}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 h-8 rounded-lg text-[11.5px] font-bold text-goldDeep active:scale-[0.95] transition-transform"
+                            style={{ background: 'rgba(245,200,66,0.15)' }}
+                          >
+                            <ClipboardPaste size={12} /> {t('dashboard.videoPaste')}
+                          </button>
+                        )}
+                      </div>
+                    </label>
+
+                    {/* Feedback de détection en direct */}
+                    {videoUrl.trim() && (() => {
+                      const info = getProductVideoInfo(videoUrl);
+                      if (!info) {
+                        return (
+                          <div className="rounded-input p-2.5 text-[12px] font-semibold" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.20)', color: '#B91C1C' }}>
+                            ✗ {t('dashboard.videoRejected')}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="rounded-input p-2.5 flex items-center gap-2.5" style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                          {info.thumbnailUrl && (
+                            <img src={info.thumbnailUrl} alt="" className="w-14 h-9 rounded-md object-cover shrink-0" loading="lazy" />
+                          )}
+                          <div className="text-[12px] font-semibold" style={{ color: '#047857' }}>
+                            ✓ {t('dashboard.videoDetected', { platform: info.label })} {info.emoji}
+                            {!info.embedUrl && (
+                              <div className="text-[11px] font-medium text-ink2 mt-0.5">{t('dashboard.videoNoEmbedHint', { platform: info.label })}</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <p className="text-[11px] text-ink2 leading-relaxed">{t('dashboard.videoHint')}</p>
                   </div>
 
                   {formError && (

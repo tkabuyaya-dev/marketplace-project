@@ -224,11 +224,32 @@ export const ProductCard = memo<ProductCardProps>(({
           </span>
         )}
 
-        {distanceLabel && (
-          <span className="absolute bottom-2 left-2 bg-emerald-600/90 backdrop-blur-sm text-white
-                           text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none z-10">
-            {distanceLabel}
-          </span>
+        {(distanceLabel || product.videoUrl) && (
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 pointer-events-none z-10">
+            {distanceLabel && (
+              <span className="bg-emerald-600/90 backdrop-blur-sm text-white
+                               text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {distanceLabel}
+              </span>
+            )}
+            {/* Vitrine Vidéo — signal de confiance : le produit existe en mouvement */}
+            {product.videoUrl && (
+              <span className="inline-flex items-center gap-1 bg-black/65 backdrop-blur-sm text-white
+                               text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span
+                  aria-hidden
+                  className="block"
+                  style={{
+                    width: 0, height: 0,
+                    borderLeft: '6px solid #F5C842',
+                    borderTop: '4px solid transparent',
+                    borderBottom: '4px solid transparent',
+                  }}
+                />
+                {t('product.videoBadge', 'Vidéo')}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

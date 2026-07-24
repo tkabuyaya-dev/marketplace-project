@@ -227,7 +227,12 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.keys().hasAll(['title', 'titleLower', 'price', 'description', 'sellerId', 'category', 'status', 'createdAt'])
         && (request.resource.data.get('marketplace', null) == null
-            || request.resource.data.marketplace in ['bata', 'kamenge', 'centre-ville', 'kinama', 'autres']);
+            || request.resource.data.marketplace in ['bata', 'kamenge', 'centre-ville', 'kinama', 'autres'])
+        // Vitrine Vidéo : videoUrl optionnel — si présent et non-null, doit
+        // passer la whitelist sociale (empêche tout contournement du masquage
+        // WhatsApp via ce champ, même règle que b2b_posts.mediaUrl).
+        && (request.resource.data.get('videoUrl', null) == null
+            || validSocialUrl(request.resource.data.videoUrl));
 
       // Mise à jour: vendeur (son produit, champs limités) ou admin (tout)
       // ou tout utilisateur auth pour incrémenter views/likesCount
@@ -237,7 +242,12 @@ service cloud.firestore {
           && isNotSuspendedStrict()
           // Vendeur ne peut PAS changer: status, views, likesCount, reports, sellerId
           && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['status', 'sellerId', 'reports', 'isPromoted']))
+              .hasAny(['status', 'sellerId', 'reports', 'isPromoted'])
+          // Vitrine Vidéo : si videoUrl est modifié, l'état final doit être
+          // null (retrait) ou une URL sociale whitelistée.
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['videoUrl'])
+              || request.resource.data.get('videoUrl', null) == null
+              || validSocialUrl(request.resource.data.videoUrl)))
         || (isAuth()
           // Vendeur peut re-soumettre un produit rejeté (status: rejected → pending), max 3 fois
           && resource.data.sellerId == request.auth.uid
@@ -257,7 +267,11 @@ service cloud.firestore {
           && request.resource.data.status == 'pending'
           && resource.data.get('resubmitCount', 0) < 3
           && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['sellerId', 'reports', 'isPromoted', 'createdAt']))
+              .hasAny(['sellerId', 'reports', 'isPromoted', 'createdAt'])
+          // Vitrine Vidéo : même validation que la branche edit standard.
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['videoUrl'])
+              || request.resource.data.get('videoUrl', null) == null
+              || validSocialUrl(request.resource.data.videoUrl)))
         || (isAuth()
           // Tout utilisateur auth peut incrémenter/décrémenter views ou likesCount de 1 max
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likesCount'])
