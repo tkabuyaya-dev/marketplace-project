@@ -1,5 +1,5 @@
 /**
- * B2BReputationRings — anneau de réputation B2B.
+ * B2BReputationRings - anneau de réputation B2B.
  *
  * Mapping (cf. plan §2.7) :
  *   0-5     pts → ○  Nouveau
@@ -38,7 +38,7 @@ export const B2BReputationRings: React.FC<Props> = ({ score, size = 16, ariaLabe
   return (
     <span
       role="img"
-      aria-label={ariaLabel ?? `Réputation B2B ${label} — ${score} points`}
+      aria-label={ariaLabel ?? `Réputation B2B ${label} - ${score} points`}
       className="inline-flex items-center"
       title={`${label} • ${score} pts`}
     >

@@ -275,8 +275,19 @@ function CategoryChips({
   // une chip en bord d'écran). block:'nearest' = jamais de scroll vertical.
   const stripRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
-    const el = stripRef.current?.querySelector<HTMLElement>('[data-chip-active="true"]');
-    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    const strip = stripRef.current;
+    const el = strip?.querySelector<HTMLElement>('[data-chip-active="true"]');
+    if (!strip || !el) return;
+    // Scroll horizontal du strip UNIQUEMENT. scrollIntoView (même avec
+    // block:'nearest') fait défiler la page verticalement quand la rangée est
+    // hors viewport, ce qui écrasait la restauration de scroll au retour
+    // produit → Home (la page remontait au niveau des chips).
+    const stripRect = strip.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    strip.scrollTo({
+      left: strip.scrollLeft + (elRect.left - stripRect.left) - (strip.clientWidth - elRect.width) / 2,
+      behavior: 'smooth',
+    });
   }, [activeCategory, nearbyMode, wholesaleMode]);
 
   return (

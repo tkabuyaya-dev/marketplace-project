@@ -1,5 +1,5 @@
 /**
- * NUNULIA — RenewSubscriptionModal
+ * NUNULIA - RenewSubscriptionModal
  *
  * Permet à un vendeur de renouveler son plan actuel directement depuis le
  * dashboard, sans navigation vers /plans.
@@ -9,7 +9,7 @@
  *   confirm  → saisie de la référence de transaction
  *   done     → confirmation d'envoi
  *
- * La sélection de plan (upgrade) reste sur /plans — ce modal gère uniquement
+ * La sélection de plan (upgrade) reste sur /plans - ce modal gère uniquement
  * le renouvellement du plan courant.
  */
 
@@ -63,7 +63,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
-  // Méthodes Mobile Money temps réel (éditables admin) — hook appelé AVANT le
+  // Méthodes Mobile Money temps réel (éditables admin) - hook appelé AVANT le
   // return conditionnel `!isOpen` (règle des hooks React).
   const paymentMethods = usePaymentMethods(sellerCountryId);
 
@@ -123,7 +123,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   // Un plan gratuit ne se « renouvelle » pas (la CF refuse planId=free) —
   // on propose l'upgrade vers /plans à la place (bug remonté 2026-07-10 :
   // tout vendeur expiré finit en Découverte à J+3 et tombait sur un modal
-  // « Renouveler — Gratuit, 0 BIF »).
+  // « Renouveler - Gratuit, 0 BIF »).
   const isFreeTier = tierId === 'free';
   const tier = tierId && !isFreeTier ? tiers.find(t => t.id === tierId) ?? null : null;
 
@@ -153,7 +153,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
   const formattedPrice = `${price.toLocaleString()} ${currency}`;
   const periodDiscount = (p: SubscriptionPeriod) => (p === '12m' ? '-25%' : p === '3m' ? '-10%' : null);
 
-  // Lot C (I1) : une seule demande ouverte à la fois — TOUS plans confondus
+  // Lot C (I1) : une seule demande ouverte à la fois - TOUS plans confondus
   // (aligné sur PlansPage + garde service + garde serveur approveRenewal).
   const hasOpenRequest = existingRequests.some(
     r => r.status === 'pending' || r.status === 'pending_validation'
@@ -276,7 +276,7 @@ export const RenewSubscriptionModal: React.FC<Props> = ({
           {!tier && isFreeTier && (
             <div className="text-center py-6 space-y-3">
               <p className="text-sm text-gray-400">
-                {t('dashboard.renewModalFreeTier', 'Votre plan Découverte est gratuit — il n\'y a rien à renouveler. Passez à un plan payant pour débloquer plus de produits et de fonctionnalités.')}
+                {t('dashboard.renewModalFreeTier', 'Votre plan Découverte est gratuit - il n\'y a rien à renouveler. Passez à un plan payant pour débloquer plus de produits et de fonctionnalités.')}
               </p>
               <button
                 type="button"

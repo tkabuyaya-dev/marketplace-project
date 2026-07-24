@@ -1,5 +1,5 @@
 /**
- * NUNULIA — AuthContext
+ * NUNULIA - AuthContext
  * Holds: currentUser, loginLoading, authReady, backgroundLoading
  * Handles: login, logout, contact seller, seller access routing
  * Re-renders only when auth state changes (not on notification/preference changes).
@@ -29,7 +29,7 @@ interface AuthContextType {
   loginLoading: boolean;
   authReady: boolean;
   backgroundLoading: boolean;
-  /** True pendant la transition login/logout — évite l'écran blanc mobile */
+  /** True pendant la transition login/logout - évite l'écran blanc mobile */
   isAuthTransitioning: boolean;
   handleLogin: () => Promise<void>;
   handleLogout: () => Promise<void>;
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Hide loader immediately when React mounts — don't block on Firebase auth.
+  // Hide loader immediately when React mounts - don't block on Firebase auth.
   // The page renders immediately; auth state updates progressively in the background.
   // Previously this waited for Firebase (added 1-5s of blank screen on slow networks).
   useEffect(() => {
@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Firebase Auth subscription
   useEffect(() => {
     // Safety net: if Firebase hasn't responded in 2s, unblock the UI.
-    // IMPORTANT: must also clear isAuthTransitioning — without this, a slow
+    // IMPORTANT: must also clear isAuthTransitioning - without this, a slow
     // login that triggers onAuthStateChanged late would leave the app frozen
     // forever behind AuthLoadingScreen even after the timeout fires.
     const timeout = setTimeout(() => {
@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSentryUser(currentUser.id, currentUser.email, currentUser.role);
       // FCM silent refresh : si l'utilisateur a déjà accordé les notifs sur
       // ce navigateur, on rafraîchit son token (peut avoir changé après
-      // réinstall PWA, bascule device, etc.). Pas de prompt — le toggle est
+      // réinstall PWA, bascule device, etc.). Pas de prompt - le toggle est
       // dans Profile pour la 1ʳᵉ demande.
       // Async setup avec garde anti-leak : si l'effect est cancelled avant
       // que l'import termine, on appellera unsub() dès qu'il existe.
@@ -201,14 +201,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleLogin = async () => {
     setLoginLoading(true);
-    // Ne PAS mettre isAuthTransitioning=true ici — le popup Google est ouvert
+    // Ne PAS mettre isAuthTransitioning=true ici - le popup Google est ouvert
     // et l'utilisateur doit voir la page Login derrière (pas un écran blanc).
     // On ne bloque le rendu que APRÈS le popup, pendant la résolution Firestore.
 
     try {
       const user = await signInWithGoogle();
       if (user) {
-        // Popup fermé, user résolu — montrer le loading pendant la navigation
+        // Popup fermé, user résolu - montrer le loading pendant la navigation
         setIsAuthTransitioning(true);
         setCurrentUser(user);
         trackLogin('google');
@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (err?.code === 'auth/needs-browser-open') {
         toast("Ouvrez l'application dans Safari pour vous connecter.", 'error');
       } else if (err?.code === 'auth/popup-blocked-manual') {
-        toast('Popups bloqués — autorisez-les pour ce site dans les paramètres du navigateur.', 'error');
+        toast('Popups bloqués - autorisez-les pour ce site dans les paramètres du navigateur.', 'error');
       } else {
         toast(i18n.t('toast.loginError'), 'error');
       }
@@ -262,7 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleContactSeller = (seller: User, productId?: string) => {
-    // No login required — anyone can contact a seller via WhatsApp
+    // No login required - anyone can contact a seller via WhatsApp
     const whatsapp = seller.whatsapp || (seller as any).sellerDetails?.phone;
     if (!whatsapp) {
       toast(i18n.t('toast.noWhatsapp'), 'error');

@@ -1,5 +1,5 @@
 /**
- * NUNULIA — Admin : contrôle du Coach vendeur
+ * NUNULIA - Admin : contrôle du Coach vendeur
  *
  * Kill switch + fréquence max, appliqués en temps réel par la CF sellerCoach
  * (doc `appSettings/sellerCoach`, write admin autorisé par les rules
@@ -61,7 +61,7 @@ export const CoachSettingsCard: React.FC = () => {
         <div>
           <h3 className="text-white text-sm font-bold">✨ {t('admin.coachTitle', 'Coach vendeur')}</h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            {t('admin.coachDesc', 'Rappels intelligents (1er produit, boost, digest…) — cron quotidien 18h.')}
+            {t('admin.coachDesc', 'Rappels intelligents (1er produit, boost, digest…) - cron quotidien 18h.')}
           </p>
         </div>
         <button

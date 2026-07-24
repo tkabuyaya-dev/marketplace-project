@@ -1,9 +1,9 @@
 /**
- * NUNULIA — ProductGallery
+ * NUNULIA - ProductGallery
  *
  * Galerie produit "vitrine" (page détail) :
  *
- *  1. Cadre PORTRAIT immersif (≈4:5, capé à 62vh) — les photos produits sont
+ *  1. Cadre PORTRAIT immersif (≈4:5, capé à 62vh) - les photos produits sont
  *     quasi toujours verticales : le produit est visible EN ENTIER.
  *  2. object-contain sur fond flou ambiant (micro-thumbnail Cloudinary ~200o,
  *     déjà en cache SW) → zéro bande vide, aucune photo rognée.
@@ -38,7 +38,7 @@ function Lightbox({
   onClose: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  // Transform courant + point de départ du geste — refs pour ne jamais
+  // Transform courant + point de départ du geste - refs pour ne jamais
   // re-render pendant un pinch/pan (fluidité sur appareils modestes).
   const t = useRef({ s: 1, x: 0, y: 0 });
   const gesture = useRef({
@@ -317,7 +317,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               key={img || i}
               className="relative w-full h-full shrink-0 snap-center overflow-hidden cursor-zoom-in"
               onClick={() => setLightboxOpen(true)}
-              // P1 — cible du morphing carte→galerie (un seul héros par page)
+              // P1 - cible du morphing carte→galerie (un seul héros par page)
               data-vt-hero={i === active ? '1' : undefined}
               style={i === active ? ({ viewTransitionName: HERO_VT_NAME } as React.CSSProperties) : undefined}
             >
@@ -334,7 +334,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               <div className="absolute inset-0">
                 <ProgressiveImage
                   src={getOptimizedUrl(img, 900)}
-                  alt={`${title} — photo ${i + 1}`}
+                  alt={`${title} - photo ${i + 1}`}
                   blurhash={i === 0 ? blurhash : undefined}
                   originalUrl={img}
                   fit="contain"

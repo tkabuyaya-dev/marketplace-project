@@ -1,7 +1,7 @@
 /**
- * NUNULIA — Admin : éditeur des méthodes Mobile Money par pays
+ * NUNULIA - Admin : éditeur des méthodes Mobile Money par pays
  *
- * Écrit `paymentMethods/{countryId}` (Firestore) — consommé en temps réel par
+ * Écrit `paymentMethods/{countryId}` (Firestore) - consommé en temps réel par
  * PlansPage, RenewSubscriptionModal, BoostProductModal et les modals
  * d'approbation admin. Une modification est visible par les vendeurs en
  * quelques secondes, sans redéploiement.
@@ -52,7 +52,7 @@ export const PaymentMethodsEditor: React.FC = () => {
     setSaving(true);
     try {
       await updatePaymentMethods(openCountry, cleaned);
-      toast(t('admin.pmSaved', 'Méthodes de paiement mises à jour — visibles par les vendeurs immédiatement.'), 'success');
+      toast(t('admin.pmSaved', 'Méthodes de paiement mises à jour - visibles par les vendeurs immédiatement.'), 'success');
       setOpenCountry(null);
     } catch (err) {
       console.error('[PaymentMethodsEditor] save error:', err);
@@ -88,7 +88,7 @@ export const PaymentMethodsEditor: React.FC = () => {
 
               {!isOpen && methods.map((m, i) => (
                 <p key={i} className="text-xs text-gray-400 truncate">
-                  {m.icon} <span className="text-gray-300 font-semibold">{m.name}</span> — {m.number}
+                  {m.icon} <span className="text-gray-300 font-semibold">{m.name}</span> - {m.number}
                 </p>
               ))}
 

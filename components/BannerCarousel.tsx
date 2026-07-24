@@ -21,7 +21,7 @@ const DEFAULT_BANNERS: Banner[] = [
     id: 'default-1',
     imageUrl: 'https://images.unsplash.com/photo-1616075193899-760777555365?auto=format&fit=crop&w=800&q=60',
     title: 'Bienvenue sur Nunulia',
-    subtitle: 'Le marketplace — Électronique, Mode, Beauté, Services et plus',
+    subtitle: 'Le marketplace - Électronique, Mode, Beauté, Services et plus',
     ctaText: 'Explorer',
     ctaActionType: 'none',
     isActive: true,
@@ -74,7 +74,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
     el.scrollTo({ left: idx * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
   }, [count]);
 
-  // Autoplay — l'intervalle repart à chaque changement de slide, la barre
+  // Autoplay - l'intervalle repart à chaque changement de slide, la barre
   // de progression (keyed sur `current`) est donc toujours synchrone.
   useEffect(() => {
     if (count <= 1 || paused) return;
@@ -150,7 +150,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
       >
         {activeBanners.map((banner, bannerIdx) => {
           const hasAction = banner.ctaActionType && banner.ctaActionType !== 'none' && banner.ctaAction?.trim();
-          const isFirst = bannerIdx === 0; // LCP image — highest priority
+          const isFirst = bannerIdx === 0; // LCP image - highest priority
           return (
             <div
               key={banner.id}
@@ -171,12 +171,12 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
                   draggable={false}
                 />
               </div>
-              {/* Subtle left-to-right gradient — keeps image vivid (paid ad space)
+              {/* Subtle left-to-right gradient - keeps image vivid (paid ad space)
                   while ensuring text legibility on the left side. Tuned to 50/25/0
                   vs the previous 90/60/0 which was killing visual appeal. */}
               <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/50 via-black/25 to-transparent" />
 
-              {/* Content — z-10 ensures text is ALWAYS above image + gradient */}
+              {/* Content - z-10 ensures text is ALWAYS above image + gradient */}
               <div className="relative z-10 h-full flex flex-col justify-center px-6 md:px-10 max-w-lg">
                 {banner.title && (
                   <h2
@@ -215,7 +215,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         })}
       </div>
 
-      {/* Barre de progression de l'autoplay — fine ligne or, resynchronisée
+      {/* Barre de progression de l'autoplay - fine ligne or, resynchronisée
           à chaque slide (key), figée quand l'utilisateur touche le carrousel */}
       {count > 1 && (
         <div className="absolute bottom-0 left-0 right-0 z-20 h-[3px]" style={{ background: 'rgba(255,255,255,0.25)' }}>
@@ -232,7 +232,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         </div>
       )}
 
-      {/* Dots indicator — bottom-center, gold expanding pill */}
+      {/* Dots indicator - bottom-center, gold expanding pill */}
       {count > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
           {activeBanners.map((_, i) => (

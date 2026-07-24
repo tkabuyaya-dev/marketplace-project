@@ -9,8 +9,8 @@ const PrivacyPolicy: React.FC = () => (
     <div className="max-w-2xl mx-auto">
       <LegalHeader
         title="Politique de Confidentialité"
-        subtitle="NUNULIA — Marketplace des Grands Lacs"
-        badge="Version 1.0 — En vigueur au 26 mars 2026"
+        subtitle="NUNULIA - Marketplace des Grands Lacs"
+        badge="Version 1.0 - En vigueur au 26 mars 2026"
       />
 
       <LegalInfoBox>
@@ -18,7 +18,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalInfoBox>
 
       {/* Article 1 */}
-      <LegalSection title="Article 1 — Responsable du Traitement">
+      <LegalSection title="Article 1 - Responsable du Traitement">
         <ul className="space-y-1">
           <li>Dénomination : <strong className="text-ink">NUNULIA</strong></li>
           <li>Siège : Bujumbura, Burundi</li>
@@ -28,7 +28,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 2 */}
-      <LegalSection title="Article 2 — Données Collectées">
+      <LegalSection title="Article 2 - Données Collectées">
         <p><strong className="text-ink">2.1 Données fournies directement par l'utilisateur</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Nom et prénom affichés sur votre profil public</li>
@@ -57,7 +57,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 3 */}
-      <LegalSection title="Article 3 — Finalités du Traitement">
+      <LegalSection title="Article 3 - Finalités du Traitement">
         <ol className="list-decimal list-inside space-y-1 ml-2">
           <li>Création et gestion de votre compte utilisateur</li>
           <li>Authentification sécurisée via Google OAuth</li>
@@ -73,7 +73,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 4 */}
-      <LegalSection title="Article 4 — Base Légale du Traitement">
+      <LegalSection title="Article 4 - Base Légale du Traitement">
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><strong className="text-ink">Exécution du contrat :</strong> traitement nécessaire à la fourniture du service NUNULIA</li>
           <li><strong className="text-ink">Consentement explicite :</strong> pour communications optionnelles</li>
@@ -83,7 +83,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 5 */}
-      <LegalSection title="Article 5 — Partage des Données">
+      <LegalSection title="Article 5 - Partage des Données">
         <p><strong className="text-ink">5.1 Sous-traitants techniques (uniquement)</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><strong className="text-ink">Google Firebase :</strong> base de données, hébergement, authentification</li>
@@ -103,7 +103,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 6 */}
-      <LegalSection title="Article 6 — Durée de Conservation">
+      <LegalSection title="Article 6 - Durée de Conservation">
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><strong className="text-ink">Compte actif :</strong> pendant toute la durée de l'inscription</li>
           <li><strong className="text-ink">Après suppression du compte :</strong> anonymisation immédiate de toutes les données identifiantes</li>
@@ -115,7 +115,7 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 7 */}
-      <LegalSection title="Article 7 — Sécurité des Données">
+      <LegalSection title="Article 7 - Sécurité des Données">
         <p>Mesures techniques en place :</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Authentification déléguée à Google OAuth 2.0 (aucun mot de passe stocké par NUNULIA)</li>
@@ -130,29 +130,29 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 8 */}
-      <LegalSection title="Article 8 — Vos Droits">
+      <LegalSection title="Article 8 - Vos Droits">
         <p>Vous disposez des droits suivants sur vos données :</p>
         <ol className="list-decimal list-inside space-y-2 ml-2">
-          <li><strong className="text-ink">Droit d'accès</strong> — Obtenir une copie de vos données</li>
-          <li><strong className="text-ink">Droit de rectification</strong> — Corriger des données inexactes</li>
-          <li><strong className="text-ink">Droit à l'effacement</strong> — Demander la suppression du compte</li>
-          <li><strong className="text-ink">Droit à la portabilité</strong> — Recevoir vos données en format structuré et lisible par machine</li>
-          <li><strong className="text-ink">Droit d'opposition</strong> — Vous opposer à certains traitements</li>
-          <li><strong className="text-ink">Droit à la limitation</strong> — Suspendre temporairement un traitement</li>
+          <li><strong className="text-ink">Droit d'accès</strong> - Obtenir une copie de vos données</li>
+          <li><strong className="text-ink">Droit de rectification</strong> - Corriger des données inexactes</li>
+          <li><strong className="text-ink">Droit à l'effacement</strong> - Demander la suppression du compte</li>
+          <li><strong className="text-ink">Droit à la portabilité</strong> - Recevoir vos données en format structuré et lisible par machine</li>
+          <li><strong className="text-ink">Droit d'opposition</strong> - Vous opposer à certains traitements</li>
+          <li><strong className="text-ink">Droit à la limitation</strong> - Suspendre temporairement un traitement</li>
         </ol>
         <p className="mt-3">
           Pour exercer ces droits : <span className="text-goldText">contact@nunulia.com</span><br />
           Délai de réponse garanti : 30 jours maximum.
         </p>
 
-        <p><strong className="text-ink">8.1 Suppression de compte — Exercice direct</strong></p>
+        <p><strong className="text-ink">8.1 Suppression de compte - Exercice direct</strong></p>
         <p>
           Disponible directement dans Profil &rarr; Zone Dangereuse. Entraîne l'anonymisation immédiate de toutes les données identifiantes. Certaines données anonymisées peuvent être conservées pour l'intégrité et la sécurité de la plateforme.
         </p>
       </LegalSection>
 
       {/* Article 9 */}
-      <LegalSection title="Article 9 — Cookies et Stockage Local">
+      <LegalSection title="Article 9 - Cookies et Stockage Local">
         <p>NUNULIA utilise uniquement le stockage local PWA pour :</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><strong className="text-ink">Cache PWA :</strong> fonctionnement hors ligne de l'application</li>
@@ -165,28 +165,28 @@ const PrivacyPolicy: React.FC = () => (
       </LegalSection>
 
       {/* Article 10 */}
-      <LegalSection title="Article 10 — Transferts Internationaux">
+      <LegalSection title="Article 10 - Transferts Internationaux">
         <p>
           Vos données sont hébergées sur Google Firebase, région europe-west1 (Belgique, Union Européenne). Firebase dispose de mécanismes de protection adéquats (clauses contractuelles types) pour les transferts internationaux.
         </p>
       </LegalSection>
 
       {/* Article 11 */}
-      <LegalSection title="Article 11 — Protection des Mineurs">
+      <LegalSection title="Article 11 - Protection des Mineurs">
         <p>
-          NUNULIA est strictement réservée aux personnes majeures (18 ans et plus). Nous ne collectons pas sciemment de données relatives à des mineurs. Si vous constatez qu'un mineur a créé un compte, signalez-le immédiatement à : <span className="text-goldText">contact@nunulia.com</span> — Le compte sera supprimé sans délai.
+          NUNULIA est strictement réservée aux personnes majeures (18 ans et plus). Nous ne collectons pas sciemment de données relatives à des mineurs. Si vous constatez qu'un mineur a créé un compte, signalez-le immédiatement à : <span className="text-goldText">contact@nunulia.com</span> - Le compte sera supprimé sans délai.
         </p>
       </LegalSection>
 
       {/* Article 12 */}
-      <LegalSection title="Article 12 — Modifications de la Politique">
+      <LegalSection title="Article 12 - Modifications de la Politique">
         <p>
           Toute modification substantielle sera notifiée avec un préavis de 15 jours via notification dans l'application. L'utilisation continue après modification vaut acceptation de la politique mise à jour.
         </p>
       </LegalSection>
 
       {/* Article 13 */}
-      <LegalSection title="Article 13 — Contact et Réclamations">
+      <LegalSection title="Article 13 - Contact et Réclamations">
         <ul className="space-y-1">
           <li>Email : <span className="text-goldText">contact@nunulia.com</span></li>
           <li>Site : <span className="text-goldText">https://nunulia.com</span></li>
@@ -199,7 +199,7 @@ const PrivacyPolicy: React.FC = () => (
 
       {/* Footer */}
       <div className="text-center text-xs text-ink2 border-t border-black/[0.08] pt-6 mt-8">
-        &copy; 2026 NUNULIA — Document officiel — Version 1.0 — 26 mars 2026 — Tous droits réservés.
+        &copy; 2026 NUNULIA - Document officiel - Version 1.0 - 26 mars 2026 - Tous droits réservés.
       </div>
     </div>
   </div>

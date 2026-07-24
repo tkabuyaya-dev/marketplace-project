@@ -1,10 +1,10 @@
 /**
- * NUNULIA — Vitrine Vidéo : façade → lecteur intégré.
+ * NUNULIA - Vitrine Vidéo : façade → lecteur intégré.
  *
  * Pattern « facade » strict pour le moat offline-first 2G/3G :
  * - Au rendu : AUCUN script/iframe tiers. Juste une miniature (image statique
  *   YouTube ou carte brandée) + bouton play doré. Coût réseau ≈ 0.
- * - Au tap : l'iframe d'embed officiel se charge en place — la vidéo se joue
+ * - Au tap : l'iframe d'embed officiel se charge en place - la vidéo se joue
  *   DANS Nunulia, hébergée et servie par TikTok/YouTube (coût Nunulia = 0).
  * - Plateformes non-embeddables (FB/Insta, liens courts TikTok) : la façade
  *   ouvre la vidéo sur la plateforme dans un nouvel onglet (fallback assumé).
@@ -16,7 +16,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { getProductVideoInfo } from '../utils/productVideo';
 import type { SocialPlatform } from '../utils/socialLinks';
 
-/** Pastilles plateforme — couleurs officielles pour la reconnaissance immédiate. */
+/** Pastilles plateforme - couleurs officielles pour la reconnaissance immédiate. */
 const PLATFORM_PILL: Record<SocialPlatform, { bg: string; label: string }> = {
   tiktok:    { bg: '#010101', label: 'TikTok' },
   youtube:   { bg: '#FF0000', label: 'YouTube' },
@@ -40,7 +40,7 @@ export const ProductVideo: React.FC<ProductVideoProps> = ({ videoUrl, productTit
     if (info.embedUrl) {
       setPlaying(true);
     } else {
-      // Fallback externe — jamais de bouton mort.
+      // Fallback externe - jamais de bouton mort.
       window.open(videoUrl!, '_blank', 'noopener,noreferrer');
     }
   }, [info, videoUrl]);
@@ -53,7 +53,7 @@ export const ProductVideo: React.FC<ProductVideoProps> = ({ videoUrl, productTit
 
   return (
     <div className="mt-1 mb-4">
-      {/* En-tête de section — même grammaire que les autres sections détail */}
+      {/* En-tête de section - même grammaire que les autres sections détail */}
       <div className="flex items-center gap-2 mb-2.5 px-0.5">
         <span className="text-[14px] font-extrabold text-[#111318]">
           🎥 {t('productVideo.sectionTitle', 'Voir en vidéo')}
@@ -77,7 +77,7 @@ export const ProductVideo: React.FC<ProductVideoProps> = ({ videoUrl, productTit
       </div>
 
       {!playing ? (
-        /* ── FAÇADE — zéro ressource tierce chargée ── */
+        /* ── FAÇADE - zéro ressource tierce chargée ── */
         <button
           type="button"
           onClick={handleActivate}
@@ -118,7 +118,7 @@ export const ProductVideo: React.FC<ProductVideoProps> = ({ videoUrl, productTit
             </div>
           )}
 
-          {/* Bouton play doré — pulse ring déjà défini dans tailwind.config */}
+          {/* Bouton play doré - pulse ring déjà défini dans tailwind.config */}
           <span className="absolute inset-0 flex items-center justify-center">
             <span
               className="w-14 h-14 rounded-full bg-gold-400 animate-pulse-ring flex items-center justify-center shadow-gold transition-transform duration-200 group-hover:scale-105 group-active:scale-95"
@@ -143,12 +143,12 @@ export const ProductVideo: React.FC<ProductVideoProps> = ({ videoUrl, productTit
           {/* Légende bas de façade */}
           <span className="absolute bottom-2.5 left-0 right-0 text-center text-white/90 text-[11px] font-semibold px-4 pointer-events-none">
             {info.embedUrl
-              ? t('productVideo.tapToPlay', 'Touchez pour lire — la vidéo se joue ici')
+              ? t('productVideo.tapToPlay', 'Touchez pour lire - la vidéo se joue ici')
               : t('productVideo.tapToOpen', 'Touchez pour ouvrir sur {{platform}}', { platform: pill.label })}
           </span>
         </button>
       ) : (
-        /* ── LECTEUR — iframe officiel, chargé uniquement après le tap ── */
+        /* ── LECTEUR - iframe officiel, chargé uniquement après le tap ── */
         <div
           className={`relative overflow-hidden rounded-2xl bg-black ${isVertical ? 'mx-auto' : 'w-full'}`}
           style={isVertical
@@ -157,7 +157,7 @@ export const ProductVideo: React.FC<ProductVideoProps> = ({ videoUrl, productTit
         >
           <iframe
             src={info.embedUrl!}
-            title={`${t('productVideo.iframeTitle', 'Vidéo du produit')} — ${productTitle}`}
+            title={`${t('productVideo.iframeTitle', 'Vidéo du produit')} - ${productTitle}`}
             className="absolute inset-0 w-full h-full border-0"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             allowFullScreen

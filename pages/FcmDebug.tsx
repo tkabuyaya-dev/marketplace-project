@@ -1,5 +1,5 @@
 /**
- * NUNULIA — Page diagnostic /fcm-debug
+ * NUNULIA - Page diagnostic /fcm-debug
  *
  * Outil permanent pour debugger les push notifications sur PC ET mobile.
  * Accessible aux utilisateurs connectés (chacun voit ses propres tokens).
@@ -12,7 +12,7 @@
  *   - Push events reçus dans le SW (via BroadcastChannel)
  *
  * 2 boutons de test :
- *   - "Test notif directe" : new Notification() — sans FCM/serveur
+ *   - "Test notif directe" : new Notification() - sans FCM/serveur
  *   - "Test push FCM" : appelle CF sendTestPush → push réel multicast
  */
 
@@ -47,7 +47,7 @@ interface Diagnostic {
   isIOS: boolean;
   iosVersion: number | null;     // Major version (16, 17, etc.) or null si non-iOS
   isStandalone: boolean;          // true = installé en PWA (Home Screen)
-  pushSupportedIOS: boolean;      // iOS 16.4+ AND standalone — sinon impossible
+  pushSupportedIOS: boolean;      // iOS 16.4+ AND standalone - sinon impossible
 }
 
 interface TestResult {
@@ -157,14 +157,14 @@ export default function FcmDebug() {
     ch.onmessage = (event) => {
       const time = new Date().toLocaleTimeString('fr-FR');
       const data = event.data || {};
-      const msg = `[${time}] SW push reçu — title: "${data.title || '—'}" type: ${data.type || '—'}`;
+      const msg = `[${time}] SW push reçu - title: "${data.title || '—'}" type: ${data.type || '—'}`;
       setPushLog((prev) => [msg, ...prev].slice(0, 20));
     };
     return () => ch.close();
   }, []);
 
   // ── Test direct via ServiceWorkerRegistration.showNotification() ───
-  // (compatible desktop + mobile — `new Notification()` est bloqué sur Android Chrome)
+  // (compatible desktop + mobile - `new Notification()` est bloqué sur Android Chrome)
   const testDirect = useCallback(async () => {
     setTesting('direct');
     const at = new Date().toLocaleTimeString('fr-FR');
@@ -254,15 +254,15 @@ export default function FcmDebug() {
         </p>
       </header>
 
-      {/* ⚠️ Bandeau iOS — Apple bloque Web Push hors PWA installée */}
+      {/* ⚠️ Bandeau iOS - Apple bloque Web Push hors PWA installée */}
       {diag?.isIOS && !diag.pushSupportedIOS && (
         <div className="rounded-2xl p-4 border-2 bg-red-50 border-red-300">
           <div className="text-base font-bold mb-2 text-red-800">
-            🍎 iOS détecté — push impossible en l'état
+            🍎 iOS détecté - push impossible en l'état
           </div>
           <div className="text-xs text-red-900 space-y-1">
             {diag.iosVersion !== null && diag.iosVersion < 16.4 && (
-              <p>❌ <b>iOS {diag.iosVersion.toFixed(2)}</b> — il faut iOS 16.4 minimum. Mettez à jour votre iPhone.</p>
+              <p>❌ <b>iOS {diag.iosVersion.toFixed(2)}</b> - il faut iOS 16.4 minimum. Mettez à jour votre iPhone.</p>
             )}
             {(diag.iosVersion === null || diag.iosVersion >= 16.4) && !diag.isStandalone && (
               <>
@@ -311,7 +311,7 @@ export default function FcmDebug() {
                 </Badge>
               </Row>
               <Row label="App installée (PWA)">
-                <Badge ok={diag.isStandalone}>{diag.isStandalone ? 'oui' : 'non — bloque tout'}</Badge>
+                <Badge ok={diag.isStandalone}>{diag.isStandalone ? 'oui' : 'non - bloque tout'}</Badge>
               </Row>
             </>
           )}
@@ -342,7 +342,7 @@ export default function FcmDebug() {
 
           {diag.remoteTokens.map((t) => (
             <Row key={t.id} label={`└ ${t.device}`}>
-              <span className="text-[10px] text-gray-500">{t.preview} — {t.createdAt}</span>
+              <span className="text-[10px] text-gray-500">{t.preview} - {t.createdAt}</span>
             </Row>
           ))}
         </div>
@@ -383,7 +383,7 @@ export default function FcmDebug() {
             {results.map((r, i) => (
               <li key={i} className={`text-xs p-2.5 rounded-lg ${r.ok ? 'bg-green-50' : 'bg-red-50'}`}>
                 <div className="font-bold">
-                  [{r.at}] {r.type === 'direct' ? '🧪 Direct' : '🚀 FCM'} — {r.ok ? '✅' : '❌'} {r.message}
+                  [{r.at}] {r.type === 'direct' ? '🧪 Direct' : '🚀 FCM'} - {r.ok ? '✅' : '❌'} {r.message}
                 </div>
                 {r.details && <div className="text-gray-600 mt-1">{r.details}</div>}
               </li>

@@ -44,11 +44,11 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
   // Vendor 360° drawer
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [forcingRenewal, setForcingRenewal] = useState(false);
-  // Lot A (C3) : plan appliqué par le renouvellement forcé — pré-rempli avec le
+  // Lot A (C3) : plan appliqué par le renouvellement forcé - pré-rempli avec le
   // tier payant courant du vendeur, sinon sa dernière demande approuvée.
   const [forcePlanId, setForcePlanId] = useState<string>('vendeur');
 
-  // Approve confirmation modal (operator verification — methods are country-specific)
+  // Approve confirmation modal (operator verification - methods are country-specific)
   const [approvingRequest, setApprovingRequest] = useState<SubscriptionRequest | null>(null);
   const [verifiedMethod, setVerifiedMethod] = useState<string>('');
   const [approving, setApproving] = useState(false);
@@ -72,11 +72,11 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
     setAllSubRequests(requests);
   };
 
-  // Heartbeat du cron subscriptionLifecycle (Lot B, audit I6) — un cron mort
+  // Heartbeat du cron subscriptionLifecycle (Lot B, audit I6) - un cron mort
   // ne doit plus passer inaperçu : chip vert/rouge dans l'en-tête.
   const [heartbeat, setHeartbeat] = useState<LifecycleHeartbeat | null>(null);
 
-  // Méthodes Mobile Money par pays — temps réel (éditables via l'éditeur
+  // Méthodes Mobile Money par pays - temps réel (éditables via l'éditeur
   // ci-dessous). Les modals d'approbation lisent la même source que les vendeurs.
   const [methodsByCountry, setMethodsByCountry] = useState<Record<string, PaymentMethod[]>>(PAYMENT_METHODS);
 
@@ -113,7 +113,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       r => r.status === 'approved' && r.updatedAt >= since30d
     );
     // MRR proxy: sum of approved request amounts in the last 30 days, grouped
-    // by currency (no FX conversion — admin reads each currency line separately).
+    // by currency (no FX conversion - admin reads each currency line separately).
     const mrrByCurrency: Record<string, number> = {};
     for (const r of approved30d) {
       mrrByCurrency[r.currency] = (mrrByCurrency[r.currency] ?? 0) + r.amount;
@@ -437,7 +437,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || `CF status ${res.status}`);
       }
-      // P5 — amountValidation : alerter l'admin si le montant ne matche pas
+      // P5 - amountValidation : alerter l'admin si le montant ne matche pas
       const data = await res.json().catch(() => ({}));
       if (data?.amountValidation && data.amountValidation.passed === false) {
         const v = data.amountValidation;
@@ -497,7 +497,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
 
   // ─── Bulk approve helpers ──────────────────────────────────────────────────
 
-  /** Requests currently selected for the bulk action — ordered as in the list */
+  /** Requests currently selected for the bulk action - ordered as in the list */
   const selectedRequests = useMemo(
     () => subRequests.filter(r => selectedRequestIds.has(r.id) && r.status === 'pending_validation'),
     [subRequests, selectedRequestIds]
@@ -551,12 +551,12 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
       const idToken = await auth?.currentUser?.getIdToken();
       if (!idToken) throw new Error('Not authenticated');
 
-      // Sequential — keeps Firestore quota usage low and lets partial errors
+      // Sequential - keeps Firestore quota usage low and lets partial errors
       // surface cleanly. Lot 4 P1 : un seul appel CF atomique par demande.
       let done = 0;
       let failed = 0;
       // D-2 (audit I4) : les écarts de montant détectés par P5 ne partent plus
-      // en console.warn silencieux — ils remontent à l'admin après le lot.
+      // en console.warn silencieux - ils remontent à l'admin après le lot.
       const amountMismatches: { name: string; expected: number; submitted: number }[] = [];
       for (const req of selectedRequests) {
         try {
@@ -609,7 +609,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         console.warn('[bulkApprove] amount mismatches:', amountMismatches);
         toast(
           t('admin.subBulkAmountMismatch',
-            '⚠ {{count}} montant(s) non conforme(s) — ex. {{name}} : {{submitted}} au lieu de {{expected}}. Détail dans l\'audit log.',
+            '⚠ {{count}} montant(s) non conforme(s) - ex. {{name}} : {{submitted}} au lieu de {{expected}}. Détail dans l\'audit log.',
             { count: amountMismatches.length, name: first.name, submitted: first.submitted, expected: first.expected }),
           'error',
         );
@@ -630,12 +630,12 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
   /**
    * Force-renew a vendor without a vendor-initiated request.
    * Used when payment was received out-of-band (e.g. cash, direct WhatsApp).
-   * Bypasses approveSubscriptionRequest (no request to approve) — calls
+   * Bypasses approveSubscriptionRequest (no request to approve) - calls
    * approveRenewal directly with verifiedVia='admin_manual' so the audit log
    * captures it as an admin override.
    */
   const handleForceRenew = async (vendorId: string) => {
-    // Lot A (C3) : le plan est explicite — la CF restaure tierLabel/maxProducts,
+    // Lot A (C3) : le plan est explicite - la CF restaure tierLabel/maxProducts,
     // un vendeur déjà auto-downgradé retrouve le plan qu'il a payé.
     const planLabel = INITIAL_SUBSCRIPTION_TIERS.find(x => x.id === forcePlanId)?.label ?? forcePlanId;
     if (!window.confirm(t('admin.subForceRenewConfirmPlan', 'Renouveler ce vendeur 30 jours sur le plan {{plan}} ?', { plan: planLabel }))) return;
@@ -672,7 +672,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* ════════════════════ SECTION 1 — KPIs ════════════════════ */}
+      {/* ════════════════════ SECTION 1 - KPIs ════════════════════ */}
       <section>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -791,7 +791,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         </div>
       </section>
 
-      {/* ════════════════════ SECTION 2 — File de validation ════════════════════ */}
+      {/* ════════════════════ SECTION 2 - File de validation ════════════════════ */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-bold text-white flex-1">
@@ -905,7 +905,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
             <p className="text-[11px] text-gray-500 flex-1">
               {t('admin.subResultCount', '{{count}} demande(s) affichée(s)', { count: subRequests.length })}
             </p>
-            {/* Bulk select toggle — only meaningful when at least one pending_validation is visible */}
+            {/* Bulk select toggle - only meaningful when at least one pending_validation is visible */}
             {subRequests.some(r => r.status === 'pending_validation') && (
               <button
                 onClick={selectAllVisible}
@@ -933,7 +933,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                 'border-red-500/30'
               }`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  {/* Bulk-select checkbox — only available for pending_validation */}
+                  {/* Bulk-select checkbox - only available for pending_validation */}
                   {req.status === 'pending_validation' && (
                     <input
                       type="checkbox"
@@ -1040,11 +1040,11 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         )}
       </section>
 
-      {/* ════════════════════ SECTION 3 — Tableau d'expiration ════════════════════ */}
+      {/* ════════════════════ SECTION 3 - Tableau d'expiration ════════════════════ */}
       <section className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-base font-bold text-white">
-            {t('admin.subExpiryTitle', 'Vendeurs payants — expirations')}
+            {t('admin.subExpiryTitle', 'Vendeurs payants - expirations')}
           </h3>
           <p className="text-[11px] text-gray-500">
             {t('admin.subExpirySubtitle', '{{count}} vendeur(s) payant(s) au total', { count: kpis.paidTotal })}
@@ -1131,7 +1131,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         )}
       </section>
 
-      {/* ════════════════════ SECTION 4 — Tarification par pays ════════════════════ */}
+      {/* ════════════════════ SECTION 4 - Tarification par pays ════════════════════ */}
       <section className="space-y-3">
         <h2 className="text-white text-base font-black px-1">
           {t('admin.pricingTitle', 'Tarification par pays')}
@@ -1192,10 +1192,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
         )}
       </section>
 
-      {/* ════════════ SECTION 4b — Méthodes de paiement par pays ════════════ */}
+      {/* ════════════ SECTION 4b - Méthodes de paiement par pays ════════════ */}
       <PaymentMethodsEditor />
 
-      {/* ════════════════════ SECTION 5 — Analytics ════════════════════ */}
+      {/* ════════════════════ SECTION 5 - Analytics ════════════════════ */}
       <section className="space-y-3">
         <h2 className="text-white text-base font-black px-1">
           {t('admin.analyticsTitle', 'Analytics &amp; Métriques')}
@@ -1402,7 +1402,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                 {bulkMethods ? (
                   <>
                     <p className="text-[10px] text-gray-500 mb-2.5">
-                      {t('admin.subBulkSameCountry', 'Toutes les demandes proviennent du même pays — utilisez la méthode appropriée.')}
+                      {t('admin.subBulkSameCountry', 'Toutes les demandes proviennent du même pays - utilisez la méthode appropriée.')}
                     </p>
                     <div className="space-y-2 mb-4">
                       {bulkMethods.map((m) => {
@@ -1435,7 +1435,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                 ) : (
                   <div className="bg-amber-900/20 border border-amber-600/30 rounded-lg p-3 mb-4">
                     <p className="text-xs text-amber-300 mb-2">
-                      {t('admin.subBulkMixedCountries', 'Demandes de pays différents — vérification multi-opérateurs.')}
+                      {t('admin.subBulkMixedCountries', 'Demandes de pays différents - vérification multi-opérateurs.')}
                     </p>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -1524,7 +1524,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                   return (
                     <div className="bg-gray-800/40 border border-gray-700 rounded-xl px-4 py-3">
                       <p className="text-xs text-gray-400">
-                        {t('admin.subVendorFreeTier', 'Plan gratuit (Découverte) — pas d\'expiration suivie.')}
+                        {t('admin.subVendorFreeTier', 'Plan gratuit (Découverte) - pas d\'expiration suivie.')}
                       </p>
                     </div>
                   );
@@ -1618,7 +1618,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                 </div>
               )}
 
-              {/* Force renew — Lot A (C3) : plan explicite, restauré par la CF */}
+              {/* Force renew - Lot A (C3) : plan explicite, restauré par la CF */}
               <div className="flex items-center gap-2">
                 <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold flex-shrink-0">
                   {t('admin.subForceRenewPlanLabel', 'Plan')}
@@ -1775,7 +1775,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({
                 </a>
               )}
 
-              {/* Operator selection — country-specific */}
+              {/* Operator selection - country-specific */}
               <p className="text-[11px] uppercase tracking-wider text-gray-400 font-bold mb-2">
                 {t('admin.subApproveVerifyVia', 'J\'ai vérifié cette transaction sur :')}
               </p>

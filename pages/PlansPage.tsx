@@ -27,7 +27,7 @@ import { planIdFromLabel } from '../utils/planFeatures';
 import { UpgradeRecap } from '../components/UpgradeRecap';
 import { SubscriptionHistory } from '../components/SubscriptionHistory';
 
-// Ordre des plans — utilisé pour verrouiller les downgrades (D2) et détecter
+// Ordre des plans - utilisé pour verrouiller les downgrades (D2) et détecter
 // les upgrades (D1). Doit rester aligné sur PLAN_RANK de approve-renewal.ts.
 const PLAN_RANK: Record<string, number> = { free: 0, vendeur: 1, pro: 2, grossiste: 3 };
 
@@ -120,14 +120,14 @@ export const PlansPage: React.FC = () => {
 
   const sellerCountryId = currentUser?.sellerDetails?.countryId || 'bi';
   const country = INITIAL_COUNTRIES.find(c => c.id === sellerCountryId);
-  // Méthodes Mobile Money temps réel — éditables depuis l'admin sans redéploiement
+  // Méthodes Mobile Money temps réel - éditables depuis l'admin sans redéploiement
   const paymentMethods = usePaymentMethods(sellerCountryId);
   const currentTierLabel = currentUser?.sellerDetails?.tierLabel || 'Gratuit';
 
   const paidTiers = useMemo(() => tiers.filter(t => t.id !== 'free'), [tiers]);
 
   // Resolve the seller's currently-held paid tier (matched by label, since admin
-  // can override with custom labels — see RenewSubscriptionModal for same logic)
+  // can override with custom labels - see RenewSubscriptionModal for same logic)
   const currentPaidTier = useMemo(
     () => paidTiers.find(t => t.label === currentTierLabel) ?? null,
     [paidTiers, currentTierLabel]
@@ -144,7 +144,7 @@ export const PlansPage: React.FC = () => {
   const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 7;
   const isExpired = daysRemaining === 0;
 
-  // ── Lot C — dérivés de politique upgrade/downgrade ──────────────────────
+  // ── Lot C - dérivés de politique upgrade/downgrade ──────────────────────
   // Plan courant résolu par planId (tolère les labels legacy Élite/Starter…)
   const currentPlanId = planIdFromLabel(currentTierLabel);
   const hasActivePaid =
@@ -205,7 +205,7 @@ export const PlansPage: React.FC = () => {
     const base = getPrice(tierId);
     if (p === '3m')  return Math.round(base * 3 * 0.9);
     if (p === '12m') return Math.round(base * 12 * 0.75);
-    return base; // 1m — no discount
+    return base; // 1m - no discount
   };
 
   const periodDiscount   = (p: SubscriptionPeriod) => (p === '12m' ? '-25%' : p === '3m' ? '-10%' : null);
@@ -235,9 +235,9 @@ export const PlansPage: React.FC = () => {
       setStep('confirmation');
       return;
     }
-    // I1 : une seule demande ouverte à la fois — tous plans confondus
+    // I1 : une seule demande ouverte à la fois - tous plans confondus
     if (hasAnyOpenRequest) {
-      toast(t('plans.openRequestBanner', 'Vous avez déjà une demande en cours — finalisez, modifiez ou annulez-la avant d\'en créer une autre.'), 'error');
+      toast(t('plans.openRequestBanner', 'Vous avez déjà une demande en cours - finalisez, modifiez ou annulez-la avant d\'en créer une autre.'), 'error');
       return;
     }
     // D2/I3 : pas d'achat d'un plan inférieur pendant un plan actif
@@ -376,7 +376,7 @@ export const PlansPage: React.FC = () => {
   };
 
   // Message WhatsApp contextuel : une fois le paiement soumis (étapes
-  // confirmation/done), le vendeur A payé — le message le dit clairement,
+  // confirmation/done), le vendeur A payé - le message le dit clairement,
   // inclut le numéro payeur/référence et le lien direct vers la file de
   // validation admin (bug de formulation remonté le 2026-07-10).
   const hasSubmittedPayment = step === 'confirmation' || step === 'done';
@@ -473,7 +473,7 @@ export const PlansPage: React.FC = () => {
         {/* ─── STEP 1: Plans grid ─── */}
         {step === 'plans' && (
           <div className="animate-fade-in">
-            {/* One-click renewal card — visible only when a paid plan is active and resolvable */}
+            {/* One-click renewal card - visible only when a paid plan is active and resolvable */}
             {currentPaidTier && (
               <div className="px-4 pt-4">
                 <button
@@ -519,7 +519,7 @@ export const PlansPage: React.FC = () => {
               </div>
             )}
 
-            {/* Days-remaining banner — visible only when a paid plan is active or just expired */}
+            {/* Days-remaining banner - visible only when a paid plan is active or just expired */}
             {daysRemaining !== null && (
               <div className="px-4 pt-4">
                 <div
@@ -559,7 +559,7 @@ export const PlansPage: React.FC = () => {
                         ? t('plans.renewToReactivate', 'Renouvelez pour réactiver vos produits')
                         : isExpiringSoon
                         ? t('plans.renewBeforeExpiry', 'Renouvelez avant la date d\'expiration')
-                        : t('plans.activeUntil', 'Plan actif — {{date}}', {
+                        : t('plans.activeUntil', 'Plan actif - {{date}}', {
                             date: new Date(subscriptionExpiresAt!).toLocaleDateString('fr-FR', {
                               day: '2-digit', month: 'short', year: 'numeric',
                             }),
@@ -570,7 +570,7 @@ export const PlansPage: React.FC = () => {
               </div>
             )}
 
-            {/* I1 — une seule demande ouverte : bannière d'orientation */}
+            {/* I1 - une seule demande ouverte : bannière d'orientation */}
             {hasAnyOpenRequest && (
               <div className="px-4 pt-4">
                 <div
@@ -579,7 +579,7 @@ export const PlansPage: React.FC = () => {
                 >
                   <Info size={14} color="#3b82f6" className="flex-shrink-0" />
                   <p className="text-[11px] text-gray-600 leading-snug">
-                    {t('plans.openRequestBanner', 'Vous avez déjà une demande en cours — finalisez, modifiez ou annulez-la avant d\'en créer une autre.')}
+                    {t('plans.openRequestBanner', 'Vous avez déjà une demande en cours - finalisez, modifiez ou annulez-la avant d\'en créer une autre.')}
                   </p>
                 </div>
               </div>
@@ -914,7 +914,7 @@ export const PlansPage: React.FC = () => {
                             {isPaymentPending ? t('plans.pendingBadgePayment') : t('plans.pendingBadgeVerif')}
                           </span>
                         </div>
-                        {/* Lifecycle actions (Lot 3) — toujours visibles : annuler + modifier (pending only) */}
+                        {/* Lifecycle actions (Lot 3) - toujours visibles : annuler + modifier (pending only) */}
                         <div className="flex items-center gap-1.5 pt-1">
                           {canModify && (
                             <button
@@ -1030,7 +1030,7 @@ export const PlansPage: React.FC = () => {
               </div>
             </div>
 
-            {/* D1/I2 — upgrade en cours de cycle : le temps restant est crédité */}
+            {/* D1/I2 - upgrade en cours de cycle : le temps restant est crédité */}
             {isUpgradeOfCurrent(selectedPlan.id) && daysRemaining !== null && (
               <UpgradeRecap
                 currentLabel={currentTierLabel}
@@ -1166,7 +1166,7 @@ export const PlansPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Optional payment proof — accelerates admin validation */}
+            {/* Optional payment proof - accelerates admin validation */}
             <div className="bg-white rounded-2xl p-4 border border-black/[0.07] shadow-sm">
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                 {t('plans.proofTitle', 'Preuve de paiement (facultatif)')}

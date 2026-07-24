@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="theme-color" content="#F7F7F5" id="theme-color-meta" />
-    <meta name="description" content="Nunulia — Le marketplace des Grands Lacs." />
+    <meta name="description" content="Nunulia - Le marketplace des Grands Lacs." />
     <meta name="application-name" content="Nunulia" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
@@ -29,20 +29,20 @@
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" /></noscript>
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Nunulia" />
-    <meta property="og:title" content="Nunulia — Le marketplace des Grands Lacs" />
+    <meta property="og:title" content="Nunulia - Le marketplace des Grands Lacs" />
     <meta property="og:description" content="Achetez et vendez facilement sur Nunulia. Le marketplace des Grands Lacs." />
     <meta property="og:image" content="/icons/icon-512.png" />
     <meta property="og:url" content="https://aurburundi-e2fe2.web.app/" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Nunulia — Le marketplace des Grands Lacs" />
+    <meta name="twitter:title" content="Nunulia - Le marketplace des Grands Lacs" />
     <meta name="twitter:description" content="Achetez et vendez facilement sur Nunulia. Le marketplace des Grands Lacs." />
     <meta name="twitter:image" content="/icons/icon-512.png" />
-    <title>Nunulia — Marketplace</title>
+    <title>Nunulia - Marketplace</title>
     <!-- reCAPTCHA v3 and Google Analytics are loaded dynamically from environment variables -->
     <!-- See services/recaptcha.ts and services/analytics.ts -->
     <style>
       :root {
-        --bg-app: #F7F7F5;    /* warm white — light mode primary */
+        --bg-app: #F7F7F5;    /* warm white - light mode primary */
         --text-app: #111318;  /* gray-950 */
         --gold-400: #F5C842;
         --gold-600: #D4941A;
@@ -112,7 +112,7 @@
           });
           if (oldRegs.length > 0) {
             Promise.all(oldRegs.map(function(r) { return r.unregister(); }));
-            // Pas de reload automatique — le nouveau SW sera installé au prochain chargement
+            // Pas de reload automatique - le nouveau SW sera installé au prochain chargement
           }
         });
       })();
@@ -124,7 +124,7 @@
     </div>
     <div id="root"></div>
     <script>
-      // Safety net: hide loader after 1.5s max — assez pour charger le JS,
+      // Safety net: hide loader after 1.5s max - assez pour charger le JS,
       // pas assez pour bloquer le LCP vu par Lighthouse.
       // AuthContext.hideLoader() le cache encore plus tôt si Firebase répond vite.
       setTimeout(function() {

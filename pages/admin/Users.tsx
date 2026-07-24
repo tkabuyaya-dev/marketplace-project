@@ -12,7 +12,7 @@ import { planIdFromLabel } from '../../utils/planFeatures';
 import { auth } from '../../firebase-config';
 import type { UsersProps } from './types';
 
-// Labels alignés sur INITIAL_SUBSCRIPTION_TIERS — utilisés pour le setter manuel admin.
+// Labels alignés sur INITIAL_SUBSCRIPTION_TIERS - utilisés pour le setter manuel admin.
 // Toute modification doit rester cohérente avec utils/planFeatures.ts (LABEL_TO_ID).
 const TIER_OPTIONS = [
   { label: 'Découverte (0-5 produits)',  maxProducts: 5,     tierLabel: 'Découverte' },
@@ -25,7 +25,7 @@ const TIER_OPTIONS = [
  * Lot A (C4) : toute attribution/renouvellement d'un plan PAYANT passe par la
  * CF approveRenewal (transaction + restauration du tier + reset des phases de
  * grâce + réactivation produits + audit log). Les writes clients directs
- * laissaient des états incohérents — expiry sans reset de grâce (produits
+ * laissaient des états incohérents - expiry sans reset de grâce (produits
  * supprimés à J14), tier sans expiration (plan payant éternel).
  */
 async function callApproveRenewal(vendorId: string, planId: string): Promise<void> {
@@ -74,7 +74,7 @@ export const Users: React.FC<UsersProps> = ({
     const planId = planIdFromLabel(option.tierLabel);
     const isFree = !planId || planId === 'free';
     // Un plan payant attribué manuellement inclut désormais 30 jours
-    // d'abonnement — un tier sans expiration n'expirait jamais (audit C4).
+    // d'abonnement - un tier sans expiration n'expirait jamais (audit C4).
     const confirmMsg = isFree
       ? t('admin.confirmSetFree', 'Repasser ce vendeur au plan Découverte (gratuit) ?')
       : t('admin.confirmSetPlan', 'Attribuer le plan {{label}} avec 30 jours d\'abonnement ?', { label: option.tierLabel });
@@ -118,7 +118,7 @@ export const Users: React.FC<UsersProps> = ({
     // il n'y a rien à « renouveler » : l'admin choisit d'abord un plan.
     const planId = planIdFromLabel(user.sellerDetails?.tierLabel);
     if (!planId || planId === 'free') {
-      toast(t('admin.renewNeedsPlan', 'Pas de plan payant actif — choisissez d\'abord un plan.'), 'info');
+      toast(t('admin.renewNeedsPlan', 'Pas de plan payant actif - choisissez d\'abord un plan.'), 'info');
       setUpgradingUser(user.id);
       return;
     }
@@ -237,7 +237,7 @@ export const Users: React.FC<UsersProps> = ({
                   <img src={getOptimizedUrl(user.avatar || '', 40) || '/default-avatar.png'} className="w-10 h-10 rounded-full object-cover flex-shrink-0" alt="" loading="lazy" />
                   <div className="min-w-0">
                     <p className="text-white font-semibold text-sm">{user.name}</p>
-                    <p className="text-gray-500 text-xs">{user.sellerDetails?.shopName} — {user.sellerDetails?.province}</p>
+                    <p className="text-gray-500 text-xs">{user.sellerDetails?.shopName} - {user.sellerDetails?.province}</p>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[11px]">
                       <span className="text-gray-500">{t('admin.phoneLabel')}: <span className="text-white">{user.sellerDetails?.phone || user.whatsapp || '—'}</span></span>
                       <span className="text-gray-500">{t('admin.sellingType')}: <span className="text-white">{user.sellerDetails?.sellerType || '—'}</span></span>

@@ -1,5 +1,5 @@
 /**
- * NUNULIA — Bannière contextuelle d'activation des notifications push
+ * NUNULIA - Bannière contextuelle d'activation des notifications push
  *
  * Problème résolu :
  *   Le toggle notifs est isolé dans /profile. Un seller n'a aucune raison
@@ -15,13 +15,13 @@
  *     'default'    → CTA pour activer (cas principal).
  *     'denied'     → instructions pour débloquer dans le navigateur.
  *     'granted'    → masquée (et tente une re-registration silencieuse
- *                    du token si Firestore en manque — cas après VAPID
+ *                    du token si Firestore en manque - cas après VAPID
  *                    rotated ou token expiré).
  *     iOS hors PWA → message expliquant l'install obligatoire (Apple
  *                    bloque le Web Push hors Home Screen).
  *
  *   Dismissible (X) mais session-scoped : réapparaît à la prochaine
- *   ouverture si toujours pas activé. Volontairement insistant — c'est
+ *   ouverture si toujours pas activé. Volontairement insistant - c'est
  *   une feature critique côté business.
  */
 
@@ -101,7 +101,7 @@ export const NotificationEnableBanner: React.FC = () => {
   if (dismissed) return null;
 
   const handleEnable = async () => {
-    // iOS hors PWA — pas de prompt possible, on guide
+    // iOS hors PWA - pas de prompt possible, on guide
     if (platform.needsPwaInstall) {
       toast(
         platform.iosVersion !== null && platform.iosVersion < 16.4
@@ -122,7 +122,7 @@ export const NotificationEnableBanner: React.FC = () => {
         const { registerFcmForUser } = await import('../services/fcm');
         const ok = await registerFcmForUser(currentUser.id);
         if (ok) {
-          toast('✅ Notifications activées — vous serez alerté à chaque demande client', 'success');
+          toast('✅ Notifications activées - vous serez alerté à chaque demande client', 'success');
         } else {
           toast('Permission accordée mais l\'enregistrement a échoué. Réessayez ou contactez le support.', 'error');
         }
@@ -205,7 +205,7 @@ export const NotificationEnableBanner: React.FC = () => {
     );
   }
 
-  // ─── Permission default — CTA principal ─────────────────────────
+  // ─── Permission default - CTA principal ─────────────────────────
   return (
     <div
       className="mx-3 mt-3 rounded-2xl p-3.5 flex items-center gap-3"

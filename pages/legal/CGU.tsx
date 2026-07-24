@@ -9,8 +9,8 @@ const CGU: React.FC = () => (
     <div className="max-w-2xl mx-auto">
       <LegalHeader
         title="Conditions Générales d'Utilisation"
-        subtitle="NUNULIA — Marketplace des Grands Lacs"
-        badge="Version 1.0 — En vigueur au 26 mars 2026"
+        subtitle="NUNULIA - Marketplace des Grands Lacs"
+        badge="Version 1.0 - En vigueur au 26 mars 2026"
       />
 
       <LegalInfoBox>
@@ -18,13 +18,13 @@ const CGU: React.FC = () => (
       </LegalInfoBox>
 
       {/* Article 1 */}
-      <LegalSection title="Article 1 — Présentation de la Plateforme">
+      <LegalSection title="Article 1 - Présentation de la Plateforme">
         <p><strong className="text-ink">1.1 Nature du service</strong></p>
         <p>
           NUNULIA est une plateforme numérique de mise en relation entre vendeurs et acheteurs, accessible via une application web progressive (PWA) et ultérieurement via les stores mobiles. La plateforme opère principalement en Afrique centrale et subsaharienne, incluant notamment le Burundi, la République Démocratique du Congo, le Rwanda, la Tanzanie, l'Ouganda et les pays voisins.
         </p>
 
-        <p><strong className="text-ink">1.2 Rôle de la plateforme — Principe fondamental</strong></p>
+        <p><strong className="text-ink">1.2 Rôle de la plateforme - Principe fondamental</strong></p>
         <LegalWarningBox>
           CLAUSE IMPORTANTE : NUNULIA agit exclusivement en qualité d'intermédiaire technique de mise en relation. NUNULIA n'est ni vendeur, ni acheteur, ni partie à aucune transaction conclue entre ses utilisateurs. NUNULIA ne stocke, ne manipule, ni ne transfère aucune marchandise.
         </LegalWarningBox>
@@ -45,7 +45,7 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 2 */}
-      <LegalSection title="Article 2 — Inscription et Comptes Utilisateurs">
+      <LegalSection title="Article 2 - Inscription et Comptes Utilisateurs">
         <p><strong className="text-ink">2.1 Conditions d'inscription</strong></p>
         <p>Pour créer un compte sur NUNULIA, vous devez :</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
@@ -68,8 +68,8 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 3 */}
-      <LegalSection title="Article 3 — Obligations des Vendeurs">
-        <p><strong className="text-ink">3.1 Conformité légale — Obligation absolue</strong></p>
+      <LegalSection title="Article 3 - Obligations des Vendeurs">
+        <p><strong className="text-ink">3.1 Conformité légale - Obligation absolue</strong></p>
         <LegalInfoBox>
           Chaque vendeur opère sous sa propre responsabilité et doit se conformer à l'ensemble des lois et réglementations applicables dans son pays de résidence et dans les pays vers lesquels il expédie des marchandises.
         </LegalInfoBox>
@@ -106,7 +106,7 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 4 */}
-      <LegalSection title="Article 4 — Obligations des Acheteurs">
+      <LegalSection title="Article 4 - Obligations des Acheteurs">
         <p><strong className="text-ink">4.1 Prudence et diligence</strong></p>
         <p>L'acheteur s'engage à :</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
@@ -124,7 +124,7 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 5 */}
-      <LegalSection title="Article 5 — Abonnements et Paiements">
+      <LegalSection title="Article 5 - Abonnements et Paiements">
         <p><strong className="text-ink">5.1 Plans d'abonnement</strong></p>
         <p>
           Certaines fonctionnalités vendeur sont accessibles sur abonnement payant selon les plans affichés dans l'application.
@@ -150,14 +150,14 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 6 */}
-      <LegalSection title="Article 6 — Propriété Intellectuelle">
+      <LegalSection title="Article 6 - Propriété Intellectuelle">
         <p>
           La plateforme NUNULIA, son interface, son logo, sa marque et ses fonctionnalités sont protégés par les droits de propriété intellectuelle. En publiant du contenu, l'utilisateur accorde à NUNULIA une licence non exclusive d'utilisation limitée à la durée de l'annonce, tout en conservant la pleine propriété de son contenu.
         </p>
       </LegalSection>
 
       {/* Article 7 */}
-      <LegalSection title="Article 7 — Suspension et Résiliation">
+      <LegalSection title="Article 7 - Suspension et Résiliation">
         <p><strong className="text-ink">7.1 Motifs de suspension</strong></p>
         <p>NUNULIA peut suspendre ou supprimer tout compte en cas de :</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
@@ -175,7 +175,7 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 8 */}
-      <LegalSection title="Article 8 — Limitation de Responsabilité">
+      <LegalSection title="Article 8 - Limitation de Responsabilité">
         <LegalWarningBox>
           CLAUSE DE NON-RESPONSABILITÉ : Dans les limites permises par la loi, NUNULIA ne saurait être tenu responsable de tout dommage résultant de l'utilisation de la plateforme, d'une transaction entre utilisateurs, d'une indisponibilité du service ou d'un accès non autorisé à un compte.
         </LegalWarningBox>
@@ -185,7 +185,7 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 9 */}
-      <LegalSection title="Article 9 — Droit Applicable et Litiges">
+      <LegalSection title="Article 9 - Droit Applicable et Litiges">
         <p><strong className="text-ink">9.1 Droit applicable</strong></p>
         <p>
           Les présentes CGU sont régies par le droit burundais, sans préjudice des droits des utilisateurs d'autres pays selon leur législation nationale.
@@ -203,14 +203,14 @@ const CGU: React.FC = () => (
       </LegalSection>
 
       {/* Article 10 */}
-      <LegalSection title="Article 10 — Modifications des CGU">
+      <LegalSection title="Article 10 - Modifications des CGU">
         <p>
           NUNULIA peut modifier ces CGU à tout moment. Les utilisateurs connectés seront informés avec un préavis de 15 jours via notification dans l'application. L'utilisation continue vaut acceptation des nouvelles CGU.
         </p>
       </LegalSection>
 
       {/* Article 11 */}
-      <LegalSection title="Article 11 — Contact">
+      <LegalSection title="Article 11 - Contact">
         <ul className="space-y-1">
           <li>Email : <span className="text-goldText">contact@nunulia.com</span></li>
           <li>Site web : <span className="text-goldText">https://nunulia.com</span></li>
@@ -220,7 +220,7 @@ const CGU: React.FC = () => (
 
       {/* Footer */}
       <div className="text-center text-xs text-ink2 border-t border-black/[0.08] pt-6 mt-8">
-        &copy; 2026 NUNULIA — Document officiel — Version 1.0 — 26 mars 2026 — Tous droits réservés.
+        &copy; 2026 NUNULIA - Document officiel - Version 1.0 - 26 mars 2026 - Tous droits réservés.
       </div>
     </div>
   </div>

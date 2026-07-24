@@ -515,7 +515,7 @@ const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }
               {t('profile.whatsapp')}
             </label>
             <div className="flex gap-2">
-              {/* Sélecteur pays — affiche drapeau + indicatif */}
+              {/* Sélecteur pays - affiche drapeau + indicatif */}
               <select
                 value={phoneCountryId}
                 onChange={e => setPhoneCountryId(e.target.value)}
@@ -541,7 +541,7 @@ const EditInfoSheet: React.FC<{ open: boolean; user: User; onClose: () => void }
             {/* Hint dynamique */}
             {phoneDigits.length === 0 ? (
               <p className="text-[11px] mt-1.5" style={{ color: '#5C6370' }}>
-                Optionnel — {phoneSpec.digits} chiffres pour {phoneSpec.flag}
+                Optionnel - {phoneSpec.digits} chiffres pour {phoneSpec.flag}
               </p>
             ) : phoneCheck.valid ? (
               <p className="text-[11px] mt-1.5 text-green-600 font-medium">
@@ -596,7 +596,7 @@ const Profile: React.FC = () => {
   const [langSheetOpen, setLangSheetOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [mountedAt] = useState(() => Date.now());
-  // Pays actifs temps réel (toggle admin Firestore) — jamais vide grâce au fallback
+  // Pays actifs temps réel (toggle admin Firestore) - jamais vide grâce au fallback
   const { countries: liveActiveCountries } = useActiveCountries();
 
   if (!currentUser) return <Navigate to="/login" replace />;
@@ -641,7 +641,7 @@ const Profile: React.FC = () => {
     : t('profile.enableNotifs');
 
   // Coach vendeur : opt-out des rappels « prochaine meilleure action ».
-  // Champ sellerDetails.coachOptOut — autorisé en self-update par les rules
+  // Champ sellerDetails.coachOptOut - autorisé en self-update par les rules
   // (seuls maxProducts/tierLabel/expiry/verifiedAt/verificationMethod sont verrouillés).
   const handleToggleCoach = async () => {
     const next = !currentUser.sellerDetails?.coachOptOut;
@@ -650,7 +650,7 @@ const Profile: React.FC = () => {
       toast(
         next
           ? t('profile.coachDisabled', 'Conseils du Coach désactivés.')
-          : t('profile.coachEnabled', 'Conseils du Coach activés — max 2 par semaine.'),
+          : t('profile.coachEnabled', 'Conseils du Coach activés - max 2 par semaine.'),
         'success',
       );
     } catch {
@@ -800,8 +800,8 @@ const Profile: React.FC = () => {
                 icon={<Sparkles size={17} />}
                 label={t('profile.coachTitle', 'Conseils du Coach')}
                 sub={currentUser.sellerDetails?.coachOptOut
-                  ? t('profile.coachOff', 'Désactivés — vous ne recevez plus de rappels')
-                  : t('profile.coachOn', 'Activés — max 2 rappels utiles par semaine')}
+                  ? t('profile.coachOff', 'Désactivés - vous ne recevez plus de rappels')
+                  : t('profile.coachOn', 'Activés - max 2 rappels utiles par semaine')}
                 onClick={handleToggleCoach}
               />
             )}

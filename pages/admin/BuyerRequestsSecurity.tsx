@@ -1,5 +1,5 @@
 /**
- * NUNULIA — Admin: Sécurité Demandes Clients
+ * NUNULIA - Admin: Sécurité Demandes Clients
  *
  * Dashboard de pilotage du système de confirmation et anti-abus :
  *  • KPI : demandes pending, suspects, abus signalés, devices bloqués
@@ -8,7 +8,7 @@
  *  • Liste devices récents (statut, totaux, dernière IP)
  *  • Blocklist active
  *
- * Lecture seule pour le moment — toutes les actions d'écriture
+ * Lecture seule pour le moment - toutes les actions d'écriture
  * (blocklist manuel, score override) passeront par des callables admin
  * dédiées dans une itération ultérieure.
  */
@@ -82,7 +82,7 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
       if (res.alreadyConfirmed) {
         showFlash('⏩ Demande déjà confirmée.');
       } else {
-        showFlash('✅ Demande activée — visible par les vendeurs.');
+        showFlash('✅ Demande activée - visible par les vendeurs.');
       }
       // Retire de la liste pending optimistically…
       setData(d => ({ ...d, pending: d.pending.filter(r => r.id !== requestId) }));
@@ -226,7 +226,7 @@ export const BuyerRequestsSecurity: React.FC<AdminSharedProps> = () => {
       {multiNumberAlerts.length > 0 && (
         <section className="bg-red-950/30 border border-red-700/40 rounded-2xl p-4">
           <h2 className="text-sm font-bold text-red-300 mb-3 flex items-center gap-2">
-            🚨 Alertes 🔴 — Devices multi-numéros (24h)
+            🚨 Alertes 🔴 - Devices multi-numéros (24h)
             <span className="text-[10px] text-red-400">{multiNumberAlerts.length} cas</span>
           </h2>
           <div className="space-y-2">

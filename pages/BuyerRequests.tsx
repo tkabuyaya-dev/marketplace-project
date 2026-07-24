@@ -1,5 +1,5 @@
 /**
- * NUNULIA — Demandes clients (vue vendeur)
+ * NUNULIA - Demandes clients (vue vendeur)
  * Route : /demandes
  *
  * Tous les vendeurs voient toutes les demandes actives.
@@ -189,7 +189,7 @@ function FilterSheet({
   onClose: () => void;
 }) {
   const cities = country ? (CITIES_BY_COUNTRY[country] || []) : [];
-  // Pays actifs temps réel (toggle admin Firestore) — jamais vide grâce au fallback
+  // Pays actifs temps réel (toggle admin Firestore) - jamais vide grâce au fallback
   const { countries: liveActiveCountries } = useActiveCountries();
   const activeCountries = withActiveCountriesFallback(liveActiveCountries);
 
@@ -375,7 +375,7 @@ function ResponseProgress({
   const safeCount = Math.min(reponseCount, maxReponses);
   const pct = Math.round((safeCount / maxReponses) * 100);
 
-  // 4 états de couleur — gris (0), vert (1-3), orange (4), rouge (5+).
+  // 4 états de couleur - gris (0), vert (1-3), orange (4), rouge (5+).
   let barClass = 'bg-[#E5E7EB]';
   if (safeCount > 0 && safeCount <= 3) barClass = 'bg-[#22C55E]';
   else if (safeCount === 4) barClass = 'bg-[#F97316]';
@@ -613,7 +613,7 @@ function RequestCard({
             maxReponses={maxReponses}
             aDejaRepondu={aDejaRepondu}
           />
-          {/* Bouton — 3 variantes selon (aDejaRepondu, isFull) */}
+          {/* Bouton - 3 variantes selon (aDejaRepondu, isFull) */}
           {isFull && !aDejaRepondu ? (
             <button
               disabled
@@ -660,7 +660,7 @@ function RequestCard({
         </>
       )}
 
-      {/* Flag discret — opt-in pour signaler une demande suspecte */}
+      {/* Flag discret - opt-in pour signaler une demande suspecte */}
       <div className="mt-2 flex justify-end">
         {flagged ? (
           <span className="text-[10px] text-[#5C6370] inline-flex items-center gap-1">
@@ -750,7 +750,7 @@ function EmptyState({
       <p className="mt-2 text-[13px] text-[#5C6370] leading-relaxed max-w-[280px]">
         {hasFilters
           ? 'Essayez un autre pays ou une autre catégorie. Les nouvelles demandes arrivent chaque heure.'
-          : 'Revenez bientôt — de nouveaux acheteurs postent des demandes chaque heure.'}
+          : 'Revenez bientôt - de nouveaux acheteurs postent des demandes chaque heure.'}
       </p>
 
       {hasFilters && (
@@ -880,7 +880,7 @@ const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) 
       if (code.includes('unauthenticated')) {
         toast('Connexion requise pour signaler.', 'error');
       } else if (code.includes('permission-denied')) {
-        toast('Compte suspendu — signalement impossible.', 'error');
+        toast('Compte suspendu - signalement impossible.', 'error');
       } else {
         toast('Échec du signalement. Réessayez.', 'error');
       }
@@ -921,10 +921,10 @@ const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) 
           onOpenSheet={openSheet}
         />
 
-        {/* Activation push — critique : sans ça aucune notif système n'arrive */}
+        {/* Activation push - critique : sans ça aucune notif système n'arrive */}
         <NotificationEnableBanner />
 
-        {/* Plan gate banner — vendeurs non éligibles */}
+        {/* Plan gate banner - vendeurs non éligibles */}
         {!eligible && activeRequests.length > 0 && (
           <PlanGateBanner onUpgrade={() => navigate('/plans')} />
         )}
@@ -991,7 +991,7 @@ const BuyerRequestsContent: React.FC<{ currentUser: User }> = ({ currentUser }) 
         onClose={() => setSheetOpen(false)}
       />
 
-      {/* Flag modal — signalement community */}
+      {/* Flag modal - signalement community */}
       {flagging && (
         <FlagModal
           request={flagging}

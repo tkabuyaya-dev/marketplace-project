@@ -1,9 +1,9 @@
 /**
- * NUNULIA — Search Page (redesign)
+ * NUNULIA - Search Page (redesign)
  *
- * Route: /search  (Navbar is hidden — this page owns its own header)
+ * Route: /search  (Navbar is hidden - this page owns its own header)
  *
- * Design tokens: light-only — zero dark: classes
+ * Design tokens: light-only - zero dark: classes
  *   bg app       #F7F8FA
  *   cta gold     #F5C842
  *   gold text    #A45F00
@@ -370,7 +370,7 @@ const SearchResultCard: React.FC<{
         animationDelay: `${animDelay}ms`,
       }}
     >
-      {/* Image — 4:3 */}
+      {/* Image - 4:3 */}
       <div
         className="relative w-full overflow-hidden"
         style={{
@@ -470,7 +470,7 @@ const SearchResultCard: React.FC<{
           )}
         </div>
 
-        {/* Localisation — ville prioritaire, pays en fallback */}
+        {/* Localisation - ville prioritaire, pays en fallback */}
         {(() => {
           const sd = product.seller?.sellerDetails;
           // commune et province contiennent tous deux la ville (ex: "Bujumbura")
@@ -496,7 +496,7 @@ const SearchResultCard: React.FC<{
           );
         })()}
 
-        {/* Footer — rating + views */}
+        {/* Footer - rating + views */}
         <div
           className="flex items-center justify-between mt-1 pt-1.5"
           style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}
@@ -983,7 +983,7 @@ const EmptyState: React.FC<{ query: string; onPostRequest?: () => void }> = ({ q
       <span style={{ color: '#A45F00' }}>«&nbsp;{query}&nbsp;»</span>
     </h2>
     <p className="text-[13px] font-medium text-[#5C6370] leading-relaxed max-w-[260px] m-0 mb-7">
-      Essayez avec d'autres mots ou postez une demande — les vendeurs vous contacteront.
+      Essayez avec d'autres mots ou postez une demande - les vendeurs vous contacteront.
     </p>
 
     <button
@@ -1018,7 +1018,7 @@ const SearchPage: React.FC = () => {
     setQuery, setFilter, resetFilters, loadMore,
   } = useSearch();
 
-  // Local input state — decoupled from Algolia
+  // Local input state - decoupled from Algolia
   const [inputValue, setInputValue] = useState(query);
   const [focused, setFocused] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -1212,7 +1212,7 @@ const SearchPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Je Cherche — few results */}
+            {/* Je Cherche - few results */}
             {!isLoading && results.length < 4 && query.trim() && (
               <JeChercheBlock query={query.trim()} mode="few_results" onOpen={openJeChercheForm} />
             )}
@@ -1235,7 +1235,7 @@ const SearchPage: React.FC = () => {
             <JeChercheBlock query={query.trim()} mode="no_results" onOpen={openJeChercheForm} />
           </>
         ) : (
-          /* Empty query — show recent/popular */
+          /* Empty query - show recent/popular */
           <SuggestionsPanel
             recent={recentSearches}
             trending={getPopularSearches()}

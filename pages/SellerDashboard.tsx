@@ -78,8 +78,8 @@ export const SellerDashboard: React.FC = () => {
 
   // Un vendeur Découverte (ou au tier non résolu) n'a rien à « renouveler » :
   // on l'envoie choisir un plan sur /plans (upgrade). Tout vendeur expiré
-  // finit en Découverte à J+3 (pipeline subscriptionLifecycle) — sans ce
-  // guard, le modal aboutissait à « Renouveler — Gratuit, 0 BIF » et la CF
+  // finit en Découverte à J+3 (pipeline subscriptionLifecycle) - sans ce
+  // guard, le modal aboutissait à « Renouveler - Gratuit, 0 BIF » et la CF
   // refusait (bug remonté 2026-07-10).
   const openRenewFlow = () => {
     const currentPlanId = planIdFromLabel(currentUser.sellerDetails?.tierLabel);
@@ -115,9 +115,9 @@ export const SellerDashboard: React.FC = () => {
     report: (p: { stage: 'queued' | 'uploading-images' | 'saving-doc'; imagesUploaded?: number; imagesTotal?: number }) => void | Promise<void>,
   ) => {
     // Each stage is wrapped so the `lastError` surfaced in the UI tells the
-    // seller WHICH step actually failed — "Failed to fetch" alone could mean
+    // seller WHICH step actually failed - "Failed to fetch" alone could mean
     // Cloudinary upload or Firestore write.
-    // Blobs may be raw Blob (legacy) or File — Cloudinary upload needs a File
+    // Blobs may be raw Blob (legacy) or File - Cloudinary upload needs a File
     // (it reads .name for the form-data filename).
     const files: File[] = draft.images.map((blob, i) =>
       blob instanceof File
@@ -129,7 +129,7 @@ export const SellerDashboard: React.FC = () => {
     try {
       await report({ stage: 'uploading-images', imagesUploaded: 0, imagesTotal: files.length });
       imageUrls = await uploadImages(files, {}, (uploaded, total) => {
-        // Fire-and-forget — the reporter persists to IDB. Awaiting per-image
+        // Fire-and-forget - the reporter persists to IDB. Awaiting per-image
         // would serialize cloud uploads with disk writes; we don't need that.
         void report({ stage: 'uploading-images', imagesUploaded: uploaded, imagesTotal: total });
       });
@@ -145,7 +145,7 @@ export const SellerDashboard: React.FC = () => {
 
     try {
       await report({ stage: 'saving-doc' });
-      // Use draft.id as the idempotency key — if the previous sync wrote the
+      // Use draft.id as the idempotency key - if the previous sync wrote the
       // doc but lost its response, addProduct() returns the existing doc
       // instead of creating a duplicate.
       await addProduct(
@@ -192,12 +192,12 @@ export const SellerDashboard: React.FC = () => {
 
   const failedDrafts = useMemo(() => offlineQueue.filter(d => d.lastError), [offlineQueue]);
   // Brouillons en échec PERMANENT (refus règles) : le hint « vérifiez la connexion »
-  // serait faux — on affiche une consigne actionnable à la place.
+  // serait faux - on affiche une consigne actionnable à la place.
   const hasBlockedDraft = useMemo(() => offlineQueue.some(d => d.blocked), [offlineQueue]);
 
   // ─── Background Sync handoff from the SW ────────────────────────────────
   // The SW (public/sw-extras.js) shows a notification when connectivity
-  // returns. Tapping it focuses the app and posts NUNULIA_SYNC_DRAFTS — we
+  // returns. Tapping it focuses the app and posts NUNULIA_SYNC_DRAFTS - we
   // run a sweep on receipt. We also honor ?syncDrafts=1 in the URL for the
   // case where the SW had to open a brand-new tab.
   useEffect(() => {
@@ -265,7 +265,7 @@ export const SellerDashboard: React.FC = () => {
   const sellerCountryId = currentUser.sellerDetails?.countryId || 'bi';
   const sellerCities = CITIES_BY_COUNTRY[sellerCountryId] ?? [];
 
-  // Subscription status — computed from shared utility (single source of truth)
+  // Subscription status - computed from shared utility (single source of truth)
   // Server-side enforcement via Firestore rules + Cloud Function cron.
   // This is UI-only: reflects data already validated server-side.
 
@@ -291,7 +291,7 @@ export const SellerDashboard: React.FC = () => {
   const [isWholesale, setIsWholesale] = useState(false);
   const [minOrderQty, setMinOrderQty] = useState('');
   const [wholesalePrice, setWholesalePrice] = useState('');
-  // Vitrine Vidéo — lien vers la vidéo sociale du produit (optionnel)
+  // Vitrine Vidéo - lien vers la vidéo sociale du produit (optionnel)
   const [videoUrl, setVideoUrl] = useState('');
   // Product Quality Score
   const productScore = useProductScore({
@@ -339,7 +339,7 @@ export const SellerDashboard: React.FC = () => {
             setMyProducts(cached.products);
             setInventoryCachedAt(cached.ts);
           }
-        } catch { /* IDB miss — proceed to network */ }
+        } catch { /* IDB miss - proceed to network */ }
       }
 
       // 2. Network fetch. Failure here keeps the cached data on screen and
@@ -353,7 +353,7 @@ export const SellerDashboard: React.FC = () => {
         // Persist for next cold load. Fire-and-forget.
         void saveInventoryToIDB(currentUser.id, data);
       } catch (err) {
-        // Network/Firestore down — keep cached snapshot, log for diagnostics.
+        // Network/Firestore down - keep cached snapshot, log for diagnostics.
         console.warn('[Dashboard] Inventory fetch failed, keeping cached snapshot', err);
       }
 
@@ -362,12 +362,12 @@ export const SellerDashboard: React.FC = () => {
         if (!cancelled) setCategoriesList(cats);
       } catch { /* categories non-critical for offline browsing */ }
 
-      // Sync productCount with real active products — best-effort, may fail offline
+      // Sync productCount with real active products - best-effort, may fail offline
       try { await syncProductCount(currentUser.id); } catch { /* noop */ }
     };
     load();
     return () => { cancelled = true; };
-    // inventoryFreshAt intentionally omitted — only re-run on user/tab change.
+    // inventoryFreshAt intentionally omitted - only re-run on user/tab change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, activeTab]);
 
@@ -402,7 +402,7 @@ export const SellerDashboard: React.FC = () => {
   // Count only active products (approved + pending), not rejected/deleted
   const currentCount = myProducts.filter(p => p.status === 'approved' || p.status === 'pending').length;
 
-  // Subscription status — single source of truth from shared utility.
+  // Subscription status - single source of truth from shared utility.
   // Server-side enforcement: Firestore rules + Cloud Function cron.
   // This is UI-only: reflects data already validated server-side.
   const subStatus = getSubscriptionStatus({
@@ -447,7 +447,7 @@ export const SellerDashboard: React.FC = () => {
     // Show previews immediately (before compression)
     setImagePreviews(prev => [...prev, ...newPreviews]);
 
-    // Compress in background — adaptive options on slow networks save more
+    // Compress in background - adaptive options on slow networks save more
     // bytes upfront so the eventual upload has a fighting chance over 2G.
     setCompressing(true);
     try {
@@ -602,7 +602,7 @@ export const SellerDashboard: React.FC = () => {
       return;
     }
 
-    // Single source of truth for the product payload — used by online publish,
+    // Single source of truth for the product payload - used by online publish,
     // offline queue, and the network-error fallback below.
     const productData: Partial<Product> = {
       title: title.trim(),
@@ -636,7 +636,7 @@ export const SellerDashboard: React.FC = () => {
       resetForm();
       toast(t('dashboard.savedOffline'), 'success');
       setActiveTab('products');
-      // Ask for notification permission contextually — only the first time
+      // Ask for notification permission contextually - only the first time
       // a seller queues offline. The browser respects the user's previous
       // 'denied' answer; we never ask twice. Fire-and-forget.
       if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
@@ -647,7 +647,7 @@ export const SellerDashboard: React.FC = () => {
 
     setLoading(true);
     try {
-      // Probe real connectivity, not just navigator.onLine — that flag is
+      // Probe real connectivity, not just navigator.onLine - that flag is
       // unreliable on captive Wi-Fi and on Chrome DevTools' "Offline" preset
       // when a service worker is active. The probe is ~100-300ms when online,
       // and aborts in 5s when truly offline.
@@ -679,12 +679,12 @@ export const SellerDashboard: React.FC = () => {
       const data = await getSellerAllProducts(currentUser.id);
       setMyProducts(data);
       toast(t('dashboard.productSubmitSuccess'), 'success');
-      // Inform seller about Algolia indexing delay — prevents "my product isn't searchable" panic
+      // Inform seller about Algolia indexing delay - prevents "my product isn't searchable" panic
       setTimeout(() => toast(t('dashboard.searchDelayHint'), 'info'), 1800);
       setActiveTab('products');
     } catch (error: any) {
       // Network/timeout failure during upload means we never reached Cloudinary
-      // — degrade gracefully into the offline queue rather than burning the
+      // - degrade gracefully into the offline queue rather than burning the
       // seller's work on a "Réseau indisponible" alert.
       const isOfflineish =
         error instanceof UploadError &&
@@ -713,7 +713,7 @@ export const SellerDashboard: React.FC = () => {
     if (!window.confirm(t('dashboard.confirmBulkDelete', { count: selectedProductIds.size }))) return;
     const ids = [...selectedProductIds];
     for (const id of ids) {
-      try { await deleteProduct(id); } catch { /* silent — continue batch */ }
+      try { await deleteProduct(id); } catch { /* silent - continue batch */ }
     }
     setMyProducts(prev => prev.filter(p => !p.id || !selectedProductIds.has(p.id)));
     setSelectedProductIds(new Set());
@@ -960,7 +960,7 @@ export const SellerDashboard: React.FC = () => {
 
   // --- SUB-COMPONENTS (design system: light-only) ---
 
-  /** WhatsApp glyph — kept as inline SVG (no lucide equivalent). */
+  /** WhatsApp glyph - kept as inline SVG (no lucide equivalent). */
   const WhatsAppIcon = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
       <path d="M20.5 3.5A11 11 0 003.4 17l-1.4 5 5.1-1.3A11 11 0 1020.5 3.5zm-8.5 18a9.4 9.4 0 01-4.8-1.3l-.3-.2-3 .8.8-2.9-.2-.3a9.5 9.5 0 1115.5-7.4 9.5 9.5 0 01-8 11.3zm5.4-7.1c-.3-.1-1.8-.9-2-1s-.5-.1-.7.1-.8 1-1 1.2-.4.2-.7 0a7.8 7.8 0 01-2.3-1.4 8.7 8.7 0 01-1.6-2c-.2-.3 0-.5.1-.6l.5-.6.3-.5a.5.5 0 000-.5l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 00-.9.4 3.7 3.7 0 00-1.1 2.7 6.4 6.4 0 001.3 3.4 14.7 14.7 0 005.7 5 19 19 0 001.9.7 4.6 4.6 0 002.1.1 3.4 3.4 0 002.2-1.5 2.8 2.8 0 00.2-1.5c-.1-.1-.3-.2-.6-.4z" />
@@ -996,7 +996,7 @@ export const SellerDashboard: React.FC = () => {
     );
   };
 
-  /** Sidebar / drawer nav item — gold active pill, optional badge. */
+  /** Sidebar / drawer nav item - gold active pill, optional badge. */
   const NavItem = ({ id, icon: IconCmp, label, count, gold, onAfter }: {
     id: Tab; icon: React.ComponentType<{ size?: number }>; label: string; count?: number; gold?: boolean; onAfter?: () => void;
   }) => {
@@ -1047,7 +1047,7 @@ export const SellerDashboard: React.FC = () => {
     );
   };
 
-  /** Stat card — title / big value / trend pill. */
+  /** Stat card - title / big value / trend pill. */
   const StatCard = ({ label, value, sub, trend, trendDir = 'up', gold }: {
     label: string; value: React.ReactNode; sub?: string; trend?: string; trendDir?: 'up' | 'down'; gold?: boolean;
   }) => (
@@ -1105,11 +1105,11 @@ export const SellerDashboard: React.FC = () => {
 
     return (
     <div className="space-y-5 animate-fadein">
-        {/* Activation push — sans token FCM, aucune notif système (demande client,
+        {/* Activation push - sans token FCM, aucune notif système (demande client,
             approbation produit, etc.) n'arrive sur le téléphone du seller. */}
         <NotificationEnableBanner />
 
-        {/* Offline Queue Banner — auto-syncs in background; manual button forces a retry. */}
+        {/* Offline Queue Banner - auto-syncs in background; manual button forces a retry. */}
         {queueCount > 0 && (
           <div
             className="rounded-card border overflow-hidden"
@@ -1155,7 +1155,7 @@ export const SellerDashboard: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Per-draft status rows — surface live progress AND lastError */}
+                  {/* Per-draft status rows - surface live progress AND lastError */}
                   <div className="mt-3 space-y-2.5">
                     {offlineQueue.map(draft => {
                       const hasFailed = !!draft.lastError;
@@ -1254,7 +1254,7 @@ export const SellerDashboard: React.FC = () => {
                     )}
                   </div>
                   <p className="mt-2 text-[13.5px] text-ink2 leading-relaxed max-w-[48ch]">
-                    {t('dashboard.welcomeGreeting', { name: firstName, defaultValue: `Bonjour ${firstName} — voici l'état de votre boutique aujourd'hui.` })}
+                    {t('dashboard.welcomeGreeting', { name: firstName, defaultValue: `Bonjour ${firstName} - voici l'état de votre boutique aujourd'hui.` })}
                   </p>
                 </div>
               </div>
@@ -1306,7 +1306,7 @@ export const SellerDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Grace phase banner (R19) — replaces simple "Expired" alert */}
+        {/* Grace phase banner (R19) - replaces simple "Expired" alert */}
         {isExpired && isPaidTier && isInGrace && (
           <div
             className="rounded-card border p-4 flex items-start gap-3"
@@ -1321,8 +1321,8 @@ export const SellerDashboard: React.FC = () => {
             <div className="flex-1">
               <p className={`text-[14px] font-black ${downgradePhase === 1 ? 'text-amber-900' : 'text-orange-800'}`}>
                 {downgradePhase === 1
-                  ? t('dashboard.gracePh1Title', 'Période de grâce — encore {{days}} jour(s)', { days: graceDaysLeft })
-                  : t('dashboard.gracePh2Title', 'Produits limités — encore {{days}} jour(s) avant suppression', { days: graceDaysLeft })}
+                  ? t('dashboard.gracePh1Title', 'Période de grâce - encore {{days}} jour(s)', { days: graceDaysLeft })
+                  : t('dashboard.gracePh2Title', 'Produits limités - encore {{days}} jour(s) avant suppression', { days: graceDaysLeft })}
               </p>
               <p className="text-[12.5px] text-ink2 mt-1">
                 {downgradePhase === 1
@@ -1368,7 +1368,7 @@ export const SellerDashboard: React.FC = () => {
             </div>
             <div className="flex-1">
               <p className={`text-[14px] font-black ${showUrgentWarning ? 'text-red-800' : 'text-amber-900'}`}>
-                {showUrgentWarning ? 'URGENT — ' : ''}{t('dashboard.expiresIn', { days: daysRemaining })}
+                {showUrgentWarning ? 'URGENT - ' : ''}{t('dashboard.expiresIn', { days: daysRemaining })}
               </p>
               <p className="text-[12.5px] text-ink2 mt-1">{t('dashboard.renewMessage')}</p>
               <div className="flex gap-2 mt-3">
@@ -1983,7 +1983,7 @@ export const SellerDashboard: React.FC = () => {
                           className="w-full px-3.5 py-3 rounded-input bg-white border border-black/[0.10] text-[14px] text-ink placeholder:text-muted transition resize-y min-h-[110px] focus:border-gold-400 focus:ring-2 focus:ring-gold-400/30 outline-none"
                           placeholder={t('dashboard.descriptionPlaceholder')}
                         />
-                        {/* Specs devinées par l'IA — à vérifier */}
+                        {/* Specs devinées par l'IA - à vérifier */}
                         {descGuessedFields.length > 0 && (
                           <div
                             className="mt-2 p-2.5 rounded-lg text-[11.5px] leading-relaxed"
@@ -2075,7 +2075,7 @@ export const SellerDashboard: React.FC = () => {
                     />
                   </div>
 
-                  {/* ── Vitrine Vidéo — lien social optionnel (jamais hébergé chez nous) ── */}
+                  {/* ── Vitrine Vidéo - lien social optionnel (jamais hébergé chez nous) ── */}
                   <div className="bg-white rounded-card border border-black/[0.07] shadow-card p-5 space-y-3">
                     <div className="flex items-center gap-2">
                       <SectionTitle><Video size={15} className="inline mr-1 -mt-0.5" />{t('dashboard.videoCardTitle')}</SectionTitle>
@@ -2096,7 +2096,7 @@ export const SellerDashboard: React.FC = () => {
                           className={`${inputCls} pr-24 ${videoUrl.trim() && !detectSocialPlatform(videoUrl) ? '!border-red-400 !ring-red-400/20' : ''}`}
                           placeholder="https://www.tiktok.com/@…/video/…"
                         />
-                        {/* Bouton Coller — 1 tap au lieu d'appui long + coller */}
+                        {/* Bouton Coller - 1 tap au lieu d'appui long + coller */}
                         {'clipboard' in navigator && !!(navigator.clipboard as any)?.readText && (
                           <button
                             type="button"
@@ -2104,7 +2104,7 @@ export const SellerDashboard: React.FC = () => {
                               try {
                                 const txt = await navigator.clipboard.readText();
                                 if (txt) setVideoUrl(txt.trim());
-                              } catch { /* permission refusée — le champ reste éditable à la main */ }
+                              } catch { /* permission refusée - le champ reste éditable à la main */ }
                             }}
                             className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 h-8 rounded-lg text-[11.5px] font-bold text-goldDeep active:scale-[0.95] transition-transform"
                             style={{ background: 'rgba(245,200,66,0.15)' }}
@@ -2191,7 +2191,7 @@ export const SellerDashboard: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Mobile sticky submit — positionné au-dessus de la bottom nav (h-16 = 64px) */}
+                  {/* Mobile sticky submit - positionné au-dessus de la bottom nav (h-16 = 64px) */}
                   <div className="lg:hidden fixed left-0 right-0 z-30 px-4 pt-3 pb-3 bg-gradient-to-t from-canvas via-canvas/95 to-canvas/0" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
                     <div className="bg-white rounded-card border border-black/[0.07] shadow-cardHover p-2.5 flex gap-2">
                       <button
@@ -2298,7 +2298,7 @@ export const SellerDashboard: React.FC = () => {
                 <input className={fieldInputCls} value={shopProfile.whatsapp} onChange={(e) => setShopProfile({ ...shopProfile, whatsapp: e.target.value })} placeholder="+257..." />
               </label>
 
-              {/* GPS — Capture automatique */}
+              {/* GPS - Capture automatique */}
               <div className="rounded-input border border-black/[0.08] bg-canvas p-4 space-y-3">
                   <span className="text-[12.5px] font-semibold text-ink2">{t('dashboard.gpsLabel')}</span>
                   <button
@@ -2776,7 +2776,7 @@ export const SellerDashboard: React.FC = () => {
 
   const renderProducts = () => (
     <div className="space-y-4 animate-fadein">
-      {/* Staleness banner — appears only when rendering from IDB cache
+      {/* Staleness banner - appears only when rendering from IDB cache
           because the network fetch failed (offline / Firestore down). */}
       {inventoryCachedAt !== null && inventoryFreshAt === null && (
         <div className="flex items-center gap-2 rounded-input px-3 py-2 text-[12px]" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', color: '#92400E' }}>
@@ -3223,7 +3223,7 @@ export const SellerDashboard: React.FC = () => {
          </main>
        </div>
 
-       {/* Mobile Bottom Nav — All tabs visible with labels */}
+       {/* Mobile Bottom Nav - All tabs visible with labels */}
        <div className="md:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-xl border-t border-black/[0.06] pb-safe z-40">
          <div className="flex justify-around items-center h-16">
            {([
@@ -3362,7 +3362,7 @@ export const SellerDashboard: React.FC = () => {
          </div>
        )}
 
-      {/* Renewal modal — inline, without navigating to /plans */}
+      {/* Renewal modal - inline, without navigating to /plans */}
       <RenewSubscriptionModal
         isOpen={showRenewModal}
         onClose={() => setShowRenewModal(false)}

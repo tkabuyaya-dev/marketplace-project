@@ -22,7 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
   const location = useLocation();
   const { t } = useTranslation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // Rotating placeholder — terms defined in locale files (nav.searchTerms)
+  // Rotating placeholder - terms defined in locale files (nav.searchTerms)
   // useMemo keeps the array reference stable so the hook's interval never resets
   const searchTerms = useMemo(
     () => (t('nav.searchTerms', { returnObjects: true }) as string[]) ?? [],
@@ -50,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
   const navItems = [
     { path: '/', icon: '🏠', label: t('nav.home'), useSellerAccess: false },
     { path: '/favorites', icon: '❤️', label: t('nav.favorites'), useSellerAccess: false },
-    // Réseau B2B — visible uniquement aux vendeurs/admins. Gratuit voit le feed
+    // Réseau B2B - visible uniquement aux vendeurs/admins. Gratuit voit le feed
     // floutée + overlay de conversion, c'est volontaire.
     ...(isSeller
       ? [{ path: '/reseau', icon: '🌍', label: t('nav.b2b'), useSellerAccess: false }]
@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
 
   return (
     <>
-      {/* Search Overlay — shared between mobile & desktop */}
+      {/* Search Overlay - shared between mobile & desktop */}
       <SearchOverlay
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
@@ -94,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
           NUNULIA
         </button>
 
-        {/* Desktop search bar — fake input, opens overlay on click */}
+        {/* Desktop search bar - fake input, opens overlay on click */}
         <button
           onClick={() => setIsSearchOpen(true)}
           className="group relative flex items-center gap-2.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/90 dark:hover:bg-gray-800 border border-gray-200 hover:border-gray-300 dark:border-gray-700/70 dark:hover:border-gray-600 rounded-2xl w-64 lg:w-96 text-left transition-all duration-200 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400/40"
@@ -108,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
 
-          {/* Animated rotating placeholder — WCAG AA: gray-600 = 4.69:1 sur fond gray-100 */}
+          {/* Animated rotating placeholder - WCAG AA: gray-600 = 4.69:1 sur fond gray-100 */}
           <span className="flex-1 overflow-hidden h-5 relative">
             <span
               className={`absolute inset-0 text-sm text-gray-600 group-hover:text-gray-800 dark:text-gray-400 dark:group-hover:text-gray-300 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${
@@ -126,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         </button>
 
         <div className="flex items-center gap-4">
-          {/* Je Cherche — desktop */}
+          {/* Je Cherche - desktop */}
           <button
             onClick={openJeCherche}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-gold-400 text-gray-900 text-sm font-bold shadow-[0_0_12px_rgba(251,191,36,0.35)] hover:shadow-[0_0_20px_rgba(251,191,36,0.55)] hover:scale-105 transition-all duration-200"
@@ -159,14 +159,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         </div>
       </nav>
 
-      {/* ── Mobile Top Bar — single row 56px matching Home reference ── */}
+      {/* ── Mobile Top Bar - single row 56px matching Home reference ── */}
       <div className="md:hidden fixed top-0 w-full z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 pt-safe-nav shadow-[0_1px_10px_rgba(0,0,0,0.06)] dark:shadow-none">
         <div className="flex items-center gap-2 px-3 h-14">
           {/* Logo */}
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-1.5 flex-shrink-0"
-            aria-label="NUNULIA — Accueil"
+            aria-label="NUNULIA - Accueil"
           >
             <div className="w-7 h-7 rounded-md bg-gold-400 flex items-center justify-center text-gray-900 font-black text-sm leading-none">
               N
@@ -176,7 +176,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
             </span>
           </button>
 
-          {/* Search input — flex:1, opens overlay on tap */}
+          {/* Search input - flex:1, opens overlay on tap */}
           <button
             onClick={() => setIsSearchOpen(true)}
             className="flex-1 min-w-0 flex items-center gap-1.5 bg-[#F7F7F5] dark:bg-gray-800 border-[1.5px] border-gray-200 dark:border-gray-700 hover:border-gold-400 focus-visible:border-gold-400 rounded-[10px] px-2.5 h-9 text-left transition-colors duration-200 focus-visible:outline-none"
@@ -201,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
             </span>
           </button>
 
-          {/* Actions — Bell + Avatar */}
+          {/* Actions - Bell + Avatar */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {currentUser && <NotificationBell />}
             <button
@@ -225,10 +225,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onSellerAccess, isO
         </div>
       </div>
 
-      {/* ── Floating "Je Cherche" FAB — mobile only, sits above bottom nav ── */}
+      {/* ── Floating "Je Cherche" FAB - mobile only, sits above bottom nav ── */}
       <button
         onClick={openJeCherche}
-        aria-label="Je Cherche — Publier une demande"
+        aria-label="Je Cherche - Publier une demande"
         className="md:hidden fixed left-1/2 -translate-x-1/2 z-[55] bottom-[calc(env(safe-area-inset-bottom)+36px)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-gold-500 text-gray-900 flex items-center justify-center shadow-[0_8px_24px_rgba(245,200,66,0.45)] active:scale-95 transition-transform ring-4 ring-white dark:ring-gray-900"
       >
         <span className="absolute inset-0 rounded-full bg-gold-400 opacity-30 animate-ping pointer-events-none" />

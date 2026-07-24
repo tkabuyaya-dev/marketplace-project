@@ -17,10 +17,10 @@ export function updateMetaTags(options: {
   const safeTitle = options.title ? escapeMetaContent(options.title) : '';
   const safeDesc = options.description ? escapeMetaContent(options.description) : '';
 
-  document.title = safeTitle ? `${safeTitle} | Nunulia` : 'Nunulia — Marketplace';
+  document.title = safeTitle ? `${safeTitle} | Nunulia` : 'Nunulia - Marketplace';
 
   const updates: Record<string, string> = {
-    'og:title': safeTitle || 'Nunulia — Marketplace',
+    'og:title': safeTitle || 'Nunulia - Marketplace',
     'og:description': safeDesc || 'Le marketplace des Grands Lacs.',
     'og:image': options.image || '/icons/icon-512.png',
     'og:url': options.url || window.location.href,
@@ -35,7 +35,7 @@ export function updateMetaTags(options: {
 }
 
 export function resetMetaTags() {
-  document.title = 'Nunulia — Marketplace';
+  document.title = 'Nunulia - Marketplace';
   removeJsonLd();
 }
 
@@ -71,7 +71,7 @@ export function removeJsonLd(): void {
 
 /**
  * Build a schema.org `Product` JSON-LD from a Product object.
- * Caller passes the absolute page URL (already canonical) — we don't compute it
+ * Caller passes the absolute page URL (already canonical) - we don't compute it
  * here so server-rendered and client-rendered paths stay consistent.
  */
 export function productToJsonLd(args: {

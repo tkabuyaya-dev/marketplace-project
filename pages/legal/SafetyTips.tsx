@@ -18,7 +18,7 @@ const SafetyTips: React.FC = () => (
         NUNULIA met en relation acheteurs et vendeurs, mais ne participe pas aux paiements entre eux. Les transactions se font directement de personne à personne. Voici comment vous protéger.
       </LegalInfoBox>
 
-      <LegalSection title="Avant d'acheter — vérifier le vendeur">
+      <LegalSection title="Avant d'acheter - vérifier le vendeur">
         <ul className="list-disc list-inside space-y-2 ml-2">
           <li>Repérez le badge <strong className="text-ink">vendeur vérifié</strong> sur le profil. Un vendeur non vérifié n'est pas forcément frauduleux, mais vous devez redoubler de prudence.</li>
           <li>Consultez la <strong className="text-ink">note vendeur</strong>, le nombre de produits publiés et la date d'inscription.</li>
@@ -27,7 +27,7 @@ const SafetyTips: React.FC = () => (
         </ul>
       </LegalSection>
 
-      <LegalSection title="Communication — passer par WhatsApp">
+      <LegalSection title="Communication - passer par WhatsApp">
         <p>Utilisez le bouton <strong className="text-ink">Contacter</strong> directement depuis la fiche produit. Cela ouvre WhatsApp avec le bon numéro.</p>
         <ul className="list-disc list-inside space-y-2 ml-2">
           <li>Demandez des <strong className="text-ink">photos supplémentaires</strong> et une vidéo du produit en main.</li>
@@ -39,7 +39,7 @@ const SafetyTips: React.FC = () => (
         </LegalWarningBox>
       </LegalSection>
 
-      <LegalSection title="Paiement Mobile Money — bonnes pratiques">
+      <LegalSection title="Paiement Mobile Money - bonnes pratiques">
         <ul className="list-disc list-inside space-y-2 ml-2">
           <li>Vérifiez le <strong className="text-ink">nom du destinataire</strong> avant de valider la transaction (il doit correspondre au vendeur).</li>
           <li>Conservez la <strong className="text-ink">référence de transaction</strong> (SMS de confirmation) jusqu'à la livraison du produit.</li>
@@ -48,7 +48,7 @@ const SafetyTips: React.FC = () => (
         </ul>
       </LegalSection>
 
-      <LegalSection title="Rendez-vous physique — pour les achats locaux">
+      <LegalSection title="Rendez-vous physique - pour les achats locaux">
         <ul className="list-disc list-inside space-y-2 ml-2">
           <li>Rencontrez-vous dans un <strong className="text-ink">lieu public</strong> et fréquenté (centre commercial, station essence, café).</li>
           <li>Évitez les rendez-vous en soirée ou dans des lieux isolés.</li>
@@ -68,10 +68,10 @@ const SafetyTips: React.FC = () => (
         </ul>
       </LegalSection>
 
-      <LegalSection title="Vous êtes vendeur — protégez-vous aussi">
+      <LegalSection title="Vous êtes vendeur - protégez-vous aussi">
         <ul className="list-disc list-inside space-y-2 ml-2">
           <li>Ne livrez jamais un produit avant d'avoir <strong className="text-ink">vérifié la réception</strong> du paiement Mobile Money sur votre compte.</li>
-          <li>Méfiez-vous des fausses captures d'écran de paiement — confirmez toujours via votre application Mobile Money.</li>
+          <li>Méfiez-vous des fausses captures d'écran de paiement - confirmez toujours via votre application Mobile Money.</li>
           <li>Refusez les chèques, virements depuis l'étranger ou paiements en plusieurs fois sans garantie.</li>
           <li>Pour les remises en main propre, choisissez aussi un lieu public.</li>
         </ul>
@@ -89,7 +89,7 @@ const SafetyTips: React.FC = () => (
       </LegalSection>
 
       <LegalInfoBox>
-        NUNULIA modère les comptes et peut suspendre un vendeur signalé. Mais nous ne pouvons pas remonter vos paiements à votre place — c'est pourquoi la prévention reste votre meilleure protection.
+        NUNULIA modère les comptes et peut suspendre un vendeur signalé. Mais nous ne pouvons pas remonter vos paiements à votre place - c'est pourquoi la prévention reste votre meilleure protection.
       </LegalInfoBox>
     </div>
   </div>

@@ -1,5 +1,5 @@
 /**
- * NUNULIA — Photo Studio Magic Page (/studio/:sessionId)
+ * NUNULIA - Photo Studio Magic Page (/studio/:sessionId)
  *
  * Phase 5 du Photo Studio. Le vendeur arrive ici via deep-link WhatsApp/notif
  * push après que l'admin a uploadé les photos retouchées. La page :
@@ -369,8 +369,8 @@ const StudioForm: React.FC<StudioFormProps> = ({ session, onPublished }) => {
         if (res.error.kind === 'quota_exceeded') {
           toast(
             isFR()
-              ? 'Quota IA atteint — modèle simple utilisé'
-              : 'AI quota reached — using a simple template',
+              ? 'Quota IA atteint - modèle simple utilisé'
+              : 'AI quota reached - using a simple template',
             'info'
           );
         }
@@ -615,7 +615,7 @@ const PublishSuccessView: React.FC<PublishSuccessViewProps> = ({
       ? `${shareCaption}\n${shareUrl}`
       : fallbackText;
 
-    // navigator.share avec fichier image — meilleure UX mobile (WhatsApp Status, etc.)
+    // navigator.share avec fichier image - meilleure UX mobile (WhatsApp Status, etc.)
     if (cardReady && shareCardUrl && typeof navigator !== 'undefined' && navigator.share) {
       try {
         const response = await fetch(shareCardUrl);
