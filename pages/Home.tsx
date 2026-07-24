@@ -903,12 +903,36 @@ export const Home: React.FC = () => {
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
     setLoadingMore(true);
-    const { products: more, lastDoc: newDoc } = await getProducts(activeCategory, lastDoc, undefined, undefined, activeCountry, wholesaleMode || undefined);
-    setProducts(prev => [...prev, ...more]);
-    setLastDoc(newDoc);
-    setHasMore(newDoc !== null);
-    setLoadingMore(false);
-  }, [hasMore, loadingMore, lastDoc, activeCategory, activeCountry, wholesaleMode]);
+    try {
+      const { products: more, lastDoc: newDoc } = await getProducts(activeCategory, lastDoc, undefined, undefined, activeCountry, wholesaleMode || undefined);
+      // États de like des produits ajoutés (même traitement que la 1re page)
+      let moreLiked: Record<string, boolean> = {};
+      if (currentUser && more.length > 0) {
+        try { moreLiked = await checkIsLikedBatch(more.map(p => p.id), currentUser.id); } catch {}
+      }
+      setProducts(prev => [...prev, ...more]);
+      setLikedMap(prev => ({ ...prev, ...moreLiked }));
+      setLastDoc(newDoc);
+      setHasMore(newDoc !== null);
+      // Persiste la pagination dans le cache mémoire. Sans ça, le retour
+      // depuis un produit réhydrate uniquement la 1re page : la page est
+      // plus courte que la position sauvegardée et le scroll restauré se
+      // retrouve bloqué au niveau du bouton « Voir plus ».
+      const key = cacheKey(activeCategory, activeCountry, wholesaleMode);
+      if (_homeCache && _homeCache.key === key) {
+        _homeCache = {
+          ..._homeCache,
+          products: [..._homeCache.products, ...more],
+          likedMap: { ..._homeCache.likedMap, ...moreLiked },
+          lastDoc: newDoc,
+          hasMore: newDoc !== null,
+          ts: Date.now(),
+        };
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, lastDoc, activeCategory, activeCountry, wholesaleMode, currentUser]);
 
   // Like toggle with optimistic update
   const handleToggleLike = useCallback(async (productId: string, currentlyLiked: boolean) => {
